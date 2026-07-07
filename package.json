@@ -1,0 +1,28 @@
+{
+  "name": "pixel-retire-sim",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.1",
+    "@vitejs/plugin-legacy": "^8.1.0",
+    "@vitejs/plugin-vue": "^6.0.7",
+    "autoprefixer": "^10.5.2",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^4.3.1",
+    "terser": "^5.48.0",
+    "typescript": "~6.0.2",
+    "vite": "^8.1.0",
+    "vite-plugin-singlefile": "^2.3.3"
+  },
+  "dependencies": {
+    "@vueuse/core": "^14.3.0",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.39"
+  }
+}
