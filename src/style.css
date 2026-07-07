@@ -1,0 +1,552 @@
+@import "tailwindcss";
+
+/* ============================================================
+   CSS 变量：Pico-8 色盘 + 赛博朋克霓虹色
+   ============================================================ */
+:root {
+  /* ---- Pico-8 经典 16 色盘（保留） ---- */
+  --pico-black:       #000000;
+  --pico-darkblue:    #1d2b53;
+  --pico-darkpurple:  #7e2553;
+  --pico-darkgreen:   #008751;
+  --pico-brown:       #ab5236;
+  --pico-darkgray:    #5f574f;
+  --pico-lightgray:   #c2c3c7;
+  --pico-white:       #fff1e8;
+  --pico-red:         #ff004d;
+  --pico-orange:      #ffa300;
+  --pico-yellow:      #ffec27;
+  --pico-green:       #00e436;
+  --pico-blue:        #29adff;
+  --pico-indigo:      #83769c;
+  --pico-pink:        #ff77a8;
+  --pico-peach:       #ffccaa;
+
+  /* ---- 赛博朋克霓虹色系 ---- */
+  --neon-purple:  #c900ff;
+  --neon-blue:    #00d4ff;
+  --neon-pink:    #ff2d95;
+  --neon-orange:  #ff8800;
+  --neon-green:   #00ff88;
+
+  /* ---- 项目专用扩展色 ---- */
+  --bg-deep:          #0a0a1a;
+  --bg-panel:         rgba(20, 10, 40, 0.72);
+  --accent-hover:     #ffb85c;
+
+  /* ---- 全局霓虹发光统一强度 ---- */
+  --glow-sm:   0 0 4px currentColor, 0 0 8px currentColor;
+  --glow-md:   0 0 6px currentColor, 0 0 14px currentColor, 0 0 22px currentColor;
+  --glow-lg:   0 0 8px currentColor, 0 0 20px currentColor, 0 0 36px currentColor, 0 0 60px currentColor;
+}
+
+/* ============================================================
+   全局重置与基础排版
+   ============================================================ */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  /* 深色夜空渐变：深蓝 -> 紫黑 -> 暗绿（荧光地面反光感） */
+  background: linear-gradient(180deg, #0a0a1a 0%, #1a0a2e 50%, #0d1a0a 100%);
+  background-attachment: fixed;
+  color: var(--pico-white);
+  font-family: 'DotGothic16', monospace;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  image-rendering: pixelated;
+  /* 全局文字微弱霓虹发光 */
+  text-shadow: 0 0 4px rgba(201, 0, 255, 0.25), 0 0 8px rgba(0, 212, 255, 0.15);
+}
+
+/* ---- 全局城市天际线剪影（固定在背景层底部） ---- */
+body::before {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 180px;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    /* 前景建筑（更深的剪影） */
+    linear-gradient(to top, #050010 0%, #050010 35%, transparent 100%),
+    /* 中景建筑 - 使用 repeating-linear-gradient 模拟窗户灯光 */
+    repeating-linear-gradient(
+      90deg,
+      #0a0520 0px,  #0a0520 20px,
+      #120830 20px, #120830 24px,
+      #0a0520 24px, #0a0520 44px,
+      #0d0625 44px, #0d0625 52px,
+      #0a0520 52px, #0a0520 76px,
+      #150935 76px, #150935 80px,
+      #0a0520 80px, #0a0520 104px,
+      #0a0520 104px
+    );
+  background-size:
+    100% 100%,
+    104px 120px;
+  background-position:
+    0 0,
+    0 60px;
+  background-repeat: no-repeat, repeat-x;
+  /* 霓虹窗户点缀 */
+  box-shadow:
+    inset 0 6px 0 0 #080418,
+    inset 0 0 80px rgba(201, 0, 255, 0.08);
+}
+
+/* ---- 绿色荧光地面反光 ---- */
+body::after {
+  content: '';
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 120px;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 100% at 50% 100%,
+    rgba(0, 255, 136, 0.22) 0%,
+    rgba(0, 255, 136, 0.08) 35%,
+    transparent 70%
+  );
+}
+
+#app {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* ============================================================
+   星星闪烁层（固定在全局最底层）
+   ============================================================ */
+.star-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.star-field .star {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: #fff;
+  border-radius: 50%;
+  animation: twinkle var(--tw-dur, 3s) ease-in-out infinite;
+  animation-delay: var(--tw-delay, 0s);
+  box-shadow: 0 0 4px #fff, 0 0 8px rgba(0, 212, 255, 0.6);
+}
+
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+}
+
+/* ============================================================
+   $ 符号漂浮动画
+   ============================================================ */
+@keyframes floatDollar {
+  0% {
+    transform: translateY(0) rotate(-8deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.9;
+  }
+  50% {
+    transform: translateY(-60vh) rotate(8deg);
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-120vh) rotate(-6deg);
+    opacity: 0;
+  }
+}
+
+.floating-dollar {
+  position: absolute;
+  font-family: 'DotGothic16', monospace;
+  font-weight: bold;
+  pointer-events: none;
+  animation: floatDollar var(--fd-dur, 12s) linear infinite;
+  animation-delay: var(--fd-delay, 0s);
+  text-shadow: var(--glow-md);
+  user-select: none;
+}
+
+/* ============================================================
+   霓虹风滚动条
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 5, 30, 0.8);
+  border: 1px solid rgba(201, 0, 255, 0.3);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--neon-purple) 0%, var(--neon-blue) 100%);
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 6px var(--neon-purple), inset 0 0 4px rgba(255, 255, 255, 0.25);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--neon-pink) 0%, var(--neon-purple) 100%);
+  box-shadow: 0 0 10px var(--neon-pink), inset 0 0 4px rgba(255, 255, 255, 0.35);
+}
+
+::-webkit-scrollbar-corner {
+  background: rgba(10, 5, 30, 0.8);
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--neon-purple) rgba(10, 5, 30, 0.8);
+}
+
+/* ============================================================
+   按钮基础样式（霓虹像素风）
+   ============================================================ */
+button {
+  font-family: 'DotGothic16', monospace;
+  font-size: 16px;
+  padding: 10px 20px;
+  background: rgba(20, 10, 40, 0.85);
+  color: var(--neon-blue);
+  border: 2px solid var(--neon-blue);
+  box-shadow:
+    0 0 6px var(--neon-blue),
+    inset 0 0 6px rgba(0, 212, 255, 0.25);
+  cursor: pointer;
+  image-rendering: pixelated;
+  transition: all 0.15s ease;
+  letter-spacing: 1px;
+  text-shadow: 0 0 4px var(--neon-blue);
+  position: relative;
+  overflow: hidden;
+}
+
+button:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.15);
+  color: #fff;
+  border-color: var(--neon-pink);
+  box-shadow:
+    0 0 10px var(--neon-pink),
+    0 0 22px var(--neon-purple),
+    inset 0 0 10px rgba(255, 45, 149, 0.3);
+  text-shadow: 0 0 6px var(--neon-pink), 0 0 14px var(--neon-pink);
+}
+
+button:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow:
+    0 0 4px var(--neon-pink),
+    inset 0 0 8px rgba(255, 45, 149, 0.4);
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+
+/* ============================================================
+   输入框基础样式（霓虹像素风）
+   ============================================================ */
+input[type="number"],
+input[type="text"] {
+  font-family: 'DotGothic16', monospace;
+  font-size: 16px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--neon-green);
+  border: 2px solid var(--neon-purple);
+  box-shadow:
+    inset 0 0 6px rgba(201, 0, 255, 0.3),
+    0 0 4px rgba(201, 0, 255, 0.3);
+  outline: none;
+  letter-spacing: 1px;
+  text-shadow: 0 0 4px var(--neon-green);
+}
+
+input[type="number"]:focus,
+input[type="text"]:focus {
+  border-color: var(--neon-pink);
+  box-shadow:
+    inset 0 0 8px rgba(255, 45, 149, 0.35),
+    0 0 8px var(--neon-pink),
+    0 0 16px rgba(255, 45, 149, 0.4);
+}
+
+/* ============================================================
+   CRT 扫描线呼吸动画（保留并增强）
+   ============================================================ */
+.crt-scanlines {
+  position: relative;
+  pointer-events: none;
+}
+
+.crt-scanlines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15) 0px,
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  z-index: 10;
+  animation: scanlineBreathe 4s ease-in-out infinite;
+}
+
+@keyframes scanlineBreathe {
+  0%, 100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* ============================================================
+   黑天鹅事件红闪动画（保留）
+   ============================================================ */
+.black-swan-flash {
+  animation: blackSwanRedFlash 600ms ease-in-out;
+}
+
+@keyframes blackSwanRedFlash {
+  0%   { background-color: transparent; }
+  20%  { background-color: rgba(255, 0, 77, 0.55); }
+  30%  { background-color: transparent; }
+  50%  { background-color: rgba(255, 0, 77, 0.55); }
+  60%  { background-color: transparent; }
+  100% { background-color: transparent; }
+}
+
+/* ============================================================
+   通用霓虹像素面板
+   ============================================================ */
+.pixel-panel {
+  background: var(--bg-panel);
+  border: 2px solid var(--neon-purple);
+  box-shadow:
+    0 0 8px var(--neon-purple),
+    0 0 20px rgba(201, 0, 255, 0.35),
+    inset 0 0 16px rgba(201, 0, 255, 0.12);
+  padding: 20px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* 像素风选项卡（用于问卷 / 卡片等） */
+.pixel-card {
+  background: rgba(20, 10, 40, 0.75);
+  border: 2px solid var(--neon-blue);
+  box-shadow:
+    0 0 6px var(--neon-blue),
+    inset 0 0 8px rgba(0, 212, 255, 0.15);
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  image-rendering: pixelated;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.pixel-card:hover {
+  background: rgba(255, 136, 0, 0.18);
+  color: var(--neon-orange);
+  border-color: var(--neon-orange);
+  box-shadow:
+    0 0 10px var(--neon-orange),
+    0 0 22px rgba(255, 136, 0, 0.45),
+    inset 0 0 10px rgba(255, 136, 0, 0.2);
+  transform: translate(-1px, -1px);
+  text-shadow: 0 0 6px var(--neon-orange);
+}
+
+.pixel-card.selected {
+  background: rgba(255, 136, 0, 0.25);
+  color: var(--pico-white);
+  border-color: var(--neon-orange);
+  box-shadow:
+    0 0 12px var(--neon-orange),
+    0 0 28px rgba(255, 136, 0, 0.55),
+    inset 0 0 12px rgba(255, 236, 39, 0.15);
+  text-shadow: 0 0 6px var(--neon-orange);
+}
+
+/* 像素风霓虹标题 */
+.pixel-title {
+  font-size: 32px;
+  color: var(--neon-pink);
+  text-shadow:
+    0 0 6px var(--neon-pink),
+    0 0 14px var(--neon-pink),
+    0 0 28px var(--neon-purple),
+    2px 2px 0 var(--pico-black);
+  letter-spacing: 2px;
+  margin: 0;
+}
+
+/* 进度条 */
+.pixel-progress-track {
+  width: 100%;
+  height: 16px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid var(--neon-purple);
+  box-shadow: inset 0 0 6px rgba(201, 0, 255, 0.3), 0 0 4px var(--neon-purple);
+  padding: 2px;
+}
+
+.pixel-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon-green) 0%, var(--neon-blue) 100%);
+  box-shadow: 0 0 8px var(--neon-green);
+  transition: width 0.3s ease;
+}
+
+/* ============================================================
+   PRESS START 闪烁按钮动画
+   ============================================================ */
+@keyframes pressStartBlink {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 8px var(--neon-green), 0 0 20px var(--neon-green), 0 0 36px var(--neon-green);
+  }
+  50% {
+    opacity: 0.55;
+    text-shadow: 0 0 3px var(--neon-green), 0 0 8px var(--neon-green);
+  }
+}
+
+/* 副标题闪烁 */
+@keyframes subtitleFlicker {
+  0%, 100% {
+    opacity: 1;
+    text-shadow: 0 0 6px var(--neon-blue), 0 0 14px var(--neon-blue);
+  }
+  45% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+    text-shadow: 0 0 2px var(--neon-blue);
+  }
+  55% {
+    opacity: 1;
+  }
+}
+
+/* 霓虹脉冲呼吸 */
+@keyframes neonPulse {
+  0%, 100% {
+    filter: brightness(1);
+  }
+  50% {
+    filter: brightness(1.3);
+  }
+}
+
+/* CRT 电视机外框霓虹发光增强（可被组件覆盖，但提供全局默认） */
+.crt-neon-glow {
+  box-shadow:
+    0 0 0 3px var(--neon-purple),
+    0 0 20px var(--neon-purple),
+    0 0 40px var(--neon-pink),
+    0 0 80px rgba(255, 136, 0, 0.4),
+    inset 0 0 30px rgba(0, 212, 255, 0.15);
+}
+
+/* ============================================================
+   新增剧情驱动动画关键帧
+   ============================================================ */
+
+/* 雪花飘落 */
+@keyframes snowFall {
+  0% { transform: translateY(-10px) translateX(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 0.8; }
+  50% { transform: translateY(50%) translateX(15px) rotate(90deg); }
+  100% { transform: translateY(110%) translateX(-10px) rotate(180deg); opacity: 0; }
+}
+
+/* 雷电闪烁 */
+@keyframes thunderFlash {
+  0%, 100% { opacity: 0; }
+  10% { opacity: 0.9; }
+  20% { opacity: 0; }
+  30% { opacity: 0.7; }
+  40% { opacity: 0; }
+}
+
+/* 雾气飘动 */
+@keyframes fogDrift {
+  0% { transform: translateX(-20%); opacity: 0.3; }
+  50% { opacity: 0.5; }
+  100% { transform: translateX(20%); opacity: 0.3; }
+}
+
+/* Glitch故障条 */
+@keyframes glitchBar {
+  0% { transform: translateX(0); opacity: 0; }
+  20% { transform: translateX(10px); opacity: 0.8; }
+  40% { transform: translateX(-5px); opacity: 0.6; }
+  60% { transform: translateX(15px); opacity: 0.9; }
+  80% { transform: translateX(-10px); opacity: 0.4; }
+  100% { transform: translateX(0); opacity: 0; }
+}
+
+/* 画面震动 */
+@keyframes screenShake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-3px, 2px); }
+  20% { transform: translate(3px, -2px); }
+  30% { transform: translate(-2px, -3px); }
+  40% { transform: translate(2px, 3px); }
+  50% { transform: translate(-3px, 1px); }
+  60% { transform: translate(3px, -1px); }
+  70% { transform: translate(-1px, 3px); }
+  80% { transform: translate(1px, -3px); }
+  90% { transform: translate(-2px, 2px); }
+}
+
+/* 斜向雨滴 */
+@keyframes rainSlant {
+  0% { transform: translateY(-10px) translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(110%) translateX(-30px); opacity: 0; }
+}
