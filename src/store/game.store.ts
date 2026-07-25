@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { shallowRef } from 'vue';
-import type { GameState, Profession, CityType, OriginChoices, YearResult, DecisionCard, CrossroadEvent, AftermathType, NarrativeEvent, MBTIType } from '../types/global.d.js';
+import type { GameState, Profession, CityType, OriginChoices, YearResult, DecisionCard, CrossroadEvent, NarrativeEvent, MBTIType } from '../types/global.d.js';
 import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth } from '../utils/math-engine.js';
 import { DECISION_CARDS, drawRandomCards, trackCardUsage } from '../data/cards.js';
 import { rollRandomEvents } from '../data/events.js';
@@ -190,13 +190,6 @@ export const useGameStore = defineStore('game', () => {
   const showCrossroad = ref(false);
   // 年度结算弹窗
   const showYearEnd = ref(false);
-  
-  // 场景事件动画通知
-  const pendingSceneAnimation = ref<{ type: string; duration: number } | null>(null);
-  
-  // 场景重绘标记（递增即触发 PixelCanvas 立即重绘像素场景）
-  const sceneDirty = ref(0);
-  function markSceneDirty() { sceneDirty.value++; }
 
   // 资产获得动画通知（买房/买车等即时视觉反馈）
   const assetAcquired = ref<{ type: 'house' | 'car' | 'job' | 'love' | 'money'; label: string } | null>(null);
@@ -286,7 +279,6 @@ export const useGameStore = defineStore('game', () => {
     showCrossroad.value = false;
     showYearEnd.value = false;
     crossroadFiredTags.value = new Map();
-    sceneDirty.value = 0;
     assetAcquired.value = null;
     cardTransitionType.value = null;
     clearSave();
@@ -679,21 +671,13 @@ export const useGameStore = defineStore('game', () => {
       }
     }
     
-    // 检测重大状态变化，触发场景即时重绘与资产获得动画
-    let hasMajorSceneChange = false;
+    // 检测重大状态变化，触发资产获得动画
     for (const cid of selectedCardIds.value) {
       if (cid.startsWith('buy_house')) {
-        hasMajorSceneChange = true;
         setAssetAcquired('house', '喜提新居!');
       } else if (cid.startsWith('buy_car')) {
-        hasMajorSceneChange = true;
         setAssetAcquired('car', '喜提爱车!');
-      } else if (cid === 'resign' || cid === 'marry' || cid === 'have_child') {
-        hasMajorSceneChange = true;
       }
-    }
-    if (hasMajorSceneChange) {
-      markSceneDirty();
     }
 
     selectedCardIds.value = [];
@@ -710,7 +694,6 @@ export const useGameStore = defineStore('game', () => {
     switchCity(state.value, newCity);
     addLog(`第${state.value.currentAge}岁，你从原来的城市移居到${newCity}，搬家安置花费${cost}元，开启地缘套利模式。`);
     showCitySelect.value = false;
-    markSceneDirty();
   }
   
   // ========== 十字路口选择 ==========
@@ -720,14 +703,6 @@ export const useGameStore = defineStore('game', () => {
     
     const option = crossroad.options.find(o => o.id === optionId);
     if (!option) return;
-    
-    // 快照关键状态（用于检测重大场景变化）
-    const beforeCity = state.value.currentCity;
-    const beforeMarried = state.value.isMarried;
-    const beforeUnemployed = state.value.isUnemployed;
-    const beforeHasChild = state.value.hasChild;
-    const beforeHasProperty = state.value.hasProperty;
-    const beforeHasCar = state.value.hasCar;
 
     // 应用选项效果
     const stressBeforeCross = state.value.stress;
@@ -744,16 +719,6 @@ export const useGameStore = defineStore('game', () => {
         dampenedAdd = Math.round(stressAdd * 0.5);
       }
       state.value.stress = Math.min(100, stressBeforeCross + dampenedAdd);
-    }
-
-    // 如果关键场景状态发生变化，立即标记场景重绘
-    if (state.value.currentCity !== beforeCity ||
-        state.value.isMarried !== beforeMarried ||
-        state.value.isUnemployed !== beforeUnemployed ||
-        state.value.hasChild !== beforeHasChild ||
-        state.value.hasProperty !== beforeHasProperty ||
-        state.value.hasCar !== beforeHasCar) {
-      markSceneDirty();
     }
 
     // 记录冷却
@@ -920,11 +885,6 @@ export const useGameStore = defineStore('game', () => {
     if (!state.value.narrativeEventFired) state.value.narrativeEventFired = {};
     state.value.narrativeEventFired[event.id] = state.value.currentAge;
 
-    // 检测重大场景变化
-    if (option.log.includes('结婚') || option.log.includes('买房') || option.log.includes('辞职')) {
-      markSceneDirty();
-    }
-
     // 清除当前事件
     currentNarrativeEvent.value = null;
     selectedNarrativeOptionId.value = null;
@@ -993,7 +953,6 @@ export const useGameStore = defineStore('game', () => {
     const cardCost = cardResult.totalCost;
     const isRestYear = cardResult.isRestYear;
     if (isRestYear) {
-      pendingSceneAnimation.value = { type: 'hearts', duration: 2 };
       recordChange('休养生息', beforeCards);
     } else {
       // 逐张卡片记录变化
@@ -1388,9 +1347,6 @@ export const useGameStore = defineStore('game', () => {
     const mood = detectYearMood(allLogs, result);
     yearMood.value = mood;
 
-    // 10.5 检测重大事件，触发场景动画
-    detectAndTriggerSceneAnimation(result, relationshipLogs, eventResult, romanceResult);
-
     // 11. 显示年度结算弹窗
     showYearEnd.value = true;
 
@@ -1591,83 +1547,6 @@ export const useGameStore = defineStore('game', () => {
     state.value.indexFundPct = fund;
     state.value.speculationPct = spec;
   }
-  
-  // ========== 场景事件动画触发 ==========
-  function triggerSceneAnimation(type: string, duration: number = 2.5) {
-    pendingSceneAnimation.value = { type, duration };
-  }
-
-  function detectAndTriggerSceneAnimation(
-    result: YearResult,
-    relationshipLogs: string[],
-    eventResult: { totalLoss: number; logs: string[]; newAftermath?: AftermathType; aftermathDuration?: number },
-    romanceResult?: { sceneAnimation?: string; isBigEvent?: boolean },
-  ) {
-    // 恋爱系统动画优先
-    if (romanceResult?.sceneAnimation === 'wedding') {
-      triggerSceneAnimation('fireworks', 3.5);
-    } else if (romanceResult?.sceneAnimation === 'hearts') {
-      triggerSceneAnimation('hearts', 2.5);
-    } else if (romanceResult?.sceneAnimation === 'heartbreak') {
-      triggerSceneAnimation('tears', 3);
-    }
-    // 黑天鹅事件（有损失或后遗症）
-    else if (eventResult.totalLoss > 0 || eventResult.newAftermath) {
-      triggerSceneAnimation('lightning', 2);
-    }
-
-    // 卡片日志中检测事件
-    const allCardLogs = (result.cardLogs ?? []).join(' ');
-    const allRelLogs = relationshipLogs.join(' ');
-
-    if (allCardLogs.includes('结婚') || allCardLogs.includes('婚礼')) {
-      triggerSceneAnimation('confetti', 2.5);
-    } else if (allCardLogs.includes('购房') || allCardLogs.includes('房子')) {
-      triggerSceneAnimation('house_build', 3);
-    } else if (allCardLogs.includes('提了') || allCardLogs.includes('买车')) {
-      triggerSceneAnimation('fireworks', 2);
-    } else if (allCardLogs.includes('彩票') || allCardLogs.includes('暴富')) {
-      triggerSceneAnimation('gold_burst', 3);
-    } else if (allRelLogs.includes('离世')) {
-      triggerSceneAnimation('tears', 3);
-    } else if (allRelLogs.includes('离婚')) {
-      triggerSceneAnimation('tears', 2.5);
-    } else if (allRelLogs.includes('高考')) {
-      triggerSceneAnimation('confetti', 2);
-    }
-
-    // 里程碑年龄（25/30/35/40/45/50/55）
-    const milestoneAges = [25, 30, 35, 40, 45, 50, 55];
-    if (milestoneAges.includes(state.value.currentAge)) {
-      triggerSceneAnimation('confetti', 2);
-    }
-
-    // 35岁危机：增强版闪电
-    if (state.value.currentAge === 35) {
-      triggerSceneAnimation('lightning', 3);
-    }
-
-    // 幸福感高且非危机年
-    if (state.value.happiness > 70 && eventResult.totalLoss <= 0 && !eventResult.newAftermath && !romanceResult?.sceneAnimation) {
-      triggerSceneAnimation('hearts', 1.5);
-    }
-
-    // 选了辞职卡（失业）
-    if (allCardLogs.includes('辞职')) {
-      triggerSceneAnimation('rain', 2);
-    }
-
-    // 重大疾病
-    if (state.value.hadCriticalIllness) {
-      triggerSceneAnimation('skull', 3);
-    }
-
-    // 连续2年压力>80
-    const prevStress = state.value.stress - result.stressChange;
-    if (state.value.stress > 80 && prevStress > 80) {
-      triggerSceneAnimation('skull', 2.5);
-    }
-  }
 
   // ========== 重置游戏 ==========
   function resetGame() {
@@ -1687,7 +1566,6 @@ export const useGameStore = defineStore('game', () => {
     showCrossroad.value = false;
     crossroadFiredTags.value = new Map();
     showYearEnd.value = false;
-    sceneDirty.value = 0;
     assetAcquired.value = null;
     cardTransitionType.value = null;
     clearSave();
@@ -1753,12 +1631,6 @@ export const useGameStore = defineStore('game', () => {
     // 年度结算弹窗
     showYearEnd,
     dismissYearEnd,
-    // 场景事件动画
-    pendingSceneAnimation,
-    triggerSceneAnimation,
-    // 场景即时重绘
-    sceneDirty,
-    markSceneDirty,
     // 资产获得动画
     assetAcquired,
     // 卡片转场动画
