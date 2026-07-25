@@ -17,14 +17,6 @@ function fmtMoney(n: number): string {
   return '¥' + fmtNum(n)
 }
 
-// 简洁金额（万/亿）
-function fmtShort(n: number): string {
-  const abs = Math.abs(n)
-  if (abs >= 100000000) return (n / 100000000).toFixed(2).replace(/\.?0+$/, '') + '亿'
-  if (abs >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万'
-  return fmtNum(n)
-}
-
 // ========== 收入分项 ==========
 const incomeItems = computed(() => {
   const items: { label: string; value: number }[] = []

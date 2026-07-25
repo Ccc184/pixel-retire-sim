@@ -1,8 +1,9 @@
 import type { GameState, DailyEvent } from '../types/global.d.ts';
+import { PATH_DAILY_EVENTS } from './path-daily-events.js';
 
 // ============================================================
 // 日常琐事事件数据库
-// 覆盖 22-60 岁人生各阶段，共 96 条事件
+// 覆盖 22-60 岁人生各阶段，包含通用日常 + 6条路径专属日常
 // ============================================================
 
 const dailyEvents: DailyEvent[] = [
@@ -1113,6 +1114,9 @@ const dailyEvents: DailyEvent[] = [
     priority: 2,
     effects: { happiness: 2 },
   },
+
+  // ============== 6条路径专属日常事件 ==============
+  ...PATH_DAILY_EVENTS,
 ];
 
 // ============================================================

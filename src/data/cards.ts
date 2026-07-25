@@ -1,5 +1,6 @@
 ﻿import type { DecisionCard, GameState, PartnerPersonality } from '../types/global.d.js';
 import { getRandomName } from './romance.js';
+import { PATH_CARDS } from './path-cards.js';
 
 // 城市房产参数（按级别）
 interface HouseLevel {
@@ -1364,6 +1365,7 @@ export const DECISION_CARDS: DecisionCard[] = [
     },
     logTemplate: '第{年龄}岁，你开始写回忆录，发现有人跟你一样。',
   },
+  ...PATH_CARDS,
 ];
 
 // ========== 卡片使用历史追踪 ==========
@@ -1401,7 +1403,7 @@ function recordCardUsage(state: GameState, cardId: string): void {
 }
 
 // ========== 随机抽取卡片（按类别分组，确保多样性）==========
-export function drawRandomCards(state: GameState, count: number = 3): DecisionCard[] {
+export function drawRandomCards(state: GameState, count: number = 3, categoryWeights?: Record<string, number>): DecisionCard[] {
   if (state.isUnemployed) {
     // 失业状态：根据条件提供不同质量的求职卡
     const jobCardsList: DecisionCard[] = [];
@@ -1612,6 +1614,9 @@ export function drawRandomCards(state: GameState, count: number = 3): DecisionCa
 
   const available = DECISION_CARDS.filter(card => {
     try {
+      // 0. 路径过滤：有pathId的卡仅对对应路径可见
+      if (card.pathId && card.pathId !== state.retirementPath) return false;
+
       // 1. 前置条件检查
       if (card.prerequisites && !card.prerequisites(state)) return false;
 
@@ -1689,14 +1694,33 @@ export function drawRandomCards(state: GameState, count: number = 3): DecisionCa
     byCategory.get(cat)!.push(card);
   }
 
-  // 从不同类别中各抽一张，确保多样性
-  const categories = [...byCategory.keys()].sort(() => Math.random() - 0.5);
+  // 加权洗牌：使用权重的指数排序法 (A-Res / Efraimidis-Spirakis)
+  // key = random()^(1/weight)，key 越大越靠前，权重高的类别有更大概率出现在前面
+  let categories = [...byCategory.keys()];
+  if (categoryWeights) {
+    categories = categories
+      .map(cat => ({
+        cat,
+        weight: categoryWeights[cat] ?? 1.0,
+        key: Math.pow(Math.random(), 1 / (categoryWeights[cat] ?? 1.0)),
+      }))
+      .sort((a, b) => b.key - a.key)
+      .map(x => x.cat);
+  } else {
+    categories = categories.sort(() => Math.random() - 0.5);
+  }
+
+  // 防重复：排除最近2-3年展示过的卡
+  const recentSet = new Set(state.recentShownCards || []);
   const result: DecisionCard[] = [];
 
   for (const cat of categories) {
     if (result.length >= count) break;
     const cards = byCategory.get(cat)!;
-    const picked = cards[Math.floor(Math.random() * cards.length)];
+    // 优先选最近没展示过的
+    const notRecent = cards.filter(c => !recentSet.has(c.id));
+    const pool = notRecent.length > 0 ? notRecent : cards;
+    const picked = pool[Math.floor(Math.random() * pool.length)];
     if (picked && !result.find(r => r.id === picked.id)) {
       result.push(picked);
     }

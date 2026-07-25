@@ -1,5 +1,6 @@
 import type { CrossroadEvent, GameState, PartnerPersonality } from '../types/global.d.js';
 import { CITY_CONFIGS } from '../utils/math-engine.js';
+import { PATH_CROSSROADS } from './path-crossroads.js';
 
 // ========== 十字路口事件数据库 ==========
 // 设计原则：不绑定固定年龄，基于状态条件触发
@@ -32,7 +33,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
     priority: 10,
     cooldown: 8,
     tag: 'career_choice',
-    conditions: (s: GameState) => !s.isUnemployed && s.totalYearsWorked >= 2 && s.currentProfession !== '体制内' && s.currentProfession !== '实体创业' && s.currentAge >= 24 && (s.stress > 50 || s.happiness < 50 || s.currentMonthlySalary <= Math.round(s.careerStartSalary * 1.15)),
+    conditions: (s: GameState) => !s.retirementPath && !s.isUnemployed && s.totalYearsWorked >= 2 && s.currentProfession !== '体制内' && s.currentProfession !== '实体创业' && s.currentAge >= 24 && (s.stress > 50 || s.happiness < 50 || s.currentMonthlySalary <= Math.round(s.careerStartSalary * 1.15)),
     options: [
       {
         id: 'opt_accept_transfer',
@@ -74,12 +75,12 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
           // 创业公司3年内倒闭/被裁概率60%
           const roll = Math.random();
           if (roll < 0.20) {
-            // 20% 期权兑现，大赚一笔
-            s.currentSavings += 80000 + Math.floor(Math.random() * 120000);
+            // 20% 期权兑现，小赚一笔
+            s.currentSavings += 20000 + Math.floor(Math.random() * 10000);
             s.happiness = Math.min(100, s.happiness + 15);
             s.stress = Math.max(0, s.stress - 10);
             s.currentProfession = '红利行业';
-            return { log: '你加入了创业公司。前两年每天工作到凌晨，期权合同上的数字看起来像画饼。第三年公司居然被收购了，你手里的期权变现了六位数。你请所有老同事吃了顿大餐，那晚你喝多了，笑着笑着就哭了。', cost: 0 };
+            return { log: '你加入了创业公司。前两年每天工作到凌晨，期权合同上的数字看起来像画饼。第三年公司居然被收购了，你手里的期权变现了几万块。你请所有老同事吃了顿大餐，那晚你喝多了，笑着笑着就哭了。', cost: 0 };
           } else if (roll < 0.50) {
             // 30% 勉强撑着，没大起色
             s.happiness = Math.max(0, s.happiness - 3);
@@ -162,7 +163,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
     priority: 15,
     cooldown: 10,
     tag: 'career_crisis',
-    conditions: (s: GameState) => !s.isUnemployed && (s.currentProfession === '红利行业' || s.currentProfession === '传统私企') && s.currentAge >= 30 && !s.isUpskilled && s.totalYearsWorked >= 5 && (s.stress > 65 || s.happiness < 50),
+    conditions: (s: GameState) => !s.retirementPath && !s.isUnemployed && (s.currentProfession === '红利行业' || s.currentProfession === '传统私企') && s.currentAge >= 30 && !s.isUpskilled && s.totalYearsWorked >= 5 && (s.stress > 65 || s.happiness < 50),
     options: [
       {
         id: 'opt_upskill',
@@ -209,7 +210,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
         prerequisites: (s: GameState) => s.health >= 30,
         disabledReason: '身体已经亮红灯，再拼可能进医院',
         effect: (s: GameState) => {
-          s.health = Math.max(0, s.health - 12);
+          s.health = Math.max(0, s.health - 10);
           s.stress = Math.min(100, s.stress + 8);
 
           const roll = Math.random();
@@ -234,7 +235,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
             s.isUnemployed = true;
             s.preUnemployedSalary = s.currentMonthlySalary;
             s.currentMonthlySalary = 0;
-            s.happiness = Math.max(0, s.happiness - 20);
+            s.happiness = Math.max(0, s.happiness - 18);
             s.stress = Math.min(100, s.stress + 10);
             return { log: '你天天加班到凌晨，拿了两个季度的A。但裁员名单下来，你的名字赫然在列。HR说"你的绩效很好，但业务线整个砍了"。你抱着纸箱走出大楼的时候，觉得那些熬过的夜都像个笑话。', cost: 0 };
           }
@@ -264,7 +265,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
     priority: 16,
     cooldown: 8,
     tag: 'career_crisis',
-    conditions: (s: GameState) => !s.isUnemployed && s.currentProfession !== '体制内' && s.currentProfession !== '实体创业' && s.totalYearsWorked >= 3 && (s.stress > 70 || (s.economicCycle === 2 && s.totalYearsWorked >= 3)),
+    conditions: (s: GameState) => !s.isAllInPath && !s.isUnemployed && s.currentProfession !== '体制内' && s.currentProfession !== '实体创业' && s.totalYearsWorked >= 3 && (s.stress > 70 || (s.economicCycle === 2 && s.totalYearsWorked >= 3)),
     options: [
       {
         id: 'opt_layoff_prep',
@@ -310,7 +311,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
           const roll = Math.random();
           if (roll < 0.15) {
             // HR拒绝：你不是裁员名单上的
-            s.stress = Math.min(100, s.stress + 20);
+            s.stress = Math.min(100, s.stress + 18);
             s.happiness = Math.max(0, s.happiness - 10);
             return { log: `你鼓起勇气去找HR谈协商离职。HR看了你一眼说"你不在本轮优化名单上，公司没有义务给你补偿"。你灰溜溜地回到工位，发现隔壁同事看你的眼神都变了——很快全部门都知道你想走但没走成。`, cost: 0 };
           } else if (roll < 0.50) {
@@ -354,7 +355,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
           if (roll < 0.20) {
             // 幸存者升职：人少了活多了，但给你加薪
             s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 1.15);
-            s.stress = Math.min(100, s.stress + 20);
+            s.stress = Math.min(100, s.stress + 18);
             s.happiness = Math.max(0, s.happiness - 5);
             return { log: '裁员后团队缩编了一半，领导拍拍你肩膀说"以后这个团队就靠你了"。给你涨了15%的工资，但你要干三个人的活。每天凌晨下班，你看着空荡荡的办公室，不知道自己是幸存者还是接盘侠。', cost: 0 };
           } else if (roll < 0.45) {
@@ -371,7 +372,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
             s.preUnemployedSalary = s.currentMonthlySalary;
             s.currentMonthlySalary = 0;
             s.stress = Math.min(100, s.stress + 10);
-            s.happiness = Math.max(0, s.happiness - 25);
+            s.happiness = Math.max(0, s.happiness - 18);
             return { log: `你赌自己不会是那个倒霉蛋。但HR的邮件还是来了——"请于本周五前完成交接"。N+1补偿${severance}元，比主动谈的人少拿了近一半。你盯着屏幕看了很久，然后默默地打开了招聘网站。`, cost: 0 };
           } else {
             // 躲过一劫，但提心吊胆
@@ -528,7 +529,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
               trait: traits[Math.floor(Math.random() * traits.length)],
               memories: [{ age: s.currentAge, event: '终于在一起了', emoji: '💕' }],
             };
-            s.happiness = Math.min(100, s.happiness + 20);
+            s.happiness = Math.min(100, s.happiness + 15);
             s.stress = Math.max(0, s.stress - 10);
             return { log: '你们终于把话说开了。那个周末，你们手牵手走在河边，夕阳把影子拉得很长。你忽然觉得，一个人走了这么久的路，终于有人愿意一起走了。', cost: 0 };
           } else if (roll < 0.65) {
@@ -543,7 +544,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
             return { log: '对方说得很温柔："你对我很好，我一直都知道。但我一直把你当最好的朋友。"你笑着说"没事"。回家的路上你走了很远的弯路，耳机里循环了一首歌。', cost: 0 };
           } else {
             // 对方已有对象了
-            s.happiness = Math.max(0, s.happiness - 20);
+            s.happiness = Math.max(0, s.happiness - 18);
             s.stress = Math.min(100, s.stress + 15);
             return { log: '对方低头说了声"对不起，我其实已经有对象了"。你愣了一下，然后说了句"恭喜"。那天晚上你删掉了半年的聊天记录。', cost: 0 };
           }
@@ -567,7 +568,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
             return { log: '对方说："没关系，我等你。"你不知道该高兴还是难过。这句话既是温柔，也是一把悬在头顶的剑。', cost: 0 };
           } else {
             // 时机已过
-            s.happiness = Math.max(0, s.happiness - 20);
+            s.happiness = Math.max(0, s.happiness - 18);
             return { log: '你犹豫了太久。等你终于想清楚去找对方的时候，朋友圈里看到了TA和别人的合照。你放大看了看，然后关掉手机，盯着天花板发了很久的呆。', cost: 0 };
           }
         },
@@ -633,8 +634,8 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
 
           // 5%小概率：流产
           if (Math.random() < 0.05) {
-            s.happiness = Math.max(0, s.happiness - 25);
-            s.stress = Math.min(100, s.stress + 20);
+            s.happiness = Math.max(0, s.happiness - 18);
+            s.stress = Math.min(100, s.stress + 18);
             if (s.partner) s.partner.affection = Math.min(100, s.partner.affection + 5);
             return { log: '你们确实怀上了，全家人都沉浸在喜悦中。但第八周的时候，伴侣突然腹痛去了医院。医生说"胚胎没有发育好，这是自然淘汰"。你们抱在一起哭了很久——这一次，是心痛的眼泪。但经历了这件事，你们发现彼此是对方最坚实的依靠。', cost: 10000 };
           }
@@ -643,7 +644,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
             // 顺利怀上
             s.hasChild = true;
             s.annualBaseCost += 35000;
-            s.happiness = Math.min(100, s.happiness + 20);
+            s.happiness = Math.min(100, s.happiness + 15);
             if (s.parents.isAlive) s.parents.relationShip = Math.min(100, s.parents.relationShip + 15);
             if (s.partner) s.partner.affection = Math.min(100, s.partner.affection + 10);
             s.stress = Math.max(0, s.stress - 5);
@@ -722,7 +723,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
 
           // 20%概率：手续出问题
           if (Math.random() < 0.20) {
-            s.happiness = Math.max(0, s.happiness - 20);
+            s.happiness = Math.max(0, s.happiness - 18);
             s.stress = Math.min(100, s.stress + 10);
             return { log: '你们跑了三个月的流程，材料交了五次，好不容易等到审批结果——却被驳回了。理由是"条件不符"。你们不服，申请了复议，又等了两个月，还是没通过。五万块的手续费打了水漂，你们坐在民政局的台阶上，谁也不想先说话。', cost: 50000 };
           }
@@ -974,14 +975,14 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
             s.partner.exName = s.partner.name;
             s.partner.affection = 0;
             s.partner.trust = 0;
-            const splitCost = Math.min(s.currentSavings * 0.3, 200000);
+            const splitCost = Math.min(s.currentSavings * 0.3, 50000);
             s.currentSavings -= Math.round(splitCost);
             s.stress = Math.min(100, s.stress + 10);
-            s.happiness = Math.max(0, s.happiness - 30);
+            s.happiness = Math.max(0, s.happiness - 18);
 
             // 如果有孩子，额外惩罚
             if (s.hasChild) {
-              s.happiness = Math.max(0, s.happiness - 10);
+              s.happiness = Math.max(0, s.happiness - 5);
               return { log: '你们坐在沙发上，第一次心平气和地谈了很久。"也许分开对我们都好。"这句话说出来的时候，你们都哭了。孩子在自己房间里画画，不知道这个家正在散掉。你想着以后每个周末才能见到TA，心里像被人挖走了一块。', cost: Math.round(splitCost) };
             }
             return { log: '你们坐在沙发上，第一次心平气和地谈了很久。"也许分开对我们都好。"这句话说出来的时候，你们都哭了。', cost: Math.round(splitCost) };
@@ -1046,7 +1047,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
             const loss = 5000 + Math.floor(Math.random() * 6) * 2000;
             s.currentSavings -= loss;
             s.happiness = Math.max(0, s.happiness - 15);
-            s.stress = Math.min(100, s.stress + 20);
+            s.stress = Math.min(100, s.stress + 18);
             return { log: `那个人太完美了——照片好看、收入高、每天早安晚安。直到TA说"投资这个稳赚不赔"的时候你才觉得不对劲。你损失了${loss}块钱。关掉APP的那一刻你想，还是一个人比较安全。`, cost: 0 };
           } else {
             // 没结果但迈出了第一步
@@ -1163,7 +1164,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
     priority: 11,
     cooldown: 8,
     tag: 'retirement',
-    conditions: (s: GameState) => !s.isUnemployed && !s.endingTriggered && s.currentAge >= 45 && s.currentSavings > s.targetWealth * 0.3 && s.currentProfession !== '体制内' && (s.stress > 60 || s.happiness < 55),
+    conditions: (s: GameState) => !s.retirementPath && !s.isUnemployed && !s.endingTriggered && s.currentAge >= 45 && s.currentSavings > s.targetWealth * 0.3 && s.currentProfession !== '体制内' && (s.stress > 60 || s.happiness < 55),
     options: [
       {
         id: 'opt_retire_early',
@@ -1177,8 +1178,8 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
           s.isUnemployed = true;
           s.preUnemployedSalary = s.currentMonthlySalary;
           s.currentMonthlySalary = 0;
-          s.happiness = Math.min(100, s.happiness + 25);
-          s.stress = Math.max(0, s.stress - 30);
+          s.happiness = Math.min(100, s.happiness + 15);
+          s.stress = Math.max(0, s.stress - 20);
           s.health = Math.min(100, s.health + 5);
           return { log: '你递交了退休申请。同事们惊讶，领导挽留，但你的心已经飞走了。走出大楼那天，阳光暖洋洋的。你忽然发现，不用赶路的日子，路边花开得真好。', cost: 0 };
         },
@@ -1209,6 +1210,305 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
       },
     ],
   },
+
+  // ============== 引人深思的社交突发事件 ==============
+
+  // 朋友结婚：红包压力+同龄人进度焦虑
+  {
+    id: 'friend_marriage',
+    title: '【红色炸弹·朋友大婚】',
+    narrative: '大学室友发来电子请帖，婚纱照里他笑得很灿烂。你算了算——这个月已经是第三张了。红包起步价两千，关系好的要五千到一万。你看着银行卡余额，又看了看请帖上"携眷出席"四个字——你连对象都没有。\n\n更难受的是，你记得毕业时你们站在同一起跑线上。现在他买房结婚生子，按部就班。而你还在赌一个不确定的未来。',
+    ageRange: [25, 38],
+    priority: 5,
+    cooldown: 999,
+    tag: 'friend_married',
+    conditions: (s) => s.friends.length > 0,
+    options: [
+      {
+        id: 'big_gift',
+        label: '包个大红包去',
+        description: '5000块，心疼但面子要撑住',
+        hint: '存款-5000，幸福+5',
+        hintColor: 'neutral',
+        effect: (s: GameState) => {
+          s.currentSavings -= 5000;
+          s.happiness = Math.min(100, s.happiness + 5);
+          return { log: `第${s.currentAge}岁，你包了五千块的红包去参加婚礼。婚礼很排场，你坐在一桌老同学中间，听他们讨论房贷和学区房。你笑着敬酒，但心里有点不是滋味——不是嫉妒，是一种说不上来的孤独。回家的地铁上你想：每个人都有自己的时区。`, cost: 5000 };
+        },
+      },
+      {
+        id: 'normal_gift',
+        label: '随大流包两千',
+        description: '不丢面子也不伤钱包',
+        hint: '存款-2000',
+        hintColor: 'neutral',
+        effect: (s: GameState) => {
+          s.currentSavings -= 2000;
+          return { log: `第${s.currentAge}岁，你随了两千的红包。婚礼上你和老同学寒暄，交换了"改天聚聚"的客套话，但你们都知道不会再聚了。有些人，注定只能陪你走一段路。`, cost: 2000 };
+        },
+      },
+      {
+        id: 'skip',
+        label: '借口不去',
+        description: '省钱但可能伤感情',
+        hint: '压力+3，关系可能受损',
+        hintColor: 'danger',
+        effect: (s: GameState) => {
+          s.stress = Math.min(100, s.stress + 3);
+          if (s.friends.length > 0) {
+            const f = s.friends[0];
+            f.relation = Math.max(0, f.relation - 15);
+          }
+          return { log: `第${s.currentAge}岁，你借口出差没去婚礼，只转了500块。晚上刷朋友圈看到婚礼照片，你有点愧疚，但很快被工作消息冲淡了。成年人的友情，有时候就是这么渐行渐远。`, cost: 500 };
+        },
+      },
+    ],
+  },
+
+  // 朋友借钱：借还是不借？
+  {
+    id: 'friend_borrow_money',
+    title: '【老朋友开口·借钱救急】',
+    narrative: '一个多年没联系的老朋友突然打来电话，语气里全是窘迫。他母亲住院了，手术费还差五万，借遍了亲戚实在没办法了才找你。\n\n你记得上学时他帮你打过架、替你考过到、你失恋时陪你喝了一整宿。但你也记得那些"借了钱就消失"的社会新闻。五万，是你全部积蓄的一部分。借了，可能拿不回来；不借，可能永远失去这个朋友，也永远过不了自己这关。',
+    ageRange: [26, 50],
+    priority: 6,
+    cooldown: 999,
+    tag: 'friend_borrow',
+    conditions: (s) => s.currentSavings >= 30000 && s.friends.length > 0,
+    options: [
+      {
+        id: 'lend_all',
+        label: '借他五万',
+        description: '救命要紧，朋友就该雪中送炭',
+        hint: '存款-50000，压力-10，55%概率还回来',
+        hintColor: 'danger',
+        effect: (s: GameState) => {
+          s.currentSavings -= 50000;
+          s.stress = Math.max(0, s.stress - 10);
+          if (Math.random() < 0.55) {
+            // 还了
+            (s as any).pendingDebtReturn = { amount: 55000, yearsLater: 3 };
+            s.happiness = Math.min(100, s.happiness + 10);
+            return { log: `第${s.currentAge}岁，你没多想就转了五万给他。他在电话里哭了。你挂了电话后有点慌——那是你攒了好几年的钱。但你不后悔。三年后他不仅还了钱，还多给了五千利息，带着土特产来你家道谢。那天你们喝了很多酒，像回到了二十岁。`, cost: 50000 };
+          } else {
+            // 没还
+            s.happiness = Math.max(0, s.happiness - 15);
+            s.stress = Math.min(100, s.stress + 10);
+            return { log: `第${s.currentAge}岁，你转了五万给他。他千恩万谢，说半年后一定还。但半年后他没提，一年后他开始不回消息，两年后你听说他去了外地，换了手机号。钱没要回来，朋友也没了。你有时候会想：是我做错了吗？`, cost: 50000 };
+          }
+        },
+      },
+      {
+        id: 'lend_part',
+        label: '借两万，表心意',
+        description: '能力范围内帮一把，不指望还',
+        hint: '存款-20000，压力-3',
+        hintColor: 'danger',
+        effect: (s: GameState) => {
+          s.currentSavings -= 20000;
+          s.stress = Math.max(0, s.stress - 3);
+          if (Math.random() < 0.7) {
+            (s as any).pendingDebtReturn = { amount: 20000, yearsLater: 4 };
+          }
+          return { log: `第${s.currentAge}岁，你委婉地说自己也在攒钱买房，只能凑两万。他连声道谢。你不知道这钱能不能回来，但两万块买个心安，值。你想起一句话："不要借朋友钱，也不要欠朋友钱。"但真到了那个份上，哪有那么容易。`, cost: 20000 };
+        },
+      },
+      {
+        id: 'refuse',
+        label: '婉拒，自己也难',
+        description: '如实说自己也在攒钱',
+        hint: '幸福-8，压力+5',
+        hintColor: 'danger',
+        effect: (s: GameState) => {
+          s.happiness = Math.max(0, s.happiness - 8);
+          s.stress = Math.min(100, s.stress + 5);
+          if (s.friends.length > 0) {
+            const f = s.friends[0];
+            f.relation = Math.max(0, f.relation - 25);
+          }
+          return { log: `第${s.currentAge}岁，你沉默了很久，说"兄弟我也在攒钱买房，实在拿不出那么多"。电话那头沉默了几秒，说"没事，理解"。挂了电话你坐了很久。你不知道自己做得对不对，但那八万确实是你赌未来的筹码。成年人的世界，没有容易的选择。`, cost: 0 };
+        },
+      },
+    ],
+  },
+
+  // 朋友拉你创业
+  {
+    id: 'friend_startup_invite',
+    title: '【兄弟创业·拉你入伙】',
+    narrative: '你的好朋友辞了大厂的工作，拉了个团队准备创业。他激情澎湃地给你讲了三个小时的商业计划，说"就差你这个技术合伙人了"。\n\n你知道他是认真的——他已经把房子抵押了。但你也知道创业成功率不到5%。一边是稳定的工作和清晰的上升路径，一边是兄弟情义+财务自由的可能。输了，可能连朋友都没得做；赢了，可能35岁就退休。',
+    ageRange: [27, 38],
+    priority: 7,
+    cooldown: 999,
+    tag: 'friend_startup',
+    conditions: (s) => !s.retirementPath && !s.isUnemployed && s.friends.length > 0 && s.currentSavings >= 30000,
+    options: [
+      {
+        id: 'join_startup',
+        label: '辞职All in入伙',
+        description: '赌一把大的，兄弟齐心其利断金',
+        hint: '存款-3万入股，薪资减半，有暴富可能，也有血本无归风险',
+        hintColor: 'danger',
+        effect: (s: GameState) => {
+          s.currentSavings -= 30000;
+          s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 0.5);
+          s.stress = Math.min(100, s.stress + 18);
+          if (Math.random() < 0.2) {
+            // 20%概率大成功
+            (s as any).startupSuccess = true;
+            return { log: `第${s.currentAge}岁，你辞职了。入职第一天在破旧的共享办公室里，你看着四个合伙人的笑脸，心想"这就是我赌上一切的选择"。三年后公司被收购，你分到了八百万。那天你请所有人喝了最贵的酒，醉得不省人事。你赌赢了。`, cost: 30000 };
+          } else if (Math.random() < 0.4) {
+            // 32%小成，被收购但没暴富
+            (s as any).startupModerate = true;
+            return { log: `第${s.currentAge}岁，你辞职了。创业很苦，但你们活了下来。第五年公司被并购，你拿到了八十万。不够财务自由，但够付个首付。你和兄弟还是朋友，但你们再也没提过当年改变世界的大话。`, cost: 30000 };
+          } else {
+            // 48%失败
+            s.isUnemployed = true;
+            s.preUnemployedSalary = s.currentMonthlySalary * 2;
+            s.unemployedTurns = 0;
+            s.happiness = Math.max(0, s.happiness - 18);
+            s.stress = Math.min(100, s.stress + 15);
+            return { log: `第${s.currentAge}岁，你辞职了。你们烧完了投资人的钱，烧完了自己的积蓄，最后在一个雨夜解散了团队。兄弟之间因为股权分配闹得很不愉快，你们再也没联系过。35岁，失业，存款归零，还失去了最好的朋友。这就是你赌的结果。`, cost: 30000 };
+          }
+        },
+      },
+      {
+        id: 'part_time_help',
+        label: '兼职帮忙，不辞职',
+        description: '留条后路，业余时间帮他',
+        hint: '压力+10，副业收入+，不影响主业',
+        hintColor: 'neutral',
+        effect: (s: GameState) => {
+          s.stress = Math.min(100, s.stress + 10);
+          s.passiveIncome += 10000;
+          return { log: `第${s.currentAge}岁，你没辞职，但下班后和周末都在帮他。很累，经常到凌晨两点。你给自己留了后路，但你也知道——如果成了，你不会是最大的受益者；如果败了，你至少还有工作。成年人的世界，不是非黑即白。`, cost: 0 };
+        },
+      },
+      {
+        id: 'refuse_startup',
+        label: '婉拒，祝他好运',
+        description: '你赌不起，稳定最重要',
+        hint: '压力不变，朋友关系-10',
+        hintColor: 'neutral',
+        effect: (s: GameState) => {
+          if (s.friends.length > 0) {
+            s.friends[0].relation = Math.max(0, s.friends[0].relation - 10);
+          }
+          return { log: `第${s.currentAge}岁，你说"我这份工作也挺忙的，就不加入了，但需要帮忙随时说"。他有点失望，但没勉强。后来他偶尔会在朋友圈晒公司的进展，你每次都点赞，但心里有点复杂——如果当初答应了，现在会怎样？你永远不会知道了。`, cost: 0 };
+        },
+      },
+    ],
+  },
+
+  // 父母重病
+  {
+    id: 'parent_illness',
+    title: '【父母重病·ICU抉择】',
+    narrative: '凌晨三点医院打来电话——父亲突发脑溢血，正在抢救。你赶到医院时，医生在等你签字：手术有风险，费用预计二十万起步，术后可能半身不遂需要长期照顾。\n\n你站在ICU门口，看着"手术中"的红灯。二十万，是你全部积蓄的一半多。医生问你："用进口药还是国产药？进口的贵一倍但效果好一些。"你妈在旁边哭得说不出话。你突然意识到——你和死亡之间，只隔着父母。',
+    ageRange: [28, 55],
+    priority: 9,
+    cooldown: 999,
+    tag: 'parent_critical',
+    conditions: (s) => s.parents.isAlive,
+    options: [
+      {
+        id: 'best_treatment',
+        label: '用最好的药，请护工',
+        description: '钱没了可以再赚，爸只有一个',
+        hint: '存款-5万，压力+18，父母健康↑',
+        hintColor: 'danger',
+        effect: (s: GameState) => {
+          s.currentSavings -= 50000;
+          s.stress = Math.min(100, s.stress + 18);
+          s.parents.health = Math.min(100, s.parents.health + 20);
+          s.parents.relationShip = Math.min(100, s.parents.relationShip + 25);
+          s.happiness = Math.max(0, s.happiness - 5);
+          if (Math.random() < 0.7) {
+            return { log: `第${s.currentAge}岁，你在手术同意书上签了字，选了最贵的治疗方案。手术很成功，你爸虽然身体不如从前，但至少还能陪你说说话。你请了长假照顾他，每天给他擦身喂饭，像小时候他照顾你一样。钱花了很多，但你不后悔。`, cost: 50000 };
+          } else {
+            s.parents.isAlive = false;
+            s.happiness = Math.max(0, s.happiness - 18);
+            s.stress = Math.min(100, s.stress + 15);
+            return { log: `第${s.currentAge}岁，你选了最好的治疗方案，但还是没能留住他。葬礼那天你没哭，直到回到家看到他常坐的沙发空了，才突然崩溃。你想起很多没来得及说的话。子欲养而亲不待，这句话你以前觉得是套话，现在知道是真话。`, cost: 50000 };
+          }
+        },
+      },
+      {
+        id: 'standard_treatment',
+        label: '用国产药，自己照顾',
+        description: '量力而行，亲自照顾更重要',
+        hint: '存款-5万，压力+15',
+        hintColor: 'danger',
+        effect: (s: GameState) => {
+          s.currentSavings -= 50000;
+          s.stress = Math.min(100, s.stress + 15);
+          s.parents.relationShip = Math.min(100, s.parents.relationShip + 10);
+          if (Math.random() < 0.5) {
+            s.parents.health = Math.max(0, s.parents.health - 10);
+            return { log: `第${s.currentAge}岁，你选了国产药，每天下班去医院照顾。很累，但你陪他走过了最难的那段日子。出院那天他瘦了很多，但还能认出你。这就够了。`, cost: 50000 };
+          } else {
+            s.parents.isAlive = false;
+            s.parents.health = 0;
+            s.happiness = Math.max(0, s.happiness - 18);
+            return { log: `第${s.currentAge}岁，你选了国产药保守治疗。三个月后他走了。你一直想如果当初选进口的会不会不一样，但没人能给你答案。这种愧疚感，可能要伴随你很多年。`, cost: 50000 };
+          }
+        },
+      },
+    ],
+  },
+
+  // 昔日好友差距拉大
+  {
+    id: 'friend_gap',
+    title: '【同学聚会·阶层落差】',
+    narrative: '毕业十周年同学聚会，你本来不想去，但被硬拉了去。当年睡你上铺的兄弟现在是某公司总监，开着宝马来的；当年成绩最差的那个做直播赚了几千万；当年和你一起实习的女生嫁了个有钱人，全职太太环游世界。\n\n你坐在角落里，算着自己还多少年才能攒够退休的钱。有人问你"现在混得怎么样"，你笑着说"还行还行"。那顿饭你没怎么吃，一直在想：大家明明是同一起点，怎么十年后差距这么大？',
+    ageRange: [31, 40],
+    priority: 4,
+    cooldown: 999,
+    tag: 'class_reunion_gap',
+    conditions: (s) => s.friends.length > 0,
+    options: [
+      {
+        id: 'motivated',
+        label: '化落差为动力',
+        description: '他们能做到的我也能',
+        hint: '压力+8，信念+10',
+        hintColor: 'positive',
+        effect: (s: GameState) => {
+          s.stress = Math.min(100, s.stress + 8);
+          s.pathFaith = Math.min(100, s.pathFaith + 10);
+          return { log: `第${s.currentAge}岁，同学聚会回来你失眠了一整夜。但第二天你起得比平时更早，打开电脑继续做你该做的事。你知道每个人的时区不同，别人的成功不代表你的失败。你有你的路，你有你的节奏。`, cost: 800 };
+        },
+      },
+      {
+        id: 'depressed',
+        label: '难受，怀疑人生',
+        description: '觉得自己很失败',
+        hint: '幸福-15，压力+10，信念-8',
+        hintColor: 'danger',
+        effect: (s: GameState) => {
+          s.happiness = Math.max(0, s.happiness - 15);
+          s.stress = Math.min(100, s.stress + 10);
+          s.pathFaith = Math.max(0, s.pathFaith - 8);
+          return { log: `第${s.currentAge}岁，聚会回来你把自己关在房间里。你开始怀疑自己选的路是不是错了，怀疑努力有没有意义，怀疑是不是就这样平凡一辈子。这种自我怀疑持续了好几天，但生活不会停下来等你调整好——下周还要交房租。`, cost: 800 };
+        },
+      },
+      {
+        id: 'indifferent',
+        label: '一笑置之',
+        description: '如人饮水冷暖自知',
+        hint: '幸福+3',
+        hintColor: 'positive',
+        effect: (s: GameState) => {
+          s.happiness = Math.min(100, s.happiness + 3);
+          return { log: `第${s.currentAge}岁，你笑着听大家吹牛，散场后没人知道你心里在想什么。你知道那个开宝马的正在闹离婚，那个做直播的每天睡四小时，那个嫁有钱人的在看心理医生。每个人都在展示自己最好的一面。你回到自己的小出租屋，煮了碗面，觉得这样也挺好。`, cost: 800 };
+        },
+      },
+    ],
+  },
+
+  // ============== 6条路径专属十字路口事件 ==============
+  ...PATH_CROSSROADS,
 ];
 
 // ========== 检测当前状态是否触发了十字路口 ==========

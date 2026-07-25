@@ -1,0 +1,2899 @@
+/**
+ * 生物赌徒路径 · 完整叙事事件库
+ *
+ * 三条分支：
+ *   bio_investor     — 生物科技投资线，押注抗衰公司、长寿基金、初创股权
+ *   bio_experimenter — 自体实验线，补剂、方案、生物黑客、N=1试验
+ *   bio_researcher   — 科研参与线，参与研究、公民科学、积累知识、影响领域
+ *
+ * 三个技能维度：
+ *   healthOptSkill   健康优化能力（营养、运动科学、睡眠优化、生物标志物追踪）
+ *   bioKnowledge     生物知识（分子生物学、衰老研究、临床试验素养、科学方法）
+ *   investmentSkill  投资分析能力（生科股分析、初创评估、组合管理）
+ *
+ * 自定义状态字段：
+ *   state.bioPortfolio     生物科技投资组合价值
+ *   state.biologicalAge    生物年龄偏移（负数=更年轻）
+ *   state.supplementRegime 是否坚持补剂方案（boolean）
+ *
+ * ================================================================
+ * 效果应用约定：
+ *   skillGains / savingsChange / salaryChange / passiveIncomeChange
+ *   为声明式字段，由 store 统一应用到 state（pathSkills / currentSavings 等）。
+ *   stateEffect 仅负责 stress / happiness / health / pathFaith 以及
+ *   条件分支逻辑和自定义字段（bioPortfolio / biologicalAge /
+ *   supplementRegime）的初始化与调整，不重复修改上述声明式字段，
+ *   以避免双重计算。
+ * ================================================================
+ */
+import type { NarrativeEvent, NarrativeAchievement, GameState } from '../types/global.d.js';
+import { registerNarrativeEvents } from './narrative-registry.js';
+import { registerAchievements } from './narrative-achievements.js';
+
+// ============================================================
+// 辅助函数
+// ============================================================
+
+/** 确保 pathSkills 已初始化 */
+function ensureSkills(state: GameState): void {
+  if (!state.pathSkills) {
+    (state as any).pathSkills = {};
+  }
+}
+
+/** 数值钳制 */
+function clamp(val: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, val));
+}
+
+/** 读取生物科技投资组合价值 */
+function getBioPortfolio(state: GameState): number {
+  return (state as any).bioPortfolio || 0;
+}
+
+/** 调整生物科技投资组合价值（正=增值/投入，负=缩水/撤出） */
+function adjustBioPortfolio(state: GameState, delta: number): void {
+  const cur = (state as any).bioPortfolio || 0;
+
+  if (delta > 0) {
+    // 加仓：从存款扣除，bioPortfolio 增加（受存款上限约束，不能凭空造币）
+    const buyAmount = Math.min(delta, state.currentSavings);
+    state.currentSavings -= buyAmount;
+    (state as any).bioPortfolio = cur + buyAmount;
+    updateBioAllocation(state);
+  } else if (delta < 0) {
+    // 减仓：bioPortfolio 减少，现金回血（不能卖出超过持仓量）
+    const sellAmount = Math.min(Math.abs(delta), cur);
+    (state as any).bioPortfolio = cur - sellAmount;
+    state.currentSavings += sellAmount;
+    updateBioAllocation(state);
+  } else {
+    (state as any).bioPortfolio = cur;
+  }
+}
+
+/**
+ * 更新存款分布：生科投资是独立资产（bioPortfolio），不占用 currentSavings 的百分比。
+ * stockPct = 0（生科投资不在存款中，而在 bioPortfolio 中）
+ * bankDepositPct = 100 - 其他渠道百分比
+ * UI 显示时再按总流动资产（savings + bioPortfolio）重新计算各渠道占比。
+ */
+function updateBioAllocation(state: GameState): void {
+  // 生科投资是独立资产，不占用 currentSavings 的百分比
+  state.stockPct = 0;
+  // 其他渠道（基金/比特币/黄金/定期）的百分比保持不变，余额宝吸收剩余
+  const otherPct = (state.indexFundPct || 0) + (state.speculationPct || 0) + (state.goldPct || 0) + (state.fixedDepositPct || 0);
+  state.bankDepositPct = Math.max(0, 100 - otherPct);
+}
+
+/** 调整生物年龄偏移（负delta=变年轻，正delta=变老） */
+function adjustBiologicalAge(state: GameState, delta: number): void {
+  const cur = (state as any).biologicalAge || 0;
+  (state as any).biologicalAge = cur + delta;
+}
+
+// ============================================================
+// 通用事件（ages 22-24，分支选择前）
+// ============================================================
+
+const commonEvents: NarrativeEvent[] = [
+
+  // 22岁：开启延寿计划，第一瓶NMN
+  {
+    id: 'bio_first_protocol',
+    title: '第一粒',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    ageRange: [22, 22],
+    priority: 7,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'normal',
+    narrative:
+      '快递到了。你拆开包裹，里面是一瓶NMN、一瓶维生素D3+K2、一袋深海鱼油。你在宿舍的书桌上把它们一字排开，像在摆弄某种仪式的法器。\n' +
+      '室友探头看了一眼："你这是要开药店？"你笑了笑，没解释。你读完了David Sinclair那本《Lifespan》，又翻了几十篇关于NAD+前体的论文。你相信，衰老不是命运，而是一种可以治疗的疾病。\n' +
+      '你吞下第一粒NMN，就着温水。胶囊滑过喉咙的瞬间，你忽然有一种奇怪的神圣感——好像从这一刻起，你和同龄人走上了不同的时间轴。他们在衰老，你在对抗衰老。也许这粒药什么用都没有，也许它是你活到一百二十岁的第一块砖。',
+    options: [
+      {
+        id: 'full_protocol_commit',
+        label: '全速启动：断食、运动、补剂、睡眠',
+        description: '16:8间歇性断食、每周四次力量训练、严格睡眠窗口、全套补剂',
+        hint: '健康优化+10 · 生物知识+5 · 健康+5 · 压力+5 · 存款-3000',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 5 },
+        savingsChange: -3000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 5, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          (s as any).supplementRegime = true;
+        },
+        log: '22岁，你的人生被切割成十六小时的进食窗口和八小时的禁食。室友吃夜宵时你喝水，同事喝奶茶时你泡绿茶。你的床头多了一个补剂分装盒，每周日填好七天份。你觉得自己在和时间为敌。',
+      },
+      {
+        id: 'ease_into_it',
+        label: '循序渐进，先从睡眠和运动开始',
+        description: '不急着上全套补剂，先把地基打好',
+        hint: '健康优化+6 · 健康+4 · 幸福+3 · 信念+3',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 6 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+        },
+        log: '22岁，你没急着当"药罐子"。你先戒了熬夜，每天十一点准时关灯，早晨七点起来跑步。两周后你发现自己白天不再犯困，皮肤也好了。你心想：也许对抗衰老的第一步，不是吃药，而是别作死。',
+      },
+      {
+        id: 'study_first',
+        label: '先把论文读透，再决定吃什么',
+        description: '不盲从网红方案，自己查文献、看机制',
+        hint: '生物知识+12 · 健康优化+3 · 信念+4 · 压力+3',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 3 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '22岁，你把Pubmed翻了个底朝天。你发现NMN的人体数据少得可怜，白藜芦醇的临床结果互相打架，二甲双胍抗衰还停留在动物实验。你叹了口气，但还是下单了——因为哪怕只有十分之一的概率，你也愿意赌。',
+      },
+    ],
+  },
+
+  // 23岁：社交摩擦——拒绝喝酒和垃圾食品
+  {
+    id: 'bio_social_friction',
+    title: '不合群',
+    sceneTag: 'restaurant',
+    pathId: 'bio_gambler',
+    ageRange: [23, 23],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    eventType: 'normal',
+    narrative:
+      '部门聚餐，领导举杯："来，新人走一个！"你端着杯子，里面是白开水。全桌的目光像聚光灯一样打在你身上。\n' +
+      '"酒精是一类致癌物，而且会破坏睡眠和肌肉合成。"你解释。空气安静了两秒，然后有人打圆场："人家养生嘛，理解理解。"领导笑了笑，没勉强，但那顿饭你明显被边缘化了。\n' +
+      '回家的地铁上你盯着车窗里自己的倒影。你知道酒精确实有害，但你不知道这种"正确"值不值得被孤立。也许十年后他们会羡慕你的身体，但今晚，你只有自己。',
+    options: [
+      {
+        id: 'stay_strict',
+        label: '坚持原则，宁可被孤立',
+        description: '你的身体是你的筹码，不为任何社交妥协',
+        hint: '健康优化+8 · 健康+3 · 幸福-5 · 信念+5 · 压力+4',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 8 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 3, 0, 100);
+          s.happiness = clamp(s.happiness - 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+        },
+        log: '23岁，你成了公司里"那个不喝酒的怪人"。聚餐时你永远端着茶杯，应酬能推就推。有人说你清高，有人说你装。你不在乎——你在乎的是二十年后的体检报告，而不是今晚谁的面子。',
+      },
+      {
+        id: 'compromise_occasionally',
+        label: '偶尔妥协，喝一点点维持关系',
+        description: '一年喝两三次无伤大雅，但平时坚决守住',
+        hint: '健康优化+4 · 幸福+4 · 信念+2 · 健康+1',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 4 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.health = clamp(s.health + 1, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+        },
+        log: '23岁，你学会了"战略性饮酒"——一年只喝三次，每次半杯，举着杯子抿一抿。领导和同事觉得你"给面子"，你也守住了底线。你发现：对抗衰老不一定要对抗全世界，留一点弹性，路反而走得更远。',
+      },
+      {
+        id: 'convert_friends',
+        label: '把同事也拉进健康生活',
+        description: '与其被孤立，不如拉几个人一起养生',
+        hint: '健康优化+6 · 幸福+5 · 生物知识+4 · 压力+2 · 月薪+500',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 6, bioKnowledge: 4 },
+        salaryChange: 500,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.stress = clamp(s.stress + 2, 0, 100);
+        },
+        log: '23岁，你组了一个"午休散步群"，每天拉着三四个同事绕写字楼走半小时。你给他们科普血糖曲线和深度睡眠，有人觉得你烦，但也有人开始跟着你吃轻食。你发现：当你不是一个人怪，而是带了一群人怪，"怪"就变成了"潮"。',
+      },
+    ],
+  },
+
+  // 23-24岁：第一次生物标志物检测结果
+  {
+    id: 'bio_first_biomarker',
+    title: '数据',
+    sceneTag: 'clinic',
+    pathId: 'bio_gambler',
+    ageRange: [23, 24],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    eventType: 'normal',
+    narrative:
+      '你戴上了一枚连续血糖监测仪（CGM），又花了半个月工资做了一套深度血液检测：炎症因子、激素水平、脂质谱、肝肾功能、维生素D……报告有三十多页。\n' +
+      '大部分指标在正常范围内，但有几个亮了红灯——空腹胰岛素偏高，维生素D严重不足，同型半胱氨酸略高。医生说"没什么大问题，注意饮食"，但你知道这些"正常"的边界正在悄悄移动。\n' +
+      '你把数据录入一个表格，和同龄人的平均值对比。有些指标你更好，有些更差。你第一次感到：身体不再是模糊的感觉，而是一组可以追踪、可以优化的数字。这种感觉既让人安心，又让人上瘾。',
+    options: [
+      {
+        id: 'optimize_every_marker',
+        label: '针对每个异常指标制定方案',
+        description: '维生素D补到60ng/ml，胰岛素用低碳水压下去，同型半胱氨酸加B族',
+        hint: '健康优化+12 · 生物知识+6 · 健康+6 · 压力+6 · 存款-4000',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 12, bioKnowledge: 6 },
+        savingsChange: -4000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 6, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          adjustBiologicalAge(s, -1);
+        },
+        log: '23岁，你给自己做了一张"指标作战图"，每个异常值后面跟着一行行动方案。三个月后复查，维生素D从18升到了58，空腹胰岛素降了一半。你盯着对比报告，像盯着一局赢了的牌——原来身体真的是可以被"管理"的。',
+      },
+      {
+        id: 'track_trends_only',
+        label: '只追踪趋势，不纠结单个数字',
+        description: '数据是参考不是圣经，别把自己逼疯',
+        hint: '健康优化+6 · 生物知识+8 · 幸福+3 · 信念+3',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 6, bioKnowledge: 8 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+        },
+        log: '23岁，你学会了看趋势而不是单点。你每季度测一次，把数据画成折线图贴在冰箱上。你发现：比起某一天的数字，三个月的方向更重要。你开始理解一句话——"你不能管理你测量的，但你也可能迷失在你测量的里"。',
+      },
+      {
+        id: 'get_cgm_obsessed',
+        label: '戴上CGM，研究每一顿饭的血糖曲线',
+        description: '实时看着血糖起伏，像盯着股市K线一样上瘾',
+        hint: '健康优化+10 · 生物知识+5 · 健康+3 · 压力+5 · 存款-2500',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 5 },
+        savingsChange: -2500,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 3, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '23岁，你的手机里多了一个血糖曲线APP。你发现吃白米饭血糖飙到9.5，换成糙米只到7.2。你开始对每一顿饭精打细算，吃饭前先在脑子里算升糖负荷。朋友说你"活得像个体外实验"，你心想：对，我就是。',
+      },
+    ],
+  },
+
+  // 24岁：基因检测结果
+  {
+    id: 'bio_gene_test',
+    title: '命运',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    ageRange: [24, 24],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    eventType: 'normal',
+    narrative:
+      '基因检测报告出来了。你颤抖着手点开PDF，先翻到阿尔茨海默相关的APOE基因——谢天谢地，你是APOE3/3，中性的。再翻到MTHFR，你是C677T杂合突变，叶酸代谢能力只有正常的65%。\n' +
+      '还有一些没那么致命但让人不安的条目：COMT基因让你对压力更敏感，ACTN3让你更耐力型而非爆发型，FTO变异让你更容易囤积脂肪。\n' +
+      '你盯着屏幕，忽然觉得这些ATCG的字母组合像是一份提前写好的判决书。基因不能改，但表达可以调——这是表观遗传学给你的安慰。你打开购物车，加了一瓶甲基化叶酸。你告诉自己：命运发牌，但怎么打，由你。',
+    options: [
+      {
+        id: 'precision_supplements',
+        label: '根据基因定制补剂方案',
+        description: 'MTHFR补甲基叶酸，COMT少咖啡因，FTO控碳水',
+        hint: '健康优化+10 · 生物知识+10 · 健康+4 · 存款-3500 · 信念+5',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 10 },
+        savingsChange: -3500,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          adjustBiologicalAge(s, -1);
+        },
+        log: '24岁，你的补剂方案从"别人吃什么我吃什么"变成了"我的基因要我吃什么"。你换了甲基化叶酸，把咖啡减到每天一杯，碳水压到总热量30%。你第一次感到：养生不再是玄学，而是工程学。',
+      },
+      {
+        id: 'focus_on_epigenetics',
+        label: '研究表观遗传，用生活方式改写表达',
+        description: '基因是剧本，但生活方式是导演',
+        hint: '生物知识+12 · 健康优化+5 · 信念+6 · 压力+3',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 5 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.stress = clamp(s.stress + 3, 0, 100);
+        },
+        log: '24岁，你迷上了表观遗传学。你读到一项研究：运动能改变肌肉细胞的甲基化模式，让"衰老基因"沉默。你突然觉得，你在跑步机上流的每一滴汗，都是在改写自己的源代码。基因不是终点，是起点。',
+      },
+      {
+        id: 'accept_and_live',
+        label: '接受基因，不被数字绑架',
+        description: '基因只是风险提示，不是判决书，该吃吃该练练',
+        hint: '健康优化+4 · 幸福+6 · 信念+2 · 健康+2',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 4 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.health = clamp(s.health + 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+        },
+        log: '24岁，你合上报告，决定不被一串字母绑架。你想：APOE4携带者里也有活到九十的，FTO变异的人里也有瘦的。基因给的是概率，不是宿命。你继续跑步、继续断食，但不再每隔五分钟查一次自己的风险等级。你学会了一个词：洒脱。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 分支选择事件（age 25）
+// ============================================================
+
+const branchSelectEvent: NarrativeEvent[] = [
+
+  {
+    id: 'bio_branch_select',
+    title: '赌注',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    ageRange: [25, 25],
+    priority: 10,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'branch_select',
+    conditions: (s) => !s.narrativeBranch || s.narrativeBranch === 'unassigned',
+    narrative:
+      '三年了。你从那个吞下第一粒NMN的年轻人，变成了朋友圈里"最懂养生"也"最不像二十五岁"的人。你的体检报告比同龄人好看一截，你的补剂柜比药店的货架还齐全，你的手机里存了几百篇衰老相关的论文。\n\n' +
+      '但"懂"和"养生"都是模糊的词。你站在一个岔路口——光靠自己吃药和跑步，上限太低。抗衰这场赌局，你得以更深的姿态入局。你得选一条路，把筹码压上去。\n\n' +
+      '深夜你打开备忘录，写下三个词：投资、实验、研究。你知道选了哪条路，就意味着把另外两条暂时搁下。窗外的城市睡了，你的台灯还亮着。你的生物钟告诉你该睡了，但你还在想：如果人真能活到一百二十岁，那你现在选的这条路，将决定你是那场革命的参与者、见证者，还是被甩在身后的普通人。',
+    options: [
+      {
+        id: 'choose_bio_investor',
+        label: '投资生物科技，用资本押注未来',
+        description: '把积蓄押向抗衰公司和长寿基金。你赌的是：谁能最早押中突破性技术，谁就能获得百倍回报，而你需要足够的筹码撑到那天。',
+        hint: '投资分析+12 · 生物知识+5 · 压力+6 · 信念+6 · bioPortfolio+20000',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 12, bioKnowledge: 5 },
+        branchSwitch: 'bio_investor',
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          adjustBioPortfolio(s, 20000);
+        },
+        log: '25岁，你决定做这场赌局的庄家——不，是赌徒里最清醒的那种。你把积蓄的一半调进了生物科技组合，开始研究管线、看临床数据、读招股书。你赌的是：下一个改变人类的药，会从你的投资组合里诞生。',
+      },
+      {
+        id: 'choose_bio_experimenter',
+        label: '把自己当试验田，极致自体实验',
+        description: '没人比你的身体更值得研究。你赌的是：最前沿的方案来不及等FDA，你要在自己身上先试出来。',
+        hint: '健康优化+12 · 生物知识+5 · 健康+4 · 压力+5 · 信念+6',
+        hintColor: 'danger',
+        skillGains: { healthOptSkill: 12, bioKnowledge: 5 },
+        branchSwitch: 'bio_experimenter',
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.health = clamp(s.health + 4, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          adjustBiologicalAge(s, -1);
+        },
+        log: '25岁，你把自己签给了自己当受试者。你开始系统记录每一个变量：补剂剂量、睡眠时长、心率变异性、晨起体温。你在身上贴满了传感器，像一台行走的生物实验室。你赌的是：N=1的实验，样本虽小，但反馈最快。',
+      },
+      {
+        id: 'choose_bio_researcher',
+        label: '参与科研，用知识影响这个领域',
+        description: '与其赌单个公司或单个方案，不如成为这个领域的一部分。你赌的是：知识本身就是最稳健的复利。',
+        hint: '生物知识+12 · 健康优化+5 · 信念+6 · 压力+3 · 月薪+1000',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 5 },
+        salaryChange: 1000,
+        branchSwitch: 'bio_researcher',
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '25岁，你注册成了一个衰老研究项目的志愿者，又报名了一个生物信息学的在线课程。你赌的不是某只股票或某粒药，而是"懂行"本身。你想：在这个领域里，最值钱的不是钱，是判断力——而判断力来自知识。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 生物科技投资线事件（ages 26-45）
+// ============================================================
+
+const investorEvents: NarrativeEvent[] = [
+
+  // 26岁：买入第一只生物科技股
+  {
+    id: 'bio_inv_first_stock',
+    title: '开仓',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [26, 26],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你盯着券商APP，手指悬在"买入"键上方。这是一家做NAD+前体人体临床试验的公司，Phase II数据下个月公布。你读了它的管线、看了管理层的背景、算了现金流——所有指标都指向"值得赌"。\n' +
+      '但你清楚，生物科技股的波动比过山车还猛。一期临床的成功率不到10%，三期也只有30%多。你按下去的这一下，可能让本金翻三倍，也可能归零。\n' +
+      '你深吸一口气，按下了买入。仓位不算大，但那是你第一次用真金白银为"抗衰"投票。成交提示音响起时，你的心跳比做完一组深蹲还快。从这一刻起，你不只是在吃补剂，你是在用钱押注人类的未来——以及你自己的。',
+    options: [
+      {
+        id: 'concentrated_bet',
+        label: '集中仓位，重押这一只',
+        description: '看懂了就敢下重注，分散是给不懂的人的',
+        hint: '投资分析+10 · 信念+6 · 压力+10 · bioPortfolio风险↑',
+        hintColor: 'danger',
+        skillGains: { investmentSkill: 10 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          adjustBioPortfolio(s, -15000);
+          adjustBioPortfolio(s, 22000);
+        },
+        log: '26岁，你把组合里四成的仓位压在了那只NAD+公司上。同事说你疯了，你说"看懂了就不叫赌"。下个月数据公布，你紧张得三天没睡好。结果还行——股价涨了四成。你卖出了一半落袋，剩下的留着赌三期。你第一次尝到了"研究变现"的甜头。',
+      },
+      {
+        id: 'diversified_portfolio',
+        label: '分散买入三只，降低单一风险',
+        description: '生科股单只风险太高，建一个迷你组合',
+        hint: '投资分析+8 · 生物知识+4 · 信念+4 · 压力+4 · bioPortfolio稳健↑',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 8, bioKnowledge: 4 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          adjustBioPortfolio(s, -10000);
+          adjustBioPortfolio(s, 11500);
+        },
+        log: '26岁，你没有把鸡蛋放一个篮子。你挑了三只不同方向的抗衰股：一个做NAD+，一个做衰老细胞清除，一个做表观遗传重编程。其中一只跌了，一只涨了，一只平。你第一次理解了组合的意义——不是赌对一只，而是让概率站在你这边。',
+      },
+      {
+        id: 'index_longevity_fund',
+        label: '买长寿主题ETF，赚赛道beta',
+        description: '不会选股就买整个赛道，赌的是方向不是个股',
+        hint: '投资分析+6 · 信念+3 · 压力+2 · bioPortfolio缓慢↑',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 6 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          adjustBioPortfolio(s, -8000);
+          adjustBioPortfolio(s, 8800);
+        },
+        log: '26岁，你买了只长寿主题ETF，一篮子装了二十多家抗衰公司。你不用每天盯盘，只需相信一个判断：人类对延寿的渴望不会消失。一年后涨了一成，不多，但你睡得很安稳。你心想：慢慢来，比较快。',
+      },
+    ],
+  },
+
+  // 28岁：临床试验结果——赢
+  {
+    id: 'bio_inv_clinical_win',
+    title: '中奖',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [28, 28],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '凌晨三点，你的手机疯狂震动。你重仓的那家做衰老细胞清除（senolytics）的公司，刚公布了二期临床数据：主要终点达成，安全性良好，效果比预期还好。\n' +
+      '盘前股价跳空高开80%。你盯着那条K线，手在发抖——不是害怕，是狂喜。你的组合一夜之间涨了四十多万。你想起两年前那个犹豫着按"买入"的夜晚，那时候你觉得自己在赌博，现在你觉得自己是先知。\n' +
+      '但兴奋过后，一个念头爬上来：这真的是你的能力，还是运气？生物科技的临床试验，本质上就是抛硬币——只是你这次抛到了正面。下一次呢？',
+    options: [
+      {
+        id: 'take_profit_reinvest',
+        label: '获利了结，把利润分散到其他标的',
+        description: '落袋为安，别让一次好运变成下次的赌资',
+        hint: '投资分析+8 · 存款+80000 · 信念+5 · 压力-5 · bioPortfolio调整',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 8 },
+        savingsChange: 80000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+          adjustBioPortfolio(s, -60000);
+          adjustBioPortfolio(s, 40000);
+        },
+        log: '28岁，你卖掉了一半仓位，把利润落袋。你用这笔钱又布局了三家不同阶段的生科公司。同事问你怎么不梭哈，你说："赌赢一次是运气，赌赢一辈子才叫本事。留住利润，才有下一局的筹码。"',
+      },
+      {
+        id: 'double_down',
+        label: '加仓，赌三期临床继续成功',
+        description: '趋势确立了就该上杠杆，机会不等人',
+        hint: '投资分析+6 · 信念+8 · 压力+12 · bioPortfolio激增↑↑',
+        hintColor: 'danger',
+        skillGains: { investmentSkill: 6 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress + 12, 0, 100);
+          adjustBioPortfolio(s, -40000);
+          adjustBioPortfolio(s, 90000);
+        },
+        log: '28岁，你没止盈，反而加了仓。你觉得二期都过了，三期还会远吗？你的组合市值冲到了百万级。你给自己倒了一杯红酒——白藜芦醇嘛，你笑着说。但你心里清楚：三期临床的成功率只有三成，你现在的每一分浮盈，都悬在三期结果的那一根线上。',
+      },
+      {
+        id: 'study_the_data',
+        label: '深入研究临床数据，判断是真是假',
+        description: '有些二期成功是统计学幻象，得看细节',
+        hint: '投资分析+12 · 生物知识+8 · 信念+3 · 压力+4',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 12, bioKnowledge: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+        },
+        log: '28岁，你没急着数钱，而是把那篇临床报告逐字读了一遍。你发现样本量只有48人，主要终点的p值卡在0.04边缘，脱落率偏高。你心里咯噔一下——这数据漂亮，但不够硬。你减持了三成，留着观察。你学会了一件事：在生物科技里，"成功"和"看起来成功"是两回事。',
+      },
+    ],
+  },
+
+  // 30岁：结识长寿创业者
+  {
+    id: 'bio_inv_founder_meeting',
+    title: '布道者',
+    sceneTag: 'conference',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [30, 30],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '一场长寿科技峰会的茶歇时间，你端着咖啡，忽然有人拍了拍你的肩。转过头，是一位头发花白但眼神锐利的中年人——他是一家做表观遗传重编程的初创公司创始人，你读过他的论文。\n' +
+      '他居然认识你："你就是那个在雪球上写抗衰投资系列的人吧？写得不错，比大多数分析师懂生物学。"\n' +
+      '你们聊了两个小时。他讲他的愿景——不是延长寿命，而是延长健康寿命；不是让人活得更久，而是让人活得更年轻。他的激情像火焰，你几乎要被点燃。但你也注意到，他回避了关于现金流的提问，对监管风险轻描淡写。先知还是骗子？有时候连他们自己都分不清。',
+    options: [
+      {
+        id: 'invest_in_his_startup',
+        label: '投他的天使轮，赌这个人',
+        description: '赛道对、人对，值得用早期价格博一个未来',
+        hint: '投资分析+10 · 信念+8 · 压力+8 · 存款-50000(买入bioPortfolio)',
+        hintColor: 'danger',
+        skillGains: { investmentSkill: 10 },
+        // 注意：adjustBioPortfolio(50000)已自动从存款扣钱，不需要savingsChange
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          adjustBioPortfolio(s, 50000);
+        },
+        log: '30岁，你把五万块投进了他的天使轮，拿到0.5%的股权。没尽调、没对赌、没退出条款——你赌的是这个人。签完字那天你在朋友圈发了一句"all in 人类未来"，然后默默设了个提醒：三年后回头看，这是个先知，还是个故事。',
+      },
+      {
+        id: 'advise_not_invest',
+        label: '做他的顾问，但不投钱',
+        description: '保持距离，用专业知识换信息和人情',
+        hint: '投资分析+8 · 生物知识+8 · 信念+4 · 月薪+2000 · 人脉↑',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 8, bioKnowledge: 8 },
+        salaryChange: 2000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '30岁，你成了他的"外部科学顾问"，每月开一次会，帮他看数据、理管线。你没投一分钱，但你拿到了行业内幕的第一手信息。你心想：在这个圈子里，信息和人脉比钱更值钱。先混进去，再决定下不下注。',
+      },
+      {
+        id: 'stay_skeptical',
+        label: '保持警惕，他回避的问题就是答案',
+        description: '回避现金流和监管的人，多半有问题',
+        hint: '投资分析+10 · 生物知识+4 · 信念-2 · 压力+2',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 10, bioKnowledge: 4 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith - 2, 0, 100);
+          s.stress = clamp(s.stress + 2, 0, 100);
+        },
+        log: '30岁，你和他加了微信，但没投钱。回去后你查了他的上一家公司——倒闭了，投资人血本无归。你倒吸一口凉气。你给他发了条"再观察观察"，他再没回过你。你心想：在抗衰这个赛道，最大的风险不是技术失败，是被"愿景"骗了。',
+      },
+    ],
+  },
+
+  // 33岁：生物科技泡沫
+  {
+    id: 'bio_inv_bubble',
+    title: '泡沫',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [33, 33],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '一夜之间，"长寿"成了资本市场的宠儿。连做保健品的、卖假药的、搞微商的，都给自己贴上了"抗衰科技"的标签。你关注的几只生科股，市销率炒到了两百倍，有的连产品都没有就市值百亿。\n' +
+      '出租车司机都在聊"衰老细胞清除"，你妈问你"那个延长寿命的股票能不能买"。你知道这意味着什么——泡沫。但泡沫里也有真金，1999年的互联网泡沫破裂了，可亚马逊和谷歌活了下来。\n' +
+      '问题在于：谁是亚马逊，谁是Pets.com？你的组合现在浮盈可观，但你知道，潮水退去的时候，没穿裤子的会很难看。',
+    options: [
+      {
+        id: 'take_profits_now',
+        label: '大幅减仓，落袋为安',
+        description: '泡沫破裂只是时间问题，先把利润锁住',
+        hint: '投资分析+8 · 存款+150000 · 信念-2 · 压力-8 · bioPortfolio↓',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 8 },
+        savingsChange: 150000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith - 2, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+          adjustBioPortfolio(s, -120000);
+        },
+        log: '33岁，你把组合砍到了三成仓位，落袋了十五万利润。三个月后，生科板块崩盘，你重仓过的那只明星股从高点跌了七成。你看着账户里剩下的三成仓位——也腰斩了，但比起那些满仓的人，你已经赢了。你想起一句话：会买的是徒弟，会卖的是师傅。',
+      },
+      {
+        id: 'rotate_to_quality',
+        label: '换仓到真正有管线的龙头',
+        description: '泡沫会破，但好公司会穿越周期',
+        hint: '投资分析+12 · 生物知识+6 · 信念+4 · 压力+6 · bioPortfolio重组',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 12, bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          adjustBioPortfolio(s, -30000);
+          adjustBioPortfolio(s, 35000);
+        },
+        log: '33岁，你没逃，而是换仓。你卖掉了那些PPT公司，把钱集中到三四家有真实管线、有现金流、有FDA孤儿药资格的龙头上。泡沫破裂时它们也跌，但跌得少、回得快。两年后你的组合创新高。你心想：泡沫不可怕，可怕的是分不清泡沫和浪花。',
+      },
+      {
+        id: 'ride_the_wave',
+        label: '顺势加仓，泡沫里也能赚钱',
+        description: '只要音乐没停，就接着跳',
+        hint: '投资分析+4 · 信念+6 · 压力+12 · bioPortfolio大起大落',
+        hintColor: 'danger',
+        skillGains: { investmentSkill: 4 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.stress = clamp(s.stress + 12, 0, 100);
+          adjustBioPortfolio(s, 80000);
+          adjustBioPortfolio(s, -40000);
+        },
+        log: '33岁，你选择了贪婪。你加了仓，甚至上了两倍杠杆。前半年你赚得盆满钵满，账户浮盈翻倍。但崩盘来得比你想的快——一周内你的利润蒸发殆尽，本金也折了三成。你盯着那条垂直下跌的K线，第一次明白：泡沫里赚的钱，是借来的，迟早要还。',
+      },
+    ],
+  },
+
+  // 35岁：组合再平衡
+  {
+    id: 'bio_inv_rebalance',
+    title: '天平',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [35, 35],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你打开账户，组合已经膨胀到一个让你自己都心慌的数字。但仔细看，七成的仓位集中在两只股票上——一只做线粒体健康的，一只做衰老细胞清除的。它们都涨得好，但它们的命运绑在同一个赌注上：抗衰技术会在十年内突破。\n' +
+      '你做了一个压力测试：如果这两只同时腰斩，你的组合会回到三年前。你在这个赛道赌了十年，你赌对过，也赌错过。现在的问题是——你已经不是当年那个输得起的年轻人了。你的筹码越多，越怕失去。\n' +
+      '你在白板上画了一个天平，左边写"集中"，右边写"分散"。你盯着它看了很久，想起巴菲特那句话："分散是无知的保护伞。"但你不是巴菲特，你赌的是一个还没验证的赛道。',
+    options: [
+      {
+        id: 'rebalance_to_60_40',
+        label: '再平衡到60%生科/40%宽基',
+        description: '留足子弹，抗衰是长期赌注，不必all in',
+        hint: '投资分析+10 · 信念+2 · 压力-8 · bioPortfolio稳健',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+          adjustBioPortfolio(s, -80000);
+        },
+        log: '35岁，你把四成仓位挪到了指数基金和债券上。生科组合还是主力，但不再赌命。你跟自己说："抗衰是马拉松，不是百米冲刺。留着退路，才能跑完全程。"那天晚上你睡了这两年最踏实的一觉。',
+      },
+      {
+        id: 'stay_concentrated',
+        label: '维持集中，信念不变',
+        description: '看懂了就该重仓，分散是投降',
+        hint: '投资分析+6 · 信念+8 · 压力+6 · bioPortfolio不动',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 6 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+        },
+        log: '35岁，你看着那个天平，最终没动。你想：你之所以能走到今天，靠的就是集中下注的勇气。现在分散，等于否定过去十年的自己。你告诉自己："信念不是用来动摇的，是用来兑现的。"但你睡前还是多看了一眼手机上的股价。',
+      },
+      {
+        id: 'hedge_with_puts',
+        label: '买入看跌期权对冲尾部风险',
+        description: '不卖股票，但花小钱买个保险',
+        hint: '投资分析+12 · 信念+3 · 压力+2 · 存款-15000 · bioPortfolio受保护',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 12 },
+        savingsChange: -15000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          s.stress = clamp(s.stress + 2, 0, 100);
+        },
+        log: '35岁，你花了点小钱买了两只重仓股的看跌期权。你说不清这是保险还是心虚，但你知道：在这个赛道，黑天鹅比白马常见。三个月后其中一只出了临床事故，期权让你的损失减半。你喝了口茶，心想：花小钱买心安，值。',
+      },
+    ],
+  },
+
+  // 37岁：Pre-IPO打新机会
+  {
+    id: 'bio_inv_ipo',
+    title: '入场券',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [37, 37],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你的投行朋友发来一条加密消息："有一家做线粒体疗法的公司要IPO了，基石投资者还差一点额度，你要不要？"\n' +
+      '你研究了一周：技术是真技术，管线是实管线，团队是顶尖团队。估值不便宜，但比起二级市场炒起来的那些，合理得多。问题是，基石投资者有锁定期——上市后半年不能卖。半年里，什么都有可能发生。\n' +
+      '你看了看银行账户，又看了看你的生科组合。这是一张稀有的入场券，但门槛是把一大笔钱锁住半年。你想起十年前那个第一次按"买入"的自己，那时候你赌的是方向；现在你赌的是时机。',
+    options: [
+      {
+        id: 'take_ipo_allocation',
+        label: '拿下基石额度，重仓打新',
+        description: '这种机会几年才有一次，错过可能再没有',
+        hint: '投资分析+8 · 信念+6 · 压力+8 · 存款-50000 · 禁售期后bioPortfolio≈170000(赚12万)',
+        hintColor: 'danger',
+        skillGains: { investmentSkill: 8 },
+        // 注意：adjustBioPortfolio(50000)会自动从存款扣5万并加到bioPortfolio，不需要savingsChange
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          // 基石投资：5万锁仓半年
+          adjustBioPortfolio(s, 50000);
+          // 半年解禁后赚了十多万：5万本金变成约17万（+12万浮盈兑现后仍留在组合里）
+          // 直接给bioPortfolio加12万收益（不从存款扣，这是投资增值）
+          (s as any).bioPortfolio = ((s as any).bioPortfolio || 0) + 120000;
+        },
+        log: '37岁，你签了基石协议，把五万锁进了半年不能动的仓位。上市首日涨了三成，你在禁售期里每天盯着那条曲线，既期待又煎熬。半年解禁那天，你赚了十多万。你心想：财富的跃迁，往往就靠几张入场券。',
+      },
+      {
+        id: 'buy_after_ipo',
+        label: '放弃基石，上市后二级市场买',
+        description: '不锁定，灵活进出，代价是买得贵',
+        hint: '投资分析+6 · 信念+2 · 压力+3 · 存款-20000 · bioPortfolio买入2万(溢价20%)',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 6 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+          s.stress = clamp(s.stress + 3, 0, 100);
+          // 在二级市场花2万买入（买得贵了两成=同样钱买到更少份额）
+          adjustBioPortfolio(s, 20000);
+        },
+        log: '37岁，你没拿基石，而是等它上市后在二级市场买了一些。买得贵了两成，但你睡得着觉——钱在自己手里，随时能跑。后来它涨了，你没赚最多，但你也没被锁死在某个暴跌的夜晚。你学会接受：安稳的代价，是少赚。',
+      },
+      {
+        id: 'pass_and_observe',
+        label: '放弃，继续观察它的管线进展',
+        description: '估值已透支预期，等回调或等数据',
+        hint: '投资分析+10 · 生物知识+5 · 信念+1 · 压力-2',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 10, bioKnowledge: 5 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 1, 0, 100);
+          s.stress = clamp(s.stress - 2, 0, 100);
+        },
+        log: '37岁，你算了算估值，觉得贵了。你选择观望。三个月后它的二期数据不及预期，股价腰斩。你躲过一劫。朋友说你"神机妙算"，你知道不是——你只是被过去十年的教训教会了：不属于自己的钱，不眼红。',
+      },
+    ],
+  },
+
+  // 39岁：加入/组建长寿基金
+  {
+    id: 'bio_inv_longevity_fund',
+    title: '庄家',
+    sceneTag: 'cafe',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [39, 39],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '一个家族办公室的人找上你："我们想设一支长寿主题基金，需要一个既懂生物学又懂投资的人来管。你愿意聊聊吗？"\n' +
+      '你在这行浸了十几年，从散户做到了有一群跟随者的"抗衰投资KOL"。你的雪球专栏每篇阅读十万加，你的组合年化跑赢了所有生科指数。现在有人要把几个亿交给你管，抽成2%+20%。\n' +
+      '但你清楚，管自己的钱和管理别人的钱是两回事。赚了你分两成，亏了你不用赔，但你的名声会碎。你想了很久——这不再是赌自己的未来，而是把"赌抗衰"这件事变成你的事业。',
+    options: [
+      {
+        id: 'launch_fund',
+        label: '出来单干，成立自己的基金',
+        description: '把十几年积累变成事业，赌一把大的',
+        hint: '投资分析+12 · 生物知识+5 · 信念+10 · 压力+12 · 被动收入+25000 · 存款-50000',
+        hintColor: 'danger',
+        skillGains: { investmentSkill: 12, bioKnowledge: 5 },
+        passiveIncomeChange: 25000,
+        savingsChange: -50000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.stress = clamp(s.stress + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+        },
+        log: '39岁，你辞了职，注册了一家小型基金。第一批LP是你雪球的铁粉和几个家族办公室。你拿着两亿的盘子，每一笔投的都是你研究过的抗衰公司。你不再是赌徒，你是这场赌局的庄家之一。你跟自己说：这次，你不只是在赌自己的命，你在赌整个行业的命。',
+      },
+      {
+        id: 'be_lp_only',
+        label: '只做LP，把钱交给专业机构管',
+        description: '享受赛道收益，不背运营压力',
+        hint: '投资分析+8 · 信念+4 · 压力+2 · 存款-50000 · 被动收入+15000',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 8 },
+        savingsChange: -50000,
+        passiveIncomeChange: 15000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          s.stress = clamp(s.stress + 2, 0, 100);
+        },
+        log: '39岁，你没出来创业，而是把五十万投进了那支长寿基金做LP。你享受赛道收益，但不用操心尽调、路演、LP关系。你继续写你的专栏，继续管自己的组合。你想：不是每个人都要当将军，有时候做投资人背后的投资人，也是一种智慧。',
+      },
+      {
+        id: 'stay_independent',
+        label: '保持独立，只管自己的钱',
+        description: '管别人的钱会扭曲判断，宁可少赚也要自由',
+        hint: '投资分析+10 · 信念+5 · 幸福+6 · 压力-4',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+        },
+        log: '39岁，你拒绝了那个offer。你想起一句话："管别人的钱，你就不再自由。"你继续用自己研究、自己下注、自己承担。赚的不如基金经理多，但你看盘的时候不用想"LP会怎么想"。你心想：自由的代价是少赚，但自由的回报是心安。',
+      },
+    ],
+  },
+
+  // 41岁：AI制药浪潮
+  {
+    id: 'bio_inv_ai_drug_discovery',
+    title: '加速',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [41, 41],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你关注的一个做AI制药的公司，用大模型筛选靶点，把一个抗衰候选药物的发现周期从五年压缩到了八个月。更关键的是，它的临床前数据好得离谱。\n' +
+      '你意识到，你赌了十几年的"抗衰技术会突破"，可能不是慢慢到来，而是被AI突然引爆。原本你预估突破要等到你五十岁，现在可能四十多岁就能看到曙光。\n' +
+      '但你也警惕：AI制药的概念股已经炒了一轮，泥沙俱下。真正的赢家可能只有两三家，其余的都是陪跑。这是一次范式转移，也是一次重新洗牌——你过去的经验，可能正好是你最大的障碍。',
+    options: [
+      {
+        id: 'invest_ai_drug_leader',
+        label: '重仓AI制药龙头',
+        description: '范式转移的赢家通吃，要上就上最强的',
+        hint: '投资分析+12 · 生物知识+8 · 信念+8 · 压力+8 · bioPortfolio+80000',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 12, bioKnowledge: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          adjustBioPortfolio(s, -50000);
+          adjustBioPortfolio(s, 130000);
+        },
+        log: '41岁，你把组合里三成调到了那家AI制药龙头。你的判断是：药物发现周期的缩短，会让抗衰突破比你预期的早五到十年。一年后它和一家大药企达成授权合作，股价翻倍。你看着账户，心想：原来你赌了十几年的"未来"，是被一行代码加速到来的。',
+      },
+      {
+        id: 'invest_pick_and_shovel',
+        label: '投资"卖铲子"的AI平台公司',
+        description: '不赌谁能发现药，赌谁在提供发现药的工具',
+        hint: '投资分析+10 · 生物知识+6 · 信念+5 · 压力+4 · bioPortfolio+40000',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 10, bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+          adjustBioPortfolio(s, -30000);
+          adjustBioPortfolio(s, 70000);
+        },
+        log: '41岁，你没赌谁能做出药，而是投了一家给所有药企提供AI靶点筛选平台的公司。你想：淘金热里最稳的是卖铲子的。两年后它的客户从五家涨到五十家，你的仓位稳步上涨。你心想：在不确定里找确定，"卖铲子"永远比"挖金子"靠谱。',
+      },
+      {
+        id: 'wait_for_clarity',
+        label: '观望，等技术路线分化后再下注',
+        description: '现在太早太乱，等第一轮淘汰后再进',
+        hint: '投资分析+8 · 生物知识+10 · 信念+2 · 压力-2',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 8, bioKnowledge: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+          s.stress = clamp(s.stress - 2, 0, 100);
+        },
+        log: '41岁，你忍住了冲动，选择观望。你看了十几家AI制药公司，发现技术路线五花八门，谁也说服不了谁。你决定等两年，等第一轮临床数据淘汰掉骗子公司再进。后来你确实错过了最早的涨幅，但你也没踩到那些归零的雷。你接受：不赚第一个铜板，是为了不亏最后一个。',
+      },
+    ],
+  },
+
+  // 43岁：突破性疗法获批
+  {
+    id: 'bio_inv_breakthrough_approval',
+    title: '兑现',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [43, 43],
+    priority: 7,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    narrative:
+      'FDA批准了第一个真正意义上的"抗衰老"疗法——不是治某种病，而是针对衰老机制本身。它清除衰老细胞，被批准用于延缓与年龄相关的功能衰退。\n' +
+      '虽然不是你重仓的那家，但你比谁都兴奋——因为这意味着路是通的。整个板块沸腾了，你的组合一天涨了六成。你十几年的赌注，正在被兑现。\n' +
+      '你打开窗户，深吸一口气。你想起22岁那个吞下第一粒NMN的夜晚，那时候"抗衰"还只是论文里的假设。现在它变成了FDA盖章的现实。你赌的不是某只股票，你赌的是人类不会向衰老投降。你赌对了。',
+    options: [
+      {
+        id: 'realize_gains',
+        label: '大幅获利了结，锁定这场赌局的果实',
+        description: '十几年了，是时候把账面数字变成真金白银',
+        hint: '投资分析+8 · 存款+120000 · 信念+10 · 幸福+10 · 压力-10',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 8 },
+        savingsChange: 120000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.stress = clamp(s.stress - 10, 0, 100);
+          adjustBioPortfolio(s, -120000);
+        },
+        log: '43岁，你按下了"卖出"。十二万利润落袋，你的银行账户第一次有了一个让你安心的数字。你没有全清——你还留了三成仓位，赌接下来的十年会有更多突破。但你知道，从今天起，你已经不是一个纯粹的赌徒了。你是一个赢了赌局的赌徒。',
+      },
+      {
+        id: 'reinvest_in_wave2',
+        label: '把利润投入第二波抗衰公司',
+        description: '第一个获批只是开始，真正的浪潮还在后面',
+        hint: '投资分析+12 · 生物知识+8 · 信念+8 · 压力+6 · bioPortfolio重构↑',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 12, bioKnowledge: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          adjustBioPortfolio(s, 80000);
+        },
+        log: '43岁，你没止盈，而是换仓。你卖掉已经兑现的，把资金投进了做表观遗传重编程、线粒体疗法、器官再生的新一批公司。你想：第一个获批证明路通了，接下来会有一整条高速公路。你要的不是一辆车的票价，是整条公路的过路费。',
+      },
+      {
+        id: 'become_advocate',
+        label: '用投资人的身份推动抗衰普及',
+        description: '钱赚够了，现在想让更多人受益',
+        hint: '投资分析+6 · 生物知识+10 · 信念+12 · 幸福+8 · 被动收入+10000',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 6, bioKnowledge: 10 },
+        passiveIncomeChange: 10000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+        },
+        log: '43岁，你开始用你的影响力做另一件事——推动抗衰疗法的可及性。你写了篇长文，呼吁把抗衰纳入医保讨论，又捐了一笔钱给做衰老科普的机构。你想：如果这项技术只属于富人，那它就不是胜利。你赌的不只是自己的命，是人类共同的明天。',
+      },
+    ],
+  },
+
+  // 45岁：组合市值创新高，面临退休抉择
+  {
+    id: 'bio_inv_portfolio_peak',
+    title: '丰收',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    ageRange: [45, 45],
+    priority: 7,
+    weight: 10,
+    oncePerGame: true,
+    narrative:
+      '45岁，你的生科组合市值来到了一个你22岁时想都不敢想的数字。二十多年的复利、十几年的赛道押注、无数次临床数据的惊魂，全都凝结在这个数字里。\n' +
+      '你的身体状态比同龄人年轻七八岁，你的补剂柜还在，你的CGM还在手腕上。抗衰技术不是幻想了，它正在变成产业，变成现实。你的赌注，赌赢了。\n' +
+      '但"退休"这个词在你这里有另一层含义——你不是要停下来，你是有资格停下来思考了。如果人能活到一百二，那四十五岁算什么？算前半场结束。问题是：后半场，你要怎么打？',
+    options: [
+      {
+        id: 'semi_retire_invest',
+        label: '半退休，只留核心仓位继续观察',
+        description: '钱够了，把时间还给生活和健康',
+        hint: '投资分析+6 · 信念+8 · 幸福+10 · 压力-12 · 健康+5 · bioPortfolio保留',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 6 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.stress = clamp(s.stress - 12, 0, 100);
+          s.health = clamp(s.health + 5, 0, 100);
+        },
+        log: '45岁，你把大部分仓位变现，只留了两只最看好的长期持有。你不再每天盯盘，而是把时间还给了运动、睡眠、家人和那本一直想写的书。你想：赌赢了，就该享受赢的果实。至于剩下的仓位，就当是给"活到一百二"留的期权费。',
+      },
+      {
+        id: 'full_retire_enjoy',
+        label: '彻底退休，享受延长的健康寿命',
+        description: '钱够了，身体也好，是时候活了',
+        hint: '信念+10 · 幸福+10 · 压力-12 · 健康+8 · bioPortfolio变现',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.stress = clamp(s.stress - 12, 0, 100);
+          s.health = clamp(s.health + 8, 0, 100);
+          adjustBioPortfolio(s, -getBioPortfolio(s));
+        },
+        log: '45岁，你清了仓。二十多年的赌局，到此为止。你把钱分成了三份：一份生活，一份健康，一份留给未来可能的抗衰疗法。你想：你赌了半辈子"活得更久"，现在该开始"活得更好"了。你约了个体检，然后订了去冰岛的机票——你想看看极光，趁还看得见。',
+      },
+      {
+        id: 'keep_going',
+        label: '不退休，这场赌局还没结束',
+        description: '抗衰才刚开始，你要参与到底',
+        hint: '投资分析+10 · 信念+12 · 压力+4 · bioPortfolio继续↑',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+          adjustBioPortfolio(s, 60000);
+        },
+        log: '45岁，你没退休。你跟自己说：第一个抗衰疗法获批不是终点，是起点。接下来的二十年，会有更多突破，你要在场。你继续研究、继续下注、继续写专栏。你想：有些人退休是为了停，你"不退休"是为了不停。赌徒最怕的不是输，是没得赌了。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 自体实验线事件（ages 26-45）
+// ============================================================
+
+const experimenterEvents: NarrativeEvent[] = [
+
+  // 26岁：第一次系统自体实验
+  {
+    id: 'bio_exp_first_self_experiment',
+    title: '小白鼠',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [26, 26],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你在Excel里设计了一份实验方案：基线期两周，干预期四周，洗脱期两周。变量是雷帕霉素的低剂量间歇给药，终点是炎症因子和自噬标志物的变化。对照组是你自己四周前的数据。\n' +
+      '你把注射器、采血针、检测试剂盒在桌上排开。室友路过看了一眼，倒吸一口凉气："你这是要给自己治病？"你说："不，是给自己升级。"\n' +
+      '第一次给自己指尖采血时，针扎下去的那一下比想象中疼。你挤出几滴血，滴进试剂卡。等待结果的十五分钟里，你忽然有一种奇异的感觉——你既是实验者，也是受试者；既是医生，也是病人。这世上没有比这更纯粹的科学了。',
+    options: [
+      {
+        id: 'rigorous_protocol',
+        label: '严格按方案执行，记录每个变量',
+        description: '控制饮食、睡眠、运动，只让一个变量变化',
+        hint: '健康优化+12 · 生物知识+8 · 健康+4 · 压力+8 · 信念+5 · biologicalAge-1',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 12, bioKnowledge: 8 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          adjustBiologicalAge(s, -1);
+        },
+        log: '26岁，你完成了人生第一个N=1实验。六周后，你的炎症因子降了三成，自噬标志物升高了。你不确定是雷帕霉素的作用，还是你这六周作息更规律了。但数据是真实存在的。你在笔记本上写下："实验1完成。结论：方向对，需重复。"',
+      },
+      {
+        id: 'learn_lab_skills',
+        label: '先学采血和检测技术，保证数据质量',
+        description: '垃圾进垃圾出，数据不准等于没做',
+        hint: '生物知识+12 · 健康优化+5 · 信念+4 · 压力+4',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 5 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '26岁，你没急着给药，而是花了一个月学采血、学检测、学统计。你发现自己之前的采血手法会导致溶血，数据根本不能用。你重新做了基线，这回的数据干净多了。你心想：在自体实验里，最难的不是吃补剂，是诚实地面对自己的数据。',
+      },
+      {
+        id: 'join_n_of_many',
+        label: '加入群体自体实验社区，用样本量换信度',
+        description: '一个人的数据不可靠，一群人的数据有意义',
+        hint: '健康优化+8 · 生物知识+10 · 幸福+4 · 信念+5',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 8, bioKnowledge: 10 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '26岁，你加入了一个"N=many"的自体实验社区。你们共享方案、共享数据、互相复核。你的雷帕霉素实验和另外十二个人的数据合并后，趋势变得清晰了。你想：一个人的实验是故事，一群人的实验才是科学。',
+      },
+    ],
+  },
+
+  // 28岁：补剂堆栈优化
+  {
+    id: 'bio_exp_supplement_stack',
+    title: '鸡尾酒',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [28, 28],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你的补剂柜已经像一个微型药房了：NMN、NR、白藜芦醇、槲皮素、非瑟酮、二甲双胍、雷帕霉素、维生素D3+K2、Omega-3、镁、锌、甲基化叶酸、虾青素……每天早中晚三顿，每顿六七粒。\n' +
+      '问题来了——这些东西之间的相互作用你并不完全清楚。白藜芦醇可能抑制NMN的吸收，二甲双胍可能干扰B12，雷帕霉素和运动的效果可能互相抵消。你正在喝一杯由十几种成分调成的"鸡尾酒"，却没有调酒师告诉你配方对不对。\n' +
+      '你盯着那一排瓶子，第一次问自己：你是在优化身体，还是在满足一种"掌控感"的瘾？也许有一半的补剂是安慰剂，但你不敢停——万一停了那一个是有效的呢？',
+    options: [
+      {
+        id: 'streamline_stack',
+        label: '精简到有证据的核心几样',
+        description: '只留人体数据最充分的，其余停掉',
+        hint: '健康优化+10 · 生物知识+8 · 健康+4 · 压力-6 · 存款+3000 · 信念+4',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 8 },
+        savingsChange: 3000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.stress = clamp(s.stress - 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '28岁，你把补剂从二十几种砍到了六种：NMN、维D、Omega-3、镁、二甲双胍、雷帕霉素。停掉那些的瞬间你有点慌，但两个月后复查，指标没变差，反而肝肾负担轻了。你心想：少即是多，不是所有进步都靠加法。',
+      },
+      {
+        id: 'test_interactions',
+        label: '系统测试相互作用，逐个加减',
+        description: '每两周只增减一种，看指标变化',
+        hint: '健康优化+12 · 生物知识+10 · 健康+3 · 压力+8 · 存款-2000',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 12, bioKnowledge: 10 },
+        savingsChange: -2000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 3, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '28岁，你花了一年做"加减法实验"。你发现停掉白藜芦醇后炎症反而降了，加上非瑟酮后关节舒服了。你画出了一张"补剂效果地图"，标注了每种对你个人的真实影响。你想：补剂不是越多越好，是越准越好。',
+      },
+      {
+        id: 'embrace_the_stack',
+        label: '相信整体效应，继续全栈服用',
+        description: '也许单独无效，组合起来有协同',
+        hint: '健康优化+6 · 健康+2 · 压力+5 · 存款-4000 · 信念+3',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 6 },
+        savingsChange: -4000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 2, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+        },
+        log: '28岁，你选择相信"鸡尾酒效应"。你没精简，反而又加了两种。你跟自己说：也许每一种单独都微弱，但合在一起就是复利。但你心里隐隐知道，你停不下来的原因，不全是科学，是恐惧——怕停了就输了。',
+      },
+    ],
+  },
+
+  // 29岁：CGM/可穿戴数据沉迷
+  {
+    id: 'bio_exp_cgm_obsession',
+    title: '上瘾',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [29, 29],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你身上挂着三个设备：手臂上的CGM、手腕上的心率表、戒指里的睡眠追踪器。你的手机里有七八个APP，分别监测血糖、心率变异性（HRV）、血氧、深睡时长、体温、呼吸暂停指数。\n' +
+      '你开始对数字产生依赖。某天HRV比平时低10，你就焦虑一整天；某天深睡少了一刻钟，你就推掉所有应酬。你的生活不再是"为了活得好"，而是"为了让数字好看"。\n' +
+      '伴侣看着你睡前要花二十分钟同步三个设备的数据，叹了口气："你测了这么多，你快乐吗？"你愣住了。你忽然意识到，你正在用"健康"的名义，把自己关进一个由数字围成的笼子。',
+    options: [
+      {
+        id: 'digital_detox',
+        label: '戒掉部分设备，回归身体感受',
+        description: '数据是工具不是主人，学会听身体的声音',
+        hint: '健康优化+8 · 幸福+8 · 健康+3 · 压力-8 · 信念+2',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 8 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.health = clamp(s.health + 3, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+        },
+        log: '29岁，你摘掉了戒指和心率表，只留CGM。前三天你浑身不自在，像丢了魂。但一周后你发现，没有那些数字，你反而更放松了，睡得更好了。你重新学会了一件失传的技能：感觉累就去睡，感觉饱就停下。身体本来就有一套反馈系统，你只是太久没听了。',
+      },
+      {
+        id: 'data_driven_optimization',
+        label: '用数据做更精细的优化',
+        description: '沉迷是问题，但数据本身没错，优化使用方式',
+        hint: '健康优化+12 · 生物知识+6 · 健康+4 · 压力+6 · 信念+4 · biologicalAge-1',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 12, bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          adjustBiologicalAge(s, -1);
+        },
+        log: '29岁，你没戒设备，但立了规矩：只看周均值的趋势，不看单日波动。你用三个月的HRV数据发现，冷水澡和深睡正相关，酒精和深睡负相关。你把酒戒了，把冷水澡固定了。数据没让你自由，但让你精确。',
+      },
+      {
+        id: 'accept_imperfection',
+        label: '接受数据的不完美，不再追求满分',
+        description: '人是活的，数字是死的，别本末倒置',
+        hint: '健康优化+6 · 幸福+6 · 信念+3 · 压力-4',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 6 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+        },
+        log: '29岁，你给所有APP设了通知静默，只在每周日看一次数据。你跟自己说：身体的目的是生活，不是生产数据。偶尔HRV低一点，也许只是因为昨晚做了个噩梦。你开始允许自己"不完美"——这反而让你更健康了。',
+      },
+    ],
+  },
+
+  // 30岁：冷暴露与桑拿等极端方案
+  {
+    id: 'bio_exp_cold_sauna',
+    title: '冰与火',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [30, 30],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你在浴缸里放满了冰水，温度计显示4度。你深吸一口气，把自己浸了进去。冷得像被针扎，你的呼吸瞬间急促，大脑一片空白。两分钟后你爬出来，浑身通红，却莫名地兴奋。\n' +
+      '这是你新的"鸡尾酒"：每周三次冷水澡，两次桑拿。你读到棕色脂肪、热休克蛋白、去甲肾上腺素飙升的研究，你相信这些"压力"能激活身体的抗衰机制——所谓的毒物兴奋效应（hormesis）。\n' +
+      '但你也会在凌晨四点冻得睡不着时怀疑：你是在训练身体，还是在折磨自己？那些百岁老人，有几个是泡冰水泡出来的？也许他们只是晒太阳、种地、和家人吃饭、不焦虑。也许"健康"没那么复杂，是你把它搞复杂了。',
+    options: [
+      {
+        id: 'commit_to_protocol',
+        label: '坚持冷热交替方案',
+        description: '相信hormesis，把不适当成训练',
+        hint: '健康优化+12 · 健康+5 · 压力+4 · 幸福-2 · 信念+5 · biologicalAge-1',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 12 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 5, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+          s.happiness = clamp(s.happiness - 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          adjustBiologicalAge(s, -1);
+        },
+        log: '30岁，你把冰水浴和桑拿变成了雷打不动的仪式。三个月后你的基础代谢升了，冬天不怕冷了，连感冒都少了。你承认它有用，但你也在凌晨四点冻醒时问自己：这真的值得吗？你不确定，但你停不下来——因为你已经把"不舒服"当成了"有效"的证据。',
+      },
+      {
+        id: 'moderate_version',
+        label: '用温和版本：冷水澡+远红外桑拿',
+        description: '不必极限，适度刺激即可',
+        hint: '健康优化+8 · 健康+4 · 幸福+3 · 压力+1 · 信念+3',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 8 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+          s.stress = clamp(s.stress + 1, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+        },
+        log: '30岁，你没买冰块，而是把淋浴最后两分钟调成冷水。桑拿也换成了温和的远红外。效果没有极限版那么"猛"，但你坚持得下来，也不至于半夜冻醒。你想：最好的方案不是最有效的，是你能坚持一辈子的。',
+      },
+      {
+        id: 'question_the_science',
+        label: '质疑：这些真的有抗衰证据吗？',
+        description: 'hormesis在小鼠身上有效，人体证据薄弱',
+        hint: '生物知识+12 · 健康优化+4 · 信念-2 · 压力-2',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 4 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith - 2, 0, 100);
+          s.stress = clamp(s.stress - 2, 0, 100);
+        },
+        log: '30岁，你查了文献，发现冷暴露的人体抗衰证据几乎为零——大部分是小鼠和机制推测。你停了冰水浴，改成了规律的快走和阻力训练——这些有人体证据。你心想：你不是反传统，你是反"没有证据的传统"。也许无聊的方案，才是最可靠的方案。',
+      },
+    ],
+  },
+
+  // 32岁：延长断食
+  {
+    id: 'bio_exp_fasting',
+    title: '空',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [32, 32],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你已经做了两年16:8断食。现在你想试更长——五天清水断食，触发更深层的自噬。你读完了Valter Longo关于模拟断食饮食（FMD）的研究，准备了电解质和监测计划。\n' +
+      '第三天是最难的。你头晕、乏力、嘴里有金属味，但大脑却异常清明——那种饥饿带来的、近乎禅定的清醒。你坐在窗边，看着楼下的早餐店冒出热气，第一次理解了"空"这个字。\n' +
+      '第五天结束，你慢慢复食。复查显示你的干细胞标志物升高了，炎症降了。但你也瘦了四斤，其中一半是肌肉。你盯着镜子，问自己：你是在重启身体，还是在透支它？饥饿也许是良药，但良药和毒药，往往只差剂量。',
+    options: [
+      {
+        id: 'quarterly_long_fast',
+        label: '每季度做一次五天断食',
+        description: '相信自噬的清理效应，定期重启',
+        hint: '健康优化+12 · 生物知识+6 · 健康+4 · 压力+8 · 幸福-3 · biologicalAge-2',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 12, bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.happiness = clamp(s.happiness - 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          adjustBiologicalAge(s, -2);
+        },
+        log: '32岁，你把五天断食变成了每季度的仪式。每次结束你都有一种"重置"的感觉，指标也确实在改善。但你也在每个断食周的深夜里，盯着天花板想：你到底是在追求健康，还是在追求一种"我能控制自己身体"的掌控感？也许两者是一回事。',
+      },
+      {
+        id: 'monthly_fmd',
+        label: '改用每月一次模拟断食饮食',
+        description: 'Longo的FMD方案，不那么极端也有自噬',
+        hint: '健康优化+10 · 生物知识+8 · 健康+4 · 压力+3 · 信念+4 · biologicalAge-1',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 8 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          adjustBiologicalAge(s, -1);
+        },
+        log: '32岁，你没硬撑清水断食，而是用了FMD——五天低热量、低蛋白、植物为主的饮食。没那么"纯"，但能坚持，肌肉也没掉那么多。你心想：科学不是苦行，可持续比纯粹重要。Longo设计这个方案，不就是为了让人能坚持吗？',
+      },
+      {
+        id: 'stick_to_daily_fast',
+        label: '只保持日常16:8，不做极端断食',
+        description: '极端断食伤肌肉，日常限制已足够',
+        hint: '健康优化+8 · 健康+3 · 幸福+4 · 压力-3 · 信念+2',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 8 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 3, 0, 100);
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.stress = clamp(s.stress - 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+        },
+        log: '32岁，你试了一次五天断食，瘦了四斤，回来花了两个月才恢复肌肉。你决定不再做极端断食，只保持16:8。你想：自噬是好事，但身体不是实验室的器皿。你宁可慢一点、稳一点，也不要用透支换指标。',
+      },
+    ],
+  },
+
+  // 34岁：副作用
+  {
+    id: 'bio_exp_side_effects',
+    title: '代价',
+    sceneTag: 'clinic',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [34, 34],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '最近你总觉得嘴里有溃疡，伤口愈合变慢了，还动不动就感冒。你去做了个免疫全套，结果让你心凉：你的淋巴细胞计数偏低，CD4/CD8比值异常。\n' +
+      '医生问你最近在吃什么药。你报出了一串名字，医生皱起眉头："雷帕霉素是免疫抑制剂，你长期低剂量吃，相当于一直在压制自己的免疫系统。你觉得它在抗衰，它也在让你更容易感染。"\n' +
+      '你坐在诊室里，第一次感到恐惧。你以为你在升级身体，也许你在拆解它。每一粒"抗衰"的药，都是一把双刃剑——你只看了它锋利的那一面，忘了它会割伤握剑的手。',
+    options: [
+      {
+        id: 'stop_rapamycin',
+        label: '立即停用雷帕霉素，让免疫恢复',
+        description: '抗衰不能以牺牲免疫为代价',
+        hint: '健康优化+8 · 生物知识+6 · 健康+8 · 信念-4 · 压力-4',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 8, bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 4, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+        },
+        log: '34岁，你停了雷帕霉素。两个月后复查，免疫指标回到了正常。你把那瓶药收进了抽屉最深处。你心想：你赌了十二年"抗衰"，第一次被"抗衰"反噬。也许真正的智慧，不是知道吃什么，是知道什么时候该停。',
+      },
+      {
+        id: 'adjust_dose',
+        label: '降低剂量、拉长间隔，继续观察',
+        description: '不停，但更谨慎地用',
+        hint: '健康优化+10 · 生物知识+8 · 健康+3 · 信念+2 · 压力+3',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 8 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+          s.stress = clamp(s.stress + 3, 0, 100);
+        },
+        log: '34岁，你没停雷帕霉素，但把频率从每周一次改成了每两周一次，剂量减半。你加了免疫监测，每个月查一次。你想：药物没有绝对的安全，只有平衡。你要做的，是在收益和风险之间走钢丝。',
+      },
+      {
+        id: 'consult_expert',
+        label: '去找真正的抗衰医生咨询',
+        description: '别自己瞎试了，让专业的人把关',
+        hint: '生物知识+12 · 健康优化+6 · 健康+4 · 信念+3 · 存款-5000',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 6 },
+        savingsChange: -5000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+        },
+        log: '34岁，你飞去见了一位做抗衰临床的医生。他看了你的方案，摇头说："你把自己当成了试验田，但没有试验田是没人照看的。"他帮你重新设计了方案，停掉了雷帕霉素，加了规律的运动和睡眠优先。你心想：承认自己不是专家，也许是这十二年最重要的一课。',
+      },
+    ],
+  },
+
+  // 36岁：生物黑客社群
+  {
+    id: 'bio_exp_biohacking_community',
+    title: '部落',
+    sceneTag: 'video_call',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [36, 36],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你被拉进了一个加密的 Telegram 群，群名叫"不死者"。里面有三百多人，都是和你一样的生物黑客。他们分享最新的论文、自体实验数据、补剂渠道，还有一些更激进的东西——多肽自助注射、年轻血浆输注（是的，真的有人在做）、未经批准的基因疗法。\n' +
+      '你在群里看到有人晒自己的"年轻血浆"输注视频，血液从一个二十岁志愿者的手臂流进他的。评论区有人叫好，有人警告。你感到一种复杂的情绪：兴奋、恐惧、还有一丝被"同类"接纳的温暖。\n' +
+      '你终于找到你的部落了。但你也清楚，部落有部落的疯狂——当一群人都相信同一件事，理性的边界就会被推得更远。你需要在归属感和判断力之间，找到一条线。',
+    options: [
+      {
+        id: 'try_peptides',
+        label: '尝试多肽方案（BPC-157等）',
+        description: '群里都说有效，自己也想试',
+        hint: '健康优化+10 · 生物知识+4 · 健康+3 · 压力+6 · 存款-4000 · 信念+4',
+        hintColor: 'danger',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 4 },
+        savingsChange: -4000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 3, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '36岁，你从群里的渠道买了一些BPC-157，自己皮下注射。关节确实舒服了些，但你不知道是心理作用还是真的。你也没敢告诉任何人——因为这些东西没有监管，没有标准，你注射进身体的，是信任。你心想：自由和风险，是同一枚硬币的两面。',
+      },
+      {
+        id: 'share_data_only',
+        label: '只分享数据，不碰激进方案',
+        description: '保持理性，做社群里的清醒者',
+        hint: '健康优化+6 · 生物知识+12 · 幸福+4 · 信念+5 · 人脉↑',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 6, bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '36岁，你成了群里那个"泼冷水"的人。有人想试年轻血浆，你贴出风险研究；有人推荐新型多肽，你问"人体数据在哪"。有人嫌你扫兴，但也有人私信谢你"救了他一命"。你想：在一个狂热的部落里，最需要的不是更多的信徒，是一个会说"等一下"的人。',
+      },
+      {
+        id: 'leave_community',
+        label: '退群，回归主流医学',
+        description: '这个圈子太野，风险不可控',
+        hint: '健康优化+6 · 生物知识+6 · 幸福+5 · 压力-5 · 信念-2',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 6, bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 2, 0, 100);
+        },
+        log: '36岁，你退了群。你看着群里越来越激进的实验，心想：这不是科学，这是邪教。你回归了有循证基础的方案——运动、睡眠、营养、有证据的补剂。你觉得无聊了些，但也安心了些。你想：长寿不是冒险运动，是马拉松。',
+      },
+    ],
+  },
+
+  // 38岁：表观遗传时钟检测
+  {
+    id: 'bio_exp_epigenetic_clock',
+    title: '判决书',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [38, 38],
+    priority: 7,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    narrative:
+      '你花了八千块，做了Horvath表观遗传时钟检测——这是目前最接近"真实生物年龄"的指标。它通过DNA甲基化模式，估算你的细胞有多大年纪。\n' +
+      '等待结果的两周，你比等任何体检都紧张。你十六年的自律、上万的补剂、无数次的冰水浴和断食，全都凝结在这一个数字上。如果它说你比实际年龄年轻五岁，你赌赢了；如果它说你老了三岁，你这十六年是不是白费了？\n' +
+      '报告打开的那一刻，你的手在抖。数字跳出来——你的生物年龄比实际年龄小6.2岁。你38岁的身体，细胞层面像31.8岁。你盯着那个数字，眼眶忽然湿了。你赌了十六年，第一次拿到"判决书"，而它说：你赌对了。',
+    options: [
+      {
+        id: 'double_down',
+        label: '乘胜追击，把生物年龄再压低',
+        description: '既然有效，就做得更狠',
+        hint: '健康优化+12 · 生物知识+6 · 健康+4 · 压力+6 · 信念+10 · biologicalAge-2',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 12, bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          adjustBiologicalAge(s, -2);
+        },
+        log: '38岁，生物年龄31.8。你拿着报告，像拿着一张奖状。你决定加大投入：更严格的断食、更精细的补剂、更密集的监测。你要在下一次检测时，把这个数字压到30以下。你想：这就是你这十六年的意义——用数字证明，衰老可以被对抗。',
+      },
+      {
+        id: 'maintain_balance',
+        label: '保持现状，享受这个成果',
+        description: '有效就够，不必走极端',
+        hint: '健康优化+8 · 幸福+8 · 健康+4 · 信念+8 · 压力-4',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 8 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.health = clamp(s.health + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+        },
+        log: '38岁，生物年龄31.8。你没加码，而是长舒一口气。你想：你追求的是"年轻"，不是"更年轻"。你保持现在的节奏，把省下的精力还给生活——多陪家人，多看几场日落。你想：延长寿命是为了更好地活，不是为了更累地活。',
+      },
+      {
+        id: 'question_validity',
+        label: '质疑：一个时钟能代表全部吗？',
+        description: '甲基化时钟也有误差，别被一个数字绑架',
+        hint: '生物知识+12 · 健康优化+4 · 信念+4 · 压力-2',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 4 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          s.stress = clamp(s.stress - 2, 0, 100);
+        },
+        log: '38岁，生物年龄31.8。你高兴了十分钟，然后开始查这个时钟的局限性：不同组织结果不同，检测有技术误差，甲基化和真实健康的关系还没完全搞清。你把这个数字当成"参考"而不是"判决"。你想：真正的健康，不是一个数字，是你每天醒来时的状态。',
+      },
+    ],
+  },
+
+  // 40岁：衰老细胞清除等极端方案
+  {
+    id: 'bio_exp_senolytics',
+    title: '清道夫',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [40, 40],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '衰老细胞——那些停止分裂却不死的"僵尸细胞"，被认为是衰老的核心驱动力之一。清除它们的药物叫senolytics，最经典的是达沙替尼+槲皮素的组合。\n' +
+      '这个方案还在临床试验阶段，但生物黑客圈已经有人在自己身上试了。你读了Mayo Clinic的早期数据，风险可控，效果诱人。你拿到了药，准备做一个为期三天的清除周期。\n' +
+      '你坐在桌前，药片在掌心。这不是维生素，这是化疗药的衍生组合。你忽然想起二十年前那个吞下第一粒NMN的夜晚——那时候你赌的是"也许有用"，现在你赌的是"大概率有用但可能有害"。你的赌注越来越大，你的胆子却越来越小。这是衰老，还是成熟？',
+    options: [
+      {
+        id: 'do_senolytic_cycle',
+        label: '完成清除周期，赌一次深层清理',
+        description: '风险可控，潜在收益巨大',
+        hint: '健康优化+12 · 生物知识+8 · 健康+5 · 压力+8 · 存款-6000 · 信念+6 · biologicalAge-2',
+        hintColor: 'danger',
+        skillGains: { healthOptSkill: 12, bioKnowledge: 8 },
+        savingsChange: -6000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 5, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          adjustBiologicalAge(s, -2);
+        },
+        log: '40岁，你吞下了那三天的senolytic组合。第二天你全身酸痛、低烧，像得了一场重感冒——据说这是衰老细胞死亡释放的炎症反应。三天后你恢复了，一个月后复查，炎症标志物降了一截，关节也轻快了。你不知道这是不是安慰剂，但你想：清道夫进场了，垃圾总会少一些。',
+      },
+      {
+        id: 'use_natural_senolytics',
+        label: '只用天然的：非瑟酮+槲皮素',
+        description: '不碰化疗药，用植物提取物',
+        hint: '健康优化+10 · 生物知识+6 · 健康+4 · 压力+3 · 存款-3000 · 信念+4',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 6 },
+        savingsChange: -3000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          adjustBiologicalAge(s, -1);
+        },
+        log: '40岁，你没碰达沙替尼，只用了非瑟酮和槲皮素——草莓和苹果里的天然成分。效果温和得多，但你睡得着觉。你想：你不是病人，没必要用治病的药来"防病"。温和的清道夫，也许清扫得慢，但不会把地板砸坏。',
+      },
+      {
+        id: 'wait_for_approval',
+        label: '等临床验证后再用',
+        description: '现在太早，等数据成熟',
+        hint: '生物知识+12 · 健康优化+4 · 信念+2 · 压力-2',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 4 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+          s.stress = clamp(s.stress - 2, 0, 100);
+        },
+        log: '40岁，你把药收了起来，决定等三年后的三期临床结果。你想起二十岁出头时，什么新东西都敢往嘴里塞；现在你学会了等。你想：也许这也是一种抗衰——不是对抗身体，是对抗自己的冲动。能等的人，才能活得久。',
+      },
+    ],
+  },
+
+  // 42岁：身体数据全面领先同龄人
+  {
+    id: 'bio_exp_body_age_leap',
+    title: '逆转',
+    sceneTag: 'gym',
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    ageRange: [42, 42],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '42岁这年，你做了一次全面评估：最大摄氧量（VO2max）相当于30岁的水平，握力在同龄人前5%，骨密度正常，反应速度测试像35岁，表观遗传时钟显示生物年龄33.6。\n' +
+      '你的同龄人开始出现三高、脂肪肝、腰围失控，而你还能跑半马、还能硬拉自体重。你站在镜子前，看着一张没有啤酒肚、没有明显白发的脸。你赌了二十年，身体给了你答案。\n' +
+      '但你也会在深夜里想：你用二十年的自律，换来了"比同龄人年轻八岁"。可如果抗衰技术真的突破了，你这点优势还算什么？你是在和同龄人赛跑，还是和时间赛跑？也许真正的对手，从来不是别人。',
+    options: [
+      {
+        id: 'share_method',
+        label: '把你的方案整理成系统方法公开',
+        description: '二十年经验值得分享，也帮别人少走弯路',
+        hint: '健康优化+10 · 生物知识+10 · 幸福+8 · 信念+8 · 被动收入+8000',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 10 },
+        passiveIncomeChange: 8000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '42岁，你把二十年的自体实验整理成了一份公开文档：哪些有效、哪些没用、哪些有风险。你没有贩卖方案，只是诚实记录。文档被转了几万次，有人照着做，有人骂你"伪科学"。你想：你的N=1不等于真理，但二十年的真实数据，总比空谈强。',
+      },
+      {
+        id: 'push_to_extreme',
+        label: '冲击生物年龄30岁以下',
+        description: '你已经接近了，再努力一把',
+        hint: '健康优化+12 · 健康+4 · 压力+8 · 信念+6 · biologicalAge-2',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 12 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 4, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          adjustBiologicalAge(s, -2);
+        },
+        log: '42岁，生物年龄33.6。你没满足，而是向30发起冲击。你加了高压训练、加了更密集的监测、把方案调到极致。半年后你到了31.4。你盯着那个数字，既骄傲又疲惫。你想：你在和时间赛跑，但时间不需要睡觉，你需要。',
+      },
+      {
+        id: 'pivot_to_quality',
+        label: '从"更年轻"转向"更健康地活"',
+        description: '数字够好了，现在关注生活质量',
+        hint: '健康优化+8 · 幸福+10 · 健康+4 · 信念+6 · 压力-6',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 8 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.health = clamp(s.health + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.stress = clamp(s.stress - 6, 0, 100);
+        },
+        log: '42岁，你决定不再追求"更年轻"，而是追求"更完整"。你把一部分训练时间换成了徒步、冥想、和伴侣做饭。数字没再降，但你更快乐了。你想：也许健康的终点，不是生物年龄的数字，是你每天睁开眼时的那种——"今天值得过"的感觉。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 科研参与线事件（ages 26-45）
+// ============================================================
+
+const researcherEvents: NarrativeEvent[] = [
+
+  // 26岁：加入一项衰老研究
+  {
+    id: 'bio_res_join_study',
+    title: '入组',
+    sceneTag: 'lab',
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    ageRange: [26, 26],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你在一所大学的衰老研究中心报了名，成为一项纵向研究的受试者。每三个月你要去一次实验室：抽血、测认知、做体成分、填问卷。作为回报，你能拿到自己的全套数据。\n' +
+      '第一次去实验室，你看着那些穿着白大褂的研究生，心想：这就是科学的现场。你不是一个旁观者了，你是数据点，是这条知识链条上的一环。\n' +
+      '负责项目的PI是个五十多岁的女教授，头发已经花白。她看着你的数据说："年轻人，你的指标比同龄人好很多。你做了什么？"你笑了笑，把你的补剂清单递给她。她推了推眼镜："有意思。但记住，个案不是证据。"你点了点头——你知道，但至少你是那个有趣的个案。',
+    options: [
+      {
+        id: 'be_exemplary_subject',
+        label: '做最配合的受试者，提供高质量数据',
+        description: '严格遵守方案，每次准时、如实记录',
+        hint: '生物知识+10 · 健康优化+6 · 信念+4 · 压力+2 · 月薪+500',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 10, healthOptSkill: 6 },
+        salaryChange: 500,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '26岁，你成了那个实验室最靠谱的受试者。三年里你没缺席过一次随访，数据完整得让研究生感动。PI在论文致谢里写上了你的编号。你想：你也许成不了科学家，但你可以做最好的那块拼图。',
+      },
+      {
+        id: 'ask_questions',
+        label: '不断提问，趁机学方法学',
+        description: '不只是被测，要搞懂为什么这么测',
+        hint: '生物知识+12 · 健康优化+4 · 信念+5 · 压力+3',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 4 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '26岁，你把每次去实验室变成了上课。你问为什么用ELISA而不是质谱，问为什么控制这个变量不控制那个，问p值和效应量哪个更重要。研究生开始躲你，但PI喜欢你，邀请你参加组会。你想：知识不是别人喂给你的，是你一口一口问出来的。',
+      },
+      {
+        id: 'suggest_self_data',
+        label: '主动提供你的自体实验数据给研究',
+        description: '你的N=1数据也许能启发新的假设',
+        hint: '生物知识+10 · 健康优化+8 · 信念+4 · 幸福+3',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 10, healthOptSkill: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+        },
+        log: '26岁，你把三年的自体实验数据整理成表格，发给了PI。她看了很惊讶："这些虽然不能直接用，但能帮我们生成假设。"后来她真的基于你的数据，设计了一个新实验。你想：公民科学不是代替专业研究，是给它喂料。',
+      },
+    ],
+  },
+
+  // 28岁：第一次被引用/共同署名
+  {
+    id: 'bio_res_first_paper',
+    title: '署名',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    ageRange: [28, 28],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      'PI发来一封邮件，附件是一篇论文的预印本。题目是关于某种补剂对健康人群生物标志物的影响，她在致谢后面加了一行："我们感谢[你的名字]提供的纵向自体监测数据。"\n' +
+      '虽然不是正式署名，但你的名字第一次出现在了一篇学术论文上。你把PDF下载下来，盯着那行字看了很久。你二十八岁了，同龄人在卷KPI、卷房贷，你在卷——论文致谢。\n' +
+      '也许这算不上什么成就，但对你来说，它意味着一件事：你的数据是有价值的，你的参与是被认可的。你不是边缘人，你是这个领域里一个微小的、但真实的齿轮。',
+    options: [
+      {
+        id: 'aim_for_authorship',
+        label: '争取成为正式共同作者',
+        description: '从致谢到署名，需要更多实质贡献',
+        hint: '生物知识+12 · 健康优化+6 · 信念+6 · 压力+6 · 月薪+1000',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 6 },
+        salaryChange: 1000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '28岁，你跟PI说："我想做更多，不只是提供数据。"她让你参与了一项新实验的数据清洗和分析。半年后你的名字出现在了作者列表的倒数第二位。虽然只是二作，但你拿到了人生第一个ORCID。你想：在学术的世界里，名字的位置就是位置。',
+      },
+      {
+        id: 'start_writing',
+        label: '开始自己写科普，把论文翻译成人话',
+        description: '做学术界和公众之间的桥梁',
+        hint: '生物知识+10 · 信念+5 · 幸福+5 · 被动收入+5000 · 人脉↑',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 10 },
+        passiveIncomeChange: 5000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '28岁，你开了一个公众号，专门把晦涩的衰老论文翻译成普通人能懂的话。第一篇阅读量只有三百，但有人留言说"终于看懂了自噬是什么"。你心想：科学的进步不只靠实验室，也靠有人把火种传出去。',
+      },
+      {
+        id: 'deepen_methods',
+        label: '深入学习统计和实验设计',
+        description: '看懂数据还不够，要会判断数据好坏',
+        hint: '生物知识+12 · 信念+4 · 压力+5 · 健康-2',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.health = clamp(s.health - 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '28岁，你啃起了生物统计学和实验设计。你学会了看置信区间、看样本量计算、看偏倚来源。你回头再看那些网红抗衰研究，发现一半都站不住脚。你想：知识最危险的地方，是让你看到多少东西是假的。但这也是它最值钱的地方。',
+      },
+    ],
+  },
+
+  // 30岁：联系你仰慕的科学家
+  {
+    id: 'bio_res_connect_scientists',
+    title: '回信',
+    sceneTag: 'video_call',
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    ageRange: [30, 30],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你给一位做表观遗传重编程的科学家发了邮件，附上了你整理的一份数据综述。你以为会石沉大海——给大牛写信的人太多了。\n' +
+      '三天后，你收到了回复。只有两行："你的综述很清楚，有一个细节我们正好在争论。方便周四视频聊聊吗？"你盯着那两行字，心跳加速。\n' +
+      '周四的视频会议里，你和这位头发花白的教授讨论了四十分钟。他没把你当外行，而是认真听你的判断。会议结束前他说："学术界需要更多像你这样懂生物学又懂实践的人。你有没有想过读个在职博士？"你愣住了。原来知识真的能敲开任何一扇门——只要你敲得够久、够真诚。',
+    options: [
+      {
+        id: 'part_time_phd',
+        label: '申请在职博士，正式进入学术体系',
+        description: '把爱好变成事业，但代价是时间和精力',
+        hint: '生物知识+12 · 信念+10 · 压力+12 · 健康-4 · 月薪-2000',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        salaryChange: -2000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 12, 0, 100);
+          s.health = clamp(s.health - 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+        },
+        log: '30岁，你成了那位教授的在职博士生。白天上班，晚上和周末做课题。你比同门大七八岁，但他们尊敬你——因为你不是为文凭来的，你是为问题来的。你想：在三十岁重新当学生，不是倒退，是把人生重置了一次。',
+      },
+      {
+        id: 'collaborate_only',
+        label: '不读博，但建立长期合作',
+        description: '保持自由身，做学术界的外援',
+        hint: '生物知识+12 · 健康优化+6 · 信念+6 · 幸福+4 · 人脉↑',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12, healthOptSkill: 6 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '30岁，你没读博，但和那位教授建立了长期合作。你帮他收集真实世界的依从性数据，他让你参与组会和论文讨论。你既享受学术的深度，又保有业界的自由。你想：进不进体制不重要，重要的是你在场，你在贡献。',
+      },
+      {
+        id: 'build_own_network',
+        label: '借机拓展整个科学家网络',
+        description: '一个连接带来十个连接',
+        hint: '生物知识+12 · 信念+6 · 幸福+5 · 人脉↑↑ · 被动收入+3000',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        passiveIncomeChange: 3000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '30岁，那位教授把你拉进了一个衰老研究的国际协作网络。你认识了二十多位科学家，有的是做线粒体的，有的是做干细胞的老的。你成了这个网络里唯一的"民间科学家"，但他们需要你——因为你懂实践，他们懂理论。你想：桥梁的价值，有时候比两岸更高。',
+      },
+    ],
+  },
+
+  // 32岁：发起公民科学项目
+  {
+    id: 'bio_res_citizen_science',
+    title: '众声',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    ageRange: [32, 32],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你发起了一个公民科学项目：招募两百个像你一样做自体监测的人，统一方案、统一指标，追踪一年。你想证明：散落民间的N=1数据，聚合起来也能产生有意义的发现。\n' +
+      '招募比想象中难。有人嫌麻烦，有人不信任你，有人半途而废。三个月后你只留下了一百二十个有效样本。但你坚持下来了——你写了协议、做了质控、建了数据库。\n' +
+      '一年后，数据出来了。你发现了一个有趣的信号：某种补剂的效果，和受试者的基线炎症水平相关——基线高的人受益明显，基线低的几乎没变化。这个"异质性"的发现，也许微不足道，但它是真实的。你第一次体会到：把一百多个人的故事，变成一个可以讨论的结论，这就是科学的力量。',
+    options: [
+      {
+        id: 'publish_findings',
+        label: '写成论文投预印本',
+        description: '让发现接受同行审视',
+        hint: '生物知识+12 · 信念+8 · 压力+8 · 幸福+5 · 人脉↑',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '32岁，你把公民科学项目的结果投到了预印本。审稿意见褒贬不一——有人夸"开创性"，有人批"样本质量参差"。但你的发现被几位科学家注意到了，有人邀请你合作验证。你想：公民科学不是要代替专业研究，是要给它提供专业研究看不到的角度。',
+      },
+      {
+        id: 'build_platform',
+        label: '把项目做成一个长期平台',
+        description: '一次性的项目变成持续的数据库',
+        hint: '生物知识+12 · 信念+6 · 压力+6 · 被动收入+8000 · 幸福+4',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        passiveIncomeChange: 8000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '32岁，你没让项目结束，而是搭了一个平台，让更多自体实验者上传数据。两年后平台有了五千用户，成了全球最大的民间衰老数据库之一。你想：一个人是数据点，五千个人就是趋势。你把分散的声音，汇成了一句科学能听懂的话。',
+      },
+      {
+        id: 'focus_on_quality',
+        label: '先提升数据质量，不急着发表',
+        description: '垃圾数据只会伤害科学',
+        hint: '生物知识+12 · 信念+4 · 压力+3 · 健康+2',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.health = clamp(s.health + 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '32岁，你看着参差不齐的数据，决定先做质控而不是急着发表。你重新培训了参与者，统一了检测方法，剔除了不合格样本。速度慢了，但数据的可信度高了。你想：在科学里，慢就是快。一个可信的结论，胜过一百个哗众的发现。',
+      },
+    ],
+  },
+
+  // 34岁：参加长寿大会
+  {
+    id: 'bio_res_conference',
+    title: '盛会',
+    sceneTag: 'conference',
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    ageRange: [34, 34],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你飞去参加了一场国际长寿科技大会。会场里人山人海——白发苍苍的院士、年轻的创业者、西装革履的投资人、还有像你一样的民间研究者。所有人都在谈论同一件事：如何让人类活得更久、更健康。\n' +
+      '你在茶歇时听到两个科学家在争论——一个说衰老是程序，一个说衰老是损伤积累。你听懂了他们的论点，甚至想插嘴。你忽然意识到：你不再是那个看论文只看摘要的外行了，你能参与这些对话了。\n' +
+      '但你也看到了另一面：会场外的展台，有人在卖两万块一次的"年轻血浆输注"，有人在推销没有数据的"抗衰神药"。科学的激情和商业的贪婪，在这同一个屋顶下交织。你心想：这场革命里，既有先知，也有骗子，而分辨他们，正是你这种人的责任。',
+    options: [
+      {
+        id: 'present_poster',
+        label: '展示你的公民科学海报',
+        description: '让更多人看到民间数据的价值',
+        hint: '生物知识+12 · 信念+8 · 幸福+6 · 人脉↑ · 压力+4',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '34岁，你站在自己的海报前，给路过的人讲解你的公民科学项目。有人匆匆走过，有人停下来认真听，有位诺奖得主问了你三个问题。会议结束你收到了二十多张名片。你想：你不属于任何机构，但你的工作配得上这个会场。',
+      },
+      {
+        id: 'build_alliances',
+        label: '重点建立跨机构合作',
+        description: '认识人比认识知识更重要',
+        hint: '生物知识+10 · 信念+6 · 幸福+5 · 人脉↑↑ · 被动收入+4000',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 10 },
+        passiveIncomeChange: 4000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '34岁，你把大会当成了社交场。你约了七位科学家喝咖啡，聊合作、聊数据共享、聊未来的项目。回程的飞机上你整理了一页"潜在合作清单"，每一条都是一个可能性。你想：在科学里，孤胆英雄走不远，网络才能走得久。',
+      },
+      {
+        id: 'expose_quacks',
+        label: '记录并揭露会场的伪科学',
+        description: '这场革命需要清醒的守门人',
+        hint: '生物知识+12 · 信念+5 · 幸福+2 · 压力+6 · 人脉↑',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 2, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '34岁，你在大会现场悄悄记录了那些没有数据支撑的产品和宣称，回去后写成了一篇"长寿大会上的科学与伪科学"。文章引发了争议，有人骂你"泼冷水"，有人谢你"省了他们几万块"。你想：守护一场革命的纯洁，比发动它更难，但总得有人做。',
+      },
+    ],
+  },
+
+  // 36岁：影响政策——把衰老定义为疾病
+  {
+    id: 'bio_res_influence_policy',
+    title: '定义',
+    sceneTag: 'conference',
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    ageRange: [36, 36],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '一个根本性的问题困扰着抗衰领域：衰老算不算"疾病"？如果不算，抗衰疗法就无法走医保、无法大规模推广、无法被严肃对待。你参与了一个倡导组织，推动把衰老纳入疾病分类讨论。\n' +
+      '你写文章、做演讲、给政策研究者提建议。你用最朴素的话解释："如果高血压是病，那导致高血压的衰老过程为什么不是？"你发现，改变一个定义，比发现一个分子更难——因为前者要说服的不只是科学界，还有官僚、保险公司、公众。\n' +
+      '在一次研讨会上，一位卫生官员问你："把衰老定义为疾病，会不会制造恐慌？"你想了想，回答："不定义它，才会制造恐慌——因为人们会去相信那些承诺"治愈衰老"的骗子。"会议结束后，他来找你要了你的文章。',
+    options: [
+      {
+        id: 'push_classification',
+        label: '全力推动衰老的疾病分类',
+        description: '这是抗衰疗法普及的前提',
+        hint: '生物知识+12 · 信念+10 · 压力+8 · 幸福+4 · 人脉↑↑',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+        },
+        log: '36岁，你成了推动衰老分类讨论的活跃声音。你的文章被翻译成五种语言，你被邀请参加WHO的旁听会议。改变不会一夜发生，但你知道：每一次定义的更新，都为未来的疗法打开一扇门。你想：科学发现分子，政策决定谁能用上它。',
+      },
+      {
+        id: 'focus_on_education',
+        label: '转向公众教育，提升科学素养',
+        description: '政策太慢，先让普通人懂行',
+        hint: '生物知识+12 · 信念+6 · 幸福+8 · 被动收入+6000 · 压力+2',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12 },
+        passiveIncomeChange: 6000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress + 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '36岁，你发现政策的齿轮转得太慢，于是转向了更直接的事——教育。你做了一系列免费课程，教普通人看懂衰老研究、识别抗衰骗局。两年内你的课程被五十万人学过。你想：与其等政策保护人们，不如先让人们有能力保护自己。',
+      },
+      {
+        id: 'advocate_responsibly',
+        label: '谨慎发声，避免过度承诺',
+        description: '抗衰领域最怕的就是吹过头',
+        hint: '生物知识+12 · 信念+4 · 压力+3 · 幸福+3',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '36岁，你在所有公开发言里都坚持一个原则：说证据，不说愿景。有人嫌你"不够振奋人心"，但你也挡住了一批想借你名声炒作的产品。你想：在这个最容易吹牛的领域，克制本身就是一种贡献。吹出去的牛，最后都会变成砸向科学的石头。',
+      },
+    ],
+  },
+
+  // 38岁：建立知识平台
+  {
+    id: 'bio_res_knowledge_platform',
+    title: '灯塔',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    ageRange: [38, 38],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '你花了一年，建了一个衰老科学的中文知识平台。上面有论文解读、有补剂证据分级、有公民科学项目入口、有一个"抗衰真伪"的核查专栏。你把十几年的积累，全都倒进了这个平台。\n' +
+      '上线三个月，月活突破了十万。你收到了上千条私信：有人问"我妈该不该吃NMN"，有人说"你的文章让我没被骗"，有人骂你"资本的走狗"。你一个人回不过来，但你每一条都看。\n' +
+      '你在平台首页写了一句话："这里不卖任何东西，也不承诺任何奇迹。我们只提供证据，让你自己判断。"这句话是你这十几年最想对所有像22岁的你那样迷茫的人说的话。你建了一座灯塔——不是为了指路，是为了让人在迷雾里看见，还有方向这回事。',
+    options: [
+      {
+        id: 'grow_platform',
+        label: '全职运营平台，做成权威入口',
+        description: '这是你的事业，也是你的使命',
+        hint: '生物知识+12 · 信念+10 · 幸福+8 · 压力+8 · 被动收入+20000',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        passiveIncomeChange: 20000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+        },
+        log: '38岁，你辞了职，全职运营平台。你组了五人团队，做了证据分级系统、做了专家审核机制、做了防骗举报通道。两年后它成了中文世界最被信任的衰老科普来源。你想：你不做研究了，但你让更多人的研究被看见、被正确地看见。',
+      },
+      {
+        id: 'partner_academia',
+        label: '和高校合作，提升平台学术权威',
+        description: '民间平台需要学术背书',
+        hint: '生物知识+12 · 信念+6 · 幸福+4 · 人脉↑↑ · 被动收入+10000',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12 },
+        passiveIncomeChange: 10000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '38岁，你和三所大学的衰老实验室建立了合作：他们提供学术审核，你提供传播渠道。平台的文章从"民间解读"升级为"学术把关"。你想：信任不是自己说的，是借来的——向最值得借的人借。',
+      },
+      {
+        id: 'keep_independent',
+        label: '保持独立运营，不接广告',
+        description: '独立性是平台最大的资产',
+        hint: '生物知识+10 · 信念+8 · 幸福+6 · 压力+4 · 被动收入+4000',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 10 },
+        passiveIncomeChange: 4000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '38岁，你拒绝了所有抗衰产品的广告和赞助。平台靠读者小额订阅维持，钱不多，但你睡得着觉。你想：一旦收了钱，你的"证据"就会被人质疑动机。穷一点没关系，干净最重要。这也许是抗衰领域最稀缺的东西——不是技术，是公信力。',
+      },
+    ],
+  },
+
+  // 40岁：指导新人
+  {
+    id: 'bio_res_mentor',
+    title: '薪火',
+    sceneTag: 'video_call',
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    ageRange: [40, 40],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你的公民科学平台和知识专栏，吸引了一批年轻人。他们有的是医学生，有的是像我当年一样的"民间生物爱好者"，有的是想转行做衰老研究的程序员。他们给你写信、问你问题、想跟你做项目。\n' +
+      '你忽然意识到，你已经从"提问的人"变成了"被提问的人"。十几年前你给那位科学家发邮件时的忐忑，现在轮到别人对你忐忑了。\n' +
+      '你开始每周抽两个晚上做线上答疑。你教的不是"吃什么补剂"，而是"怎么判断一个研究靠不靠谱"。你想：你能留给这个领域最好的东西，不是数据，不是论文，是一群会独立思考的人。火种比火焰更持久。',
+    options: [
+      {
+        id: 'mentor_seriously',
+        label: '认真带几个有潜力的年轻人',
+        description: '把经验传下去，培养下一代',
+        hint: '生物知识+12 · 信念+8 · 幸福+10 · 压力+4 · 人脉↑↑',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '40岁，你正式带了三个"徒弟"。你教他们读文献、设计实验、写综述。两年后一个考上了衰老生物学的博士，一个进了生科公司做研发，一个接手了你的公民科学平台。你想：人会老，但传承不会。你把自己拆成了三份，种进了三块更年轻的土壤。',
+      },
+      {
+        id: 'open_course',
+        label: '做一门系统的衰老科学公开课',
+        description: '影响更多人，而不只是几个人',
+        hint: '生物知识+12 · 信念+6 · 幸福+6 · 被动收入+12000 · 压力+5',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        passiveIncomeChange: 12000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '40岁，你录了一门三十讲的衰老科学公开课，从端粒到表观遗传，从自噬到衰老细胞。免费放在网上，一年内被三十万人学过。你想：能坐在你身边听课的人有限，但网络没有边界。你把知识做成了种子，风会把它带到任何需要的地方。',
+      },
+      {
+        id: 'focus_own_research',
+        label: '把精力放回自己的研究上',
+        description: '传承重要，但你的研究窗口也在关闭',
+        hint: '生物知识+12 · 信念+5 · 压力+6 · 健康-2',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.health = clamp(s.health - 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '40岁，你婉拒了带徒弟的请求，把时间全砸在了自己的研究上。你知道传承很重要，但你也知道：你的精力有限，与其分散，不如集中。你想：等你做出了真正重要的发现，那本身就是最好的传承——用一个能被引用二十年的结论，胜过带二十个徒弟。',
+      },
+    ],
+  },
+
+  // 42岁：参与的重磅论文发表
+  {
+    id: 'bio_res_breakthrough_paper',
+    title: '留名',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    ageRange: [42, 42],
+    priority: 7,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    narrative:
+      '你参与的一项多中心研究发表了——发在了顶级期刊上。这项研究用了你帮忙搭建的公民科学数据库，验证了一种新的衰老生物标志物。你的名字在作者列表里，虽然排在中后段，但它在那里。\n' +
+      '论文上线那天，你的手机被祝贺信息塞满。有同行、有读者、有当年劝你别"不务正业"的亲戚。你盯着屏幕，忽然想起22岁那个在宿舍里啃论文的自己——那时候你以为，科学的殿堂离你这种"民间人士"很远。\n' +
+      '现在你的名字和那些殿堂里的人印在同一页纸上。你用了二十年，从一个外行，走到了里面。这也许是你这辈子最骄傲的事——不是因为论文，而是因为你证明了：知识面前，真的没有门第。',
+    options: [
+      {
+        id: 'lead_next_study',
+        label: '牵头下一项更大规模的研究',
+        description: '从参与者变成主导者',
+        hint: '生物知识+12 · 信念+10 · 压力+10 · 健康-3 · 人脉↑↑',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.health = clamp(s.health - 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+        },
+        log: '42岁，你成了下一项千人规模衰老纵向研究的共同PI。你从"被研究的人"变成了"研究别人的人"。你在启动会上说："二十年前我是受试者，今天我是研究者。这条路的尽头不是论文，是让每个人都能更健康地老去。"',
+      },
+      {
+        id: 'translate_to_public',
+        label: '把成果翻译成公众能用的知识',
+        description: '论文在象牙塔里，得把它搬出来',
+        hint: '生物知识+12 · 信念+8 · 幸福+8 · 被动收入+10000 · 人脉↑',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        passiveIncomeChange: 10000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '42岁，你把那篇论文拆成了十篇科普，讲清楚了这个新标志物意味着什么、普通人怎么测、怎么用。你的平台流量翻倍，有人照着做了检测，提前发现了风险。你想：论文的价值不在影响因子，在它有没有真正改变谁的生活。',
+      },
+      {
+        id: 'reflect_on_legacy',
+        label: '停下来想想：这一切的意义是什么',
+        description: '不是每一步都要往前冲',
+        hint: '生物知识+10 · 信念+10 · 幸福+10 · 压力-6 · 健康+4',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 10 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.stress = clamp(s.stress - 6, 0, 100);
+          s.health = clamp(s.health + 4, 0, 100);
+        },
+        log: '42岁，论文发表后你没急着做下一个项目，而是去山里待了一周。你问自己：你追求的到底是"留名"还是"有用"？答案慢慢清晰——你想要的不是被记住，是让某个人因为你的工作，多健康地活了几年。你想：这才是"延长寿命"四个字最朴素、也最深刻的含义。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 跨分支事件（ages 26-45，所有分支均可触发）
+// ============================================================
+
+const crossBranchEvents: NarrativeEvent[] = [
+
+  // 30岁：重大突破新闻
+  {
+    id: 'bio_cross_breakthrough_news',
+    title: '破晓',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    ageRange: [30, 30],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '一条新闻炸了整个抗衰圈：一家公司宣布，他们的基因疗法在小鼠身上逆转了衰老标志，毛色变黑，握力恢复，寿命延长了25%。虽然只是动物实验，但这是迄今为止最接近"逆转衰老"的结果。\n' +
+      '你的社群沸腾了。有人说"这就是转折点"，有人说"小鼠和人差着十万八千里"。你盯着那张对比图——一只衰老的白毛小鼠，注射后重新长出了黑亮的毛——心跳加速。\n' +
+      '你赌了八年，一直在等这一刻。可当这一刻真的来了，你反而冷静了。你知道从一只黑毛小鼠到一个能让人活到一百二的疗法，中间隔着二十年的临床、几百亿的投入、无数次的失败。但这道光，是真实的。你赌的方向，终于亮了。',
+    options: [
+      {
+        id: 'double_down_faith',
+        label: '更加坚定，加大投入',
+        description: '方向被验证了，现在该全力以赴',
+        hint: '信念+12 · 压力+4 · 健康+2 · bioPortfolio+20000',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+          s.health = clamp(s.health + 2, 0, 100);
+          adjustBioPortfolio(s, 20000);
+        },
+        log: '30岁，那条新闻像一针强心剂。你加仓了生科组合，加码了自体方案，连夜写了一篇解读。你想：你赌的不是某只小鼠，是人类不愿向衰老低头的那口气。这口气，今天被证明是通的。',
+      },
+      {
+        id: 'stay_cautious',
+        label: '保持冷静，等人体数据',
+        description: '小鼠到人，还有太远的路',
+        hint: '生物知识+8 · 信念+4 · 压力-2',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          s.stress = clamp(s.stress - 2, 0, 100);
+        },
+        log: '30岁，你发了条朋友圈："小鼠不是人，别急着庆祝。"被几个人取关了，但你不后悔。你见过太多小鼠有效、人没效的例子。你想：真正的赌徒，不是看到希望就梭哈，是知道希望和现实之间隔着多少个深夜。',
+      },
+      {
+        id: 'reflect_meaning',
+        label: '思考：活得久，然后呢？',
+        description: '方向对了，但你开始问为什么',
+        hint: '生物知识+6 · 信念+6 · 幸福+6 · 压力-4',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+        },
+        log: '30岁，你在那条新闻下面没转发、没评论，而是打开备忘录写了一行："如果人能活到一百二，多出来的四十年，你想用来做什么？"你写不出答案。你忽然发现：你一直在赌"能活多久"，却很少想"活了之后做什么"。也许这才是更大的赌注。',
+      },
+    ],
+  },
+
+  // 33岁：家人健康危机
+  {
+    id: 'bio_cross_family_crisis',
+    title: '倒计时',
+    sceneTag: 'hospital',
+    pathId: 'bio_gambler',
+    ageRange: [33, 33],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    narrative:
+      '你爸住院了。心梗，幸好送得及时，捡回一条命。你在ICU外的走廊上坐了一夜，手里攥着你爸的体检报告——高血压、高血脂、脂肪肝、颈动脉斑块。这些指标你看了无数遍，但从来没有像今天这样刺眼。\n' +
+      '你爸今年五十八。他抽烟、喝酒、不运动、爱吃红烧肉。你劝过他无数次，他总是说"你那套养生是年轻人搞的，我老了改不了"。现在他躺在病床上，管子插满全身。\n' +
+      '你看着他蜡黄的脸，第一次感到一种深入骨髓的无力。你能优化自己的生物年龄，却优化不了他的。你能让自己活到一百二，却拉不动他。这才是衰老最残忍的地方——它不会因为你懂科学，就放过你爱的人。',
+    options: [
+      {
+        id: 'help_father_recover',
+        label: '用你的知识帮爸康复和改变',
+        description: '管不了他自己，但能管他的康复方案',
+        hint: '健康优化+10 · 生物知识+6 · 信念+6 · 压力+8 · 幸福+4',
+        hintColor: 'positive',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.parents.health = clamp(s.parents.health + 8, 0, 100);
+        },
+        log: '33岁，你接管了爸爸的康复。你给他配了地中海饮食的食谱，盯着他每天走路，把烟酒断了。他骂你"比医生还烦"，但半年后他的指标好了一截。有天他忽然说"早听你的就好了"。你没接话，只是又给他盛了一碗燕麦。你想：你救不了所有人，但至少能救眼前这一个。',
+      },
+      {
+        id: 'focus_on_self',
+        label: '更拼命地优化自己，别重蹈覆辙',
+        description: '爸的遭遇是警钟，你要更自律',
+        hint: '健康优化+8 · 信念+4 · 压力+10 · 健康+3 · biologicalAge-1',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 8 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.health = clamp(s.health + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          adjustBiologicalAge(s, -1);
+        },
+        log: '33岁，爸爸出院后，你把自己逼得更紧了。你把每一项指标都当成了和他命运的对赌——你赢一分，就少一分像他那样倒下的可能。但夜深时你也想：你是在爱惜身体，还是在用自律对抗恐惧？',
+      },
+      {
+        id: 'rethink_priorities',
+        label: '重新思考：健康是为了什么',
+        description: '爸躺在那里，让你想了很多',
+        hint: '健康优化+4 · 生物知识+4 · 信念+4 · 幸福+8 · 压力-6',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 4, bioKnowledge: 4 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '33岁，在ICU外的长椅上，你想通了一件事：你优化健康，不该是为了"赢过时间"，而是为了"有时间陪所爱的人"。你给爸爸订了束花，给自己放了三天假，去陪了他一整天。你想：活得久很重要，但活着的每一天，有人在等你回家，才更重要。',
+      },
+    ],
+  },
+
+  // 35岁：伴侣对你生活方式的担忧
+  {
+    id: 'bio_cross_partner_concern',
+    title: '两个人的时间',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    ageRange: [35, 35],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    conditions: (s) => s.isMarried || (s.partner !== null && s.partner.datingStage !== 'single'),
+    narrative:
+      '一个平常的周末晚上，伴侣放下筷子，看着你："我们能谈谈吗？"\n' +
+      '"你每天花两个小时量血压、测血糖、配补剂、记数据。我们上一次一起吃顿火锅是什么时候？上一次你陪我熬夜看个电影是什么时候？你说你想活到一百二，但你有没有想过，和你一起的那个人，现在过得开心吗？"\n' +
+      '你愣住了。你以为你在为"两个人更长的未来"努力，但伴侣说的是"现在的我们"。你忽然意识到一个悖论：你赌的是"未来"，但你正在透支"现在"。如果未来真的来了，身边那个人还在吗？',
+    options: [
+      {
+        id: 'rebalance_relationship',
+        label: '给关系腾出时间，健康让步于生活',
+        description: '伴侣说得对，现在比未来更重要',
+        hint: '幸福+10 · 健康+2 · 信念+2 · 压力-8 · 伴侣感情+10',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.health = clamp(s.health + 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+          if (s.partner) s.partner.affection = clamp(s.partner.affection + 10, 0, 100);
+        },
+        log: '35岁，你把补剂柜精简了一半，每天只花半小时搞健康，剩下的还给生活。你陪伴侣吃了火锅、看了电影、熬了一次夜。你说："我赌未来，但不能输掉现在。"伴侣笑了，给你夹了块毛肚。你想：活得久很重要，但有人一起活得久，才有意思。',
+      },
+      {
+        id: 'explain_vision',
+        label: '解释你的愿景，争取伴侣理解',
+        description: '让TA懂你为什么这么做',
+        hint: '信念+6 · 幸福+4 · 压力+2 · 伴侣感情+4',
+        hintColor: 'neutral',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.stress = clamp(s.stress + 2, 0, 100);
+          if (s.partner) {
+            s.partner.affection = clamp(s.partner.affection + 4, 0, 100);
+            s.partner.trust = clamp(s.partner.trust + 6, 0, 100);
+          }
+        },
+        log: '35岁，你把伴侣拉到桌前，讲了两个小时你的"延寿计划"。TA听完沉默了很久，说："我不完全懂，但我信你是认真的。只是，别把我排除在外。"你们达成了一个妥协：周末两天，一天给你做实验，一天给两个人。你想：赌未来不是一个人的事，得带着身边人一起赌。',
+      },
+      {
+        id: 'stay_the_course',
+        label: '坚持自己的节奏，不愿妥协',
+        description: '现在让一步，未来就少十年',
+        hint: '健康优化+6 · 信念+8 · 幸福-6 · 压力+6 · 伴侣感情-8',
+        hintColor: 'danger',
+        skillGains: { healthOptSkill: 6 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.happiness = clamp(s.happiness - 6, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          if (s.partner) s.partner.affection = clamp(s.partner.affection - 8, 0, 100);
+        },
+        log: '35岁，你没妥协。你跟伴侣说："我现在受的苦，是为了我们将来能多活二十年。"伴侣没说话，起身收拾了碗筷。那之后的几个月，家里的空气都是冷的。你想：你也许是对的，但"对"有时候很孤独。',
+      },
+    ],
+  },
+
+  // 38岁：父母衰老加速
+  {
+    id: 'bio_cross_aging_parent',
+    title: '镜子',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    ageRange: [38, 38],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    conditions: (s) => s.parents.isAlive,
+    narrative:
+      '今年过年回家，你发现妈妈老了。不是那种慢慢变老，是忽然的——头发全白了，背驼了，走路要扶墙，耳朵要你大声说话才听得见。她才六十多岁，但像一个八十岁的人。\n' +
+      '你看着她颤巍巍地给你盛饭，手抖得汤洒了一半。你想帮她，她推开你的手说"我自己来"。那一瞬间，你眼眶热了。\n' +
+      '你赌了十六年抗衰，你的生物年龄比实际小六岁。但你的妈妈，正在以两倍的速度老去。你优化得了自己，优化不了她。你忽然明白了：衰老不是你一个人的敌人，它是所有人的命运。你能做的，不是战胜它，而是在它带走你爱的人之前，多陪陪他们。',
+    options: [
+      {
+        id: 'spend_time_with_parents',
+        label: '多回家陪伴，把时间还给父母',
+        description: '健康可以等，父母等不了',
+        hint: '幸福+10 · 信念+4 · 压力-6 · 父母关系+10 · 健康+2',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          s.stress = clamp(s.stress - 6, 0, 100);
+          s.health = clamp(s.health + 2, 0, 100);
+          s.parents.relationShip = clamp(s.parents.relationShip + 10, 0, 100);
+        },
+        log: '38岁，你把回家的频率从一年一次改成了一季度一次。你陪妈妈买菜、陪爸爸下棋、给他们做你研究的健康餐。妈妈说"你做的菜没味道"，但每顿都吃光。你想：你给不了她多二十年，但你能给她多二十个快乐的周末。这也许比多活几年更实在。',
+      },
+      {
+        id: 'apply_knowledge_to_parents',
+        label: '用你的知识延缓父母的衰老',
+        description: '对症下药，帮他们也能慢一点老',
+        hint: '健康优化+10 · 生物知识+6 · 信念+6 · 压力+6 · 父母健康+10',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.parents.health = clamp(s.parents.health + 10, 0, 100);
+        },
+        log: '38岁，你给父母量身定制了一套方案：妈妈补钙和维D防骨质疏松，爸爸控血压加阻力训练。他们嫌麻烦，但拗不过你。半年后妈妈走路稳了，爸爸血压降了。你想：你改变不了基因，但能改变习惯。你把自己的赌注，分了一份给他们。',
+      },
+      {
+        id: 'accept_mortality',
+        label: '接受父母的衰老，学会告别',
+        description: '有些东西抗衰技术也救不了',
+        hint: '生物知识+6 · 信念+8 · 幸福+4 · 压力-4',
+        hintColor: 'neutral',
+        skillGains: { bioKnowledge: 6 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+        },
+        log: '38岁，你看着妈妈颤抖的手，第一次接受了"她会老去"这件事。你没有更强推你的方案，而是坐下来，听她讲了一下午年轻时的故事。你想：你赌的是"活得更久"，但也许更重要的事，是在还来得及的时候，好好说说话。延长寿命的终极意义，不是逃避告别，是有更多时间准备告别。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 危机事件（ages 26-45）
+// ============================================================
+
+const crisisEvents: NarrativeEvent[] = [
+
+  // 32岁：补剂导致肝损伤
+  {
+    id: 'bio_crisis_liver_damage',
+    title: '反噬',
+    sceneTag: 'clinic',
+    pathId: 'bio_gambler',
+    ageRange: [32, 32],
+    priority: 9,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'crisis',
+    conditions: (s) => (s as any).supplementRegime === true,
+    narrative:
+      '体检报告上，谷丙转氨酶（ALT）和谷草转氨酶（AST）都飙到了正常值的三倍。医生看着你的补剂清单，脸色凝重："你这些里面，至少有三种有肝毒性。白藜芦醇高剂量伤肝，烟酸会升高转氨酶，再加上你自己在网上买的那瓶"复合抗衰配方"——成分都不全，你把肝当试验场了。"\n' +
+      '你坐在诊室里，手脚冰凉。你赌了十年"延长生命"，现在你的肝——这个负责代谢你所有补剂的器官——正在罢工。你忽然觉得那些瓶瓶罐罐特别讽刺：你以为是长寿币的东西，可能正在透支你的寿命。\n' +
+      '医生说："停掉所有补剂，两个月后复查。如果还高，要做肝穿刺。"你走出医院，阳光很刺眼。你第一次怀疑：你到底是在对抗衰老，还是在加速它？',
+    options: [
+      {
+        id: 'stop_all_supplements',
+        label: '立刻停掉所有补剂，让肝恢复',
+        description: '保命要紧，补剂以后再说',
+        hint: '健康+8 · 信念-8 · 压力-6 · biologicalAge+2 · supplementRegime=false',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
+          s.stress = clamp(s.stress - 6, 0, 100);
+          adjustBiologicalAge(s, 2);
+          (s as any).supplementRegime = false;
+        },
+        log: '32岁，你把补剂柜清空了。前两周你浑身不自在，像丢了什么。但两个月后复查，转氨酶回到了正常。你盯着报告，长舒一口气，又叹了口气。你想：你赌了十年，差点把自己赌进ICU。也许"什么都不做"有时候，才是最安全的抗衰。',
+      },
+      {
+        id: 'identify_culprit',
+        label: '逐个排查，找出元凶后精简',
+        description: '不全停，但找出是哪个伤的肝',
+        hint: '健康优化+10 · 生物知识+10 · 健康+8 · 信念-4 · 压力+4',
+        hintColor: 'neutral',
+        skillGains: { healthOptSkill: 10, bioKnowledge: 10 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 4, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+        },
+        log: '32岁，你用了三个月做排除法：每周停一种，测一次肝功能。最后锁定是那瓶来路不明的"复合配方"和白藜芦醇高剂量。你扔了它们，留下了证据充分的几样。肝功能恢复了，你的方案也更干净了。你想：这次反噬，反而帮你去掉了垃圾。但代价是一座医院的账单和三个月的恐惧。',
+      },
+      {
+        id: 'see_specialist',
+        label: '去看肝病专家，系统评估所有补剂',
+        description: '别自己瞎搞了，让专业的人把关',
+        hint: '生物知识+12 · 健康+8 · 信念-2 · 压力-2 · 存款-5000',
+        hintColor: 'positive',
+        skillGains: { bioKnowledge: 12 },
+        savingsChange: -5000,
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 2, 0, 100);
+          s.stress = clamp(s.stress - 2, 0, 100);
+        },
+        log: '32岁，你花了一个月挂了三个专家号。肝病专家帮你逐项评估了补剂的肝毒性风险，划掉了六种，调整了三种的剂量。你说："早该来的。"专家说："大多数生物黑客都是出了事才来。"你想：你总以为自己比医生懂，这次你知道了——懂科学和懂临床，是两回事。',
+      },
+    ],
+  },
+
+  // 36岁：重大生物科技欺诈丑闻
+  {
+    id: 'bio_crisis_fraud_scandal',
+    title: '纸牌屋',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    ageRange: [36, 36],
+    priority: 9,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'crisis',
+    narrative:
+      '一夜之间，抗衰圈的地标塌了。那家被奉为"下一个Theranos反面"的明星公司——号称用表观遗传重编程逆转衰老的——被查出核心数据造假。那位曾在TED上演讲的创始人，连夜删了所有社交媒体。\n' +
+      '你重仓过这只股票。虽然你在泡沫时减了仓，但剩下的部分也在一天内跌了85%。更让你心寒的不是钱，是信任——你信过这个人，你信过他的数据，你甚至在专栏里推荐过他。\n' +
+      '你打开你写过的那篇推荐文章，看着屏幕上自己写的"这是我见过最诚实的创业者"，胃里一阵翻涌。你赌了十几年抗衰，第一次被人从内部捅了一刀。不是技术失败，是人心。你忽然明白：这个领域最大的风险，不是科学的不确定，是骗子混在先知里。',
+    options: [
+      {
+        id: 'admit_mistake',
+        label: '公开认错，重建公信力',
+        description: '你推荐过他，你得负责',
+        hint: '信念+8 · 幸福+4 · 压力+6 · 人脉↑ · 存款-30000',
+        hintColor: 'positive',
+        savingsChange: -30000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+        },
+        log: '36岁，你写了一篇长文："我错了。我被骗了，我也可能误导了你们。"文章发出后被骂了三天，但也有人说"谢谢你诚实"。你的信誉反而涨了——因为在这个满是吹牛的领域，认错比吹牛稀缺。你想：公信力碎了可以重建，但前提是你敢承认它碎过。',
+      },
+      {
+        id: 'toughen_due_diligence',
+        label: '痛定思痛，建立更严格的尽调流程',
+        description: '以后只信数据，不信故事',
+        hint: '投资分析+12 · 生物知识+10 · 信念+4 · 压力+4',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 12, bioKnowledge: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+        },
+        log: '36岁，你没写文章，而是写了一份"抗衰投资尽调清单"——二十七个必查项，从原始数据到利益冲突。你把它开源了，成了圈里的标准工具。你想：你被骗一次，就让骗子以后更难骗人。这也许是你能为这个领域做的最有用的事。',
+      },
+      {
+        id: 'doubt_everything',
+        label: '怀疑一切，大幅收缩抗衰投入',
+        description: '连"诚实的人"都骗了你，还能信谁',
+        hint: '信念-12 · 幸福-6 · 压力+8 · bioPortfolio↓',
+        hintColor: 'danger',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith - 12, 0, 100);
+          s.happiness = clamp(s.happiness - 6, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          adjustBioPortfolio(s, -50000);
+        },
+        log: '36岁，你清掉了一半仓位，停了大部分自体实验。你开始怀疑：也许整个抗衰领域，都是一场精心包装的骗局。你失眠了一周，反复问自己"我赌了十四年，到底赌的是什么"。答案没有来。你只是更累了，更冷了，更不敢相信了。',
+      },
+    ],
+  },
+
+  // 40岁：重仓公司三期临床失败
+  {
+    id: 'bio_crisis_portfolio_wipeout',
+    title: '归零',
+    sceneTag: 'home',
+    pathId: 'bio_gambler',
+    ageRange: [40, 40],
+    priority: 9,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'crisis',
+    conditions: (s) => getBioPortfolio(s) > 50000,
+    narrative:
+      '你重仓了六年的那家公司——那个你逢人就夸的"抗衰希望"——三期临床失败了。主要终点没达到，安全性还出了问题，两个受试者出现了严重不良反应。盘后股价跌了72%，你的组合一夜蒸发了大半。\n' +
+      '你盯着账户，那个数字让你头晕。你为这家公司写过分析、参加过它的股东大会、甚至在评论区和人争论过它的管线。你比大多数分析师都懂它，但科学不care你懂不懂——它就是失败了。\n' +
+      '你十八年的赌注，在这一刻显得特别脆弱。你忽然想：也许你从来就不是在"投资"，你是在"信仰"。而信仰，是会归零的。',
+    options: [
+      {
+        id: 'accept_and_rebuild',
+        label: '接受失败，用剩下的筹码重建',
+        description: '赌局没结束，你还有本钱',
+        hint: '投资分析+10 · 信念+6 · 压力+4 · 幸福+4 · bioPortfolio缓慢恢复',
+        hintColor: 'positive',
+        skillGains: { investmentSkill: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.stress = clamp(s.stress + 4, 0, 100);
+          s.happiness = clamp(s.happiness + 4, 0, 100);
+          adjustBioPortfolio(s, -100000);
+          adjustBioPortfolio(s, 30000);
+        },
+        log: '40岁，你在损失了一大半后，没崩溃。你把剩下的仓位重新配置，分散到五家不同阶段的公司。你想：你赌的是"抗衰会突破"，不是"这一家会成功"。一家失败不代表方向错，只是说明你把太多筹码压在了同一个故事上。你舔了舔伤口，重新发牌。',
+      },
+      {
+        id: 'analyze_failure',
+        label: '深挖失败原因，变成知识',
+        description: '失败也是数据，别浪费',
+        hint: '投资分析+12 · 生物知识+12 · 信念+4 · 压力+6',
+        hintColor: 'neutral',
+        skillGains: { investmentSkill: 12, bioKnowledge: 12 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          adjustBioPortfolio(s, -100000);
+        },
+        log: '40岁，你没急着重建，而是花了一个月研究它为什么失败。你发现它的动物模型有缺陷，二期数据被过度解读，安全性信号早被忽略。你把这些写成了报告，在圈里流传。你想：这一次失败，让你以后能躲过十次。学费很贵，但学到了就是赚了。',
+      },
+      {
+        id: 'question_the_bet',
+        label: '质问自己：还要继续赌吗',
+        description: '也许该认输，回归正常生活',
+        hint: '信念-12 · 幸福-8 · 压力+10 · bioPortfolio变现',
+        hintColor: 'danger',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith - 12, 0, 100);
+          s.happiness = clamp(s.happiness - 8, 0, 100);
+          s.stress = clamp(s.stress + 10, 0, 100);
+          adjustBioPortfolio(s, -getBioPortfolio(s));
+        },
+        log: '40岁，你清了仓。你坐在空荡荡的书房里，看着那个归零的补剂柜和清空的股票账户，问自己："值吗？"十八年，你错过了多少火锅、多少电影、多少个不该错过的夜晚？你赌的是"活得更久"，但你好像忘了"活着"本身。你没找到答案，但你第一次允许自己问这个问题。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 成就事件（3分支 × 3等级 = 9个）
+// ============================================================
+
+// ---- 生物科技投资线 (bio_investor) ----
+const investorAchievements: NarrativeAchievement[] = [
+  // 初级：第一桶抗衰金
+  {
+    id: 'bio_gambler_investor_1',
+    title: '第一桶抗衰金',
+    narrative: `你的生物科技组合第一次突破了六位数。这不是运气，是你读了上百份管线报告、熬了无数个看临床数据的深夜换来的。\n\n你打开账户，看着那个数字，想起26岁第一次按"买入"时发抖的手指。从那一粒NMN到这串数字，你走了十年。你知道这还只是开始——抗衰的真正爆发还在后面。但你已经证明了一件事：在这个赛道上，研究和耐心，是能变现的。`,
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    level: 1,
+    skillRequirements: { investmentSkill: 35 },
+    stateEffect: (state) => {
+      state.pathFaith = Math.min(100, state.pathFaith + 10);
+      adjustBioPortfolio(state, 40000);
+    },
+    log: `你的生物科技组合突破六位数。十年研究变现，第一桶抗衰金到手。`,
+  },
+
+  // 中级：抗衰投资圈的意见领袖
+  {
+    id: 'bio_gambler_investor_2',
+    title: '抗衰投资的意见领袖',
+    narrative: `你的抗衰投资专栏成了圈内必读。有机构开始请你做顾问，有创业者拿着BP来找你，有媒体把你称为"最懂生物学的投资人"。\n\n你不全是高兴。影响力意味着责任——你推荐的东西，会有人照着买。你开始更谨慎地措辞，更严格地标注"不构成投资建议"。但你承认：你已经不是当年那个散户了，你成了这个赛道的一个节点。信息和资金，开始通过你流动。`,
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    level: 2,
+    skillRequirements: { investmentSkill: 55, bioKnowledge: 40 },
+    passiveIncomeChange: 25000,
+    stateEffect: (state) => {
+      state.pathFaith = Math.min(100, state.pathFaith + 10);
+    },
+    log: `你成了抗衰投资圈的意见领袖。机构请你做顾问，创业者带着BP来找你。`,
+  },
+
+  // 终极：抗衰突破的最大赢家
+  {
+    id: 'bio_gambler_investor_3',
+    title: '时间的朋友',
+    narrative: `第一个真正意义上的抗衰老疗法获批了。你重仓的那家公司，是核心受益者。你的组合在消息公布后翻了十几倍。\n\n你看着账户里那个天文数字，没有狂喜，只有一种长途跋涉后到达的平静。你赌了二十年——赌抗衰会突破，赌人类不会向衰老投降，赌你能在黎明前活下来。现在，黎明来了。\n\n你想起22岁那个把积蓄砸进生物科技股的自己。TA不知道会不会赢，但TA选择了相信。你想对TA说：你没有白等。这串数字不只是钱，它是一张通往未来的船票——你有足够的筹码，等到技术完全成熟的那一天。你赌对了，时间站在了你这边。`,
+    pathId: 'bio_gambler',
+    branch: 'bio_investor',
+    level: 3,
+    skillRequirements: { investmentSkill: 75, bioKnowledge: 55 },
+    savingsChange: 200000,
+    stateEffect: (state) => {
+      state.pathFaith = Math.min(100, state.pathFaith + 12);
+      adjustBioPortfolio(state, 300000);
+    },
+    log: `抗衰疗法获批，你的组合翻十几倍。二十年赌注兑现——你成了时间的朋友。`,
+    triggersRetirementCheck: true,
+  },
+];
+
+// ---- 自体实验线 (bio_experimenter) ----
+const experimenterAchievements: NarrativeAchievement[] = [
+  // 初级：逆转生物年龄5岁
+  {
+    id: 'bio_gambler_experimenter_1',
+    title: '逆转时钟',
+    narrative: `你的表观遗传时钟检测回来了——生物年龄比实际年龄小5岁。你35岁的身体，细胞层面像30岁。\n\n你盯着那个数字，手有点抖。你吃了十几年的补剂、做了无数次冰水浴、断了几百天的食，终于在一个数字上看到了回报。你知道这也许是误差，也许是安慰剂，但此刻你选择相信——你赌的东西，开始有回音了。`,
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    level: 1,
+    skillRequirements: { healthOptSkill: 35 },
+    stateEffect: (state) => {
+      state.pathFaith = Math.min(100, state.pathFaith + 10);
+      state.health = Math.min(100, state.health + 5);
+      adjustBiologicalAge(state, -2);
+    },
+    log: `你的生物年龄比实际小5岁。十几年的自体实验，第一次在数字上看到回报。`,
+  },
+
+  // 中级：生物黑客的标杆
+  {
+    id: 'bio_gambler_experimenter_2',
+    title: '生物黑客的标杆',
+    narrative: `你的自体实验数据和方法论，被全球的生物黑客社群奉为标杆。有人照着你的方案做，有人来请教你，有媒体想给你拍纪录片。\n\n你成了一面旗帜——N=1实验能做到什么程度，你给出了答案。但你也在深夜里想：你的方法只对你自己验证过，别人照搬未必有效。你开始更强调"方法"而不是"方案"——教人怎么测，而不是测什么。你想：授人以鱼不如授人以渔，在生物黑客的世界里，这条法则一样成立。`,
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    level: 2,
+    skillRequirements: { healthOptSkill: 55, bioKnowledge: 40 },
+    passiveIncomeChange: 15000,
+    stateEffect: (state) => {
+      state.pathFaith = Math.min(100, state.pathFaith + 10);
+      adjustBiologicalAge(state, -2);
+    },
+    log: `你成了全球生物黑客社群的标杆。你的方法论被无数人学习和效仿。`,
+  },
+
+  // 终极：45岁的身体，30岁的细胞
+  {
+    id: 'bio_gambler_experimenter_3',
+    title: '不老之身',
+    narrative: `45岁这年，你做了一次全面评估。VO2max、握力、骨密度、反应速度、表观遗传时钟——每一项都指向同一个结论：你的身体，像三十岁出头的人。\n\n你站在镜子前，看着一张没有白发的脸、一个没有啤酒肚的身体。你赌了二十三年，从一粒NMN开始，到今天这一身"不老之身"。你不是超人，你只是一个赌徒——赌自律能跑赢时间，赌科学能改写命运。\n\n你想起22岁那个吞下第一粒胶囊的自己。TA不知道这粒药有没有用，但TA选择了相信。你想对TA说：你赌对了。你的身体，就是你的奖杯。而真正的奖赏还在后面——抗衰技术正在成熟，你这副保养了二十三年的身体，有最大的概率等到那一天。你不是在逃避衰老，你是在和它谈判，而谈判桌上，你终于有了筹码。`,
+    pathId: 'bio_gambler',
+    branch: 'bio_experimenter',
+    level: 3,
+    skillRequirements: { healthOptSkill: 75, bioKnowledge: 55 },
+    stateEffect: (state) => {
+      state.pathFaith = Math.min(100, state.pathFaith + 12);
+      state.health = Math.min(100, state.health + 8);
+      adjustBiologicalAge(state, -5);
+    },
+    log: `45岁的你，身体像30岁。二十三年自律兑现——你赌赢了时间。`,
+    triggersRetirementCheck: true,
+  },
+];
+
+// ---- 科研参与线 (bio_researcher) ----
+const researcherAchievements: NarrativeAchievement[] = [
+  // 初级：第一篇共同署名论文
+  {
+    id: 'bio_gambler_researcher_1',
+    title: '学术入场券',
+    narrative: `你的名字第一次出现在了一篇正式发表的学术论文的作者列表里。虽然是倒数位置，但它在那里。\n\n你下载了PDF，把那一页打印出来，贴在了书桌上方。从一个在宿舍里啃论文的外行，到一个名字能印在论文上的人，你走了十年。这张纸不大，但它是一张入场券——从此，你不只是抗衰的消费者，你是它的创造者之一。`,
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    level: 1,
+    skillRequirements: { bioKnowledge: 35 },
+    salaryChange: 1000,
+    stateEffect: (state) => {
+      state.pathFaith = Math.min(100, state.pathFaith + 10);
+    },
+    log: `你的名字第一次出现在正式论文的作者列表。从外行到创造者，十年。`,
+  },
+
+  // 中级：被认可的公民科学家
+  {
+    id: 'bio_gambler_researcher_2',
+    title: '公民科学家',
+    narrative: `你发起的公民科学项目，被三所大学的研究组采纳为合作数据源。你不再是"提供数据的受试者"，而是"被邀请合作的研究伙伴"。\n\n在一次学术会议上，一位资深教授公开说："这个领域需要更多像他这样的人——懂科学，又懂真实世界。"你坐在台下，眼眶热了。你用了十几年，从被当成"民科"的边缘人，走到了被学术界认可的公民科学家。你想：知识真的没有门第，只要你够真诚、够坚持，门会开的。`,
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    level: 2,
+    skillRequirements: { bioKnowledge: 55, healthOptSkill: 40 },
+    passiveIncomeChange: 18000,
+    stateEffect: (state) => {
+      state.pathFaith = Math.min(100, state.pathFaith + 10);
+    },
+    log: `你的公民科学项目被三所大学采纳。从"民科"到被认可的公民科学家。`,
+  },
+
+  // 终极：影响整个领域
+  {
+    id: 'bio_gambler_researcher_3',
+    title: '改写定义的人',
+    narrative: `你参与推动的"将衰老纳入疾病分类"的倡导，终于取得了阶段性进展——一个国际卫生组织发布了关于衰老分类的讨论文件，你的工作被引用为核心参考。\n\n你看着那份文件，上面有你的名字。你忽然意识到，你做的事不只是"活得更久"——你在改变人类看待衰老的方式。从"衰老是自然规律，只能接受"到"衰老是可以干预的过程"，这个观念的转变，会惠及几十亿人。\n\n你想起22岁那个在宿舍里读《Lifespan》的自己。TA只是想多活几年，没想到二十三年后，TA在帮全人类重新定义"活着"意味着什么。你赌的不只是自己的寿命，是人类对抗衰老的认知边界。而你，从一个读者，变成了一个改写定义的人。这也许比多活二十年更长久——因为观念的改变，会比你活得更久。`,
+    pathId: 'bio_gambler',
+    branch: 'bio_researcher',
+    level: 3,
+    skillRequirements: { bioKnowledge: 75, healthOptSkill: 55 },
+    passiveIncomeChange: 25000,
+    stateEffect: (state) => {
+      state.pathFaith = Math.min(100, state.pathFaith + 12);
+      state.happiness = Math.min(100, state.happiness + 10);
+    },
+    log: `你参与推动的衰老分类倡导取得进展，工作被国际组织引用。你改写了人类看待衰老的方式。`,
+    triggersRetirementCheck: true,
+  },
+];
+
+// ============================================================
+// 汇总导出
+// ============================================================
+
+export const BIO_NARRATIVE_EVENTS: NarrativeEvent[] = [
+  ...commonEvents,
+  ...branchSelectEvent,
+  ...investorEvents,
+  ...experimenterEvents,
+  ...researcherEvents,
+  ...crossBranchEvents,
+  ...crisisEvents,
+];
+
+export const BIO_ACHIEVEMENTS: NarrativeAchievement[] = [
+  ...investorAchievements,
+  ...experimenterAchievements,
+  ...researcherAchievements,
+];
+
+// ============================================================
+// 自动注册（模块加载时执行）
+// ============================================================
+registerNarrativeEvents(BIO_NARRATIVE_EVENTS);
+registerAchievements(BIO_ACHIEVEMENTS);

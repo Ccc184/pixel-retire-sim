@@ -88,9 +88,6 @@ function handleRestart(): void {
   store.resetGame()
 }
 
-// 人生总账单区域引用
-const billSection = ref<HTMLElement | null>(null)
-
 // 人生总账单显示控制
 const showBill = ref(false)
 

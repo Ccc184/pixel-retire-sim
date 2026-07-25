@@ -1,0 +1,1751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>像素退休模拟器 - 10套像素UI方案</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=DotGothic16&family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@400;700;900&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#000}
+
+/* ===== 顶部方案切换条 ===== */
+#tabbar{position:fixed;top:0;left:0;right:0;z-index:99999;display:flex;gap:2px;padding:3px 4px;background:#111;border-bottom:2px solid #333;overflow-x:auto}
+.tab{padding:5px 10px;background:#222;border:2px solid #444;color:#888;font:10px/1.2 'Press Start 2P',monospace;cursor:pointer;white-space:nowrap;flex-shrink:0;image-rendering:pixelated}
+.tab:hover{background:#333;color:#fff}
+.tab.on{background:#ff2d95;border-color:#fff;color:#fff;box-shadow:inset -2px -2px 0 #aa0060,inset 2px 2px 0 #ff80cc}
+
+/* ===== 方案容器 ===== */
+.scheme{position:fixed;top:36px;left:0;right:0;bottom:0;overflow:hidden;image-rendering:pixelated}
+.scheme:not(.on){display:none !important}
+.scheme.on{display:block}
+
+/* ===== 共用：动画区域（占位，后续重新设计动画） ===== */
+.anim-area{position:relative;overflow:hidden;background:#0a0a14}
+.anim-area::before{content:'ANIMATION AREA';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font:12px 'Press Start 2P',monospace;color:rgba(255,255,255,.08);letter-spacing:2px;z-index:0;pointer-events:none}
+.anim-kline{position:absolute;bottom:15%;left:0;right:0;height:55%;display:flex;align-items:flex-end;gap:1%;padding:0 2%;z-index:1}
+.anim-kline span{flex:1;background:linear-gradient(180deg,#00ff88,#005533);box-shadow:0 0 4px rgba(0,255,136,.3)}
+.anim-kline span.r{background:linear-gradient(180deg,#ff2d95,#550022);box-shadow:0 0 4px rgba(255,45,149,.3)}
+.anim-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,212,255,.1) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.1) 1px,transparent 1px);background-size:24px 24px;z-index:0}
+.anim-scan{position:absolute;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 3px);z-index:5;pointer-events:none;animation:scanmove 8s linear infinite}
+@keyframes scanmove{0%{background-position:0 0}100%{background-position:0 100px}}
+.anim-vignette{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(0,0,0,.6) 100%);z-index:4;pointer-events:none}
+.anim-char{position:absolute;bottom:8%;right:18%;width:16px;height:28px;z-index:3}
+.anim-char .h{width:10px;height:10px;background:#ffdbac;margin:0 auto;border-radius:1px}
+.anim-char .b{width:14px;height:12px;background:#ff8800;margin:1px auto 0}
+.anim-char .l{width:4px;height:6px;background:#222;display:inline-block}
+.anim-ground{position:absolute;bottom:0;left:0;right:0;height:12%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.7));z-index:2}
+.anim-ticker{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.8);border-top:2px solid rgba(0,212,255,.3);padding:2px 6px;font:9px 'Press Start 2P',monospace;color:#00ff88;display:flex;gap:14px;z-index:6;white-space:nowrap;overflow:hidden}
+.anim-ticker span:nth-child(3){color:#ff2d95}
+.anim-crisis{position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 30%,rgba(255,0,0,.12) 100%);z-index:7;pointer-events:none;animation:crisisP 1.5s ease-in-out infinite}
+@keyframes crisisP{0%,100%{opacity:.5}50%{opacity:1}}
+
+/* 通用滚动条 */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#555}
+</style>
+</head>
+<body>
+
+<!-- 切换标签 -->
+<div id="tabbar">
+  <button class="tab on" data-s="s1">1·NES复古</button>
+  <button class="tab" data-s="s2">2·GameBoy</button>
+  <button class="tab" data-s="s3">3·琥珀终端</button>
+  <button class="tab" data-s="s4">4·Win95</button>
+  <button class="tab" data-s="s5">5·街机机台</button>
+  <button class="tab" data-s="s6">6·漫画分镜</button>
+  <button class="tab" data-s="s7">7·机甲HUD</button>
+  <button class="tab" data-s="s8">8·电路板</button>
+  <button class="tab" data-s="s9">9·VHS未来</button>
+  <button class="tab" data-s="s10">10·赛博霓虹</button>
+</div>
+
+<!-- 以下10个方案 -->
+
+<!-- ================================================================
+     方案1：NES/FC 8-bit复古像素
+     色板：#000 #fcfcfc #f8b800 #e43642 #6c6c6c
+     风格：粗像素边框、锯齿边、Press Start 2P字体、纯色无渐变
+     ================================================================ -->
+<div class="scheme on" id="s1">
+<style>
+#s1{background:#000;font-family:'Press Start 2P','Noto Sans SC',monospace;color:#fcfcfc;padding:8px;display:flex;flex-direction:column;gap:4px}
+#s1 .p1-wrap{display:grid;grid-template-columns:170px 1fr 160px;gap:4px;flex:1;min-height:0}
+#s1 .p1-box{background:#000;border:4px solid #fcfcfc;padding:6px;position:relative;image-rendering:pixelated}
+#s1 .p1-box::before{content:'';position:absolute;top:-4px;left:-4px;right:-4px;bottom:-4px;border:2px solid #000;pointer-events:none}
+#s1 .p1-title{font-size:9px;color:#f8b800;margin-bottom:6px;text-shadow:2px 2px 0 #a06000;letter-spacing:1px}
+#s1 .p1-top{display:flex;justify-content:space-between;align-items:center;border:4px solid #fcfcfc;padding:6px 8px;background:#000}
+#s1 .p1-logo{font-size:11px;color:#e43642;text-shadow:2px 2px 0 #7a0000}
+#s1 .p1-stats{display:flex;gap:8px;font-size:7px}
+#s1 .p1-stats span.b{color:#f8b800}
+#s1 .p1-vitals{display:flex;flex-direction:column;gap:6px}
+#s1 .p1-vrow{display:flex;justify-content:space-between;align-items:center;font-size:7px;margin-bottom:2px}
+#s1 .p1-vbar{height:10px;background:#222;border:2px solid #6c6c6c;position:relative;image-rendering:pixelated}
+#s1 .p1-vfill{height:100%;background:repeating-linear-gradient(90deg,#00aa00 0,#00aa00 4px,#00cc00 4px,#00cc00 8px)}
+#s1 .p1-vfill.s{background:repeating-linear-gradient(90deg,#cc0000 0,#cc0000 4px,#ff2222 4px,#ff2222 8px)}
+#s1 .p1-vfill.h{background:repeating-linear-gradient(90deg,#aaaa00 0,#aaaa00 4px,#cccc00 4px,#cccc00 8px)}
+#s1 .p1-fin{display:flex;flex-direction:column;gap:3px;font-size:7px}
+#s1 .p1-fin .r{display:flex;justify-content:space-between;border-bottom:2px dotted #444;padding:2px 0}
+#s1 .p1-fin .pos{color:#00ff00}
+#s1 .p1-fin .neg{color:#ff4444}
+#s1 .p1-center{display:flex;flex-direction:column;gap:4px;min-height:0}
+#s1 .p1-scene{flex:1;border:4px solid #fcfcfc;min-height:0}
+#s1 .p1-event{border:4px solid #f8b800;padding:8px;background:#000}
+#s1 .p1-evtag{display:inline-block;font-size:7px;background:#e43642;color:#fff;padding:2px 4px;margin-bottom:4px;border:2px solid #fff}
+#s1 .p1-evtitle{font-size:9px;color:#fcfcfc;margin-bottom:6px}
+#s1 .p1-evtext{font-size:7px;line-height:1.8;color:#ccc;padding:4px;border-left:4px solid #f8b800;margin-bottom:6px;font-family:'Noto Sans SC',sans-serif}
+#s1 .p1-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+#s1 .p1-opt{background:#000;border:3px solid #6c6c6c;padding:5px;font:7px/1.6 'Noto Sans SC',sans-serif;color:#ccc;cursor:pointer;text-align:left}
+#s1 .p1-opt .l{font-family:'Press Start 2P',monospace;font-size:7px;color:#fcfcfc;display:block;margin-bottom:3px}
+#s1 .p1-opt .h{color:#e43642;font-size:6px;margin-top:3px;padding-top:3px;border-top:2px dotted #444}
+#s1 .p1-opt.on{border-color:#f8b800;background:#221100;box-shadow:inset 0 0 0 2px #000}
+#s1 .p1-opt.on .l{color:#f8b800}
+#s1 .p1-actions{display:flex;gap:4px;border:4px solid #fcfcfc;padding:6px;background:#000}
+#s1 .p1-btn{flex:1;padding:8px;background:#000;border:3px solid #00ff00;color:#00ff00;font:8px 'Press Start 2P',monospace;cursor:pointer;text-shadow:2px 2px 0 #003300;image-rendering:pixelated}
+#s1 .p1-btn:hover{background:#003300}
+#s1 .p1-btn.ret{border-color:#e43642;color:#e43642;text-shadow:2px 2px 0 #440000}
+#s1 .p1-btn.ret:hover{background:#330000}
+#s1 .p1-hint{font-size:6px;color:#6c6c6c;flex:1;display:flex;align-items:center;padding:0 6px}
+#s1 .p1-log{font-size:6px;line-height:1.8;overflow-y:auto;flex:1}
+#s1 .p1-log .e{border-bottom:2px dotted #333;padding:3px 0}
+#s1 .p1-log .a{color:#f8b800}
+</style>
+<div class="p1-top">
+  <span class="p1-logo">PIXEL RETIRE</span>
+  <div class="p1-stats">
+    <span>AGE <b class="b">32</b></span>
+    <span>JOB <b class="b">TECH</b></span>
+    <span>CITY <b class="b">SH</b></span>
+    <span>CYCLE <b class="b" style="color:#00ff00">STABLE</b></span>
+  </div>
+  <button style="background:#000;border:2px solid #e43642;color:#e43642;font:7px 'Press Start 2P',monospace;padding:3px 6px;cursor:pointer">RESET</button>
+</div>
+<div class="p1-wrap">
+  <div style="display:flex;flex-direction:column;gap:4px;min-height:0">
+    <div class="p1-box">
+      <div class="p1-title">◆ STATUS</div>
+      <div class="p1-vitals">
+        <div><div class="p1-vrow"><span>HP</span><span style="color:#00ff00">78</span></div><div class="p1-vbar"><div class="p1-vfill" style="width:78%"></div></div></div>
+        <div><div class="p1-vrow"><span>STR</span><span style="color:#ff4444">45</span></div><div class="p1-vbar"><div class="p1-vfill s" style="width:45%"></div></div></div>
+        <div><div class="p1-vrow"><span>HAP</span><span style="color:#cccc00">65</span></div><div class="p1-vbar"><div class="p1-vfill h" style="width:65%"></div></div></div>
+      </div>
+    </div>
+    <div class="p1-box" style="flex:1;overflow-y:auto">
+      <div class="p1-title">◆ MONEY</div>
+      <div class="p1-fin">
+        <div class="r"><span>SAVE</span><span class="pos">¥1.28M</span></div>
+        <div class="r"><span>CHAIN</span><span class="pos">¥450K</span></div>
+        <div class="r"><span>SALARY</span><span>¥18K/M</span></div>
+        <div class="r"><span>COST</span><span class="neg">¥96K/Y</span></div>
+        <div style="margin-top:4px"><div style="font-size:6px;margin-bottom:2px;color:#f8b800">GOAL 91%</div><div class="p1-vbar"><div class="p1-vfill" style="width:91%;background:repeating-linear-gradient(90deg,#f8b800 0,#f8b800 4px,#fcfc88 4px,#fcfc88 8px)"></div></div></div>
+      </div>
+    </div>
+    <div class="p1-box">
+      <div class="p1-title">◆ PATH</div>
+      <div style="font-size:7px;color:#c900ff">⛓CHAIN NATIVE</div>
+      <div style="display:flex;gap:3px;margin-top:4px;align-items:center;font-size:6px">
+        <span style="color:#888">FAITH</span>
+        <div style="flex:1;height:6px;background:#222;border:1px solid #666"><div style="height:100%;width:72%;background:#c900ff"></div></div>
+        <span style="color:#c900ff">72</span>
+      </div>
+    </div>
+  </div>
+  <div class="p1-center">
+    <div class="p1-box p1-scene" style="padding:0">
+      <div class="anim-area" style="position:absolute;inset:4px">
+        <div class="anim-grid"></div>
+        <div class="anim-kline">
+          <span style="height:35%"></span><span class="r" style="height:28%"></span><span style="height:45%"></span><span style="height:52%"></span>
+          <span class="r" style="height:38%"></span><span style="height:60%"></span><span style="height:72%"></span><span class="r" style="height:48%"></span>
+          <span style="height:65%"></span><span class="r" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+          <span class="r" style="height:50%"></span><span style="height:62%"></span>
+        </div>
+        <div class="anim-char"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+        <div class="anim-ground"></div>
+        <div class="anim-ticker"><span>BTC 67234 ↑</span><span>ETH 3456 ↑</span><span>SOL 198 ↓</span></div>
+        <div class="anim-crisis"></div><div class="anim-vignette"></div>
+      </div>
+    </div>
+    <div class="p1-event">
+      <span class="p1-evtag">CRISIS!</span>
+      <div class="p1-evtitle">交易所暴雷</div>
+      <div class="p1-evtext">凌晨三点，FTX暂停提币。你60%的链上资产被困。手在发抖。伴侣翻了个身嘟囔"又熬夜"。</div>
+      <div class="p1-opts">
+        <button class="p1-opt on"><span class="l">立即提币</span><span style="font-size:6px">付Gas费转出</span><div class="h">70%成功 ¥8K</div></button>
+        <button class="p1-opt"><span class="l">观望一天</span><span style="font-size:6px">等消息</span><div class="h">-10%/小时</div></button>
+        <button class="p1-opt"><span class="l">场外折价</span><span style="font-size:6px">7折转让</span><div class="h" style="color:#00aaff">损失30%</div></button>
+      </div>
+    </div>
+    <div class="p1-actions">
+      <span class="p1-hint">▸ 已选 立即提币</span>
+      <button class="p1-btn">▶ NEXT YEAR</button>
+      <button class="p1-btn ret">★ RETIRE ★</button>
+    </div>
+  </div>
+  <div class="p1-box" style="overflow:hidden;display:flex;flex-direction:column">
+    <div class="p1-title">◆ LOG</div>
+    <div class="p1-log">
+      <div class="e"><span class="a">32</span> DeFi套利窗口</div>
+      <div class="e"><span class="a">31</span> 牛市!×3</div>
+      <div class="e"><span class="a">30</span> 深熊-70%</div>
+      <div class="e"><span class="a">29</span> All in链上</div>
+      <div class="e"><span class="a">28</span> Web3聚会</div>
+      <div class="e"><span class="a">27</span> 工位摸鱼</div>
+      <div class="e"><span class="a">26</span> 首购BTC</div>
+      <div class="e"><span class="a">25</span> 升职¥15K</div>
+      <div class="e"><span class="a">24</span> 攒下3万</div>
+      <div class="e"><span class="a">23</span> 到修罗场</div>
+      <div class="e"><span class="a">22</span> 毕业</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================
+     方案2：GameBoy 掌机（4级灰阶+绿色调）
+     色板：#0f380f #306230 #8bac0f #9bbc0f
+     风格：GameBoy DMG经典绿、圆点像素、8:7屏幕比例、掌机按钮
+     ================================================================ -->
+<div class="scheme" id="s2">
+<style>
+#s2{background:#8b7a5e;display:flex;align-items:center;justify-content:center;font-family:'VT323',monospace;padding:10px}
+#s2 .p2-gb{width:100%;max-width:1100px;height:100%;max-height:680px;background:#c4b9a0;border-radius:12px 12px 40px 12px;padding:18px 22px;display:grid;grid-template-columns:1fr 220px;gap:14px;box-shadow:inset 2px 2px 0 #e8dcc0,inset -2px -2px 0 #6a5c44,0 8px 0 #5a4c34}
+#s2 .p2-screen-area{display:flex;flex-direction:column;gap:6px}
+#s2 .p2-screen-frame{background:#5c5040;border-radius:8px 8px 24px 8px;padding:14px 16px;box-shadow:inset 3px 3px 0 #3a3020,inset -3px -3px 0 #8a7c64}
+#s2 .p2-screen{width:100%;aspect-ratio:10/9;background:#0f380f;border-radius:4px;position:relative;overflow:hidden;display:flex;flex-direction:column}
+#s2 .p2-status{background:#0f380f;color:#9bbc0f;padding:3px 8px;font-size:11px;display:flex;justify-content:space-between;border-bottom:2px solid #306230}
+#s2 .p2-status .b{color:#8bac0f;font-weight:700}
+#s2 .p2-scene{flex:1;position:relative;min-height:0;background:#0f380f}
+/* GB风格像素：用4级绿 */
+#s2 .gbk{position:absolute;bottom:12%;left:0;right:0;height:55%;display:flex;align-items:flexend;gap:1%;padding:0 3%}
+#s2 .gbk span{flex:1;background:#8bac0f;box-shadow:2px 0 0 #0f380f,-2px 0 0 #0f380f}
+#s2 .gbk span.d{background:#306230}
+#s2 .gbgrid{position:absolute;inset:0;background-image:linear-gradient(#30623033 1px,transparent 1px),linear-gradient(90deg,#30623033 1px,transparent 1px);background-size:12px 12px}
+#s2 .gbchar{position:absolute;bottom:8%;right:20%;width:10px;height:18px}
+#s2 .gbchar .h{width:7px;height:7px;background:#9bbc0f;margin:0 auto}
+#s2 .gbchar .b{width:10px;height:8px;background:#8bac0f;margin:1px auto 0}
+#s2 .gbchar .l{width:3px;height:3px;background:#9bbc0f;display:inline-block}
+#s2 .p2-event{background:#0f380f;border-top:2px solid #306230;padding:6px 8px;color:#9bbc0f;font-size:13px;line-height:1.4;max-height:180px;overflow-y:auto}
+#s2 .p2-evtag{display:inline-block;background:#9bbc0f;color:#0f380f;padding:0 4px;font-weight:700;font-size:11px;margin-right:4px}
+#s2 .p2-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px;margin-top:5px}
+#s2 .p2-opt{background:#306230;border:2px solid #8bac0f;color:#9bbc0f;padding:3px 5px;font:12px/1.3 'VT323',monospace;cursor:pointer;text-align:left;font-family:'Noto Sans SC',sans-serif}
+#s2 .p2-opt .l{font-family:'VT323',monospace;font-size:13px;font-weight:700;color:#9bbc0f;display:block}
+#s2 .p2-opt.on{background:#8bac0f;color:#0f380f}
+#s2 .p2-opt.on .l{color:#0f380f}
+#s2 .p2-actions{background:#0f380f;border-top:2px solid #306230;padding:5px 8px;display:flex;gap:4px}
+#s2 .p2-btn{flex:1;padding:5px;background:#306230;border:2px solid #8bac0f;color:#9bbc0f;font:12px 'VT323',monospace;cursor:pointer}
+#s2 .p2-btn:hover{background:#8bac0f;color:#0f380f}
+#s2 .p2-btn.ret{border-color:#9bbc0f;background:#0f380f}
+#s2 .p2-right{display:flex;flex-direction:column;gap:8px}
+#s2 .p2-panel{background:#0f380f;border:3px solid #5c5040;border-radius:4px;padding:8px;color:#9bbc0f;font-size:12px;flex:1;overflow-y:auto}
+#s2 .p2-pt{font:10px 'Press Start 2P',monospace;color:#8bac0f;margin-bottom:5px;border-bottom:1px dashed #306230;padding-bottom:3px}
+#s2 .p2-vrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+#s2 .p2-vbar{height:6px;background:#306230;border:1px solid #8bac0f;position:relative}
+#s2 .p2-vfill{height:100%;background:#9bbc0f}
+#s2 .p2-finrow{display:flex;justify-content:space-between;padding:1px 0;border-bottom:1px dotted #306230;font-size:11px}
+#s2 .p2-dpad{display:grid;grid-template-columns:repeat(3,36px);grid-template-rows:repeat(3,36px);gap:2px;justify-content:center;margin-top:8px}
+#s2 .p2-dpad button{background:#5c5040;border:2px solid #3a3020;color:#c4b9a0;font-size:14px;cursor:pointer;border-radius:3px;box-shadow:inset 1px 1px 0 #8a7c64}
+#s2 .p2-ab{display:flex;gap:14px;justify-content:center;margin-top:10px}
+#s2 .p2-ab button{width:42px;height:42px;border-radius:50%;background:#a03050;border:3px solid #701030;color:#fff;font:11px 'Press Start 2P',monospace;cursor:pointer;box-shadow:inset 2px 2px 0 #d05070,0 3px 0 #500020}
+#s2 .p2-ab button.b{background:#3050a0;border-color:#103070;box-shadow:inset 2px 2px 0 #5080d0,0 3px 0 #102050}
+#s2 .p2-brand{text-align:center;font:9px 'Press Start 2P',monospace;color:#5c5040;margin-top:4px}
+</style>
+<div class="p2-gb">
+  <div class="p2-screen-area">
+    <div class="p2-screen-frame">
+      <div class="p2-screen">
+        <div class="p2-status">
+          <span>♥<b class="b">78</b> ⚡<b class="b">45</b> 😊<b class="b">65</b></span>
+          <span>AGE<b class="b">32</b> ¥<b class="b">1.28M</b></span>
+        </div>
+        <div class="p2-scene">
+          <div class="gbgrid"></div>
+          <div class="gbk">
+            <span style="height:35%"></span><span class="d" style="height:28%"></span><span style="height:45%"></span>
+            <span style="height:52%"></span><span class="d" style="height:38%"></span><span style="height:60%"></span>
+            <span style="height:72%"></span><span class="d" style="height:48%"></span><span style="height:65%"></span>
+            <span class="d" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+          </div>
+          <div class="gbchar"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+          <div style="position:absolute;bottom:0;left:0;right:0;background:#306230;color:#9bbc0f;padding:1px 4px;font-size:10px;display:flex;gap:10px;border-top:1px solid #8bac0f">
+            <span>BTC↑</span><span>ETH↑</span><span>SOL↓</span>
+          </div>
+        </div>
+        <div class="p2-event">
+          <div><span class="p2-evtag">!</span><b>交易所暴雷</b></div>
+          <div style="margin-top:3px">凌晨三点，FTX暂停提币。你60%资产被困。手在发抖。</div>
+          <div class="p2-opts">
+            <button class="p2-opt on"><span class="l">A.立即提币</span>70%成功 ¥8K</button>
+            <button class="p2-opt"><span class="l">B.观望</span>-10%/小时</button>
+            <button class="p2-opt"><span class="l">C.折价</span>损失30%</button>
+          </div>
+        </div>
+        <div class="p2-actions">
+          <button class="p2-btn">▶ NEXT YEAR</button>
+          <button class="p2-btn ret">★ RETIRE</button>
+        </div>
+      </div>
+    </div>
+    <div class="p2-brand">● PIXEL RETIRE GAME BOY ●</div>
+  </div>
+  <div class="p2-right">
+    <div class="p2-panel">
+      <div class="p2-pt">◆ STATUS</div>
+      <div><div class="p2-vrow"><span>❤ 健康</span><b>78</b></div><div class="p2-vbar"><div class="p2-vfill" style="width:78%"></div></div></div>
+      <div><div class="p2-vrow"><span>⚡ 压力</span><b>45</b></div><div class="p2-vbar"><div class="p2-vfill" style="width:45%;background:#306230"></div></div></div>
+      <div><div class="p2-vrow"><span>☺ 幸福</span><b>65</b></div><div class="p2-vbar"><div class="p2-vfill" style="width:65%"></div></div></div>
+    </div>
+    <div class="p2-panel">
+      <div class="p2-pt">◆ MONEY</div>
+      <div class="p2-finrow"><span>存款</span><b>¥1.28M</b></div>
+      <div class="p2-finrow"><span>链上</span><b>¥450K</b></div>
+      <div class="p2-finrow"><span>月薪</span><b>¥18K</b></div>
+      <div class="p2-finrow"><span>年支</span><b>¥96K</b></div>
+      <div style="margin-top:4px"><div style="font-size:10px">GOAL 91%</div><div class="p2-vbar"><div class="p2-vfill" style="width:91%"></div></div></div>
+    </div>
+    <div class="p2-panel">
+      <div class="p2-pt">◆ LOG</div>
+      <div style="font-size:11px;line-height:1.4">
+        <div style="border-bottom:1px dotted #306230;padding:2px 0"><b style="color:#8bac0f">32</b> DeFi套利</div>
+        <div style="border-bottom:1px dotted #306230;padding:2px 0"><b style="color:#8bac0f">31</b> 牛市×3</div>
+        <div style="border-bottom:1px dotted #306230;padding:2px 0"><b style="color:#8bac0f">30</b> 深熊</div>
+        <div style="border-bottom:1px dotted #306230;padding:2px 0"><b style="color:#8bac0f">29</b> All in</div>
+      </div>
+    </div>
+    <div class="p2-dpad">
+      <div></div><button>▲</button><div></div>
+      <button>◀</button><div></div><button>▶</button>
+      <div></div><button>▼</button><div></div>
+    </div>
+    <div class="p2-ab">
+      <button>B</button>
+      <button class="b">A</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================
+     方案3：琥珀单色终端（VT323+琥珀磷光CRT）
+     色板：#0a0500 #ffb000 #ff8800 #cc6600
+     风格：全琥珀色、扫描线、闪烁光标、命令行交互、无彩色
+     ================================================================ -->
+<div class="scheme" id="s3">
+<style>
+#s3{background:#0a0500;font-family:'VT323',monospace;color:#ffb000;padding:0;display:flex;flex-direction:column}
+#s3::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.18) 2px,rgba(0,0,0,.18) 3px);pointer-events:none;z-index:100}
+#s3::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.5) 100%);pointer-events:none;z-index:101}
+#s3 .p3-head{padding:4px 12px;background:#1a0d00;border-bottom:1px solid #cc6600;display:flex;justify-content:space-between;font-size:16px}
+#s3 .p3-head .b{color:#ffcc44;font-weight:700}
+#s3 .p3-body{flex:1;display:grid;grid-template-columns:1fr 280px;min-height:0}
+#s3 .p3-left{display:flex;flex-direction:column;min-height:0}
+#s3 .p3-scene{flex:1;position:relative;min-height:0;background:linear-gradient(180deg,#0a0500,#1a0d00);border-right:1px solid #cc6600}
+#s3 .p3-kline{position:absolute;bottom:15%;left:0;right:0;height:50%;display:flex;align-items:flex-end;gap:.8%;padding:0 2%}
+#s3 .p3-kline span{flex:1;background:#ffb000;opacity:.8;box-shadow:0 0 4px #ff8800}
+#s3 .p3-kline span.d{background:#663300;opacity:.6}
+#s3 .p3-char{position:absolute;bottom:8%;right:15%;width:14px;height:24px}
+#s3 .p3-char .h{width:8px;height:8px;background:#ffb000;margin:0 auto;border-radius:1px}
+#s3 .p3-char .b{width:12px;height:10px;background:#ffb000;margin:1px auto 0}
+#s3 .p3-char .l{width:3px;height:6px;background:#ffb000;display:inline-block}
+#s3 .p3-ticker{position:absolute;bottom:0;left:0;right:0;background:#1a0d00;border-top:1px solid #cc6600;padding:2px 10px;font-size:14px;display:flex;gap:20px}
+#s3 .p3-event{background:#0a0500;border-top:1px solid #cc6600;padding:8px 14px;font-size:16px;line-height:1.5;max-height:220px;overflow-y:auto}
+#s3 .p3-event .p3-tag{background:#ffb000;color:#0a0500;padding:0 6px;font-weight:700;margin-right:6px}
+#s3 .p3-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:6px}
+#s3 .p3-opt{background:#1a0d00;border:1px solid #cc6600;color:#ffb000;padding:6px 10px;font:15px/1.4 'VT323',monospace;cursor:pointer;text-align:left}
+#s3 .p3-opt:hover{background:#331a00}
+#s3 .p3-opt.on{background:#ffb000;color:#0a0500;border-color:#ffcc44}
+#s3 .p3-opt .l{font-weight:700;font-size:16px;display:block}
+#s3 .p3-actions{background:#0a0500;border-top:1px solid #cc6600;padding:6px 14px;display:flex;gap:8px;align-items:center}
+#s3 .p3-prompt{font-size:15px;color:#ff8800}
+#s3 .p3-cursor{display:inline-block;width:8px;height:16px;background:#ffb000;animation:curB 1s step-end infinite;vertical-align:middle}
+@keyframes curB{0%,50%{opacity:1}51%,100%{opacity:0}}
+#s3 .p3-btn{padding:6px 18px;background:#1a0d00;border:2px solid #ffb000;color:#ffb000;font:15px 'VT323',monospace;cursor:pointer;letter-spacing:1px}
+#s3 .p3-btn:hover{background:#ffb000;color:#0a0500}
+#s3 .p3-right{background:#0a0500;padding:8px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;font-size:14px}
+#s3 .p3-sec{border:1px solid #cc6600;padding:6px 8px}
+#s3 .p3-st{color:#ff8800;font-size:12px;border-bottom:1px dashed #cc6600;padding-bottom:2px;margin-bottom:4px;letter-spacing:2px}
+#s3 .p3-bar{height:6px;background:#331a00;border:1px solid #663300;margin:2px 0}
+#s3 .p3-bf{height:100%;background:#ffb000}
+#s3 .p3-row{display:flex;justify-content:space-between;padding:1px 0}
+#s3 .p3-log-e{border-bottom:1px dashed #331a00;padding:2px 0;font-size:13px;line-height:1.3}
+#s3 .p3-log-e .a{color:#ffcc44;font-weight:700}
+</style>
+<div class="p3-head">
+  <span>█ PIXEL-RETIRE-TERM v2.077 <span style="animation:curB 1s step-end infinite">_</span></span>
+  <span>AGE:<b class="b">32</b> | CITY:<b class="b">CAPITAL</b> | CYCLE:<b class="b">STABLE</b> | FAITH:<b class="b">72</b></span>
+</div>
+<div class="p3-body">
+  <div class="p3-left">
+    <div class="p3-scene">
+      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,176,0,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(255,176,0,.06) 1px,transparent 1px);background-size:30px 30px"></div>
+      <div class="p3-kline">
+        <span style="height:35%"></span><span class="d" style="height:28%"></span><span style="height:45%"></span>
+        <span style="height:52%"></span><span class="d" style="height:38%"></span><span style="height:60%"></span>
+        <span style="height:72%"></span><span class="d" style="height:48%"></span><span style="height:65%"></span>
+        <span class="d" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+      </div>
+      <div class="p3-char"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+      <div class="p3-ticker"><span>BTC 67234 ↑ 5.2%</span><span>ETH 3456 ↑ 2.1%</span><span>SOL 198 ↓ 1.3%</span><span style="color:#ff4444">⚠ FTX HALT</span></div>
+    </div>
+    <div class="p3-event">
+      <div><span class="p3-tag">CRISIS</span><b style="font-size:18px">交易所暴雷</b></div>
+      <div style="margin-top:4px;color:#cc8800">> 凌晨三点，手机震动。FTX暂停提币的推送弹出。推特上全是"资不抵债"。你60%的链上资产在里面。</div>
+      <div style="color:#cc8800">> 手在发抖。伴侣嘟囔了一句"又熬夜"。你没敢回答。</div>
+      <div style="color:#ff8800;margin-top:4px">> SELECT ACTION [1-3]:</div>
+      <div class="p3-opts">
+        <button class="p3-opt on"><span class="l">[1] 立即提币</span>Gas费¥8,000 · 70%概率成功</button>
+        <button class="p3-opt"><span class="l">[2] 观望一天</span>每小时-10%成功率</button>
+        <button class="p3-opt"><span class="l">[3] 场外折价</span>确定损失30% · 即刻到账</button>
+      </div>
+    </div>
+    <div class="p3-actions">
+      <span class="p3-prompt">root@retire:~$</span>
+      <button class="p3-btn">▶ ADVANCE YEAR</button>
+      <button class="p3-btn">★ RETIRE</button>
+      <span class="p3-cursor"></span>
+    </div>
+  </div>
+  <div class="p3-right">
+    <div class="p3-sec">
+      <div class="p3-st">◆ VITALS</div>
+      <div><div class="p3-row"><span>❤ 健康</span><b>78</b></div><div class="p3-bar"><div class="p3-bf" style="width:78%"></div></div></div>
+      <div><div class="p3-row"><span>⚡ 压力</span><b>45</b></div><div class="p3-bar"><div class="p3-bf" style="width:45%;background:#cc6600"></div></div></div>
+      <div><div class="p3-row"><span>☺ 幸福</span><b>65</b></div><div class="p3-bar"><div class="p3-bf" style="width:65%"></div></div></div>
+    </div>
+    <div class="p3-sec">
+      <div class="p3-st">◆ FINANCE</div>
+      <div class="p3-row"><span>存款</span><b>¥1,285,000</b></div>
+      <div class="p3-row"><span>链上</span><b>¥450,000</b></div>
+      <div class="p3-row"><span>月薪</span><b>¥18,000</b></div>
+      <div class="p3-row"><span>年支</span><b>-¥96,000</b></div>
+      <div style="margin-top:4px"><div class="p3-row"><span>目标</span><b>91%</b></div><div class="p3-bar"><div class="p3-bf" style="width:91%"></div></div></div>
+    </div>
+    <div class="p3-sec" style="flex:1;overflow-y:auto">
+      <div class="p3-st">◆ LOG</div>
+      <div class="p3-log-e"><span class="a">[32]</span> DeFi永续合约，发现套利窗口</div>
+      <div class="p3-log-e"><span class="a">[31]</span> 牛市，资产×3</div>
+      <div class="p3-log-e"><span class="a">[30]</span> 深熊，-70%</div>
+      <div class="p3-log-e"><span class="a">[29]</span> 40%存款→链上</div>
+      <div class="p3-log-e"><span class="a">[28]</span> Web3聚会，信念85</div>
+      <div class="p3-log-e"><span class="a">[26]</span> 首购BTC@24000</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================
+     方案4：Win95 经典窗口（灰阶3D凸起/凹陷、标题栏、任务栏）
+     色板：#c0c0c0 #000080 #ffffff #808080 #000000
+     风格：Windows 95经典2px 3D边框、蓝白标题栏、9px Tahoma像素感、开始菜单任务栏
+     ================================================================ -->
+<div class="scheme" id="s4">
+<style>
+#s4{background:#008080;font-family:'Noto Sans SC','Microsoft YaHei',sans-serif;font-size:12px;padding:0;display:flex;flex-direction:column;image-rendering:pixelated}
+#s4 .w95{border:2px solid; border-color:#ffffff #000000 #000000 #ffffff; background:#c0c0c0}
+#s4 .w95-sunken{border:2px solid; border-color:#000000 #ffffff #ffffff #000000; background:#c0c0c0}
+#s4 .p4-titlebar{background:linear-gradient(90deg,#000080,#1084d0);color:#fff;padding:2px 4px;display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:12px}
+#s4 .p4-titlebar .t{display:flex;gap:4px;align-items:center}
+#s4 .p4-winbtn{width:16px;height:14px;background:#c0c0c0;border:2px solid;border-color:#ffffff #000000 #000000 #ffffff;color:#000;font:10px monospace;display:flex;align-items:center;justify-content:center;cursor:pointer;line-height:1}
+#s4 .p4-desktop{flex:1;display:grid;grid-template-columns:1fr 240px;gap:0;min-height:0;padding:4px;background:#008080}
+#s4 .p4-main{display:flex;flex-direction:column;gap:4px;min-height:0}
+#s4 .p4-toolbar{display:flex;gap:2px;padding:2px;background:#c0c0c0;border-bottom:1px solid #808080}
+#s4 .p4-tbbtn{padding:2px 8px;background:#c0c0c0;border:2px solid;border-color:#ffffff #000000 #000000 #ffffff;font:11px 'Noto Sans SC',sans-serif;cursor:pointer;display:flex;align-items:center;gap:4px}
+#s4 .p4-tbbtn:active{border-color:#000000 #ffffff #ffffff #000000}
+#s4 .p4-scene-wrap{flex:1;position:relative;min-height:0;background:#000;border:2px solid;border-color:#000000 #ffffff #ffffff #000000}
+#s4 .p4-event{padding:8px;background:#c0c0c0}
+#s4 .p4-evhead{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+#s4 .p4-evicon{width:32px;height:32px;background:#ff0000;border:2px solid #800000;display:flex;align-items:center;justify-content:center;color:#fff;font:16px monospace;font-weight:700}
+#s4 .p4-evtitle{font-weight:700;font-size:13px;color:#000}
+#s4 .p4-evsub{font-size:11px;color:#404040}
+#s4 .p4-evtext{font-size:12px;line-height:1.6;color:#000;padding:6px;background:#fff;border:2px solid;border-color:#808080 #ffffff #ffffff #808080;margin-bottom:6px}
+#s4 .p4-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px}
+#s4 .p4-opt{padding:6px 8px;background:#c0c0c0;border:2px solid;border-color:#ffffff #000000 #000000 #ffffff;font:11px 'Noto Sans SC',sans-serif;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:2px}
+#s4 .p4-opt .l{font-weight:700;display:flex;align-items:center;gap:4px}
+#s4 .p4-opt .h{font-size:10px;color:#800000}
+#s4 .p4-opt.on{border-color:#000000 #ffffff #ffffff #000000;background:#000080;color:#fff}
+#s4 .p4-opt.on .h{color:#ffc0c0}
+#s4 .p4-actions{display:flex;gap:6px;padding:6px;background:#c0c0c0;align-items:center}
+#s4 .p4-btn{padding:6px 20px;background:#c0c0c0;border:2px solid;border-color:#ffffff #000000 #000000 #ffffff;font:12px 'Noto Sans SC',sans-serif;cursor:pointer;font-weight:700;min-width:100px}
+#s4 .p4-btn:active{border-color:#000000 #ffffff #ffffff #000000}
+#s4 .p4-btn.primary{background:#000080;color:#fff;border-color:#8080ff #000040 #000040 #8080ff}
+#s4 .p4-btn.ret{background:#800000;color:#fff;border-color:#ff8080 #400000 #400000 #ff8080}
+#s4 .p4-hint{font-size:11px;color:#000080;flex:1}
+#s4 .p4-side{display:flex;flex-direction:column;gap:4px;min-height:0}
+#s4 .p4-panel{background:#c0c0c0;border:2px solid;border-color:#ffffff #000000 #000000 #ffffff;display:flex;flex-direction:column;min-height:0}
+#s4 .p4-phead{background:linear-gradient(90deg,#000080,#1084d0);color:#fff;padding:2px 6px;font-size:11px;font-weight:700;display:flex;justify-content:space-between;align-items:center}
+#s4 .p4-pbody{padding:6px;flex:1;overflow-y:auto;font-size:11px}
+#s4 .p4-vrow{display:flex;justify-content:space-between;margin-bottom:3px;font-size:11px}
+#s4 .p4-vbar{height:10px;background:#fff;border:2px solid;border-color:#808080 #ffffff #ffffff #808080;position:relative;margin:2px 0 6px}
+#s4 .p4-vfill{height:100%;background:repeating-linear-gradient(90deg,#000080 0,#000080 2px,#0000c0 2px,#0000c0 4px)}
+#s4 .p4-vfill.s{background:repeating-linear-gradient(90deg,#800000 0,#800000 2px,#c00000 2px,#c00000 4px)}
+#s4 .p4-vfill.h{background:repeating-linear-gradient(90deg,#808000 0,#808000 2px,#c0c000 2px,#c0c000 4px)}
+#s4 .p4-finrow{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dotted #808080;font-size:11px}
+#s4 .p4-pos{color:#008000;font-weight:700}
+#s4 .p4-neg{color:#800000;font-weight:700}
+#s4 .p4-log-e{border-bottom:1px dotted #808080;padding:2px 0;font-size:11px;line-height:1.4}
+#s4 .p4-log-e .a{color:#000080;font-weight:700;margin-right:4px}
+#s4 .p4-taskbar{height:28px;background:#c0c0c0;border-top:2px solid #fff;display:flex;align-items:center;padding:2px 4px;gap:4px}
+#s4 .p4-start{padding:2px 10px;background:#c0c0c0;border:2px solid;border-color:#ffffff #000000 #000000 #ffffff;font:12px 'Noto Sans SC',sans-serif;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:4px}
+#s4 .p4-start:active{border-color:#000000 #ffffff #ffffff #000000}
+#s4 .p4-task{padding:2px 12px;background:#c0c0c0;border:2px solid;border-color:#ffffff #000000 #000000 #ffffff;font:11px 'Noto Sans SC',sans-serif;cursor:pointer;min-width:140px}
+#s4 .p4-tray{margin-left:auto;padding:2px 8px;border:2px solid;border-color:#808080 #ffffff #ffffff #808080;font:11px monospace;display:flex;gap:8px}
+/* Win95 风格K线像素化 */
+#s4 .w95k{position:absolute;bottom:14%;left:0;right:0;height:52%;display:flex;align-items:flex-end;gap:.8%;padding:0 2%;z-index:1}
+#s4 .w95k span{flex:1;background:#00ff00;border:1px solid #008000;box-shadow:inset 1px 0 0 #80ff80}
+#s4 .w95k span.r{background:#ff0000;border-color:#800000;box-shadow:inset 1px 0 0 #ff8080}
+#s4 .w95grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:20px 20px;z-index:0}
+#s4 .w95char{position:absolute;bottom:8%;right:16%;width:16px;height:26px;z-index:3}
+#s4 .w95char .h{width:9px;height:9px;background:#fdb; margin:0 auto;border:1px solid #000}
+#s4 .w95char .b{width:13px;height:11px;background:#ff8000;margin:1px auto 0;border:1px solid #000}
+#s4 .w95char .l{width:4px;height:6px;background:#000;display:inline-block}
+#s4 .w95ticker{position:absolute;bottom:0;left:0;right:0;background:#c0c0c0;border-top:2px solid #fff;padding:2px 8px;font:11px 'Courier New',monospace;color:#000;display:flex;gap:16px;z-index:6;white-space:nowrap}
+#s4 .w95ticker .up{color:#008000;font-weight:700}
+#s4 .w95ticker .dn{color:#800000;font-weight:700}
+</style>
+<div class="p4-titlebar" style="flex-shrink:0">
+  <div class="t"><span style="background:#c0c0c0;color:#000;padding:0 3px;font-size:10px;border:1px solid #000">▦</span> Pixel_Retire_Simulator.exe - [链上原住民_第32岁]</div>
+  <div style="display:flex;gap:2px"><button class="p4-winbtn">_</button><button class="p4-winbtn">□</button><button class="p4-winbtn" style="background:#ff0000;color:#fff">×</button></div>
+</div>
+<div class="p4-desktop">
+  <div class="p4-main">
+    <div class="p4-toolbar w95-sunken" style="margin:0">
+      <button class="p4-tbbtn">📁 文件(F)</button>
+      <button class="p4-tbbtn">✏ 编辑(E)</button>
+      <button class="p4-tbbtn">🔄 视图(V)</button>
+      <button class="p4-tbbtn">❓ 帮助(H)</button>
+      <div style="margin-left:auto;display:flex;gap:4px;align-items:center;font-size:11px">
+        <span>年龄:<b>32</b></span><span>|</span><span>职业:<b>技术</b></span><span>|</span><span>城市:<b>SH</b></span><span>|</span><span style="color:#008000;font-weight:700">● 稳定期</span>
+      </div>
+    </div>
+    <div class="p4-scene-wrap w95-sunken">
+      <div class="anim-area" style="position:absolute;inset:0">
+        <div class="w95grid"></div>
+        <div class="w95k">
+          <span style="height:35%"></span><span class="r" style="height:28%"></span><span style="height:45%"></span><span style="height:52%"></span>
+          <span class="r" style="height:38%"></span><span style="height:60%"></span><span style="height:72%"></span><span class="r" style="height:48%"></span>
+          <span style="height:65%"></span><span class="r" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+          <span class="r" style="height:50%"></span><span style="height:62%"></span>
+        </div>
+        <div class="w95char"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+        <div style="position:absolute;bottom:18px;left:0;right:0;height:12%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.6));z-index:2"></div>
+        <div class="w95ticker">
+          <span>BTC 67,234 <span class="up">↑5.2%</span></span>
+          <span>ETH 3,456 <span class="up">↑2.1%</span></span>
+          <span>SOL 198 <span class="dn">↓1.3%</span></span>
+          <span style="color:#ff0000;font-weight:700">⚠ FTX暂停提币</span>
+        </div>
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,.5) 100%);z-index:4;pointer-events:none"></div>
+      </div>
+    </div>
+    <div class="p4-event w95">
+      <div class="p4-evhead">
+        <div class="p4-evicon">!</div>
+        <div>
+          <div class="p4-evtitle">⚠ 系统错误 - 交易所暴雷</div>
+          <div class="p4-evsub">Critical Error · 您的资产存在风险，请立即选择操作</div>
+        </div>
+      </div>
+      <div class="p4-evtext">凌晨三点，手机震动。FTX暂停提币的推送弹出。推特上全是"资不抵债"。你60%的链上资产被困在里面。手在发抖。伴侣翻了个身嘟囔"又熬夜"。你没敢回答。</div>
+      <div class="p4-opts">
+        <button class="p4-opt on"><span class="l">◉ 立即提币</span>支付Gas费¥8,000转出<span class="h">70%概率成功，手续费高</span></button>
+        <button class="p4-opt"><span class="l">○ 观望一天</span>等待官方公告<span class="h">每小时成功率-10%</span></button>
+        <button class="p4-opt"><span class="l">○ 场外折价</span>7折转让给OTC<span class="h" style="color:#008000">确定损失30%，即刻到账</span></button>
+      </div>
+    </div>
+    <div class="p4-actions w95-sunken">
+      <span class="p4-hint">💡 提示：当前已选择「立即提币」，点击"度过今年"执行</span>
+      <button class="p4-btn primary">▶ 度过今年 (N)</button>
+      <button class="p4-btn ret">★ 宣布退休 (R)</button>
+    </div>
+  </div>
+  <div class="p4-side">
+    <div class="p4-panel">
+      <div class="p4-phead"><span>◆ 人物状态</span><span>_□×</span></div>
+      <div class="p4-pbody">
+        <div><div class="p4-vrow"><span>❤ 健康值</span><b>78</b></div><div class="p4-vbar"><div class="p4-vfill" style="width:78%"></div></div></div>
+        <div><div class="p4-vrow"><span>⚡ 压力值</span><b style="color:#800000">45</b></div><div class="p4-vbar"><div class="p4-vfill s" style="width:45%"></div></div></div>
+        <div><div class="p4-vrow"><span>☺ 幸福度</span><b style="color:#808000">65</b></div><div class="p4-vbar"><div class="p4-vfill h" style="width:65%"></div></div></div>
+      </div>
+    </div>
+    <div class="p4-panel" style="flex:1">
+      <div class="p4-phead"><span>◆ 财务状况</span><span>_□×</span></div>
+      <div class="p4-pbody">
+        <div class="p4-finrow"><span>现金存款</span><b class="p4-pos">¥1,285,000</b></div>
+        <div class="p4-finrow"><span>链上资产</span><b class="p4-pos">¥450,000</b></div>
+        <div class="p4-finrow"><span>月收入</span><b>¥18,000</b></div>
+        <div class="p4-finrow"><span>年支出</span><b class="p4-neg">-¥96,000</b></div>
+        <div style="margin-top:6px;padding:4px;background:#ffffe0;border:1px solid #808000">
+          <div class="p4-vrow" style="margin-bottom:2px"><span style="font-weight:700">🎯 退休进度</span><b style="color:#000080">91%</b></div>
+          <div class="p4-vbar" style="margin:0"><div class="p4-vfill" style="width:91%;background:repeating-linear-gradient(90deg,#008000 0,#008000 2px,#00c000 2px,#00c000 4px)"></div></div>
+        </div>
+        <div style="margin-top:6px;padding:4px;background:#e0e0ff;border:1px solid #000080">
+          <div style="font-weight:700;color:#000080;margin-bottom:2px">⛓ 退休路线：链上原住民</div>
+          <div class="p4-vrow" style="font-size:10px;margin-bottom:2px"><span>信念值</span><b>72/100</b></div>
+          <div class="p4-vbar" style="height:6px;margin:0"><div style="height:100%;width:72%;background:#8000ff"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="p4-panel" style="flex:1">
+      <div class="p4-phead"><span>◆ 人生日志</span><span>_□×</span></div>
+      <div class="p4-pbody">
+        <div class="p4-log-e"><span class="a">32岁</span>DeFi永续合约，发现套利窗口</div>
+        <div class="p4-log-e"><span class="a">31岁</span>大牛市！资产翻3倍</div>
+        <div class="p4-log-e"><span class="a">30岁</span>深冬熊市，资产回撤70%</div>
+        <div class="p4-log-e"><span class="a">29岁</span>All in链上，辞职全职炒币</div>
+        <div class="p4-log-e"><span class="a">28岁</span>Web3聚会，信念+15</div>
+        <div class="p4-log-e"><span class="a">27岁</span>工位摸鱼看K线</div>
+        <div class="p4-log-e"><span class="a">26岁</span>首次购入BTC@24000</div>
+        <div class="p4-log-e"><span class="a">25岁</span>升职加薪¥15K</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="p4-taskbar">
+  <button class="p4-start"><span style="font-size:14px">⊞</span> 开始</button>
+  <button class="p4-task" style="border-color:#000000 #ffffff #ffffff #000000;background:#e0e0e0">▦ Pixel_Retire_Sim...</button>
+  <button class="p4-task">📊 财务报表.xls</button>
+  <button class="p4-task">🌐 CoinGecko</button>
+  <div class="p4-tray">
+    <span>🔊</span><span>📶</span><span style="font-family:'Courier New',monospace">3:42 AM</span>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================
+     方案5：街机机台（霓虹灯、投币口、摇杆、8方向按钮、高分榜）
+     色板：#1a0033 #ff0066 #00ffcc #ffcc00 #000
+     风格：竖版街机框体、霓虹光晕、LED点阵、摇杆+6按钮布局、MARQUEE灯箱
+     ================================================================ -->
+<div class="scheme" id="s5">
+<style>
+#s5{background:#0a001a;display:flex;align-items:center;justify-content:center;padding:8px;font-family:'Press Start 2P',monospace;color:#fff;overflow:hidden}
+#s5::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at center,#2d0050 0%,#0a001a 70%);pointer-events:none}
+#s5 .p5-cab{width:100%;max-width:1100px;height:100%;max-height:720px;display:grid;grid-template-rows:56px 1fr 180px;gap:0;position:relative;z-index:1}
+/* 灯箱Marquee */
+#s5 .p5-marq{background:linear-gradient(180deg,#3d0080,#1a0033);border:4px solid #ff0066;border-radius:8px 8px 0 0;display:flex;align-items:center;justify-content:space-between;padding:0 16px;box-shadow:0 0 20px rgba(255,0,102,.6),inset 0 0 30px rgba(255,0,102,.2);position:relative;overflow:hidden}
+#s5 .p5-marq::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent 20px,rgba(255,255,255,.03) 20px,rgba(255,255,255,.03) 22px);animation:marqS 2s linear infinite}
+@keyframes marqS{0%{background-position:0 0}100%{background-position:44px 0}}
+#s5 .p5-title{font-size:18px;color:#ffcc00;text-shadow:0 0 10px #ffcc00,0 0 20px #ff8800,3px 3px 0 #804400;letter-spacing:3px;animation:neonP 1.5s ease-in-out infinite alternate}
+@keyframes neonP{0%{text-shadow:0 0 10px #ffcc00,0 0 20px #ff8800,3px 3px 0 #804400}100%{text-shadow:0 0 20px #ffcc00,0 0 40px #ff8800,0 0 60px #ff4400,3px 3px 0 #804400}}
+#s5 .p5-hi{font-size:10px;color:#00ffcc;text-shadow:0 0 8px #00ffcc;display:flex;flex-direction:column;gap:2px;text-align:right}
+#s5 .p5-hi b{color:#ffcc00;font-size:12px}
+/* 屏幕区 */
+#s5 .p5-screen-wrap{background:#000;border-left:4px solid #ff0066;border-right:4px solid #ff0066;display:grid;grid-template-columns:1fr 160px;gap:0;min-height:0;position:relative}
+#s5 .p5-screen-wrap::before,#s5 .p5-screen-wrap::after{content:'';position:absolute;top:0;bottom:0;width:8px;background:linear-gradient(90deg,rgba(255,0,102,.3),transparent)}
+#s5 .p5-screen-wrap::after{right:0;background:linear-gradient(-90deg,rgba(255,0,102,.3),transparent)}
+#s5 .p5-screen{background:#050010;position:relative;display:flex;flex-direction:column;overflow:hidden}
+#s5 .p5-hud{background:linear-gradient(90deg,#1a0033,#3d0080,#1a0033);padding:4px 10px;display:flex;justify-content:space-between;align-items:center;font-size:8px;border-bottom:2px solid #ff0066;box-shadow:0 2px 8px rgba(255,0,102,.4)}
+#s5 .p5-hud span{display:flex;gap:6px;align-items:center}
+#s5 .p5-hud .b{color:#ffcc00;text-shadow:0 0 6px #ffcc00}
+#s5 .p5-hud .c{color:#00ffcc;text-shadow:0 0 6px #00ffcc}
+#s5 .p5-scene{flex:1;position:relative;min-height:0}
+#s5 .p5-event{background:rgba(26,0,51,.95);border-top:3px solid #ffcc00;padding:8px 12px;max-height:200px;overflow-y:auto}
+#s5 .p5-evtag{display:inline-block;background:#ff0066;color:#fff;padding:2px 8px;font-size:8px;box-shadow:0 0 8px #ff0066;margin-bottom:4px;animation:evTagB 1s ease-in-out infinite}
+@keyframes evTagB{0%,100%{box-shadow:0 0 8px #ff0066}50%{box-shadow:0 0 20px #ff0066,0 0 30px #ff0066}}
+#s5 .p5-evtitle{font-size:10px;color:#ffcc00;text-shadow:0 0 6px #ffcc00;margin-bottom:4px}
+#s5 .p5-evtext{font-family:'Noto Sans SC',sans-serif;font-size:11px;line-height:1.6;color:#ddd;padding:6px;border-left:3px solid #00ffcc;margin-bottom:6px}
+#s5 .p5-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+#s5 .p5-opt{background:linear-gradient(180deg,#2d0080,#1a0033);border:2px solid #00ffcc;padding:6px 8px;font:9px/1.5 'Noto Sans SC',sans-serif;color:#fff;cursor:pointer;text-align:left;position:relative;box-shadow:0 0 8px rgba(0,255,204,.3)}
+#s5 .p5-opt .l{font-family:'Press Start 2P',monospace;font-size:7px;color:#00ffcc;display:block;margin-bottom:3px}
+#s5 .p5-opt .h{font-size:8px;color:#ffcc00;margin-top:3px;padding-top:3px;border-top:1px dashed #6600cc}
+#s5 .p5-opt.on{border-color:#ffcc00;background:linear-gradient(180deg,#6600cc,#3d0080);box-shadow:0 0 16px #ffcc00,inset 0 0 20px rgba(255,204,0,.1)}
+#s5 .p5-opt.on .l{color:#ffcc00}
+#s5 .p5-side{background:#0a001a;border-left:3px solid #ff0066;padding:6px;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+#s5 .p5-st{font-size:7px;color:#00ffcc;text-shadow:0 0 4px #00ffcc;margin-bottom:2px;border-bottom:1px solid #6600cc;padding-bottom:2px;letter-spacing:1px}
+#s5 .p5-vrow{display:flex;justify-content:space-between;font-size:7px;margin-bottom:1px}
+#s5 .p5-vbar{height:6px;background:#1a0033;border:1px solid #6600cc;margin-bottom:4px;position:relative;overflow:hidden}
+#s5 .p5-vfill{height:100%;background:linear-gradient(90deg,#00ffcc,#009988);box-shadow:0 0 6px #00ffcc}
+#s5 .p5-vfill.s{background:linear-gradient(90deg,#ff0066,#990033);box-shadow:0 0 6px #ff0066}
+#s5 .p5-vfill.h{background:linear-gradient(90deg,#ffcc00,#998800);box-shadow:0 0 6px #ffcc00}
+#s5 .p5-finrow{display:flex;justify-content:space-between;font-size:7px;padding:2px 0;border-bottom:1px dotted #3d0080}
+#s5 .p5-finrow .pos{color:#00ffcc}
+#s5 .p5-finrow .neg{color:#ff0066}
+#s5 .p5-log-e{font-size:6px;line-height:1.5;border-bottom:1px dotted #3d0080;padding:2px 0}
+#s5 .p5-log-e .a{color:#ffcc00}
+/* 控制面板 */
+#s5 .p5-ctrl{background:linear-gradient(180deg,#1a0033,#0a001a);border:4px solid #ff0066;border-top:none;border-radius:0 0 8px 8px;display:grid;grid-template-columns:120px 1fr 200px;gap:16px;padding:12px 20px;align-items:center;box-shadow:0 0 20px rgba(255,0,102,.4)}
+#s5 .p5-joystick-area{display:flex;align-items:center;gap:12px}
+#s5 .p5-joy{width:60px;height:60px;background:radial-gradient(circle,#333,#000);border-radius:50%;border:4px solid #666;position:relative;box-shadow:inset 0 -4px 8px rgba(0,0,0,.8),0 4px 8px rgba(0,0,0,.6)}
+#s5 .p5-joy::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:24px;height:24px;background:linear-gradient(180deg,#ff0066,#990033);border-radius:50%;border:3px solid #cc0044;box-shadow:0 0 10px #ff0066}
+#s5 .p5-actions{display:flex;gap:8px;align-items:center;justify-content:center;flex-wrap:wrap}
+#s5 .p5-btn{padding:10px 20px;background:linear-gradient(180deg,#00cc88,#006644);border:3px solid #00ffcc;color:#fff;font:9px 'Press Start 2P',monospace;cursor:pointer;box-shadow:0 0 12px rgba(0,255,204,.5),0 4px 0 #003322;text-shadow:0 0 4px #00ffcc;letter-spacing:1px}
+#s5 .p5-btn:active{transform:translateY(2px);box-shadow:0 0 12px rgba(0,255,204,.5),0 2px 0 #003322}
+#s5 .p5-btn.ret{background:linear-gradient(180deg,#ff0066,#990033);border-color:#ff4488;box-shadow:0 0 12px rgba(255,0,102,.5),0 4px 0 #440011;text-shadow:0 0 4px #ff0066}
+#s5 .p5-btn.ret:active{box-shadow:0 0 12px rgba(255,0,102,.5),0 2px 0 #440011}
+#s5 .p5-buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#s5 .p5-abtn{width:42px;height:42px;border-radius:50%;border:3px solid;font:9px 'Press Start 2P',monospace;cursor:pointer;color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.5),0 0 10px currentColor;display:flex;align-items:center;justify-content:center}
+#s5 .p5-abtn.a{background:linear-gradient(180deg,#ff0066,#990033);border-color:#ff4488;color:#ff0066}
+#s5 .p5-abtn.b{background:linear-gradient(180deg,#00ffcc,#008866);border-color:#44ffdd;color:#00ffcc}
+#s5 .p5-abtn.x{background:linear-gradient(180deg,#ffcc00,#998800);border-color:#ffdd44;color:#ffcc00}
+#s5 .p5-abtn.y{background:linear-gradient(180deg,#8800ff,#440099);border-color:#aa44ff;color:#8800ff}
+#s5 .p5-coin{text-align:center;font-size:8px;color:#ffcc00;text-shadow:0 0 6px #ffcc00;animation:coinB 1s ease-in-out infinite}
+@keyframes coinB{0%,100%{opacity:1}50%{opacity:.5}}
+/* 街机风格K线霓虹 */
+#s5 .arcak{position:absolute;bottom:15%;left:0;right:0;height:50%;display:flex;align-items:flex-end;gap:.8%;padding:0 3%;z-index:1}
+#s5 .arcak span{flex:1;background:linear-gradient(180deg,#00ffcc,#004433);box-shadow:0 0 8px #00ffcc,0 0 16px rgba(0,255,204,.4)}
+#s5 .arcak span.r{background:linear-gradient(180deg,#ff0066,#440022);box-shadow:0 0 8px #ff0066,0 0 16px rgba(255,0,102,.4)}
+#s5 .arcgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,255,204,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,204,.08) 1px,transparent 1px);background-size:30px 30px;z-index:0;animation:gridMove 4s linear infinite}
+@keyframes gridMove{0%{background-position:0 0}100%{background-position:0 30px}}
+#s5 .arcachar{position:absolute;bottom:8%;right:18%;width:14px;height:24px;z-index:3;filter:drop-shadow(0 0 6px #ffcc00)}
+#s5 .arcachar .h{width:8px;height:8px;background:#ffdbac;margin:0 auto;border:1px solid #000}
+#s5 .arcachar .b{width:12px;height:10px;background:#ff8800;margin:1px auto 0;border:1px solid #000}
+#s5 .arcachar .l{width:3px;height:6px;background:#222;display:inline-block}
+#s5 .arcaticker{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.9);border-top:2px solid #ff0066;padding:3px 10px;font:8px 'Press Start 2P',monospace;color:#00ffcc;display:flex;gap:20px;z-index:6;white-space:nowrap;box-shadow:0 -2px 10px rgba(255,0,102,.3)}
+#s5 .arcaticker .up{color:#00ffcc}
+#s5 .arcaticker .dn{color:#ff0066}
+</style>
+<div class="p5-cab">
+  <div class="p5-marq">
+    <div class="p5-title">★ PIXEL RETIRE ★</div>
+    <div style="font-size:9px;color:#fff;text-shadow:0 0 8px #ff0066">INSERT COIN ▸ PRESS START</div>
+    <div class="p5-hi"><span>HI-SCORE</span><b>¥9,000,000</b><span>1UP <b style="color:#00ffcc">¥1,735,000</b></span></div>
+  </div>
+  <div class="p5-screen-wrap">
+    <div class="p5-screen">
+      <div class="p5-hud">
+        <span>AGE <b class="b">32</b></span>
+        <span>JOB <b class="c">WEB3</b></span>
+        <span>❤<b class="c">78</b> ⚡<b style="color:#ff0066">45</b> ☺<b class="b">65</b></span>
+        <span>CREDIT <b class="b">99</b></span>
+        <span style="color:#ff0066">⚠ CRISIS</span>
+      </div>
+      <div class="p5-scene">
+        <div class="arcgrid"></div>
+        <div class="arcak">
+          <span style="height:35%"></span><span class="r" style="height:28%"></span><span style="height:45%"></span><span style="height:52%"></span>
+          <span class="r" style="height:38%"></span><span style="height:60%"></span><span style="height:72%"></span><span class="r" style="height:48%"></span>
+          <span style="height:65%"></span><span class="r" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+          <span class="r" style="height:50%"></span><span style="height:62%"></span>
+        </div>
+        <div class="arcachar"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+        <div style="position:absolute;bottom:18px;left:0;right:0;height:12%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.7));z-index:2"></div>
+        <div class="arcaticker">
+          <span>BTC 67234 <span class="up">↑5.2%</span></span>
+          <span>ETH 3456 <span class="up">↑2.1%</span></span>
+          <span>SOL 198 <span class="dn">↓1.3%</span></span>
+          <span style="color:#ff0066;animation:coinB 1s infinite">FTX HALT!!</span>
+        </div>
+        <div style="position:absolute;inset:0;background:radial-gradient(ellipse at center,transparent 40%,rgba(255,0,102,.15) 80%,rgba(0,0,0,.6) 100%);z-index:4;pointer-events:none;animation:crisisP 1.5s ease-in-out infinite"></div>
+        <div style="position:absolute;inset:0;background:repeating-linear-gradient(to bottom,transparent 0,transparent 2px,rgba(0,0,0,.15) 2px,rgba(0,0,0,.15) 3px);z-index:5;pointer-events:none"></div>
+      </div>
+      <div class="p5-event">
+        <span class="p5-evtag">⚠ BOSS EVENT</span>
+        <div class="p5-evtitle">EXCHANGE COLLAPSE</div>
+        <div class="p5-evtext">凌晨三点，手机震动。FTX暂停提币的推送弹出。推特上全是"资不抵债"。你60%的链上资产被困。手在发抖。伴侣嘟囔了一句"又熬夜"。</div>
+        <div class="p5-opts">
+          <button class="p5-opt on"><span class="l">[A] WITHDRAW</span>立即提币转出<span class="h">70%成功 / Gas ¥8K</span></button>
+          <button class="p5-opt"><span class="l">[B] WAIT</span>观望等消息<span class="h">-10% per hour</span></button>
+          <button class="p5-opt"><span class="l">[C] OTC</span>场外7折转出<span class="h">确定 -30%</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="p5-side">
+      <div class="p5-st">◆ STATUS</div>
+      <div><div class="p5-vrow"><span>❤ HP</span><b style="color:#00ffcc">78</b></div><div class="p5-vbar"><div class="p5-vfill" style="width:78%"></div></div></div>
+      <div><div class="p5-vrow"><span>⚡ STR</span><b style="color:#ff0066">45</b></div><div class="p5-vbar"><div class="p5-vfill s" style="width:45%"></div></div></div>
+      <div><div class="p5-vrow"><span>☺ LUK</span><b style="color:#ffcc00">65</b></div><div class="p5-vbar"><div class="p5-vfill h" style="width:65%"></div></div></div>
+      <div class="p5-st" style="margin-top:6px">◆ CASH</div>
+      <div class="p5-finrow"><span>SAVE</span><b class="pos">¥1.28M</b></div>
+      <div class="p5-finrow"><span>CHAIN</span><b class="pos">¥450K</b></div>
+      <div class="p5-finrow"><span>SAL</span><b>¥18K/M</b></div>
+      <div class="p5-finrow"><span>COST</span><b class="neg">-¥96K/Y</b></div>
+      <div style="margin-top:4px"><div class="p5-vrow" style="font-size:6px"><span>GOAL</span><b style="color:#ffcc00">91%</b></div><div class="p5-vbar" style="height:4px"><div style="height:100%;width:91%;background:linear-gradient(90deg,#ffcc00,#ff8800);box-shadow:0 0 6px #ffcc00"></div></div></div>
+      <div class="p5-st" style="margin-top:6px">◆ PATH</div>
+      <div style="font-size:7px;color:#8800ff;text-shadow:0 0 4px #8800ff;line-height:1.5">CHAIN NATIVE<br>FAITH 72/100</div>
+      <div class="p5-st" style="margin-top:6px">◆ LOG</div>
+      <div class="p5-log-e"><span class="a">32</span> DeFi arb window</div>
+      <div class="p5-log-e"><span class="a">31</span> BULL RUN ×3</div>
+      <div class="p5-log-e"><span class="a">30</span> BEAR -70%</div>
+      <div class="p5-log-e"><span class="a">29</span> ALL IN</div>
+      <div class="p5-log-e"><span class="a">28</span> Web3 meetup</div>
+    </div>
+  </div>
+  <div class="p5-ctrl">
+    <div class="p5-joystick-area">
+      <div class="p5-joy"></div>
+      <div class="p5-coin">INSERT<br>COIN<br><span style="font-size:12px">🪙</span></div>
+    </div>
+    <div class="p5-actions">
+      <button class="p5-btn">▶ NEXT YEAR</button>
+      <button class="p5-btn ret">★ RETIRE ★</button>
+    </div>
+    <div class="p5-buttons">
+      <div></div><button class="p5-abtn y">Y</button><div></div>
+      <button class="p5-abtn x">X</button><div></div><button class="p5-abtn b">B</button>
+      <div></div><button class="p5-abtn a">A</button><div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================
+     方案6：漫画分镜（黑白网点、速度线、对话框、拟声词、锯齿边）
+     色板：#000 #fff #ffd700 #ff0000（少量强调色）
+     风格：日式黑白漫画、网点纸效果、粗黑线框、爆炸形对话框、竖排文字、拟声词
+     ================================================================ -->
+<div class="scheme" id="s6">
+<style>
+#s6{background:#f5f0e0;font-family:'Noto Sans SC',sans-serif;padding:6px;display:grid;grid-template-rows:auto 1fr auto;gap:6px;image-rendering:pixelated}
+#s6 .p6-mangabar{background:#000;color:#fff;padding:6px 12px;display:flex;justify-content:space-between;align-items:center;border:3px solid #000;position:relative}
+#s6 .p6-mangabar::before{content:'';position:absolute;inset:2px;border:1px dashed #fff;pointer-events:none}
+#s6 .p6-title{font:14px 'Noto Sans SC',sans-serif;font-weight:900;letter-spacing:2px;color:#ffd700;-webkit-text-stroke:1px #000;text-shadow:2px 2px 0 #000}
+#s6 .p6-stats{display:flex;gap:12px;font-size:12px;font-weight:700}
+#s6 .p6-stats .b{color:#ffd700}
+#s6 .p6-layout{display:grid;grid-template-columns:1fr 200px;grid-template-rows:1fr auto;gap:6px;min-height:0}
+#s6 .p6-scene-panel{grid-row:1/2;grid-column:1/2;border:4px solid #000;position:relative;overflow:hidden;background:#fff;min-height:0}
+/* 漫画网点 */
+#s6 .p6-dots{position:absolute;inset:0;background-image:radial-gradient(#000 1px,transparent 1px);background-size:6px 6px;opacity:.15;z-index:0}
+#s6 .p6-sdlines{position:absolute;inset:0;z-index:0;opacity:.3;background:repeating-conic-gradient(from 0deg at 50% 80%,transparent 0deg,transparent 3deg,#000 3deg,#000 4deg)}
+#s6 .p6-scene-inner{position:absolute;inset:0;z-index:1}
+/* 漫画K线：粗黑边 */
+#s6 .mank{position:absolute;bottom:18%;left:0;right:0;height:45%;display:flex;align-items:flex-end;gap:1%;padding:0 3%;z-index:1}
+#s6 .mank span{flex:1;background:#000;border:2px solid #000;position:relative}
+#s6 .mank span::after{content:'';position:absolute;top:-8px;left:50%;width:2px;height:8px;background:#000;transform:translateX(-50%)}
+#s6 .mank span.r{background:#fff}
+#s6 .manchar{position:absolute;bottom:10%;right:16%;width:24px;height:40px;z-index:3;filter:drop-shadow(3px 3px 0 #000)}
+#s6 .manchar .h{width:14px;height:14px;background:#ffdbac;margin:0 auto;border:2px solid #000;border-radius:2px}
+#s6 .manchar .b{width:20px;height:16px;background:#ff8800;margin:2px auto 0;border:2px solid #000}
+#s6 .manchar .l{width:6px;height:8px;background:#222;display:inline-block;border:1px solid #000}
+#s6 .manticker{position:absolute;bottom:0;left:0;right:0;background:#000;color:#fff;padding:4px 10px;font:11px 'Courier New',monospace;display:flex;gap:20px;z-index:6;white-space:nowrap;border-top:3px solid #000}
+#s6 .manticker .up{color:#00ff00;font-weight:700}
+#s6 .manticker .dn{color:#ff4444;font-weight:700}
+/* 爆炸形对话框 */
+#s6 .p6-bubble{position:absolute;z-index:5}
+#s6 .p6-bubble.b1{top:8%;left:6%;background:#fff;border:3px solid #000;padding:8px 14px;font-size:11px;font-weight:700;line-height:1.4;max-width:200px;clip-path:polygon(0% 20%,10% 0%,30% 10%,50% 0%,70% 10%,90% 0%,100% 20%,95% 50%,100% 80%,90% 100%,70% 90%,50% 100%,30% 90%,10% 100%,0% 80%,5% 50%);animation:bubbleP 1s ease-in-out infinite}
+@keyframes bubbleP{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+#s6 .p6-bubble .sfx{font:18px 'Noto Sans SC',sans-serif;font-weight:900;color:#ff0000;-webkit-text-stroke:1px #000;display:block;text-align:center;margin-bottom:2px}
+/* 事件面板（漫画格） */
+#s6 .p6-event{grid-row:2/3;grid-column:1/2;border:4px solid #000;background:#fff;padding:8px 12px;display:grid;grid-template-columns:auto 1fr;gap:10px}
+#s6 .p6-evpanel{background:#000;color:#fff;padding:4px 10px;font:12px 'Noto Sans SC',sans-serif;font-weight:900;writing-mode:vertical-rl;text-orientation:upright;letter-spacing:3px;display:flex;align-items:center;justify-content:center}
+#s6 .p6-evbody{display:flex;flex-direction:column;gap:4px}
+#s6 .p6-evtitle{font-size:16px;font-weight:900;border-bottom:3px solid #000;padding-bottom:2px}
+#s6 .p6-evtext{font-size:12px;line-height:1.7;padding:4px 0;background-image:radial-gradient(#000 1px,transparent 1px);background-size:8px 8px;background-position:0 4px}
+#s6 .p6-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:4px}
+#s6 .p6-opt{background:#fff;border:3px solid #000;padding:6px 10px;font:11px 'Noto Sans SC',sans-serif;cursor:pointer;text-align:left;position:relative;box-shadow:3px 3px 0 #000}
+#s6 .p6-opt::before{content:'';position:absolute;top:-3px;left:-3px;right:-3px;bottom:-3px;border:1px dashed #000;pointer-events:none}
+#s6 .p6-opt .l{font-weight:900;font-size:12px;display:block;margin-bottom:2px}
+#s6 .p6-opt .h{font-size:10px;color:#ff0000;font-weight:700;margin-top:3px;padding-top:3px;border-top:2px dotted #000}
+#s6 .p6-opt.on{background:#ffd700;transform:translate(-2px,-2px);box-shadow:5px 5px 0 #000}
+/* 右侧数据栏（侧边小漫画格） */
+#s6 .p6-side{grid-row:1/3;grid-column:2/3;display:flex;flex-direction:column;gap:6px;min-height:0}
+#s6 .p6-subpanel{border:3px solid #000;background:#fff;padding:6px;flex:1;overflow-y:auto;position:relative}
+#s6 .p6-subpanel::after{content:'';position:absolute;inset:2px;border:1px dashed #ccc;pointer-events:none}
+#s6 .p6-pt{font:10px 'Noto Sans SC',sans-serif;font-weight:900;background:#000;color:#fff;padding:2px 6px;display:inline-block;margin-bottom:4px;letter-spacing:1px}
+#s6 .p6-vrow{display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:2px}
+#s6 .p6-vbar{height:12px;background:#fff;border:2px solid #000;position:relative;margin:2px 0 6px;overflow:hidden}
+#s6 .p6-vfill{height:100%;background:repeating-linear-gradient(45deg,#000 0,#000 3px,#333 3px,#333 6px)}
+#s6 .p6-vfill.s{background:repeating-linear-gradient(45deg,#fff 0,#fff 3px,#ccc 3px,#ccc 6px);border-right:2px solid #000}
+#s6 .p6-vfill.h{background:repeating-linear-gradient(-45deg,#000 0,#000 3px,#444 3px,#444 6px)}
+#s6 .p6-finrow{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dotted #000;font-size:11px;font-weight:700}
+#s6 .p6-pos{color:#006600}
+#s6 .p6-neg{color:#990000}
+#s6 .p6-log-e{border-bottom:1px dotted #999;padding:3px 0;font-size:10px;line-height:1.4}
+#s6 .p6-log-e .a{font-weight:900;background:#000;color:#fff;padding:0 3px;margin-right:3px}
+/* 底部动作栏 */
+#s6 .p6-actions{background:#000;border:4px solid #000;padding:6px;display:flex;gap:8px;align-items:center}
+#s6 .p6-hint{color:#fff;font-size:11px;flex:1;padding-left:8px;border-left:4px solid #ffd700}
+#s6 .p6-btn{padding:8px 24px;background:#fff;border:3px solid #000;color:#000;font:12px 'Noto Sans SC',sans-serif;font-weight:900;cursor:pointer;box-shadow:4px 4px 0 #666;position:relative;letter-spacing:1px}
+#s6 .p6-btn:hover{background:#ffd700}
+#s6 .p6-btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 #666}
+#s6 .p6-btn.ret{background:#ff0000;color:#fff;border-color:#000;box-shadow:4px 4px 0 #660000}
+#s6 .p6-btn.ret:hover{background:#ff4444}
+/* 拟声词装饰 */
+#s6 .sfx-deco{position:absolute;font:28px 'Noto Sans SC',sans-serif;font-weight:900;color:#ff0000;-webkit-text-stroke:2px #000;z-index:6;text-shadow:4px 4px 0 #000;transform:rotate(-15deg)}
+</style>
+<div class="p6-mangabar">
+  <div class="p6-title">◆ 像素退休漫畫 ◆ 第32話</div>
+  <div class="p6-stats"><span>年齢 <b class="b">32</b></span><span>職業 <b class="b">WEB3</b></span><span>都市 <b class="b">SH</b></span><span style="color:#ff0000">● 暴落警報</span></div>
+</div>
+<div class="p6-layout">
+  <div class="p6-scene-panel">
+    <div class="p6-dots"></div>
+    <div class="p6-sdlines"></div>
+    <div class="p6-scene-inner">
+      <div class="p6-bubble b1"><span class="sfx">ガーン!</span>資産が凍結!?</div>
+      <div class="sfx-deco" style="top:20%;right:8%;transform:rotate(12deg);font-size:22px;color:#000;-webkit-text-stroke:1px #fff">ドキドキ</div>
+      <div class="mank">
+        <span style="height:35%"></span><span class="r" style="height:28%"></span><span style="height:45%"></span><span style="height:52%"></span>
+        <span class="r" style="height:38%"></span><span style="height:60%"></span><span style="height:72%"></span><span class="r" style="height:48%"></span>
+        <span style="height:65%"></span><span class="r" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+        <span class="r" style="height:50%"></span><span style="height:62%"></span>
+      </div>
+      <div class="manchar"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+      <div style="position:absolute;bottom:24px;left:0;right:0;height:14%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.4));z-index:2"></div>
+      <div class="manticker">
+        <span>BTC 67234 <span class="up">↑5.2%</span></span><span>ETH 3456 <span class="up">↑2.1%</span></span>
+        <span>SOL 198 <span class="dn">↓1.3%</span></span><span style="color:#ff0000;font-weight:900">FTX 取引停止!</span>
+      </div>
+      <div style="position:absolute;inset:0;box-shadow:inset 0 0 30px rgba(0,0,0,.3);z-index:4;pointer-events:none"></div>
+    </div>
+  </div>
+  <div class="p6-event">
+    <div class="p6-evpanel">危機一髪</div>
+    <div class="p6-evbody">
+      <div class="p6-evtitle">第32话：交易所暴雷!! 深夜的惊愕</div>
+      <div class="p6-evtext">凌晨三点，手机震动。FTX暂停提币的推送弹出。推特上全是"资不抵债"。你60%的链上资产被困。手在发抖。伴侣翻了个身嘟囔"又熬夜"。你没敢回答。</div>
+      <div class="p6-opts">
+        <button class="p6-opt on"><span class="l">① 即時引出し</span>ガス代¥8,000で送金<span class="h">成功率70% / 手数料高</span></button>
+        <button class="p6-opt"><span class="l">② 一日様子見</span>公式発表待ち<span class="h">1時間毎-10%</span></button>
+        <button class="p6-opt"><span class="l">③ OTCで7割売却</span>即時着金<span class="h">確定-30%</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="p6-side">
+    <div class="p6-subpanel">
+      <div class="p6-pt">◆ 身体データ</div>
+      <div><div class="p6-vrow"><span>❤ 体力</span><b>78</b></div><div class="p6-vbar"><div class="p6-vfill" style="width:78%"></div></div></div>
+      <div><div class="p6-vrow"><span>⚡ ストレス</span><b style="color:#990000">45</b></div><div class="p6-vbar"><div class="p6-vfill s" style="width:45%"></div></div></div>
+      <div><div class="p6-vrow"><span>☺ 幸福</span><b>65</b></div><div class="p6-vbar"><div class="p6-vfill h" style="width:65%"></div></div></div>
+    </div>
+    <div class="p6-subpanel" style="flex:1">
+      <div class="p6-pt">◆ 財務状況</div>
+      <div class="p6-finrow"><span>現金</span><b class="p6-pos">¥1,285,000</b></div>
+      <div class="p6-finrow"><span>暗号資産</span><b class="p6-pos">¥450,000</b></div>
+      <div class="p6-finrow"><span>月収</span><b>¥18,000</b></div>
+      <div class="p6-finrow"><span>年支出</span><b class="p6-neg">-¥96,000</b></div>
+      <div style="margin-top:6px;padding:4px;background:#000;color:#ffd700;border:2px solid #000">
+        <div class="p6-vrow" style="font-size:10px;margin-bottom:2px;color:#fff"><span>🎯 目標</span><b>91%</b></div>
+        <div class="p6-vbar" style="margin:0;background:#333"><div style="height:100%;width:91%;background:repeating-linear-gradient(45deg,#ffd700 0,#ffd700 4px,#ffaa00 4px,#ffaa00 8px)"></div></div>
+      </div>
+      <div style="margin-top:6px;padding:4px;border:2px solid #000">
+        <div style="font-weight:900;font-size:11px;margin-bottom:2px">⛓ ルート：チェーン原住民</div>
+        <div class="p6-vrow" style="font-size:10px;margin-bottom:2px"><span>信念値</span><b>72</b></div>
+        <div class="p6-vbar" style="height:6px;margin:0"><div style="height:100%;width:72%;background:#000"></div></div>
+      </div>
+    </div>
+    <div class="p6-subpanel" style="flex:1">
+      <div class="p6-pt">◆ 人生ログ</div>
+      <div class="p6-log-e"><span class="a">32</span>DeFi裁定取引</div>
+      <div class="p6-log-e"><span class="a">31</span>強気相場×3</div>
+      <div class="p6-log-e"><span class="a">30</span>冬の時代-70%</div>
+      <div class="p6-log-e"><span class="a">29</span>オールイン</div>
+      <div class="p6-log-e"><span class="a">28</span>Web3ミートアップ</div>
+    </div>
+  </div>
+</div>
+<div class="p6-actions">
+  <span class="p6-hint">▸ 選択中：①即時引出し / 次のページへ進もう</span>
+  <button class="p6-btn">▶ 次の一年</button>
+  <button class="p6-btn ret">★ 引退宣言 ★</button>
+</div>
+</div>
+
+<!-- ================================================================
+     方案7：机甲HUD（驾驶舱仪表盘、瞄准框、雷达、扫描线、警告灯）
+     色板：#001122 #00ff88 #ff3300 #ffcc00 #00aaff
+     风格：机甲驾驶舱内视HUD、六边形/菱形面板、瞄准准星、雷达扫描、角度刻度
+     ================================================================ -->
+<div class="scheme" id="s7">
+<style>
+#s7{background:#000a14;font-family:'Orbitron','VT323','Noto Sans SC',monospace;color:#00ff88;padding:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+#s7::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent 0,transparent 2px,rgba(0,255,136,.03) 2px,rgba(0,255,136,.03) 3px);pointer-events:none;z-index:100}
+#s7 .p7-frame{position:absolute;inset:0;pointer-events:none;z-index:50;border:3px solid #00ff88;box-shadow:inset 0 0 40px rgba(0,255,136,.1),inset 0 0 4px #00ff88}
+#s7 .p7-corner{position:absolute;width:40px;height:40px;border:3px solid #00ff88;filter:drop-shadow(0 0 6px #00ff88)}
+#s7 .p7-corner.tl{top:8px;left:8px;border-right:none;border-bottom:none}
+#s7 .p7-corner.tr{top:8px;right:8px;border-left:none;border-bottom:none}
+#s7 .p7-corner.bl{bottom:8px;left:8px;border-right:none;border-top:none}
+#s7 .p7-corner.br{bottom:8px;right:8px;border-left:none;border-top:none}
+#s7 .p7-top{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;padding:8px 16px;background:linear-gradient(180deg,rgba(0,255,136,.08),transparent);border-bottom:1px solid rgba(0,255,136,.3);position:relative;z-index:10}
+#s7 .p7-callsign{font-size:14px;font-weight:700;color:#00ff88;text-shadow:0 0 8px #00ff88;letter-spacing:3px;display:flex;align-items:center;gap:8px}
+#s7 .p7-callsign::before{content:'';display:inline-block;width:10px;height:10px;background:#00ff88;border-radius:50%;box-shadow:0 0 10px #00ff88;animation:ledB 1s ease-in-out infinite}
+@keyframes ledB{0%,100%{opacity:1}50%{opacity:.4}}
+#s7 .p7-midhud{display:flex;gap:20px;align-items:center;font-size:12px;justify-content:center}
+#s7 .p7-midhud .v{font-size:18px;font-weight:700;color:#ffcc00;text-shadow:0 0 8px #ffcc00}
+#s7 .p7-midhud .u{font-size:9px;color:#00aaff;letter-spacing:2px}
+#s7 .p7-topright{display:flex;gap:12px;justify-content:flex-end;align-items:center;font-size:10px}
+#s7 .p7-warn{color:#ff3300;text-shadow:0 0 8px #ff3300;animation:ledB .6s ease-in-out infinite;font-weight:700;letter-spacing:2px;font-size:11px}
+#s7 .p7-body{flex:1;display:grid;grid-template-columns:220px 1fr 200px;gap:8px;padding:8px;min-height:0;position:relative;z-index:10}
+#s7 .p7-panel{background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.4);padding:8px;position:relative;overflow:hidden}
+#s7 .p7-panel::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#00ff88,transparent)}
+#s7 .p7-ptitle{font-size:9px;color:#00aaff;letter-spacing:3px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(0,255,136,.2);display:flex;justify-content:space-between;align-items:center;text-shadow:0 0 4px #00aaff}
+#s7 .p7-ptitle::after{content:'▸▸';color:#00ff88;font-size:8px}
+#s7 .p7-gauge{margin-bottom:10px}
+#s7 .p7-glabel{display:flex;justify-content:space-between;font-size:9px;margin-bottom:3px;letter-spacing:1px}
+#s7 .p7-gbar{height:12px;background:rgba(0,0,0,.6);border:1px solid #00ff88;position:relative;overflow:hidden;box-shadow:inset 0 0 6px rgba(0,255,136,.2)}
+#s7 .p7-gbar::before{content:'';position:absolute;inset:0;background-image:linear-gradient(90deg,transparent 0,transparent 9px,rgba(0,255,136,.3) 9px,rgba(0,255,136,.3) 10px)}
+#s7 .p7-gfill{height:100%;background:linear-gradient(90deg,#00ff88,#00cc66);box-shadow:0 0 10px #00ff88;position:relative}
+#s7 .p7-gfill::after{content:'';position:absolute;top:0;right:0;width:2px;height:100%;background:#fff;box-shadow:0 0 6px #fff}
+#s7 .p7-gfill.warn{background:linear-gradient(90deg,#ffcc00,#ff9900);box-shadow:0 0 10px #ffcc00}
+#s7 .p7-gfill.danger{background:linear-gradient(90deg,#ff3300,#cc0000);box-shadow:0 0 10px #ff3300}
+#s7 .p7-radar{width:100%;aspect-ratio:1;background:rgba(0,0,0,.6);border:2px solid #00ff88;border-radius:50%;position:relative;margin-bottom:8px;box-shadow:inset 0 0 20px rgba(0,255,136,.2)}
+#s7 .p7-radar::before{content:'';position:absolute;inset:15%;border:1px solid rgba(0,255,136,.3);border-radius:50%}
+#s7 .p7-radar::after{content:'';position:absolute;inset:30%;border:1px solid rgba(0,255,136,.2);border-radius:50%}
+#s7 .p7-sweep{position:absolute;top:50%;left:50%;width:50%;height:2px;background:linear-gradient(90deg,#00ff88,transparent);transform-origin:left center;animation:radarS 3s linear infinite;box-shadow:0 0 8px #00ff88}
+@keyframes radarS{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+#s7 .p7-center{display:flex;flex-direction:column;gap:8px;min-height:0}
+#s7 .p7-viewport{flex:1;position:relative;border:2px solid #00ff88;overflow:hidden;min-height:0;box-shadow:0 0 20px rgba(0,255,136,.2),inset 0 0 40px rgba(0,0,0,.5)}
+/* 瞄准框 */
+#s7 .p7-crosshair{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:60px;height:60px;z-index:6;pointer-events:none}
+#s7 .p7-crosshair::before,#s7 .p7-crosshair::after{content:'';position:absolute;background:#00ff88;box-shadow:0 0 6px #00ff88}
+#s7 .p7-crosshair::before{top:50%;left:0;right:0;height:1px;transform:translateY(-50%)}
+#s7 .p7-crosshair::after{left:50%;top:0;bottom:0;width:1px;transform:translateX(-50%)}
+#s7 .p7-crosshair .corner{position:absolute;width:12px;height:12px;border:2px solid #ff3300;box-shadow:0 0 8px #ff3300}
+#s7 .p7-crosshair .corner.tl{top:0;left:0;border-right:none;border-bottom:none}
+#s7 .p7-crosshair .corner.tr{top:0;right:0;border-left:none;border-bottom:none}
+#s7 .p7-crosshair .corner.bl{bottom:0;left:0;border-right:none;border-top:none}
+#s7 .p7-crosshair .corner.br{bottom:0;right:0;border-left:none;border-top:none}
+/* 机甲HUD K线 */
+#s7 .hudk{position:absolute;bottom:18%;left:0;right:0;height:45%;display:flex;align-items:flex-end;gap:.8%;padding:0 3%;z-index:1}
+#s7 .hudk span{flex:1;background:linear-gradient(180deg,#00ff88,#003322);box-shadow:0 0 6px #00ff88;clip-path:polygon(0 10%,5% 0,95% 0,100% 10%,100% 100%,0 100%)}
+#s7 .hudk span.r{background:linear-gradient(180deg,#ff3300,#330000);box-shadow:0 0 6px #ff3300}
+#s7 .hudgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,255,136,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,136,.08) 1px,transparent 1px);background-size:40px 40px;z-index:0}
+#s7 .hudchar{position:absolute;bottom:10%;right:16%;width:18px;height:30px;z-index:3;filter:drop-shadow(0 0 8px #00ff88)}
+#s7 .hudchar .h{width:10px;height:10px;background:#00ff88;margin:0 auto;border:1px solid #003322;clip-path:polygon(10% 0,90% 0,100% 30%,100% 100%,0 100%,0 30%)}
+#s7 .hudchar .b{width:16px;height:12px;background:#00cc66;margin:1px auto 0;border:1px solid #003322}
+#s7 .hudchar .l{width:5px;height:8px;background:#003322;display:inline-block}
+#s7 .hudticker{position:absolute;bottom:0;left:0;right:0;background:rgba(0,20,10,.9);border-top:1px solid #00ff88;padding:3px 10px;font:10px 'VT323',monospace;color:#00ff88;display:flex;gap:24px;z-index:6;white-space:nowrap;text-shadow:0 0 4px #00ff88}
+#s7 .hudticker .up{color:#00ff88}
+#s7 .hudticker .dn{color:#ff3300}
+#s7 .p7-tgtinfo{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);border:1px solid #ff3300;padding:4px 10px;font-size:9px;color:#ff3300;z-index:5;box-shadow:0 0 10px rgba(255,51,0,.3)}
+#s7 .p7-tgtinfo .b{color:#ffcc00;font-size:11px}
+#s7 .p7-event{background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.4);padding:8px 12px}
+#s7 .p7-evhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+#s7 .p7-evtag{background:#ff3300;color:#fff;padding:2px 10px;font-size:9px;font-weight:700;letter-spacing:2px;box-shadow:0 0 10px #ff3300;animation:evW 1s ease-in-out infinite}
+@keyframes evW{0%,100%{box-shadow:0 0 10px #ff3300}50%{box-shadow:0 0 20px #ff3300,0 0 30px #ff3300}}
+#s7 .p7-evtitle{font-size:14px;color:#ffcc00;text-shadow:0 0 6px #ffcc00;font-weight:700;letter-spacing:1px}
+#s7 .p7-evtext{font-family:'Noto Sans SC',sans-serif;font-size:12px;line-height:1.7;color:#aaffcc;padding:6px 10px;border-left:3px solid #00aaff;background:rgba(0,170,255,.05);margin-bottom:6px}
+#s7 .p7-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+#s7 .p7-opt{background:rgba(0,255,136,.05);border:1px solid #00ff88;padding:6px 10px;font:10px/1.5 'Noto Sans SC',sans-serif;color:#00ff88;cursor:pointer;text-align:left;position:relative;transition:all .1s}
+#s7 .p7-opt::before{content:'◉';position:absolute;left:4px;top:50%;transform:translateY(-50%);font-size:8px;color:#004433}
+#s7 .p7-opt .l{font-family:'Orbitron','VT323',monospace;font-size:11px;font-weight:700;color:#00ff88;display:block;padding-left:14px;letter-spacing:1px}
+#s7 .p7-opt .h{font-size:9px;color:#ffcc00;margin-top:3px;padding-top:3px;border-top:1px dashed rgba(0,255,136,.2);padding-left:14px}
+#s7 .p7-opt.on{background:rgba(255,204,0,.1);border-color:#ffcc00;box-shadow:0 0 15px rgba(255,204,0,.3)}
+#s7 .p7-opt.on::before{content:'▶';color:#ffcc00;text-shadow:0 0 6px #ffcc00}
+#s7 .p7-opt.on .l{color:#ffcc00;text-shadow:0 0 4px #ffcc00}
+#s7 .p7-actions{background:rgba(0,255,136,.04);border:1px solid rgba(0,255,136,.4);padding:8px 12px;display:flex;gap:10px;align-items:center}
+#s7 .p7-status{font-size:10px;color:#00aaff;flex:1;letter-spacing:1px}
+#s7 .p7-status .b{color:#00ff88;text-shadow:0 0 4px #00ff88}
+#s7 .p7-btn{padding:8px 22px;background:rgba(0,255,136,.1);border:2px solid #00ff88;color:#00ff88;font:11px 'Orbitron',monospace;cursor:pointer;letter-spacing:2px;box-shadow:0 0 10px rgba(0,255,136,.3),inset 0 0 10px rgba(0,255,136,.1);text-shadow:0 0 4px #00ff88;position:relative;font-weight:700}
+#s7 .p7-btn:hover{background:rgba(0,255,136,.2);box-shadow:0 0 20px rgba(0,255,136,.5)}
+#s7 .p7-btn:active{transform:translateY(1px)}
+#s7 .p7-btn.ret{border-color:#ffcc00;color:#ffcc00;box-shadow:0 0 10px rgba(255,204,0,.3);text-shadow:0 0 4px #ffcc00;background:rgba(255,204,0,.05)}
+#s7 .p7-btn.ret:hover{background:rgba(255,204,0,.15);box-shadow:0 0 20px rgba(255,204,0,.5)}
+#s7 .p7-datalog{font-size:9px;line-height:1.6;overflow-y:auto;flex:1;font-family:'VT323',monospace}
+#s7 .p7-log-e{border-bottom:1px dashed rgba(0,255,136,.2);padding:3px 0;color:#66aa88}
+#s7 .p7-log-e .a{color:#00ff88;font-weight:700;margin-right:4px}
+#s7 .p7-ticker-bar{font-size:9px;display:flex;gap:8px;flex-direction:column;margin-top:6px}
+#s7 .p7-ticker-bar .r{display:flex;justify-content:space-between;padding:1px 0;border-bottom:1px dotted rgba(0,255,136,.15)}
+#s7 .p7-ticker-bar .pos{color:#00ff88}
+#s7 .p7-ticker-bar .neg{color:#ff3300}
+</style>
+<div class="p7-corner tl"></div><div class="p7-corner tr"></div><div class="p7-corner bl"></div><div class="p7-corner br"></div>
+<div class="p7-frame"></div>
+<div class="p7-top">
+  <div class="p7-callsign">◆ MECH-PILOT <span style="color:#00aaff;font-size:10px">UNIT-032 / CHAIN-NATIVE</span></div>
+  <div class="p7-midhud">
+    <div><div class="u">AGE</div><div class="v">32</div></div>
+    <div style="width:1px;height:30px;background:rgba(0,255,136,.3)"></div>
+    <div><div class="u">FUNDS</div><div class="v" style="color:#00ff88">¥1.73M</div></div>
+    <div style="width:1px;height:30px;background:rgba(0,255,136,.3)"></div>
+    <div><div class="u">GOAL</div><div class="v" style="color:#ffcc00">91%</div></div>
+  </div>
+  <div class="p7-topright">
+    <span style="color:#00aaff">CYCLE: <b style="color:#ffcc00">STABLE</b></span>
+    <span class="p7-warn">⚠ THREAT LVL: CRITICAL</span>
+  </div>
+</div>
+<div class="p7-body">
+  <div style="display:flex;flex-direction:column;gap:8px;min-height:0">
+    <div class="p7-panel">
+      <div class="p7-ptitle">◆ VITALS</div>
+      <div class="p7-gauge"><div class="p7-glabel"><span>❤ INTEGRITY</span><b>78%</b></div><div class="p7-gbar"><div class="p7-gfill" style="width:78%"></div></div></div>
+      <div class="p7-gauge"><div class="p7-glabel"><span>⚡ STRESS LOAD</span><b style="color:#ff3300">45%</b></div><div class="p7-gbar"><div class="p7-gfill warn" style="width:45%"></div></div></div>
+      <div class="p7-gauge"><div class="p7-glabel"><span>☺ MORALE</span><b style="color:#ffcc00">65%</b></div><div class="p7-gbar"><div class="p7-gfill" style="width:65%;background:linear-gradient(90deg,#ffcc00,#ff9900);box-shadow:0 0 10px #ffcc00"></div></div></div>
+    </div>
+    <div class="p7-panel" style="flex:1;display:flex;flex-direction:column">
+      <div class="p7-ptitle">◆ RADAR / ASSETS</div>
+      <div class="p7-radar"><div class="p7-sweep"></div>
+        <div style="position:absolute;top:30%;left:60%;width:4px;height:4px;background:#ff3300;border-radius:50%;box-shadow:0 0 6px #ff3300;animation:ledB .8s infinite"></div>
+        <div style="position:absolute;top:55%;left:35%;width:4px;height:4px;background:#ffcc00;border-radius:50%;box-shadow:0 0 6px #ffcc00"></div>
+        <div style="position:absolute;top:45%;left:70%;width:3px;height:3px;background:#00ff88;border-radius:50%;box-shadow:0 0 4px #00ff88"></div>
+      </div>
+      <div class="p7-ticker-bar">
+        <div class="r"><span>BTC</span><span class="pos">67,234 ↑5.2%</span></div>
+        <div class="r"><span>ETH</span><span class="pos">3,456 ↑2.1%</span></div>
+        <div class="r"><span>SOL</span><span class="neg">198 ↓1.3%</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="p7-center">
+    <div class="p7-viewport">
+      <div class="hudgrid"></div>
+      <div class="p7-tgtinfo">
+        <div>TGT: FTX EXCHANGE</div>
+        <div>STATUS: <b class="b">HALTED</b></div>
+        <div>ASSETS AT RISK: <b class="b" style="color:#ff3300">¥450K</b></div>
+      </div>
+      <div class="hudk">
+        <span style="height:35%"></span><span class="r" style="height:28%"></span><span style="height:45%"></span><span style="height:52%"></span>
+        <span class="r" style="height:38%"></span><span style="height:60%"></span><span style="height:72%"></span><span class="r" style="height:48%"></span>
+        <span style="height:65%"></span><span class="r" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+        <span class="r" style="height:50%"></span><span style="height:62%"></span>
+      </div>
+      <div class="hudchar"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+      <div style="position:absolute;bottom:24px;left:0;right:0;height:14%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.5));z-index:2"></div>
+      <div class="hudticker">
+        <span>[SYS] MARKET FEED ACTIVE</span>
+        <span>BTC <span class="up">67234↑</span></span>
+        <span>ETH <span class="up">3456↑</span></span>
+        <span>SOL <span class="dn">198↓</span></span>
+        <span style="color:#ff3300;animation:ledB 1s infinite">[ALERT] FTX HALT</span>
+      </div>
+      <div class="p7-crosshair">
+        <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+      </div>
+      <div style="position:absolute;inset:0;box-shadow:inset 0 0 60px rgba(0,255,136,.08);z-index:4;pointer-events:none"></div>
+    </div>
+    <div class="p7-event">
+      <div class="p7-evhead">
+        <span class="p7-evtag">⚠ THREAT DETECTED</span>
+        <span class="p7-evtitle">EXCHANGE COLLAPSE — 交易所暴雷</span>
+        <span style="font-size:9px;color:#00aaff">PRIORITY: <b style="color:#ff3300">RED</b></span>
+      </div>
+      <div class="p7-evtext">凌晨三点，手机震动。FTX暂停提币的推送弹出。推特上全是"资不抵债"。你60%的链上资产被困。手在发抖。伴侣翻了个身嘟囔"又熬夜"。你没敢回答。</div>
+      <div class="p7-opts">
+        <button class="p7-opt on"><span class="l">EVASIVE MANEUVER</span>立即提币，支付高额Gas<span class="h">SUCCESS 70% / COST ¥8K</span></button>
+        <button class="p7-opt"><span class="l">HOLD POSITION</span>观望等待官方消息<span class="h">DRIFT -10%/HR</span></button>
+        <button class="p7-opt"><span class="l">EMERGENCY EJECT</span>场外7折转让OTC<span class="h">CONFIRMED -30%</span></button>
+      </div>
+    </div>
+    <div class="p7-actions">
+      <span class="p7-status">▸ SYSTEM READY · SELECTED: <b>EVASIVE MANEUVER</b> · CONFIRM TO EXECUTE</span>
+      <button class="p7-btn">▶ ADVANCE YR</button>
+      <button class="p7-btn ret">★ EJECT/RETIRE</button>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;min-height:0">
+    <div class="p7-panel" style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+      <div class="p7-ptitle">◆ FINANCE</div>
+      <div class="p7-ticker-bar">
+        <div class="r"><span>SAVINGS</span><b>¥1.28M</b></div>
+        <div class="r"><span>ON-CHAIN</span><b style="color:#ffcc00">¥450K</b></div>
+        <div class="r"><span>SALARY</span><b>¥18K/M</b></div>
+        <div class="r"><span>EXPENSES</span><b class="neg">-¥96K/Y</b></div>
+      </div>
+      <div style="margin-top:8px"><div style="font-size:9px;color:#ffcc00;margin-bottom:3px">▸ RETIREMENT PROGRESS</div><div class="p7-gbar" style="height:8px"><div style="height:100%;width:91%;background:linear-gradient(90deg,#ffcc00,#ff8800);box-shadow:0 0 10px #ffcc00"></div></div><div style="text-align:right;font-size:10px;color:#ffcc00;text-shadow:0 0 4px #ffcc00;margin-top:2px"><b>91%</b></div></div>
+    </div>
+    <div class="p7-panel" style="flex:1;display:flex;flex-direction:column">
+      <div class="p7-ptitle">◆ COMBAT LOG</div>
+      <div class="p7-datalog">
+        <div class="p7-log-e"><span class="a">[32]</span> DeFi arb detected</div>
+        <div class="p7-log-e"><span class="a">[31]</span> Bull run, ×3 gains</div>
+        <div class="p7-log-e"><span class="a">[30]</span> Bear market, -70%</div>
+        <div class="p7-log-e"><span class="a">[29]</span> ALL IN executed</div>
+        <div class="p7-log-e"><span class="a">[28]</span> Web3 rendezvous</div>
+        <div class="p7-log-e"><span class="a">[26]</span> First BTC acquired</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ================================================================
+     方案8：电路板（绿色PCB、铜线走线、焊盘、芯片、过孔、丝印）
+     色板：#0a5c2a #00ff66 #ffcc00 #ff3300 #000 #c0c0c0
+     风格：绿色PCB板、铜色走线、银色焊盘、黑色芯片、白色丝印文字、金色接插件
+     ================================================================ -->
+<div class="scheme" id="s8">
+<style>
+#s8{background:#063d1b;font-family:'VT323','Courier New',monospace;color:#00ff66;padding:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+/* PCB 网格铜底纹 */
+#s8::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,255,102,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(0,255,102,.04) 1px,transparent 1px);background-size:12px 12px;pointer-events:none;z-index:0}
+/* PCB走线条装饰 */
+#s8 .p8-trace{position:absolute;background:#c8961c;z-index:0;box-shadow:0 0 3px rgba(200,150,28,.4)}
+#s8 .p8-via{position:absolute;width:8px;height:8px;border-radius:50%;background:#c0c0c0;border:2px solid #8a7020;box-shadow:inset 0 0 3px #333;z-index:0}
+#s8 .p8-header{background:linear-gradient(180deg,#0a5c2a,#063d1b);border-bottom:3px solid #c8961c;padding:6px 14px;display:flex;justify-content:space-between;align-items:center;position:relative;z-index:10;box-shadow:0 3px 0 #042812}
+#s8 .p8-header::before{content:'';position:absolute;bottom:-3px;left:0;right:0;height:3px;background:repeating-linear-gradient(90deg,#c8961c 0,#c8961c 8px,#063d1b 8px,#063d1b 16px)}
+#s8 .p8-logo{font-size:16px;font-weight:700;color:#ffcc00;text-shadow:0 0 6px #ffcc00;letter-spacing:2px;position:relative}
+#s8 .p8-logo::before,#s8 .p8-logo::after{content:'◆';color:#ff3300;font-size:10px;vertical-align:middle;margin:0 6px}
+#s8 .p8-hstats{display:flex;gap:16px;font-size:13px;align-items:center}
+#s8 .p8-hstats .chip{background:#1a1a1a;border:2px solid #c0c0c0;padding:2px 10px;color:#00ff66;position:relative;box-shadow:inset 0 1px 0 #444}
+#s8 .p8-hstats .chip b{color:#ffcc00}
+#s8 .p8-hstats .chip.warn{border-color:#ff3300;color:#ff3300;animation:chipB 1s infinite}
+@keyframes chipB{0%,100%{box-shadow:inset 0 1px 0 #444,0 0 6px rgba(255,51,0,.3)}50%{box-shadow:inset 0 1px 0 #444,0 0 14px rgba(255,51,0,.7)}}
+#s8 .p8-body{flex:1;display:grid;grid-template-columns:210px 1fr 190px;gap:8px;padding:8px;min-height:0;position:relative;z-index:10}
+/* 芯片样式面板 */
+#s8 .p8-chip{background:#111;border:3px solid #c0c0c0;padding:0;position:relative;box-shadow:inset 0 2px 0 #444,inset 0 -2px 0 #000,3px 3px 0 #042812;overflow:hidden}
+#s8 .p8-chip::before{content:'';position:absolute;top:50%;left:-4px;width:8px;height:16px;background:#111;border:2px solid #c0c0c0;border-right:none;transform:translateY(-50%);border-radius:3px 0 0 3px}
+#s8 .p8-chip-leg{position:absolute;width:10px;height:4px;background:#c8961c;box-shadow:0 0 3px rgba(200,150,28,.5)}
+#s8 .p8-chead{background:linear-gradient(180deg,#2a2a2a,#111);border-bottom:2px solid #c8961c;padding:4px 8px 4px 14px;font-size:10px;color:#ffcc00;letter-spacing:2px;font-weight:700;display:flex;justify-content:space-between}
+#s8 .p8-chead .pin{font-size:8px;color:#888}
+#s8 .p8-cbody{padding:8px;flex:1;overflow-y:auto;position:relative}
+#s8 .p8-cbody::before{content:'';position:absolute;top:4px;left:4px;right:4px;bottom:4px;border:1px dashed rgba(0,255,102,.1);pointer-events:none}
+#s8 .p8-vrow{display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;color:#00ff66}
+#s8 .p8-vbar{height:10px;background:#042812;border:1px solid #c8961c;margin:2px 0 6px;position:relative;overflow:hidden}
+#s8 .p8-vbar::after{content:'';position:absolute;inset:0;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 3px,rgba(255,255,255,.05) 3px,rgba(255,255,255,.05) 4px)}
+#s8 .p8-vfill{height:100%;background:linear-gradient(90deg,#00ff66,#00aa44);box-shadow:0 0 6px #00ff66;position:relative}
+#s8 .p8-vfill::after{content:'';position:absolute;top:0;right:0;width:2px;height:100%;background:#fff;box-shadow:0 0 4px #fff}
+#s8 .p8-vfill.warn{background:linear-gradient(90deg,#ffcc00,#aa8800);box-shadow:0 0 6px #ffcc00}
+#s8 .p8-vfill.danger{background:linear-gradient(90deg,#ff3300,#aa0000);box-shadow:0 0 6px #ff3300}
+#s8 .p8-row{display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px dashed rgba(200,150,28,.3);font-size:12px}
+#s8 .p8-row .pos{color:#00ff66;font-weight:700}
+#s8 .p8-row .neg{color:#ff3300;font-weight:700}
+#s8 .p8-led{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px;vertical-align:middle}
+#s8 .p8-led.g{background:#00ff66;box-shadow:0 0 6px #00ff66;animation:ledOn .5s infinite}
+#s8 .p8-led.y{background:#ffcc00;box-shadow:0 0 6px #ffcc00}
+#s8 .p8-led.r{background:#ff3300;box-shadow:0 0 6px #ff3300;animation:ledOn .3s infinite}
+@keyframes ledOn{0%,100%{opacity:1}50%{opacity:.5}}
+/* 中心主区域 */
+#s8 .p8-main{display:flex;flex-direction:column;gap:8px;min-height:0}
+#s8 .p8-screen{flex:1;position:relative;border:4px solid #c8961c;background:#031a0c;min-height:0;box-shadow:inset 0 0 20px rgba(0,255,102,.1),inset 0 0 4px #00ff66;overflow:hidden}
+#s8 .p8-screen::before{content:'';position:absolute;inset:4px;border:1px solid rgba(0,255,102,.2);pointer-events:none;z-index:10}
+/* PCB K线 */
+#s8 .pcbk{position:absolute;bottom:15%;left:0;right:0;height:48%;display:flex;align-items:flex-end;gap:.8%;padding:0 3%;z-index:1}
+#s8 .pcbk span{flex:1;background:linear-gradient(180deg,#00ff66,#004422);border:1px solid #00ff66;box-shadow:0 0 4px #00ff66;position:relative}
+#s8 .pcbk span::before{content:'';position:absolute;top:-6px;left:50%;width:1px;height:6px;background:#00ff66;transform:translateX(-50%)}
+#s8 .pcbk span.r{background:linear-gradient(180deg,#ff3300,#440000);border-color:#ff3300;box-shadow:0 0 4px #ff3300}
+#s8 .pcbk span.r::before{background:#ff3300}
+#s8 .pcbgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(200,150,28,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(200,150,28,.06) 1px,transparent 1px);background-size:20px 20px;z-index:0}
+#s8 .pcbchar{position:absolute;bottom:8%;right:16%;width:16px;height:26px;z-index:3;filter:drop-shadow(0 0 4px #00ff66)}
+#s8 .pcbchar .h{width:9px;height:9px;background:#00ff66;margin:0 auto;border:1px solid #042812}
+#s8 .pcbchar .b{width:14px;height:11px;background:#00aa44;margin:1px auto 0;border:1px solid #042812}
+#s8 .pcbchar .l{width:4px;height:6px;background:#042812;display:inline-block}
+#s8 .pcbticker{position:absolute;bottom:0;left:0;right:0;background:#0a5c2a;border-top:2px solid #c8961c;padding:3px 10px;font:11px 'VT323',monospace;color:#00ff66;display:flex;gap:24px;z-index:6;white-space:nowrap}
+#s8 .pcbticker .up{color:#00ff66}
+#s8 .pcbticker .dn{color:#ff3300}
+/* 事件芯片 */
+#s8 .p8-event{background:#111;border:3px solid #c8961c;padding:0;box-shadow:3px 3px 0 #042812;position:relative}
+#s8 .p8-event .p8-chead{background:linear-gradient(180deg,#331100,#110800);border-bottom-color:#ff3300}
+#s8 .p8-event .p8-cbody{padding:8px 12px}
+#s8 .p8-evtitle{font-size:15px;color:#ff3300;text-shadow:0 0 6px #ff3300;font-weight:700;margin-bottom:4px;letter-spacing:1px}
+#s8 .p8-evtext{font-family:'Noto Sans SC',sans-serif;font-size:12px;line-height:1.7;color:#aaffbb;padding:6px 8px;background:#031a0c;border-left:3px solid #ffcc00;margin-bottom:6px}
+#s8 .p8-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+#s8 .p8-opt{background:#0a1a0e;border:2px solid #c8961c;padding:6px 10px;font:11px/1.5 'Noto Sans SC',sans-serif;color:#00ff66;cursor:pointer;text-align:left;position:relative;transition:all .1s}
+#s8 .p8-opt .l{font-family:'VT323',monospace;font-size:13px;font-weight:700;color:#ffcc00;display:block;margin-bottom:2px}
+#s8 .p8-opt .h{font-size:10px;color:#ff3300;margin-top:3px;padding-top:3px;border-top:1px dashed rgba(200,150,28,.3)}
+#s8 .p8-opt.on{background:#042812;border-color:#ffcc00;box-shadow:0 0 10px rgba(255,204,0,.3),inset 0 0 10px rgba(255,204,0,.08)}
+#s8 .p8-opt.on .l{color:#fff}
+/* 动作栏 */
+#s8 .p8-actions{background:#0a5c2a;border-top:3px solid #c8961c;padding:6px 12px;display:flex;gap:10px;align-items:center;position:relative;z-index:10}
+#s8 .p8-status{font-size:12px;color:#ffcc00;flex:1}
+#s8 .p8-status .led{display:inline-block;width:8px;height:8px;background:#00ff66;border-radius:50%;margin-right:6px;box-shadow:0 0 6px #00ff66;animation:ledOn .8s infinite;vertical-align:middle}
+#s8 .p8-btn{padding:6px 20px;background:#111;border:2px solid #00ff66;color:#00ff66;font:12px 'VT323',monospace;cursor:pointer;letter-spacing:2px;box-shadow:0 0 8px rgba(0,255,102,.3),inset 0 0 6px rgba(0,255,102,.1);font-weight:700;position:relative}
+#s8 .p8-btn:hover{background:#042812;box-shadow:0 0 14px rgba(0,255,102,.5)}
+#s8 .p8-btn:active{transform:translateY(1px)}
+#s8 .p8-btn.ret{border-color:#ffcc00;color:#ffcc00;box-shadow:0 0 8px rgba(255,204,0,.3)}
+#s8 .p8-btn.ret:hover{box-shadow:0 0 14px rgba(255,204,0,.5)}
+#s8 .p8-log-e{font-size:11px;line-height:1.5;border-bottom:1px dashed rgba(200,150,28,.2);padding:2px 0;color:#66aa77}
+#s8 .p8-log-e .a{color:#ffcc00;font-weight:700;margin-right:4px}
+/* 丝印文字 */
+#s8 .silk{position:absolute;font-size:8px;color:rgba(255,255,255,.3);font-family:'VT323',monospace;letter-spacing:1px;z-index:1;pointer-events:none}
+</style>
+<!-- PCB 走线装饰 -->
+<div class="p8-trace" style="top:0;left:40px;width:2px;height:80px"></div>
+<div class="p8-trace" style="top:80px;left:40px;width:200px;height:2px"></div>
+<div class="p8-trace" style="bottom:60px;right:30px;width:2px;height:120px"></div>
+<div class="p8-trace" style="top:200px;right:30px;width:160px;height:2px"></div>
+<div class="p8-via" style="top:76px;left:36px"></div>
+<div class="p8-via" style="top:76px;left:236px"></div>
+<div class="p8-via" style="bottom:56px;right:26px"></div>
+<div class="p8-via" style="top:196px;right:186px"></div>
+<div class="silk" style="top:4px;left:8px">PCB-REV2.077</div>
+<div class="silk" style="bottom:4px;right:8px">MADE IN PIXEL</div>
+<div class="silk" style="top:50%;left:4px;transform:rotate(-90deg);transform-origin:left">CHAIN_NATIVE_CORE</div>
+<div class="p8-header">
+  <div class="p8-logo">PCB-RETIRE-SIM</div>
+  <div class="p8-hstats">
+    <div class="chip">AGE <b>32</b></div>
+    <div class="chip">CITY <b>SH</b></div>
+    <div class="chip">CYCLE <b>STABLE</b></div>
+    <div class="chip warn"><span class="p8-led r"></span>FAULT</div>
+  </div>
+</div>
+<div class="p8-body">
+  <div style="display:flex;flex-direction:column;gap:8px;min-height:0">
+    <div class="p8-chip">
+      <div class="p8-chead"><span>SENSORS</span><span class="pin">U1</span></div>
+      <div class="p8-cbody">
+        <div><div class="p8-vrow"><span><span class="p8-led g"></span>HEALTH</span><b>78</b></div><div class="p8-vbar"><div class="p8-vfill" style="width:78%"></div></div></div>
+        <div><div class="p8-vrow"><span><span class="p8-led y"></span>STRESS</span><b style="color:#ffcc00">45</b></div><div class="p8-vbar"><div class="p8-vfill warn" style="width:45%"></div></div></div>
+        <div><div class="p8-vrow"><span><span class="p8-led g"></span>HAPPY</span><b style="color:#00ff66">65</b></div><div class="p8-vbar"><div class="p8-vfill" style="width:65%"></div></div></div>
+      </div>
+    </div>
+    <div class="p8-chip" style="flex:1;display:flex;flex-direction:column">
+      <div class="p8-chead"><span>MEMORY-BANK</span><span class="pin">U2</span></div>
+      <div class="p8-cbody" style="flex:1">
+        <div class="p8-row"><span>SAVE</span><b class="pos">¥1.28M</b></div>
+        <div class="p8-row"><span>CHAIN</span><b class="pos">¥450K</b></div>
+        <div class="p8-row"><span>SALARY</span><b>¥18K/M</b></div>
+        <div class="p8-row"><span>COST</span><b class="neg">-¥96K/Y</b></div>
+        <div style="margin-top:6px;padding:4px;background:#031a0c;border:1px solid #ffcc00">
+          <div class="p8-vrow" style="font-size:10px"><span>TARGET</span><b style="color:#ffcc00">91%</b></div>
+          <div class="p8-vbar" style="margin:0"><div style="height:100%;width:91%;background:linear-gradient(90deg,#ffcc00,#ff8800);box-shadow:0 0 6px #ffcc00"></div></div>
+        </div>
+        <div style="margin-top:6px;padding:4px;background:#031a0c;border:1px solid #00ff66">
+          <div style="font-size:10px;color:#00ff66;margin-bottom:2px">PATH: CHAIN_NATIVE</div>
+          <div class="p8-vrow" style="font-size:10px;margin-bottom:2px"><span>FAITH</span><b>72</b></div>
+          <div class="p8-vbar" style="height:6px;margin:0"><div style="height:100%;width:72%;background:#c8961c;box-shadow:0 0 4px #c8961c"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="p8-main">
+    <div class="p8-screen">
+      <div class="pcbgrid"></div>
+      <!-- 过孔装饰 -->
+      <div class="p8-via" style="top:8px;left:8px;position:absolute"></div>
+      <div class="p8-via" style="top:8px;right:8px;position:absolute"></div>
+      <div class="pcbk">
+        <span style="height:35%"></span><span class="r" style="height:28%"></span><span style="height:45%"></span><span style="height:52%"></span>
+        <span class="r" style="height:38%"></span><span style="height:60%"></span><span style="height:72%"></span><span class="r" style="height:48%"></span>
+        <span style="height:65%"></span><span class="r" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+        <span class="r" style="height:50%"></span><span style="height:62%"></span>
+      </div>
+      <div class="pcbchar"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+      <div style="position:absolute;bottom:24px;left:0;right:0;height:12%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.5));z-index:2"></div>
+      <div class="pcbticker">
+        <span>[BUS] BTC <span class="up">67234↑</span></span>
+        <span>ETH <span class="up">3456↑</span></span>
+        <span>SOL <span class="dn">198↓</span></span>
+        <span style="color:#ff3300;font-weight:700"><span class="p8-led r" style="animation:ledOn .2s infinite"></span>IRQ: FTX HALT</span>
+      </div>
+      <div style="position:absolute;top:8px;left:24px;font-size:10px;color:rgba(0,255,102,.5);z-index:5">SCOPE-CH1 2V/DIV</div>
+      <div style="position:absolute;inset:0;box-shadow:inset 0 0 30px rgba(0,0,0,.4);z-index:4;pointer-events:none"></div>
+    </div>
+    <div class="p8-event">
+      <div class="p8-chead" style="background:linear-gradient(180deg,#331100,#1a0800);border-bottom-color:#ff3300"><span style="color:#ff3300">⚠ INTERRUPT REQUEST</span><span class="pin" style="color:#ff3300">IRQ_0x2A</span></div>
+      <div class="p8-cbody">
+        <div class="p8-evtitle">EXCHANGE_FAULT / 交易所暴雷</div>
+        <div class="p8-evtext">凌晨三点，手机震动。FTX暂停提币的IRQ信号触发。推特总线上全是"资不抵债"数据包。你60%的链上资产失去响应。手在发抖。伴侣翻了个身嘟囔"又熬夜"。</div>
+        <div class="p8-opts">
+          <button class="p8-opt on"><span class="l">[A] EXEC WITHDRAW</span>立即发送提币指令<span class="h">ACK 70% / GAS ¥8K</span></button>
+          <button class="p8-opt"><span class="l">[B] NOP / WAIT</span>插入等待周期<span class="h">NACK RATE -10%/HR</span></button>
+          <button class="p8-opt"><span class="l">[C] OTC TRANSFER</span>折价70%转让<span class="h">CONFIRMED LOSS 30%</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:8px;min-height:0">
+    <div class="p8-chip" style="flex:1;display:flex;flex-direction:column">
+      <div class="p8-chead"><span>DEBUG-LOG</span><span class="pin">U3</span></div>
+      <div class="p8-cbody" style="flex:1">
+        <div class="p8-log-e"><span class="a">[32]</span> DeFi arb found</div>
+        <div class="p8-log-e"><span class="a">[31]</span> Bull irq, ×3</div>
+        <div class="p8-log-e"><span class="a">[30]</span> Bear nmi, -70%</div>
+        <div class="p8-log-e"><span class="a">[29]</span> ALL IN call</div>
+        <div class="p8-log-e"><span class="a">[28]</span> Web3 event</div>
+        <div class="p8-log-e"><span class="a">[26]</span> BTC acquired</div>
+      </div>
+    </div>
+    <div class="p8-chip">
+      <div class="p8-chead"><span>STATUS-LED</span><span class="pin">U4</span></div>
+      <div class="p8-cbody" style="display:flex;justify-content:space-around;padding:10px 6px">
+        <div style="text-align:center"><div class="p8-led g" style="width:12px;height:12px;margin:0 auto 4px"></div><div style="font-size:9px">PWR</div></div>
+        <div style="text-align:center"><div class="p8-led y" style="width:12px;height:12px;margin:0 auto 4px"></div><div style="font-size:9px">NET</div></div>
+        <div style="text-align:center"><div class="p8-led r" style="width:12px;height:12px;margin:0 auto 4px;animation:ledOn .2s infinite"></div><div style="font-size:9px">ERR</div></div>
+        <div style="text-align:center"><div class="p8-led g" style="width:12px;height:12px;margin:0 auto 4px"></div><div style="font-size:9px">CLK</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="p8-actions">
+  <span class="p8-status"><span class="led"></span>SYSTEM READY · EXEC: [A] WITHDRAW · CONFIRM TO CONTINUE</span>
+  <button class="p8-btn">▶ NEXT-CYCLE</button>
+  <button class="p8-btn ret">★ HALT/RETIRE</button>
+</div>
+</div>
+
+<!-- ================================================================
+     方案9：VHS未来派（故障艺术、色差偏移、跟踪条、录像带、噪点、REC闪烁）
+     色板：#0d0015 #ff0066 #00e5ff #ffcc00 #1a0030
+     风格：VHS录像带质感、色差(RGB分离)、水平跟踪条、雪花噪点、REC红点闪烁、蓝色屏幕
+     ================================================================ -->
+<div class="scheme" id="s9">
+<style>
+#s9{background:#0d0015;font-family:'Courier New','VT323',monospace;color:#fff;padding:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+/* VHS扫描噪点 */
+#s9::before{content:'';position:fixed;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.08'/%3E%3C/svg%3E");pointer-events:none;z-index:100;opacity:.6;animation:noiseShift .2s steps(2) infinite}
+@keyframes noiseShift{0%{transform:translate(0,0)}25%{transform:translate(-1px,1px)}50%{transform:translate(1px,-1px)}75%{transform:translate(-1px,-1px)}100%{transform:translate(1px,1px)}}
+/* VHS水平跟踪条 */
+#s9::after{content:'';position:fixed;left:0;right:0;height:3px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.15),transparent);pointer-events:none;z-index:101;animation:trackingBar 6s linear infinite;top:0}
+@keyframes trackingBar{0%{top:-5%}100%{top:105%}}
+#s9 .p9-vhsborder{position:absolute;inset:0;pointer-events:none;z-index:50;box-shadow:inset 0 0 80px rgba(0,0,0,.7)}
+#s9 .p9-topbar{background:linear-gradient(180deg,#1a0030,#0d0015);padding:6px 14px;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #ff0066;position:relative;z-index:10}
+#s9 .p9-topbar::before{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:repeating-linear-gradient(90deg,#ff0066 0,#ff0066 4px,transparent 4px,transparent 8px)}
+#s9 .p9-rec{display:flex;align-items:center;gap:6px;font-size:12px;color:#fff}
+#s9 .p9-rec-dot{width:10px;height:10px;background:#ff0000;border-radius:50%;animation:recB 1s ease-in-out infinite;box-shadow:0 0 10px #ff0000}
+@keyframes recB{0%,100%{opacity:1}50%{opacity:.3}}
+#s9 .p9-ch{font-size:14px;color:#00e5ff;text-shadow:0 0 8px #00e5ff;letter-spacing:3px;font-weight:700}
+#s9 .p9-time{font-size:14px;color:#ffcc00;text-shadow:0 0 6px #ffcc00;letter-spacing:2px;font-family:'Courier New',monospace}
+#s9 .p9-time::before{content:'◉ ';color:#ff0000;animation:recB 1s infinite}
+#s9 .p9-body{flex:1;display:grid;grid-template-columns:200px 1fr 180px;gap:6px;padding:8px;min-height:0;position:relative;z-index:10}
+/* VHS面板：轻微色差 */
+#s9 .p9-panel{background:rgba(26,0,48,.85);border:1px solid rgba(255,0,102,.4);padding:8px;position:relative;overflow:hidden;backdrop-filter:blur(2px)}
+#s9 .p9-panel::before{content:'';position:absolute;inset:0;border:1px solid rgba(0,229,255,.15);pointer-events:none;margin:2px}
+#s9 .p9-pt{font-size:9px;color:#00e5ff;text-shadow:0 0 4px #00e5ff;letter-spacing:3px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(0,229,255,.3);display:flex;justify-content:space-between}
+#s9 .p9-vrow{display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;text-shadow:1px 0 0 rgba(255,0,102,.4),-1px 0 0 rgba(0,229,255,.4)}
+#s9 .p9-vbar{height:10px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.2);margin:2px 0 6px;position:relative;overflow:hidden}
+#s9 .p9-vbar::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0,transparent 2px,rgba(255,255,255,.06) 2px,rgba(255,255,255,.06) 3px)}
+#s9 .p9-vfill{height:100%;background:linear-gradient(90deg,#00e5ff,#0088aa);box-shadow:0 0 8px #00e5ff;position:relative}
+#s9 .p9-vfill.warn{background:linear-gradient(90deg,#ffcc00,#aa8800);box-shadow:0 0 8px #ffcc00}
+#s9 .p9-vfill.danger{background:linear-gradient(90deg,#ff0066,#aa0044);box-shadow:0 0 8px #ff0066}
+#s9 .p9-row{display:flex;justify-content:space-between;padding:2px 0;border-bottom:1px dotted rgba(255,255,255,.1);font-size:11px;text-shadow:1px 0 0 rgba(255,0,102,.3)}
+#s9 .p9-row .pos{color:#00e5ff;text-shadow:0 0 4px #00e5ff}
+#s9 .p9-row .neg{color:#ff0066;text-shadow:0 0 4px #ff0066}
+#s9 .p9-main{display:flex;flex-direction:column;gap:6px;min-height:0}
+#s9 .p9-screen{flex:1;position:relative;border:2px solid #ff0066;background:#050008;min-height:0;overflow:hidden;box-shadow:0 0 20px rgba(255,0,102,.3),inset 0 0 30px rgba(0,0,0,.6)}
+/* VHS色差效果 */
+#s9 .p9-screen::before{content:'';position:absolute;inset:0;background:inherit;z-index:8;pointer-events:none;mix-blend-mode:screen;opacity:.3;animation:chromaR 4s ease-in-out infinite}
+@keyframes chromaR{0%,100%{transform:translate(0,0);opacity:.2}25%{transform:translate(2px,0);opacity:.35}50%{transform:translate(-1px,1px);opacity:.2}75%{transform:translate(1px,-1px);opacity:.3}}
+#s9 .p9-screen::after{content:'';position:absolute;inset:0;background:inherit;z-index:8;pointer-events:none;mix-blend-mode:screen;opacity:.3;animation:chromaB 4s ease-in-out infinite}
+@keyframes chromaB{0%,100%{transform:translate(0,0);opacity:.2}25%{transform:translate(-2px,0);opacity:.35}50%{transform:translate(1px,-1px);opacity:.2}75%{transform:translate(-1px,1px);opacity:.3}}
+/* VHS K线 */
+#s9 .vhsk{position:absolute;bottom:16%;left:0;right:0;height:48%;display:flex;align-items:flex-end;gap:.8%;padding:0 3%;z-index:1}
+#s9 .vhsk span{flex:1;background:linear-gradient(180deg,#00e5ff,#003344);box-shadow:0 0 6px #00e5ff;border:1px solid #00e5ff;position:relative;filter:blur(.5px)}
+#s9 .vhsk span.r{background:linear-gradient(180deg,#ff0066,#440022);box-shadow:0 0 6px #ff0066;border-color:#ff0066}
+#s9 .vhsgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(0,229,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(0,229,255,.06) 1px,transparent 1px);background-size:30px 30px;z-index:0}
+#s9 .vhschar{position:absolute;bottom:8%;right:16%;width:16px;height:28px;z-index:3;filter:drop-shadow(0 0 6px #ffcc00) blur(.3px)}
+#s9 .vhschar .h{width:9px;height:9px;background:#ffdbac;margin:0 auto;border:1px solid #000}
+#s9 .vhschar .b{width:14px;height:12px;background:#ff8800;margin:1px auto 0;border:1px solid #000}
+#s9 .vhschar .l{width:4px;height:6px;background:#222;display:inline-block}
+#s9 .vhsticker{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.85);border-top:1px solid #ff0066;padding:3px 10px;font:11px 'Courier New',monospace;color:#00e5ff;display:flex;gap:24px;z-index:6;white-space:nowrap;text-shadow:0 0 4px #00e5ff}
+#s9 .vhsticker .up{color:#00e5ff}
+#s9 .vhsticker .dn{color:#ff0066}
+#s9 .p9-play{position:absolute;top:10px;right:10px;font-size:28px;color:#00e5ff;text-shadow:0 0 12px #00e5ff;z-index:7;opacity:.6;animation:playF 2s ease-in-out infinite}
+@keyframes playF{0%,100%{opacity:.6}50%{opacity:.9}}
+#s9 .p9-event{background:rgba(26,0,48,.9);border:1px solid #ffcc00;padding:8px 12px;position:relative;box-shadow:0 0 12px rgba(255,204,0,.2)}
+#s9 .p9-evtag{display:inline-block;background:#ff0066;color:#fff;padding:2px 8px;font-size:9px;font-weight:700;letter-spacing:2px;box-shadow:0 0 8px #ff0066;animation:evGlitch 2s ease-in-out infinite;margin-bottom:4px}
+@keyframes evGlitch{0%,100%{transform:translate(0,0);box-shadow:0 0 8px #ff0066}92%{transform:translate(0,0)}93%{transform:translate(3px,1px);box-shadow:3px 0 8px #00e5ff,-3px 0 8px #ff0066}94%{transform:translate(-2px,-1px)}95%{transform:translate(0,0)}}
+#s9 .p9-evtitle{font-size:14px;color:#ffcc00;text-shadow:0 0 8px #ffcc00,2px 0 0 rgba(255,0,102,.5),-2px 0 0 rgba(0,229,255,.5);font-weight:700;letter-spacing:1px;margin-bottom:4px}
+#s9 .p9-evtext{font-family:'Noto Sans SC',sans-serif;font-size:12px;line-height:1.7;color:#ddd;padding:6px 10px;border-left:3px solid #00e5ff;background:rgba(0,229,255,.05);margin-bottom:6px;text-shadow:1px 0 0 rgba(255,0,102,.2)}
+#s9 .p9-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+#s9 .p9-opt{background:rgba(0,0,0,.5);border:1px solid rgba(255,255,255,.3);padding:6px 10px;font:11px/1.5 'Noto Sans SC',sans-serif;color:#fff;cursor:pointer;text-align:left;position:relative;transition:all .1s;text-shadow:1px 0 0 rgba(255,0,102,.3)}
+#s9 .p9-opt .l{font-family:'Courier New',monospace;font-size:12px;font-weight:700;color:#00e5ff;text-shadow:0 0 4px #00e5ff;display:block;margin-bottom:2px}
+#s9 .p9-opt .h{font-size:10px;color:#ffcc00;margin-top:3px;padding-top:3px;border-top:1px dashed rgba(255,255,255,.15)}
+#s9 .p9-opt.on{border-color:#ffcc00;background:rgba(255,204,0,.08);box-shadow:0 0 12px rgba(255,204,0,.3)}
+#s9 .p9-opt.on .l{color:#ffcc00;text-shadow:0 0 6px #ffcc00}
+#s9 .p9-actions{background:linear-gradient(0deg,#1a0030,#0d0015);border-top:2px solid #00e5ff;padding:6px 12px;display:flex;gap:10px;align-items:center;position:relative;z-index:10}
+#s9 .p9-status{font-size:11px;color:#00e5ff;flex:1;text-shadow:0 0 4px #00e5ff}
+#s9 .p9-status::before{content:'▶';color:#ffcc00;margin-right:6px;animation:playF 1s infinite}
+#s9 .p9-btn{padding:8px 20px;background:rgba(0,0,0,.6);border:2px solid #00e5ff;color:#00e5ff;font:11px 'Courier New',monospace;cursor:pointer;letter-spacing:2px;box-shadow:0 0 10px rgba(0,229,255,.3);text-shadow:0 0 4px #00e5ff;font-weight:700;position:relative}
+#s9 .p9-btn:hover{background:rgba(0,229,255,.1);box-shadow:0 0 18px rgba(0,229,255,.5)}
+#s9 .p9-btn:active{transform:translateY(1px)}
+#s9 .p9-btn.ret{border-color:#ffcc00;color:#ffcc00;box-shadow:0 0 10px rgba(255,204,0,.3);text-shadow:0 0 4px #ffcc00}
+#s9 .p9-btn.ret:hover{box-shadow:0 0 18px rgba(255,204,0,.5)}
+#s9 .p9-log-e{font-size:10px;line-height:1.5;border-bottom:1px dashed rgba(255,255,255,.1);padding:2px 0;color:#888;text-shadow:1px 0 0 rgba(255,0,102,.2)}
+#s9 .p9-log-e .a{color:#ffcc00;font-weight:700;margin-right:4px;text-shadow:0 0 4px #ffcc00}
+/* 跟踪不良偏移效果 */
+#s9 .p9-glitch{position:absolute;top:0;left:0;right:0;height:40px;background:linear-gradient(180deg,transparent,rgba(255,255,255,.03),transparent);z-index:6;pointer-events:none;animation:glitchBar 8s linear infinite}
+@keyframes glitchBar{0%{top:-10%;opacity:0}10%{opacity:0}11%{opacity:1}13%{opacity:0;50%{top:110%}}100%{top:110%}}
+</style>
+<div class="p9-vhsborder"></div>
+<div class="p9-topbar">
+  <div class="p9-rec"><div class="p9-rec-dot"></div><span>REC</span><span style="color:#888;margin:0 8px">|</span><span>SP</span><span style="color:#888;margin:0 8px">|</span><span class="p9-ch">CH.32</span></div>
+  <div style="font-size:10px;color:#ff0066;text-shadow:0 0 4px #ff0066;letter-spacing:2px">◄◄ REW · PLAY ►► · FF ►| · PAUSE || · STOP ■</div>
+  <div class="p9-time">32:00:00</div>
+</div>
+<div class="p9-body">
+  <div style="display:flex;flex-direction:column;gap:6px;min-height:0">
+    <div class="p9-panel">
+      <div class="p9-pt"><span>◆ VITALS</span><span>TRK1</span></div>
+      <div><div class="p9-vrow"><span>❤ HEALTH</span><b style="color:#00e5ff">78</b></div><div class="p9-vbar"><div class="p9-vfill" style="width:78%"></div></div></div>
+      <div><div class="p9-vrow"><span>⚡ STRESS</span><b style="color:#ffcc00">45</b></div><div class="p9-vbar"><div class="p9-vfill warn" style="width:45%"></div></div></div>
+      <div><div class="p9-vrow"><span>☺ MOOD</span><b>65</b></div><div class="p9-vbar"><div class="p9-vfill" style="width:65%"></div></div></div>
+    </div>
+    <div class="p9-panel" style="flex:1;display:flex;flex-direction:column">
+      <div class="p9-pt"><span>◆ TAPE-COUNTER</span><span>TRK2</span></div>
+      <div class="p9-cbody" style="flex:1">
+        <div class="p9-row"><span>SAVINGS</span><b class="pos">¥1.28M</b></div>
+        <div class="p9-row"><span>ON-CHAIN</span><b class="pos">¥450K</b></div>
+        <div class="p9-row"><span>SALARY</span><b>¥18K/M</b></div>
+        <div class="p9-row"><span>EXPENSES</span><b class="neg">-¥96K/Y</b></div>
+        <div style="margin-top:6px;padding:4px;background:rgba(255,204,0,.08);border:1px solid rgba(255,204,0,.4)">
+          <div class="p9-vrow" style="font-size:10px"><span>▶ PROGRESS</span><b style="color:#ffcc00">91%</b></div>
+          <div class="p9-vbar" style="margin:0"><div style="height:100%;width:91%;background:linear-gradient(90deg,#ffcc00,#ff8800);box-shadow:0 0 8px #ffcc00"></div></div>
+        </div>
+        <div style="margin-top:6px;padding:4px;background:rgba(255,0,102,.06);border:1px solid rgba(255,0,102,.3)">
+          <div style="font-size:10px;color:#ff0066;margin-bottom:2px">▶ PATH: CHAIN NATIVE</div>
+          <div class="p9-vrow" style="font-size:10px;margin-bottom:2px"><span>FAITH</span><b style="color:#ff0066">72</b></div>
+          <div class="p9-vbar" style="height:6px;margin:0"><div style="height:100%;width:72%;background:#ff0066;box-shadow:0 0 6px #ff0066"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="p9-main">
+    <div class="p9-screen">
+      <div class="p9-play">▶</div>
+      <div class="vhsgrid"></div>
+      <div class="p9-glitch"></div>
+      <div style="position:absolute;top:8px;left:10px;font-size:10px;color:rgba(255,255,255,.5);z-index:5;letter-spacing:2px">PLAY · SP · CH.32</div>
+      <div class="vhsk">
+        <span style="height:35%"></span><span class="r" style="height:28%"></span><span style="height:45%"></span><span style="height:52%"></span>
+        <span class="r" style="height:38%"></span><span style="height:60%"></span><span style="height:72%"></span><span class="r" style="height:48%"></span>
+        <span style="height:65%"></span><span class="r" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+        <span class="r" style="height:50%"></span><span style="height:62%"></span>
+      </div>
+      <div class="vhschar"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+      <div style="position:absolute;bottom:24px;left:0;right:0;height:12%;background:linear-gradient(180deg,transparent,rgba(0,0,0,.6));z-index:2"></div>
+      <div class="vhsticker">
+        <span>BTC <span class="up">67234↑</span></span>
+        <span>ETH <span class="up">3456↑</span></span>
+        <span>SOL <span class="dn">198↓</span></span>
+        <span style="color:#ff0066;font-weight:700;animation:recB 1s infinite">⚠ SIGNAL LOSS: FTX</span>
+      </div>
+      <div style="position:absolute;inset:0;box-shadow:inset 0 0 50px rgba(0,0,0,.5);z-index:4;pointer-events:none"></div>
+    </div>
+    <div class="p9-event">
+      <span class="p9-evtag">⚠ TAPE DAMAGE</span>
+      <div class="p9-evtitle">SIGNAL INTERRUPTED — 交易所暴雷</div>
+      <div class="p9-evtext">凌晨三点，手机震动。FTX暂停提币的信号突然中断。推特上全是"资不抵债"的雪花噪点。你60%的链上资产画面变成蓝屏。手在发抖。伴侣翻了个身嘟囔"又熬夜"。</div>
+      <div class="p9-opts">
+        <button class="p9-opt on"><span class="l">[1] MANUAL TRACKING</span>立即手动提币<span class="h">SIGNAL 70% / COST ¥8K</span></button>
+        <button class="p9-opt"><span class="l">[2] AUTO-REPEAT</span>等待自动恢复<span class="h">SIGNAL -10%/HR</span></button>
+        <button class="p9-opt"><span class="l">[3] TAPE COPY</span>7折转录给OTC<span class="h">QUALITY LOSS -30%</span></button>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:6px;min-height:0">
+    <div class="p9-panel" style="flex:1;display:flex;flex-direction:column">
+      <div class="p9-pt"><span>◆ CHAPTERS</span><span>LOG</span></div>
+      <div class="p9-log-e"><span class="a">[32]</span> DeFi arb</div>
+      <div class="p9-log-e"><span class="a">[31]</span> Bull run ×3</div>
+      <div class="p9-log-e"><span class="a">[30]</span> Crash -70%</div>
+      <div class="p9-log-e"><span class="a">[29]</span> All in</div>
+      <div class="p9-log-e"><span class="a">[28]</span> Web3 mix</div>
+    </div>
+    <div class="p9-panel">
+      <div class="p9-pt"><span>◆ AUDIO</span><span>Hi-Fi</span></div>
+      <div style="display:flex;flex-direction:column;gap:4px;font-size:10px;color:#aaa">
+        <div style="display:flex;align-items:center;gap:6px"><span style="width:30px">L</span><div style="flex:1;height:6px;background:rgba(255,255,255,.1);position:relative;overflow:hidden"><div style="height:100%;width:65%;background:#00e5ff;box-shadow:0 0 4px #00e5ff;animation:vuL .5s ease-in-out infinite alternate"></div></div></div>
+        <div style="display:flex;align-items:center;gap:6px"><span style="width:30px">R</span><div style="flex:1;height:6px;background:rgba(255,255,255,.1);position:relative;overflow:hidden"><div style="height:100%;width:48%;background:#ff0066;box-shadow:0 0 4px #ff0066;animation:vuR .6s ease-in-out infinite alternate"></div></div></div>
+      </div>
+    </div>
+    <style>@keyframes vuL{0%{width:40%}100%{width:75%}}@keyframes vuR{0%{width:30%}100%{width:60%}}</style>
+  </div>
+</div>
+<div class="p9-actions">
+  <span class="p9-status">PLAYING · CH.32 · TRACK SELECTED: [1] MANUAL · PRESS PLAY TO CONTINUE</span>
+  <button class="p9-btn">▶ NEXT-CH</button>
+  <button class="p9-btn ret">■ STOP/EJECT</button>
+</div>
+</div>
+
+<!-- ================================================================
+     方案10：赛博朋克霓虹（雨夜、粉紫青霓虹、中文招牌、雨丝、玻璃反射、高饱和）
+     色板：#0a0014 #ff2d95 #00e5ff #c800ff #ffcc00 #1a002a
+     风格：赛博朋克雨夜、霓虹灯牌、雨滴、地面倒影、紫粉青三色辉光、密集中文信息
+     ================================================================ -->
+<div class="scheme" id="s10">
+<style>
+#s10{background:#0a0014;font-family:'Noto Sans SC','Microsoft YaHei',sans-serif;color:#fff;padding:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+/* 雨丝层 */
+#s10::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(100deg,transparent 0,transparent 4px,rgba(0,229,255,.03) 4px,rgba(0,229,255,.03) 5px);pointer-events:none;z-index:100;animation:rain 0.5s linear infinite}
+@keyframes rain{0%{background-position:0 0}100%{background-position:20px 40px}}
+/* 全局辉光 */
+#s10::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 30% 20%,rgba(255,45,149,.08) 0%,transparent 50%),radial-gradient(ellipse at 70% 80%,rgba(0,229,255,.08) 0%,transparent 50%);pointer-events:none;z-index:99}
+#s10 .p10-wrap{flex:1;display:grid;grid-template-rows:auto 1fr auto;gap:0;min-height:0;position:relative;z-index:10}
+/* 顶部霓虹招牌栏 */
+#s10 .p10-top{background:linear-gradient(180deg,rgba(200,0,255,.15),transparent);padding:0;display:grid;grid-template-columns:auto 1fr auto;align-items:stretch;border-bottom:2px solid #ff2d95;box-shadow:0 2px 20px rgba(255,45,149,.3)}
+#s10 .p10-logo{padding:8px 20px;background:linear-gradient(135deg,#ff2d95,#c800ff);font-size:16px;font-weight:900;letter-spacing:4px;color:#fff;text-shadow:0 0 20px #ff2d95,0 0 40px #ff2d95;position:relative;clip-path:polygon(0 0,100% 0,95% 100%,0 100%)}
+#s10 .p10-nav{display:flex;gap:0;align-items:stretch;padding:4px 0}
+#s10 .p10-navitem{padding:8px 16px;font-size:11px;color:#00e5ff;text-shadow:0 0 8px #00e5ff;cursor:pointer;border-right:1px solid rgba(0,229,255,.2);display:flex;align-items:center;gap:6px;letter-spacing:1px;transition:all .2s}
+#s10 .p10-navitem:hover{background:rgba(0,229,255,.1);color:#fff;text-shadow:0 0 12px #fff}
+#s10 .p10-navitem .n{font-size:9px;color:#ff2d95;text-shadow:0 0 4px #ff2d95;font-family:'Courier New',monospace}
+#s10 .p10-alert{padding:8px 16px;background:rgba(255,45,149,.15);border-left:2px solid #ff2d95;display:flex;align-items:center;gap:8px;font-size:11px;color:#ff2d95;text-shadow:0 0 8px #ff2d95;animation:alertP 1.5s ease-in-out infinite;white-space:nowrap}
+@keyframes alertP{0%,100%{background:rgba(255,45,149,.15)}50%{background:rgba(255,45,149,.3)}}
+#s10 .p10-body{display:grid;grid-template-columns:200px 1fr 180px;gap:0;min-height:0}
+/* 霓虹面板 */
+#s10 .p10-panel{padding:10px;border-right:1px solid rgba(200,0,255,.2);background:linear-gradient(180deg,rgba(10,0,20,.95),rgba(26,0,42,.9));position:relative;overflow:hidden}
+#s10 .p10-panel.right{border-right:none;border-left:1px solid rgba(0,229,255,.2);background:linear-gradient(180deg,rgba(10,0,20,.95),rgba(26,0,42,.9))}
+#s10 .p10-pt{font-size:10px;color:#c800ff;text-shadow:0 0 8px #c800ff;letter-spacing:3px;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid rgba(200,0,255,.3);font-weight:700;display:flex;justify-content:space-between;align-items:center}
+#s10 .p10-pt::before{content:'◈';color:#ff2d95;margin-right:6px;text-shadow:0 0 6px #ff2d95}
+#s10 .p10-vrow{display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;color:#ccc}
+#s10 .p10-vbar{height:8px;background:rgba(0,0,0,.5);border:1px solid rgba(255,45,149,.3);margin:2px 0 8px;position:relative;overflow:hidden;border-radius:1px}
+#s10 .p10-vfill{height:100%;border-radius:1px;position:relative}
+#s10 .p10-vfill.hp{background:linear-gradient(90deg,#00e5ff,#0088aa);box-shadow:0 0 10px #00e5ff}
+#s10 .p10-vfill.str{background:linear-gradient(90deg,#ff2d95,#aa0044);box-shadow:0 0 10px #ff2d95}
+#s10 .p10-vfill.hap{background:linear-gradient(90deg,#ffcc00,#aa8800);box-shadow:0 0 10px #ffcc00}
+#s10 .p10-vfill.goal{background:linear-gradient(90deg,#c800ff,#8800aa);box-shadow:0 0 10px #c800ff}
+#s10 .p10-row{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px dotted rgba(255,255,255,.08);font-size:11px}
+#s10 .p10-row .pos{color:#00e5ff;text-shadow:0 0 4px #00e5ff;font-weight:700}
+#s10 .p10-row .neg{color:#ff2d95;text-shadow:0 0 4px #ff2d95;font-weight:700}
+#s10 .p10-chip{padding:6px 8px;border:1px solid rgba(0,229,255,.3);background:rgba(0,229,255,.05);margin-top:8px;font-size:10px;line-height:1.6;color:#00e5ff;text-shadow:0 0 4px #00e5ff}
+#s10 .p10-chip.mag{border-color:rgba(200,0,255,.4);background:rgba(200,0,255,.05);color:#c800ff;text-shadow:0 0 4px #c800ff}
+/* 中心区 */
+#s10 .p10-center{display:flex;flex-direction:column;min-height:0;background:#05000a;position:relative}
+#s10 .p10-center::before{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,45,149,.03) 0%,transparent 20%,transparent 80%,rgba(0,229,255,.03) 100%);pointer-events:none;z-index:2}
+#s10 .p10-hud{display:flex;justify-content:space-between;align-items:center;padding:6px 14px;background:rgba(0,0,0,.6);border-bottom:1px solid rgba(255,45,149,.3);font-size:11px;z-index:5}
+#s10 .p10-hud .hud-item{display:flex;align-items:center;gap:6px}
+#s10 .p10-hud .val{font-size:14px;font-weight:700;text-shadow:0 0 8px currentColor}
+#s10 .p10-hud .age{color:#ffcc00}
+#s10 .p10-hud .funds{color:#00e5ff}
+#s10 .p10-hud .path{color:#c800ff}
+#s10 .p10-scene{flex:1;position:relative;min-height:0;overflow:hidden}
+/* 赛博K线 */
+#s10 .cybk{position:absolute;bottom:18%;left:0;right:0;height:45%;display:flex;align-items:flex-end;gap:.8%;padding:0 3%;z-index:1}
+#s10 .cybk span{flex:1;background:linear-gradient(180deg,#00e5ff,rgba(0,229,255,.3));box-shadow:0 0 8px #00e5ff;border-top:2px solid #fff;position:relative;backdrop-filter:blur(1px)}
+#s10 .cybk span.r{background:linear-gradient(180deg,#ff2d95,rgba(255,45,149,.3));box-shadow:0 0 8px #ff2d95}
+#s10 .cybgrid{position:absolute;inset:0;background-image:linear-gradient(rgba(200,0,255,.06) 1px,transparent 1px),linear-gradient(90deg,rgba(200,0,255,.06) 1px,transparent 1px);background-size:40px 40px;z-index:0;perspective:400px;transform:perspective(400px) rotateX(20deg);transform-origin:bottom}
+#s10 .cybchar{position:absolute;bottom:8%;right:16%;width:18px;height:32px;z-index:3;filter:drop-shadow(0 0 10px #ff2d95)}
+#s10 .cybchar .h{width:10px;height:10px;background:#ffdbac;margin:0 auto;border:1px solid #000;box-shadow:0 0 6px #ffdbac}
+#s10 .cybchar .b{width:16px;height:14px;background:#ff2d95;margin:1px auto 0;border:1px solid #000;box-shadow:0 0 8px #ff2d95}
+#s10 .cybchar .l{width:5px;height:8px;background:#222;display:inline-block}
+#s10 .cybticker{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(90deg,rgba(200,0,255,.8),rgba(255,45,149,.8),rgba(0,229,255,.8));padding:4px 12px;font:10px 'Courier New',monospace;color:#fff;display:flex;gap:28px;z-index:6;white-space:nowrap;text-shadow:0 0 8px rgba(0,0,0,.8);font-weight:700;letter-spacing:1px}
+#s10 .cybticker .up{color:#fff;text-shadow:0 0 6px #00e5ff}
+#s10 .cybticker .dn{color:#fff;text-shadow:0 0 6px #ff2d95}
+/* 漂浮霓虹招牌 */
+#s10 .neon-sign{position:absolute;font-size:10px;font-weight:900;padding:4px 8px;letter-spacing:2px;z-index:4;pointer-events:none}
+#s10 .neon-sign.pink{color:#ff2d95;text-shadow:0 0 10px #ff2d95,0 0 20px #ff2d95;border:1px solid #ff2d95;box-shadow:0 0 10px rgba(255,45,149,.5),inset 0 0 10px rgba(255,45,149,.2)}
+#s10 .neon-sign.cyan{color:#00e5ff;text-shadow:0 0 10px #00e5ff,0 0 20px #00e5ff;border:1px solid #00e5ff;box-shadow:0 0 10px rgba(0,229,255,.5),inset 0 0 10px rgba(0,229,255,.2)}
+#s10 .neon-sign.purple{color:#c800ff;text-shadow:0 0 10px #c800ff,0 0 20px #c800ff;border:1px solid #c800ff;box-shadow:0 0 10px rgba(200,0,255,.5),inset 0 0 10px rgba(200,0,255,.2)}
+/* 事件区 */
+#s10 .p10-event{padding:10px 16px;background:linear-gradient(180deg,rgba(26,0,42,.95),rgba(10,0,20,.98));border-top:2px solid #c800ff;box-shadow:0 -4px 20px rgba(200,0,255,.2);position:relative;z-index:5}
+#s10 .p10-event::before{content:'';position:absolute;top:-2px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,#c800ff,#ff2d95,#00e5ff,transparent)}
+#s10 .p10-evhead{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+#s10 .p10-evtag{background:linear-gradient(135deg,#ff2d95,#c800ff);color:#fff;padding:3px 12px;font-size:10px;font-weight:900;letter-spacing:2px;box-shadow:0 0 16px #ff2d95;animation:evNeon 1.5s ease-in-out infinite;text-shadow:0 0 8px rgba(0,0,0,.5)}
+@keyframes evNeon{0%,100%{box-shadow:0 0 16px #ff2d95}50%{box-shadow:0 0 30px #ff2d95,0 0 50px #c800ff}}
+#s10 .p10-evtitle{font-size:16px;font-weight:900;background:linear-gradient(90deg,#ff2d95,#c800ff,#00e5ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:2px}
+#s10 .p10-evtext{font-size:12px;line-height:1.8;color:#ddd;padding:8px 12px;border-left:3px solid #00e5ff;background:linear-gradient(90deg,rgba(0,229,255,.06),transparent);margin-bottom:8px;box-shadow:-4px 0 12px rgba(0,229,255,.1)}
+#s10 .p10-opts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+#s10 .p10-opt{background:linear-gradient(180deg,rgba(26,0,42,.8),rgba(10,0,20,.9));border:1px solid rgba(255,255,255,.15);padding:8px 12px;font:11px/1.5 'Noto Sans SC',sans-serif;color:#ddd;cursor:pointer;text-align:left;position:relative;transition:all .2s;overflow:hidden}
+#s10 .p10-opt::before{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:#00e5ff;box-shadow:0 0 8px #00e5ff;transition:all .2s}
+#s10 .p10-opt .l{font-size:13px;font-weight:700;color:#00e5ff;text-shadow:0 0 6px #00e5ff;display:block;margin-bottom:3px;padding-left:10px}
+#s10 .p10-opt .h{font-size:10px;color:#ffcc00;margin-top:4px;padding-top:4px;border-top:1px dashed rgba(255,255,255,.1);padding-left:10px;text-shadow:0 0 4px #ffcc00}
+#s10 .p10-opt:hover{border-color:#00e5ff;background:rgba(0,229,255,.08);transform:translateY(-2px);box-shadow:0 4px 20px rgba(0,229,255,.2)}
+#s10 .p10-opt.on{border-color:#ff2d95;background:linear-gradient(135deg,rgba(255,45,149,.12),rgba(200,0,255,.08));box-shadow:0 0 20px rgba(255,45,149,.3)}
+#s10 .p10-opt.on::before{background:#ff2d95;box-shadow:0 0 8px #ff2d95}
+#s10 .p10-opt.on .l{color:#ff2d95;text-shadow:0 0 6px #ff2d95}
+/* 底部动作栏 */
+#s10 .p10-actions{background:linear-gradient(90deg,#1a002a,#0a0014,#1a002a);border-top:2px solid #00e5ff;padding:8px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 -4px 20px rgba(0,229,255,.2)}
+#s10 .p10-status{font-size:11px;color:#00e5ff;text-shadow:0 0 6px #00e5ff;flex:1;display:flex;align-items:center;gap:8px}
+#s10 .p10-status::before{content:'▸';color:#ff2d95;font-size:14px;animation:cursorB 1s step-end infinite}
+@keyframes cursorB{0%,50%{opacity:1}51%,100%{opacity:0}}
+#s10 .p10-btn{padding:10px 28px;background:transparent;border:2px solid #00e5ff;color:#00e5ff;font:12px 'Noto Sans SC',sans-serif;font-weight:900;cursor:pointer;letter-spacing:3px;box-shadow:0 0 15px rgba(0,229,255,.3),inset 0 0 15px rgba(0,229,255,.05);text-shadow:0 0 8px #00e5ff;position:relative;overflow:hidden;transition:all .2s}
+#s10 .p10-btn::after{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);transition:left .4s}
+#s10 .p10-btn:hover{background:rgba(0,229,255,.1);box-shadow:0 0 30px rgba(0,229,255,.5)}
+#s10 .p10-btn:hover::after{left:100%}
+#s10 .p10-btn:active{transform:translateY(1px)}
+#s10 .p10-btn.ret{border-color:#ff2d95;color:#ff2d95;box-shadow:0 0 15px rgba(255,45,149,.3),inset 0 0 15px rgba(255,45,149,.05);text-shadow:0 0 8px #ff2d95}
+#s10 .p10-btn.ret:hover{background:rgba(255,45,149,.1);box-shadow:0 0 30px rgba(255,45,149,.5)}
+#s10 .p10-log-e{font-size:10px;line-height:1.6;border-bottom:1px dashed rgba(255,255,255,.06);padding:3px 0;color:#777}
+#s10 .p10-log-e .a{display:inline-block;background:#c800ff;color:#fff;padding:0 4px;font-size:9px;font-weight:700;margin-right:4px;text-shadow:none}
+</style>
+<div class="p10-wrap">
+  <div class="p10-top">
+    <div class="p10-logo">像素退休</div>
+    <div class="p10-nav">
+      <div class="p10-navitem"><span class="n">[F1]</span>状态</div>
+      <div class="p10-navitem"><span class="n">[F2]</span>资产</div>
+      <div class="p10-navitem"><span class="n">[F3]</span>日志</div>
+      <div class="p10-navitem"><span class="n">[F4]</span>设置</div>
+      <div class="p10-navitem" style="margin-left:auto;color:#ffcc00;text-shadow:0 0 8px #ffcc00"><span class="n" style="color:#ffcc00">⚡</span>2077·NIGHT·CITY</div>
+    </div>
+    <div class="p10-alert">⚠ 市场崩溃警报 · SYSTEM BREACH</div>
+  </div>
+  <div class="p10-body">
+    <div class="p10-panel">
+      <div class="p10-pt"><span>神经状态</span><span>NEURO</span></div>
+      <div><div class="p10-vrow"><span>❤ 生命体征</span><b style="color:#00e5ff">78</b></div><div class="p10-vbar"><div class="p10-vfill hp" style="width:78%"></div></div></div>
+      <div><div class="p10-vrow"><span>⚡ 压力指数</span><b style="color:#ff2d95">45</b></div><div class="p10-vbar"><div class="p10-vfill str" style="width:45%"></div></div></div>
+      <div><div class="p10-vrow"><span>☺ 皮质醇</span><b style="color:#ffcc00">65</b></div><div class="p10-vbar"><div class="p10-vfill hap" style="width:65%"></div></div></div>
+      <div class="p10-chip">
+        <div style="font-weight:700;margin-bottom:4px;color:#fff">◈ 植入体：链上神经链接</div>
+        <div>型号：CHAIN-NATIVE v3.2</div>
+        <div>同步率：72%</div>
+      </div>
+      <div style="margin-top:8px">
+        <div class="p10-vrow"><span style="font-size:10px;color:#c800ff">信仰同步</span><b style="color:#c800ff">72</b></div>
+        <div class="p10-vbar"><div class="p10-vfill goal" style="width:72%"></div></div>
+      </div>
+    </div>
+    <div class="p10-center">
+      <div class="p10-hud">
+        <div class="hud-item age"><span>AGE</span><span class="val">32</span></div>
+        <div class="hud-item funds"><span>¥</span><span class="val">1,735,000</span></div>
+        <div class="hud-item path"><span>PATH</span><span class="val" style="font-size:11px">CHAIN-NATIVE</span></div>
+        <div style="color:#ff2d95;font-size:10px;text-shadow:0 0 6px #ff2d95;animation:alertP 1s infinite">● BREACH DETECTED</div>
+      </div>
+      <div class="p10-scene">
+        <!-- 霓虹招牌 -->
+        <div class="neon-sign pink" style="top:12%;left:6%;transform:rotate(-5deg);animation:neonF 2s ease-in-out infinite">BTC 67K</div>
+        <div class="neon-sign cyan" style="top:18%;right:8%;transform:rotate(3deg);animation:neonF 2.5s ease-in-out infinite .5s">ETH 3.4K</div>
+        <div class="neon-sign purple" style="top:30%;left:12%;transform:rotate(-2deg);animation:neonF 1.8s ease-in-out infinite 1s">HODL</div>
+        <style>@keyframes neonF{0%,100%{opacity:1}50%{opacity:.7}}</style>
+        <div class="cybgrid" style="position:absolute;bottom:0;left:0;right:0;height:60%;z-index:0"></div>
+        <div class="cybk">
+          <span style="height:35%"></span><span class="r" style="height:28%"></span><span style="height:45%"></span><span style="height:52%"></span>
+          <span class="r" style="height:38%"></span><span style="height:60%"></span><span style="height:72%"></span><span class="r" style="height:48%"></span>
+          <span style="height:65%"></span><span class="r" style="height:42%"></span><span style="height:55%"></span><span style="height:68%"></span>
+          <span class="r" style="height:50%"></span><span style="height:62%"></span>
+        </div>
+        <div class="cybchar"><div class="h"></div><div class="b"></div><span class="l"></span><span class="l"></span></div>
+        <!-- 地面反射 -->
+        <div style="position:absolute;bottom:24px;left:0;right:0;height:15%;background:linear-gradient(180deg,transparent,rgba(200,0,255,.08),rgba(0,229,255,.05));z-index:2;border-top:1px solid rgba(255,255,255,.05)"></div>
+        <div class="cybticker">
+          <span>BTC <span class="up">67234 ↑5.2%</span></span>
+          <span>ETH <span class="up">3456 ↑2.1%</span></span>
+          <span>SOL <span class="dn">198 ↓1.3%</span></span>
+          <span style="animation:alertP 1s infinite">⚠ FTX BREACH</span>
+        </div>
+        <div style="position:absolute;inset:0;box-shadow:inset 0 0 80px rgba(0,0,0,.7);z-index:4;pointer-events:none"></div>
+      </div>
+      <div class="p10-event">
+        <div class="p10-evhead">
+          <span class="p10-evtag">⚠ BREACH</span>
+          <span class="p10-evtitle">交易所入侵 · 暴雷</span>
+        </div>
+        <div class="p10-evtext">凌晨三点，神经链接震颤。FTX暂停提币的红色警报在视网膜上闪烁。暗网论坛全是"资不抵债"。你60%的链上资产被隔离。手在发抖。伴侣翻了个身嘟囔"又熬夜"。</div>
+        <div class="p10-opts">
+          <button class="p10-opt on"><span class="l">◈ 紧急提币</span>支付高额Gas费强行提币<span class="h">70% 成功率 / ¥8K Gas</span></button>
+          <button class="p10-opt"><span class="l">◈ 观望等待</span>不操作等待消息<span class="h">成功率 -10%/小时</span></button>
+          <button class="p10-opt"><span class="l">◈ OTC折价</span>黑市7折出手<span class="h">确定损失 30%</span></button>
+        </div>
+      </div>
+    </div>
+    <div class="p10-panel right">
+      <div class="p10-pt"><span>资产账户</span><span>EURO</span></div>
+      <div class="p10-row"><span>现金存款</span><b class="pos">¥1.28M</b></div>
+      <div class="p10-row"><span>链上资产</span><b class="pos">¥450K</b></div>
+      <div class="p10-row"><span>月收入</span><b>¥18K</b></div>
+      <div class="p10-row"><span>年支出</span><b class="neg">-¥96K</b></div>
+      <div class="p10-chip mag" style="margin-top:10px">
+        <div style="font-weight:700;margin-bottom:4px;color:#fff">◈ 退休进度</div>
+        <div class="p10-vbar" style="margin:4px 0"><div class="p10-vfill goal" style="width:91%"></div></div>
+        <div style="text-align:right;font-size:14px;color:#c800ff;font-weight:700;text-shadow:0 0 8px #c800ff">91%</div>
+      </div>
+      <div class="p10-pt" style="margin-top:12px"><span>活动日志</span><span>LOG</span></div>
+      <div class="p10-log-e"><span class="a">32</span> DeFi套利</div>
+      <div class="p10-log-e"><span class="a">31</span>牛市×3</div>
+      <div class="p10-log-e"><span class="a">30</span>崩盘-70%</div>
+      <div class="p10-log-e"><span class="a">29</span>All in</div>
+      <div class="p10-log-e"><span class="a">28</span>Web3聚会</div>
+      <div class="p10-log-e"><span class="a">26</span>首购BTC</div>
+    </div>
+  </div>
+  <div class="p10-actions">
+    <span class="p10-status">已选择 [紧急提币] · 按 SPACE 或点击按钮继续 · 时间在流逝</span>
+    <button class="p10-btn">▶ 度过今年</button>
+    <button class="p10-btn ret">★ 宣布退休</button>
+  </div>
+</div>
+</div>
+
+</div>
+
+<script>
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    document.querySelectorAll('.scheme').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on');
+    document.getElementById(t.dataset.s).classList.add('on');
+  });
+});
+// 选项点击
+document.querySelectorAll('.scheme').forEach(sch=>{
+  sch.querySelectorAll('[class*="opt"]').forEach(c=>{
+    if(c.tagName==='BUTTON'){
+      c.addEventListener('click',()=>{
+        const opts=c.parentElement.querySelectorAll('button');
+        opts.forEach(o=>o.classList.remove('on'));
+        c.classList.add('on');
+      });
+    }
+  });
+});
+</script>
+</body>
+</html>

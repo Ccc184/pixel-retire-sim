@@ -20,15 +20,17 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
     id: 'critical_illness',
     eventName: '不幸罹患重大疾病',
     description: '诊断书如晴天霹雳，你感到生命与存款的双重重压。',
-    probability: () => 0.04,
+    probability: () => 0.025, // v9从4%降到2.5%，约62%概率在38年职业生涯中遇到一次
     condition: () => true,
     effect: (state: GameState) => {
       state.hadCriticalIllness = true;
       if (state.isInsured) {
-        const log = `第${state.currentAge}岁，你生病住院，幸好有保险，几乎没花什么钱。你庆幸当年签下了那份保单。`;
-        return { log, loss: 0, aftermath: '健康警示' as AftermathType };
+        // v9：保险报销大部分但非全部——自费部分仍痛（约5万），但不至于直接破产
+        const selfPay = 50000;
+        const log = `第${state.currentAge}岁，你生病住院。保险报销了大部分费用，但自费部分加上营养费、误工费，还是掏了${selfPay}元。你看着缴费单，感慨"有保险真好，但健康才是真的好"。`;
+        return { log, loss: selfPay, aftermath: '健康警示' as AftermathType };
       } else {
-        const cost = 350000;
+        const cost = 180000;
         const log = `第${state.currentAge}岁，诊断书上的那几个字像冰锥刺进心脏。你的人生被劈成了两半：生病前，生病后。${cost}元的窟窿，你不知要用多少年才能填平。`;
         return { log, loss: cost, aftermath: '健康警示' as AftermathType };
       }
@@ -90,7 +92,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
     probability: () => 0.05,
     condition: (state) => state.parents.isAlive,
     effect: (state: GameState) => {
-      const cost = 100000;
+      const cost = 50000; // v2平衡：从10万降至5万
       const log = `第${state.currentAge}岁，电话那头传来父亲住院的消息。你放下工作连夜赶回，看着病床上缩小的身影，第一次觉得他们是那么轻，轻得像一片落叶。`;
       return { log, loss: cost };
     },
@@ -116,7 +118,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
     probability: () => 0.03,
     condition: () => true,
     effect: (state: GameState) => {
-      const loss = Math.round(state.currentSavings * 0.2);
+      const loss = Math.min(Math.round(state.currentSavings * 0.2), 50000); // v2：诈骗损失封顶5万
       const log = `第${state.currentAge}岁，你接到了一个伪装成官方的电话，你的理性和警觉在那一瞬间全部失效。回过神来，账户里的血汗钱蒸发了${loss}元。`;
       return { log, loss, aftermath: '心理阴影' as AftermathType };
     },
@@ -131,7 +133,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
     probability: () => 0.03,
     condition: (state: GameState) => state.isMarried,
     effect: (state: GameState) => {
-      const loss = Math.round(state.currentSavings * 0.5);
+      const loss = Math.round(state.currentSavings * 0.3); // v2平衡：离婚财产分割从50%降至30%
       state.isMarried = false;
       // 同步伴侣离婚状态，避免 datingStage 仍停留在 married
       if (state.partner) {
@@ -309,7 +311,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
         state.currentProfession = state.preUnemployedSalary > 20000 ? '红利行业' : '传统私企';
         state.currentMonthlySalary = Math.round(state.preUnemployedSalary * (1.0 + Math.random() * 0.2));
         state.stress = Math.max(0, state.stress - 15);
-        state.happiness = Math.min(100, state.happiness + 20);
+        state.happiness = Math.min(100, state.happiness + 15); // v2：+20→+15
         const log = `第${state.currentAge}岁，一个许久不联系的前同事突然发来消息："我们团队在招人，你要不要试试？"你抱着试试看的心态去面试，居然一路过了。薪资比之前还高了一截，offer到的那天你在楼下便利店买了瓶啤酒，一个人站在路灯下喝了很久。`;
         return { log, loss: 0 };
       } else if (roll < 0.70) {
@@ -395,7 +397,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
         state.currentProfession = '自由职业';
         state.currentMonthlySalary = newIncome;
         state.passiveIncome = Math.max(state.passiveIncome, Math.round(newIncome * 0.3));
-        state.happiness = Math.min(100, state.happiness + 20);
+        state.happiness = Math.min(100, state.happiness + 15); // v2：+20→+15
         state.stress = Math.max(0, state.stress - 15);
         const log = `第${state.currentAge}岁，你之前随手做的副业突然火了。订单/咨询一个接一个来，你一个人忙不过来。算了算月收入，居然比之前上班还高。你笑了——原来人生的转机，有时候就是无心插柳。`;
         return { log, loss: 0 };
@@ -434,8 +436,8 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
         state.isUnemployed = false;
         state.currentProfession = '实体创业';
         state.currentMonthlySalary = Math.round(state.preUnemployedSalary * (1.0 + Math.random() * 0.5));
-        state.currentSavings += 30000;
-        state.happiness = Math.min(100, state.happiness + 20);
+        state.currentSavings += 20000; // v2：从30000降至20000
+        state.happiness = Math.min(100, state.happiness + 15); // v2：+20→+15
         state.stress = Math.max(0, state.stress - 10);
         const log = `第${state.currentAge}岁，老朋友打电话说他创业了，缺个靠谱的搭档。你犹豫了很久还是去了。没想到公司发展得不错，第一年你们就实现了盈利。你感慨——人生有时候要赌一把。`;
         return { log, loss: 0 };
@@ -472,13 +474,13 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
       if (roll < 0.03) {
         // 3%概率中头奖
         const gain = 5000000;
-        state.happiness = Math.min(100, state.happiness + 40);
+        state.happiness = Math.min(100, state.happiness + 25); // v2：头奖狂喜+25（从40降低）
         state.stress = Math.max(0, state.stress - 20);
         return { log: `第${state.currentAge}岁，你路过彩票店随手买了一注，号码是机选的。第二天你发现自己中了头奖——${gain.toLocaleString()}元。你盯着屏幕看了十分钟，手在发抖。钱到账的那天，你辞了职，站在阳台上抽了人生中第一根烟。`, loss: -gain };
       } else if (roll < 0.15) {
         // 12%概率中二等奖
         const gain = 200000;
-        state.happiness = Math.min(100, state.happiness + 25);
+        state.happiness = Math.min(100, state.happiness + 18); // v2：二等奖+18（从25降低）
         return { log: `第${state.currentAge}岁，你买的那注彩票中了二等奖——${gain.toLocaleString()}元。虽然不够财务自由，但足够让你松一口气。你请了假带家人吃了一顿好的，结账的时候不用看菜单价格。`, loss: -gain };
       } else {
         // 85%概率中个小奖
@@ -504,7 +506,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
       if (roll < 0.08) {
         // 8%概率真暴富
         const gain = 200000 + Math.floor(Math.random() * 300000);
-        state.happiness = Math.min(100, state.happiness + 20);
+        state.happiness = Math.min(100, state.happiness + 15); // v2：+20→+15
         return { log: `第${state.currentAge}岁，你几年前随手买的一点股票/币/副业，突然成了风口。媒体上全是它的新闻，朋友圈人人都在讨论。你打开账户——涨了${gain.toLocaleString()}元。你关掉手机，去楼下吃了碗面，加了个蛋。`, loss: -gain };
       } else if (roll < 0.30) {
         // 22%概率小赚一笔

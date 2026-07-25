@@ -52,6 +52,8 @@ export function loadSave(): GameState | null {
     if (!state.parents || !state.friends || state.stress === undefined || !state.usedCardHistory) {
       return null;
     }
+    // 兼容旧存档：canRetire 字段可能不存在
+    if (state.canRetire === undefined) state.canRetire = false;
 
     // 清理旧存档中已失效的盲盒条目（outcomeId 已不再定义）
     const validOutcomeIds = new Set(BLIND_BOX_OUTCOMES.map(o => o.id));

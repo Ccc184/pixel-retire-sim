@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue';
 import { useGameStore } from '../../store/game.store.js';
+import { getPath, getPathSideIncome } from '../../data/retirement-paths.js';
 
 const store = useGameStore();
 const s = store.state;
@@ -8,6 +9,32 @@ const s = store.state;
 // 年度变化值（简化弹跳动画）
 const savingsDelta = ref(0);
 const showDelta = ref(false);
+
+// 当前路径信息
+const currentPath = computed(() => s.retirementPath ? getPath(s.retirementPath) : null);
+const faithLevel = computed(() => s.pathFaith ?? 0);
+
+function faithEmoji(val: number): string {
+  if (val >= 70) return '🔥';
+  if (val >= 50) return '✨';
+  if (val >= 30) return '💭';
+  return '💔';
+}
+
+function faithColor(val: number): string {
+  if (val >= 70) return '#00ff88';
+  if (val >= 50) return '#ffec27';
+  if (val >= 30) return '#ff8800';
+  return '#ff2d95';
+}
+
+function faithLabel(val: number): string {
+  if (val >= 80) return '坚定';
+  if (val >= 60) return '确信';
+  if (val >= 40) return '动摇';
+  if (val >= 20) return '怀疑';
+  return '崩塌';
+}
 
 watch(
   () => s.currentSavings,
@@ -41,9 +68,12 @@ const isBankrupt = computed(() => s.currentSavings < 0);
 const yearsToRetire = computed(() => Math.max(0, s.targetAge - s.currentAge));
 
 const annualIncome = computed(() => {
-  if (s.isUnemployed) return s.passiveIncome;
-  return s.currentMonthlySalary * 12 + s.passiveIncome;
+  const sideIncome = getPathSideIncome(s) * 12;
+  if (s.isUnemployed) return s.passiveIncome + sideIncome;
+  return s.currentMonthlySalary * 12 + s.passiveIncome + sideIncome;
 });
+
+const monthlySideIncome = computed(() => getPathSideIncome(s));
 
 const annualExpense = computed(() =>
   s.annualBaseCost + s.currentMortgageCost + s.insurancePremium,
@@ -171,26 +201,118 @@ interface FinanceChannel {
 
 const depositChannels = computed<FinanceChannel[]>(() => {
   const v = s
-  return [
-    { icon: '🏦', name: '余额宝', pct: v.bankDepositPct, color: '#00d4ff', rate: '1.5%', active: v.bankDepositPct > 0 },
-    { icon: '📋', name: '定期', pct: (v as any).fixedDepositPct || 0, color: '#00ff88', rate: '3.0%', active: ((v as any).fixedDepositPct || 0) > 0 },
-    { icon: '📊', name: '基金', pct: v.indexFundPct, color: '#ffec27', rate: '波动', active: v.indexFundPct > 0 },
-    { icon: '📈', name: '股票', pct: (v as any).stockPct || 0, color: '#ff2d95', rate: '极高', active: ((v as any).stockPct || 0) > 0 },
-    { icon: '🥇', name: '黄金', pct: (v as any).goldPct || 0, color: '#ffd700', rate: '避险', active: ((v as any).goldPct || 0) > 0 },
-    { icon: '₿', name: '比特币', pct: v.speculationPct, color: '#ff8800', rate: '疯狂', active: v.speculationPct > 0 },
-  ].filter(c => c.active)
+  const chainHoldings = (v as any).chainHoldings || 0
+  const bioPortfolio = (v as any).bioPortfolio || 0
+
+  // 总流动资产 = 现金存款 + 独立持仓（链上/生科）
+  const totalLiquid = v.currentSavings + chainHoldings + bioPortfolio
+  if (totalLiquid <= 0) {
+    return [{ icon: '🏦', name: '余额宝', pct: 100, color: '#00d4ff', rate: '1.5%', active: true }]
+  }
+
+  // 各现金渠道的实际金额（基于 currentSavings 的百分比）
+  const bankValue = v.currentSavings * (v.bankDepositPct / 100)
+  const fixedValue = v.currentSavings * ((v as any).fixedDepositPct || 0) / 100
+  const fundValue = v.currentSavings * (v.indexFundPct / 100)
+  const goldValue = v.currentSavings * ((v as any).goldPct || 0) / 100
+
+  const channels: FinanceChannel[] = []
+
+  // 现金渠道：显示占总流动资产的比例
+  if (bankValue > 0) channels.push({ icon: '🏦', name: '余额宝', pct: Math.round((bankValue / totalLiquid) * 100), color: '#00d4ff', rate: '1.5%', active: true })
+  if (fixedValue > 0) channels.push({ icon: '📋', name: '定期', pct: Math.round((fixedValue / totalLiquid) * 100), color: '#00ff88', rate: '3.0%', active: true })
+  if (fundValue > 0) channels.push({ icon: '📊', name: '基金', pct: Math.round((fundValue / totalLiquid) * 100), color: '#ffec27', rate: '波动', active: true })
+
+  if (v.retirementPath === 'chain_native') {
+    // 链上持仓是独立资产，直接按实际值占总流动资产比例显示
+    if (chainHoldings > 0) channels.push({ icon: '⛓️', name: '链上持仓', pct: Math.round((chainHoldings / totalLiquid) * 100), color: '#ff8800', rate: '极端波动', active: true })
+  } else if (v.retirementPath === 'bio_gambler') {
+    // 生科投资是独立资产，直接按实际值占总流动资产比例显示
+    if (bioPortfolio > 0) channels.push({ icon: '🧬', name: '生科投资', pct: Math.round((bioPortfolio / totalLiquid) * 100), color: '#ff2d95', rate: '高风险', active: true })
+  } else {
+    // 其他路径：股票和比特币在 currentSavings 中
+    const stockValue = v.currentSavings * ((v as any).stockPct || 0) / 100
+    const cryptoValue = v.currentSavings * (v.speculationPct / 100)
+    if (stockValue > 0) channels.push({ icon: '📈', name: '股票', pct: Math.round((stockValue / totalLiquid) * 100), color: '#ff2d95', rate: '极高', active: true })
+    if (cryptoValue > 0) channels.push({ icon: '₿', name: '比特币', pct: Math.round((cryptoValue / totalLiquid) * 100), color: '#ff8800', rate: '疯狂', active: true })
+  }
+
+  if (goldValue > 0) channels.push({ icon: '🥇', name: '黄金', pct: Math.round((goldValue / totalLiquid) * 100), color: '#ffd700', rate: '避险', active: true })
+
+  // 修正 rounding 导致总和不为 100%
+  const sum = channels.reduce((acc, c) => acc + c.pct, 0)
+  if (channels.length > 0 && sum !== 100) {
+    const maxIdx = channels.reduce((maxI, c, i) => c.pct > channels[maxI].pct ? i : maxI, 0)
+    channels[maxIdx].pct += (100 - sum)
+  }
+
+  return channels
 })
 
 const assetItems = computed<{ icon: string; name: string; value: number; active: boolean }[]>(() => {
   const v = s
-  return [
-    { icon: '🏠', name: '自住房', value: v.propertyValue, active: v.hasProperty },
-    { icon: '🏪', name: '商铺', value: (v as any).shopValue || 0, active: !!(v as any).hasShop },
-    { icon: '🚗', name: '汽车', value: v.hasCar ? 80000 : 0, active: v.hasCar },
-  ].filter(a => a.active)
+  const items: { icon: string; name: string; value: number; active: boolean }[] = []
+
+  // 金融资产（流动）
+  if (v.currentSavings > 0 || v.currentSavings < 0) {
+    items.push({ icon: '💵', name: '现金存款', value: v.currentSavings, active: true })
+  }
+  const chainHoldings = (v as any).chainHoldings || 0
+  if (chainHoldings > 0) {
+    items.push({ icon: '⛓️', name: '链上持仓', value: chainHoldings, active: true })
+  }
+  const bioPortfolio = (v as any).bioPortfolio || 0
+  if (bioPortfolio > 0) {
+    items.push({ icon: '🧬', name: '生科投资', value: bioPortfolio, active: true })
+  }
+
+  // 不动产
+  if (v.hasProperty && v.propertyValue > 0) {
+    items.push({ icon: '🏠', name: '自住房产', value: v.propertyValue, active: true })
+  }
+  const shopValue = (v as any).shopValue || 0
+  if (shopValue > 0) {
+    items.push({ icon: '🏪', name: '商铺产权', value: shopValue, active: true })
+  }
+
+  // 车辆（使用实际carValue字段）
+  const carValue = (v as any).carValue || 0
+  if (v.hasCar && carValue > 0) {
+    items.push({ icon: '🚗', name: '车辆市值', value: carValue, active: true })
+  }
+
+  // 路径专属经营资产
+  // 银发创业：生意估值 = 月营收 × 12 × 2倍PE（服务业估值）
+  if (v.retirementPath === 'silver_economy') {
+    const sb = (v as any).silverBusiness
+    if (sb && sb.monthlyRevenue > 0) {
+      const businessValue = Math.round(sb.monthlyRevenue * 12 * 2)
+      items.push({ icon: '👴', name: '银发生意估值', value: businessValue, active: true })
+    }
+  }
+  // 超级IP：无形资产估值 = 粉丝数 × 单粉价值（按粉丝阶段）
+  if (v.retirementPath === 'super_ip') {
+    const followers = (v as any).ipFollowers || 0
+    const reputation = (v as any).ipReputation || 0
+    if (followers > 1000) {
+      // 单粉价值：1万粉以下约2元/粉，10万粉约5元/粉，100万粉约10元/粉
+      let perFanValue = 2
+      if (followers > 1000000) perFanValue = 10
+      else if (followers > 100000) perFanValue = 5
+      const ipValue = Math.round(followers * perFanValue * (reputation / 100))
+      if (ipValue > 0) {
+        items.push({ icon: '⭐', name: 'IP无形资产', value: ipValue, active: true })
+      }
+    }
+  }
+
+  return items
 })
 
-const totalAssetValue = computed(() => assetItems.value.reduce((sum, a) => sum + a.value, 0))
+const totalNetWorth = computed(() => {
+  // 总资产 = 所有资产项价值之和（现金存款可以是负数即负债）
+  return assetItems.value.reduce((sum, a) => sum + a.value, 0)
+})
 
 function formatWan(n: number): string {
   const v = Math.round(n)
@@ -249,205 +371,243 @@ const relOpen = ref(false);
 </script>
 
 <template>
-  <div class="stats-panel pixel-panel">
-    <!-- 顶部：第X岁 -->
-    <div class="age-header">
-      <span class="age-deco left">◢</span>
-      <h2 class="age-title">第{{ s.currentAge }}岁</h2>
-      <span class="age-deco right">◤</span>
-    </div>
-
-    <!-- 核心3指标 -->
-    <div class="core-stats">
-      <!-- 存款 -->
-      <div class="core-row savings-row" :class="{ bankrupt: isBankrupt }">
-        <span class="core-icon">💰</span>
-        <span class="core-label">存款</span>
-        <span class="core-value" :class="isBankrupt ? 'text-red' : 'text-green'">
-          {{ formatMoney(s.currentSavings) }}
-        </span>
-        <span
-          v-if="showDelta && savingsDelta !== 0"
-          class="delta-badge"
-          :class="savingsDelta > 0 ? 'delta-up' : 'delta-down'"
+  <div class="stats-panel">
+    <!-- Panel 1: 身心状态 -->
+    <div class="panel">
+      <div class="panel-title">身心状态</div>
+      <div class="wb-list">
+        <div
+          class="wb-row"
+          @mouseenter="wbHover = 'health'"
+          @mouseleave="wbHover = null"
         >
-          {{ savingsDelta > 0 ? '+' : '' }}{{ formatMoney(savingsDelta) }}
-        </span>
-      </div>
+          <span class="wb-label">健康</span>
+          <div class="wb-track">
+            <div
+              class="wb-fill"
+              :style="{
+                width: Math.max(0, Math.min(100, healthLevel)) + '%',
+                background: barColor(healthLevel, 'health'),
+              }"
+            />
+          </div>
+          <span class="wb-value" :style="{ color: barColor(healthLevel, 'health') }">
+            {{ Math.round(healthLevel) }}
+          </span>
+          <span class="wb-emoji">{{ healthEmoji(healthLevel) }}</span>
+          <Transition name="wb-tip">
+            <div v-if="wbHover === 'health' && wellbeingSources.health.length > 0" class="wb-tooltip">
+              <div class="wb-tip-title">上年健康变化来源</div>
+              <div v-for="(src, si) in wellbeingSources.health" :key="'hh-' + si" class="wb-tip-row">
+                <span class="wb-tip-src">{{ src.source }}</span>
+                <span class="wb-tip-val" :class="src.val > 0 ? 'pos' : 'neg'">{{ formatDelta(src.val) }}</span>
+              </div>
+            </div>
+          </Transition>
+        </div>
 
-      <!-- 年收入 -->
-      <div class="core-row">
-        <span class="core-icon">📈</span>
-        <span class="core-label">年收入</span>
-        <span class="core-value text-blue">{{ formatMoney(annualIncome) }}</span>
-      </div>
+        <div
+          class="wb-row"
+          @mouseenter="wbHover = 'stress'"
+          @mouseleave="wbHover = null"
+        >
+          <span class="wb-label">压力</span>
+          <div class="wb-track">
+            <div
+              class="wb-fill"
+              :style="{
+                width: Math.max(0, Math.min(100, stressLevel)) + '%',
+                background: barColor(stressLevel, 'stress'),
+              }"
+            />
+          </div>
+          <span class="wb-value" :style="{ color: barColor(stressLevel, 'stress') }">
+            {{ Math.round(stressLevel) }}
+          </span>
+          <span class="wb-emoji">{{ stressEmoji(stressLevel) }}</span>
+          <Transition name="wb-tip">
+            <div v-if="wbHover === 'stress' && wellbeingSources.stress.length > 0" class="wb-tooltip">
+              <div class="wb-tip-title">上年压力变化来源</div>
+              <div v-for="(src, si) in wellbeingSources.stress" :key="'ss-' + si" class="wb-tip-row">
+                <span class="wb-tip-src">{{ src.source }}</span>
+                <span class="wb-tip-val" :class="src.val > 0 ? 'neg' : 'pos'">{{ formatDelta(src.val) }}</span>
+              </div>
+            </div>
+          </Transition>
+        </div>
 
-      <!-- 年支出 -->
-      <div class="core-row">
-        <span class="core-icon">📉</span>
-        <span class="core-label">年支出</span>
-        <span class="core-value text-orange">{{ formatMoney(annualExpense) }}</span>
+        <div
+          class="wb-row"
+          @mouseenter="wbHover = 'happiness'"
+          @mouseleave="wbHover = null"
+        >
+          <span class="wb-label">幸福</span>
+          <div class="wb-track">
+            <div
+              class="wb-fill"
+              :style="{
+                width: Math.max(0, Math.min(100, happinessLevel)) + '%',
+                background: barColor(happinessLevel, 'happiness'),
+              }"
+            />
+          </div>
+          <span class="wb-value" :style="{ color: barColor(happinessLevel, 'happiness') }">
+            {{ Math.round(happinessLevel) }}
+          </span>
+          <span class="wb-emoji">{{ happinessEmoji(happinessLevel) }}</span>
+          <Transition name="wb-tip">
+            <div v-if="wbHover === 'happiness' && wellbeingSources.happiness.length > 0" class="wb-tooltip">
+              <div class="wb-tip-title">上年幸福变化来源</div>
+              <div v-for="(src, si) in wellbeingSources.happiness" :key="'sh-' + si" class="wb-tip-row">
+                <span class="wb-tip-src">{{ src.source }}</span>
+                <span class="wb-tip-val" :class="src.val > 0 ? 'pos' : 'neg'">{{ formatDelta(src.val) }}</span>
+              </div>
+            </div>
+          </Transition>
+        </div>
       </div>
     </div>
 
-    <!-- 退休信息 -->
-    <div class="retire-info">
-      <span>距退休：{{ yearsToRetire }}年</span>
-      <span class="retire-divider">│</span>
-      <span>目标：{{ formatMoneyWan(s.targetWealth) }}</span>
-    </div>
+    <!-- Panel 2: 财务总览 -->
+    <div class="panel">
+      <div class="panel-title">财务总览</div>
+      <div class="finance-list">
+        <div class="finance-row savings-row" :class="{ bankrupt: isBankrupt }">
+          <span class="finance-label">存款</span>
+          <span class="finance-value" :class="isBankrupt ? 'text-red' : 'text-green'">
+            {{ formatMoney(s.currentSavings) }}
+          </span>
+          <span
+            v-if="showDelta && savingsDelta !== 0"
+            class="delta-badge"
+            :class="savingsDelta > 0 ? 'delta-up' : 'delta-down'"
+          >
+            {{ savingsDelta > 0 ? '+' : '' }}{{ formatMoney(savingsDelta) }}
+          </span>
+        </div>
 
-    <!-- 理财状态栏（常驻） -->
-    <div class="finance-status-section">
-      <!-- 存款分布（始终显示） -->
-      <div class="finance-mini">
-        <div class="finance-mini-title">💰 存款分布</div>
-        <div class="finance-bar-row">
+        <!-- 总资产（高亮显示） -->
+        <div class="finance-row net-worth-row">
+          <span class="finance-label">总资产</span>
+          <span class="finance-value text-blue" style="font-weight: 700; font-size: 1.05em;">
+            {{ formatMoneyWan(totalNetWorth) }}
+          </span>
+        </div>
+
+        <div class="finance-row">
+          <span class="finance-label">年收入</span>
+          <span class="finance-value text-blue">{{ formatMoney(annualIncome) }}</span>
+        </div>
+
+        <div v-if="monthlySideIncome > 0" class="finance-row">
+          <span class="finance-label">副业/月</span>
+          <span class="finance-value text-green">{{ formatMoney(monthlySideIncome) }}</span>
+        </div>
+
+        <div class="finance-row">
+          <span class="finance-label">年支出</span>
+          <span class="finance-value text-orange">{{ formatMoney(annualExpense) }}</span>
+        </div>
+      </div>
+
+      <div class="target-section">
+        <div class="target-info">
+          <span>距退休 {{ yearsToRetire }}年</span>
+          <span>目标 {{ formatMoneyWan(s.targetWealth) }}</span>
+        </div>
+        <div class="target-bar">
           <div
-            v-for="(ch, ci) in depositChannels"
-            :key="'dc-' + ci"
-            class="finance-bar-seg"
-            :style="{ width: ch.pct + '%', background: ch.color }"
-            :title="ch.name + ' ' + ch.pct + '%'"
+            class="target-fill"
+            :style="{ width: Math.max(0, Math.min(100, (totalNetWorth / Math.max(1, s.targetWealth)) * 100)) + '%' }"
           />
         </div>
-        <div class="finance-chip-row">
-          <span
-            v-for="(ch, ci) in depositChannels"
-            :key="'dcl-' + ci"
-            class="finance-chip"
-            :style="{ color: ch.color, borderColor: ch.color }"
-          >{{ ch.icon }}{{ ch.name }}{{ ch.pct }}%</span>
+        <div class="target-note" style="font-size: 0.7em; color: #888; text-align: center; margin-top: 2px;">
+          （按总资产计算退休进度）
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 3: 资产分布 -->
+    <div class="panel">
+      <div class="panel-title">资产明细</div>
+
+      <!-- 流动资产分布（理财渠道） -->
+      <div class="asset-dot-list">
+        <div
+          v-for="(ch, ci) in depositChannels"
+          :key="'dc-' + ci"
+          class="asset-dot-row"
+          :title="ch.name + ' ' + ch.pct + '%'"
+        >
+          <span class="asset-dot" :style="{ background: ch.color, boxShadow: '0 0 4px ' + ch.color }"></span>
+          <span class="asset-dot-name">{{ ch.icon }} {{ ch.name }}</span>
+          <span class="asset-dot-rate">{{ ch.rate }}</span>
+          <span class="asset-dot-pct" :style="{ color: ch.color }">{{ ch.pct }}%</span>
         </div>
       </div>
 
-      <!-- 资产分布 -->
-      <button v-if="assetItems.length > 0" class="collapse-header asset-collapse" type="button" @click="financeOpen = !financeOpen">
+      <!-- 全部资产项明细 -->
+      <button
+        v-if="assetItems.length > 0"
+        class="collapse-header asset-collapse"
+        type="button"
+        @click="financeOpen = !financeOpen"
+      >
         <span class="collapse-arrow" :class="{ rotated: financeOpen }">▼</span>
-        <span class="collapse-title">🏠 资产 ¥{{ formatWan(totalAssetValue) }}</span>
+        <span class="collapse-title">全部资产 ¥{{ formatWan(totalNetWorth) }}</span>
       </button>
       <div v-if="financeOpen && assetItems.length > 0" class="collapse-body asset-body open">
         <div v-for="(a, ai) in assetItems" :key="'asset-' + ai" class="asset-row">
           <span class="asset-icon">{{ a.icon }}</span>
           <span class="asset-name">{{ a.name }}</span>
-          <span class="asset-value">{{ formatWan(a.value) }}</span>
+          <span class="asset-value" :class="a.value < 0 ? 'text-red' : ''">{{ formatWan(a.value) }}</span>
         </div>
       </div>
     </div>
 
-    <!-- 身心状态条 -->
-    <div class="wellbeing-section">
-      <div
-        class="wb-row"
-        @mouseenter="wbHover = 'health'"
-        @mouseleave="wbHover = null"
-      >
-        <span class="wb-label">健康</span>
-        <div class="wb-track">
-          <div
-            class="wb-fill"
-            :style="{
-              width: Math.max(0, Math.min(100, healthLevel)) + '%',
-              background: barColor(healthLevel, 'health'),
-            }"
-          />
-        </div>
-        <span class="wb-value" :style="{ color: barColor(healthLevel, 'health') }">
-          {{ Math.round(healthLevel) }}
-        </span>
-        <span class="wb-emoji">{{ healthEmoji(healthLevel) }}</span>
-        <Transition name="wb-tip">
-          <div v-if="wbHover === 'health' && wellbeingSources.health.length > 0" class="wb-tooltip">
-            <div class="wb-tip-title">上年健康变化来源</div>
-            <div v-for="(src, si) in wellbeingSources.health" :key="'hh-' + si" class="wb-tip-row">
-              <span class="wb-tip-src">{{ src.source }}</span>
-              <span class="wb-tip-val" :class="src.val > 0 ? 'pos' : 'neg'">{{ formatDelta(src.val) }}</span>
-            </div>
-          </div>
-        </Transition>
+    <!-- Panel 4: 退休路径 -->
+    <div v-if="currentPath" class="panel path-panel" :style="{ '--path-color': currentPath.color }">
+      <div class="panel-title">退休路径</div>
+      <div class="path-header">
+        <span class="path-icon">{{ currentPath.icon }}</span>
+        <span class="path-name">{{ currentPath.name }}</span>
       </div>
-
-      <div
-        class="wb-row"
-        @mouseenter="wbHover = 'stress'"
-        @mouseleave="wbHover = null"
-      >
-        <span class="wb-label">压力</span>
-        <div class="wb-track">
-          <div
-            class="wb-fill"
-            :style="{
-              width: Math.max(0, Math.min(100, stressLevel)) + '%',
-              background: barColor(stressLevel, 'stress'),
-            }"
-          />
-        </div>
-        <span class="wb-value" :style="{ color: barColor(stressLevel, 'stress') }">
-          {{ Math.round(stressLevel) }}
-        </span>
-        <span class="wb-emoji">{{ stressEmoji(stressLevel) }}</span>
-        <Transition name="wb-tip">
-          <div v-if="wbHover === 'stress' && wellbeingSources.stress.length > 0" class="wb-tooltip">
-            <div class="wb-tip-title">上年压力变化来源</div>
-            <div v-for="(src, si) in wellbeingSources.stress" :key="'ss-' + si" class="wb-tip-row">
-              <span class="wb-tip-src">{{ src.source }}</span>
-              <span class="wb-tip-val" :class="src.val > 0 ? 'neg' : 'pos'">{{ formatDelta(src.val) }}</span>
-            </div>
-          </div>
-        </Transition>
+      <div class="path-desc">{{ currentPath.description }}</div>
+      <div class="skill-chips">
+        <span class="skill-chip">{{ currentPath.subtitle }}</span>
+        <span class="skill-chip">🎯 {{ currentPath.targetRetireAge }}岁退休</span>
       </div>
-
-      <div
-        class="wb-row"
-        @mouseenter="wbHover = 'happiness'"
-        @mouseleave="wbHover = null"
-      >
-        <span class="wb-label">幸福</span>
-        <div class="wb-track">
+      <div class="faith-row">
+        <span class="faith-label">信念</span>
+        <div class="faith-track">
           <div
-            class="wb-fill"
+            class="faith-fill"
             :style="{
-              width: Math.max(0, Math.min(100, happinessLevel)) + '%',
-              background: barColor(happinessLevel, 'happiness'),
+              width: Math.max(0, Math.min(100, faithLevel)) + '%',
+              background: faithColor(faithLevel),
             }"
           />
         </div>
-        <span class="wb-value" :style="{ color: barColor(happinessLevel, 'happiness') }">
-          {{ Math.round(happinessLevel) }}
+        <span class="faith-value" :style="{ color: faithColor(faithLevel) }">
+          {{ Math.round(faithLevel) }}
         </span>
-        <span class="wb-emoji">{{ happinessEmoji(happinessLevel) }}</span>
-        <Transition name="wb-tip">
-          <div v-if="wbHover === 'happiness' && wellbeingSources.happiness.length > 0" class="wb-tooltip">
-            <div class="wb-tip-title">上年幸福变化来源</div>
-            <div v-for="(src, si) in wellbeingSources.happiness" :key="'sh-' + si" class="wb-tip-row">
-              <span class="wb-tip-src">{{ src.source }}</span>
-              <span class="wb-tip-val" :class="src.val > 0 ? 'pos' : 'neg'">{{ formatDelta(src.val) }}</span>
-            </div>
-          </div>
-        </Transition>
+        <span class="faith-emoji">{{ faithEmoji(faithLevel) }}</span>
+        <span class="faith-tag" :style="{ color: faithColor(faithLevel) }">{{ faithLabel(faithLevel) }}</span>
       </div>
     </div>
 
-    <!-- 职业+城市标签 -->
-    <div class="badge-row">
-      <div class="neon-badge badge-profession" :class="{ 'badge-unemployed': s.isUnemployed }">
-        <span class="badge-icon">{{ s.isUnemployed ? '🔍' : '💼' }}</span>
-        <span class="badge-text">{{ s.isUnemployed ? '待业中' : s.currentProfession }}</span>
-      </div>
-      <div class="neon-badge badge-city">
-        <span class="badge-icon">📍</span>
-        <span class="badge-text">{{ s.currentCity }}</span>
-      </div>
-    </div>
-
-    <!-- 折叠区：人际关系 -->
-    <div class="collapse-section">
-      <button class="collapse-header" type="button" @click="relOpen = !relOpen">
-        <span class="collapse-arrow" :class="{ rotated: relOpen }">▼</span>
-        <span class="collapse-title">人际关系</span>
-        <span class="collapse-summary">{{ relSummary }}</span>
+    <!-- Panel 5: 人际关系（折叠） -->
+    <div class="panel">
+      <button
+        class="panel-title is-toggle"
+        type="button"
+        @click="relOpen = !relOpen"
+      >
+        <span class="toggle-text">人际关系</span>
+        <span class="toggle-summary">{{ relSummary }}</span>
+        <span class="toggle-arrow" :class="{ open: relOpen }">▾</span>
       </button>
-      <div class="collapse-body" :class="{ open: relOpen }">
+      <div class="collapse-body rel-body" :class="{ open: relOpen }">
         <!-- 父母 -->
         <div class="rel-group">
           <div class="rel-group-label">👴 父母</div>
@@ -587,320 +747,152 @@ const relOpen = ref(false);
         </div>
       </div>
     </div>
-
   </div>
 </template>
 
 <style scoped>
 .stats-panel {
+  --neon-blue: #00d4ff;
   font-family: 'DotGothic16', monospace;
   color: #f4f4f4;
-  padding: 12px 14px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* ── 顶部年龄标题 ── */
-.age-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed #c900ff60;
-}
-
-.age-title {
-  font-size: 20px;
-  color: #00d4ff;
-  margin: 0;
-  letter-spacing: 4px;
-  font-weight: bold;
-  text-shadow:
-    0 0 4px #00d4ff,
-    0 0 12px #00d4ff;
-  animation: titleFlicker 4s ease-in-out infinite;
-}
-
-@keyframes titleFlicker {
-  0%, 100% { opacity: 1; }
-  48% { opacity: 1; }
-  50% { opacity: 0.7; text-shadow: 0 0 2px #00d4ff; }
-  52% { opacity: 1; }
-}
-
-.age-deco {
-  color: #c900ff;
-  font-size: 12px;
-  text-shadow: 0 0 6px #c900ff;
-}
-
-/* ── 核心3指标 ── */
-.core-stats {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.core-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: rgba(10, 5, 30, 0.5);
-  border: 1px solid #c900ff30;
+  gap: 6px;
+  padding: 6px;
   position: relative;
 }
 
-.savings-row {
-  border-color: #00ff8860;
-}
-.savings-row.bankrupt {
-  border-color: #ff2d9560;
-}
-
-.core-icon {
-  font-size: 14px;
-  flex-shrink: 0;
+/* ── 通用面板卡片 ── */
+.panel {
+  background: rgba(15, 8, 35, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 8px 10px;
+  position: relative;
 }
 
-.core-label {
-  font-size: 13px;
-  color: #94b0c2;
-  width: 48px;
-  flex-shrink: 0;
-  letter-spacing: 1px;
-}
-
-.core-value {
-  flex: 1;
-  text-align: right;
-  font-weight: bold;
-}
-
-.core-row:first-child .core-value {
-  font-size: 18px;
-}
-
-.core-row:not(:first-child) .core-value {
-  font-size: 16px;
-}
-
-.text-green {
-  color: #00ff88;
-  text-shadow: 0 0 6px #00ff88, 0 0 12px #00ff8880;
-}
-
-.text-red {
-  color: #ff2d95;
-  text-shadow: 0 0 6px #ff2d95, 0 0 12px #ff2d9580;
-  animation: redPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes redPulse {
-  0%, 100% { text-shadow: 0 0 6px #ff2d95, 0 0 12px #ff2d9580; }
-  50% { text-shadow: 0 0 10px #ff2d95, 0 0 20px #ff2d95, 0 0 30px #ff2d9580; }
-}
-
-.text-blue {
-  color: #00d4ff;
-  text-shadow: 0 0 6px #00d4ff, 0 0 12px #00d4ff80;
-}
-
-.text-orange {
-  color: #ff8800;
-  text-shadow: 0 0 6px #ff8800, 0 0 12px #ff880080;
-}
-
-/* 变化弹跳徽章 */
-.delta-badge {
-  position: absolute;
-  top: -6px;
-  right: 6px;
-  font-size: 10px;
-  padding: 1px 5px;
-  font-weight: bold;
-  animation: deltaBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.delta-up {
-  color: #00ff88;
-  background: rgba(0, 255, 136, 0.15);
-  border: 1px solid #00ff88;
-  text-shadow: 0 0 4px #00ff88;
-  box-shadow: 0 0 6px #00ff8860;
-}
-
-.delta-down {
-  color: #ff2d95;
-  background: rgba(255, 45, 149, 0.15);
-  border: 1px solid #ff2d95;
-  text-shadow: 0 0 4px #ff2d95;
-  box-shadow: 0 0 6px #ff2d9560;
-}
-
-@keyframes deltaBounce {
-  0% { transform: scale(0) translateY(0); opacity: 0; }
-  60% { transform: scale(1.3) translateY(-4px); opacity: 1; }
-  100% { transform: scale(1) translateY(-2px); opacity: 1; }
-}
-
-/* ── 退休信息 ── */
-.retire-info {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  color: #94b0c2;
-  margin-bottom: 10px;
-  letter-spacing: 0.5px;
-}
-
-.retire-divider {
-  color: #c900ff80;
-}
-
-/* ── 理财状态栏 ── */
-.finance-status-section {
-  margin-bottom: 10px;
-}
-
-.finance-mini {
-  margin-bottom: 8px;
-}
-
-.finance-mini-title {
-  font-size: 11px;
-  color: #94b0c2;
-  letter-spacing: 1px;
+.panel-title {
+  font-size: 9px;
+  color: #6a6a8a;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'DotGothic16', monospace;
   margin-bottom: 6px;
-  text-align: center;
-}
-
-.finance-bar-row {
-  display: flex;
-  height: 6px;
-  border-radius: 3px;
-  overflow: hidden;
-  background: rgba(0, 0, 0, 0.3);
-  margin-bottom: 6px;
-}
-
-.finance-bar-seg {
-  min-width: 4px;
-  height: 100%;
-  transition: width 0.4s ease;
-}
-
-.finance-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  justify-content: center;
-}
-
-.finance-chip {
-  font-size: 10px;
-  padding: 1px 5px;
-  border: 1px solid;
-  border-radius: 3px;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-  opacity: 0.85;
-}
-
-.asset-collapse {
-  padding: 4px 0;
-  margin: 0;
-  width: 100%;
-  text-align: left;
-  cursor: pointer;
-}
-
-.asset-collapse .collapse-title {
-  color: #94b0c2;
-  font-size: 11px;
-  letter-spacing: 1px;
-}
-
-.asset-body {
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(0, 212, 255, 0.1);
-  margin-top: 4px;
-  animation: panelFadeIn 0.2s ease-out;
-}
-
-.asset-row {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 0;
-  font-size: 11px;
 }
 
-.asset-icon {
-  width: 20px;
-  text-align: center;
+.panel-title::before {
+  content: '▸';
+  color: var(--neon-blue);
+  letter-spacing: 0;
 }
 
-.asset-name {
-  color: #94b0c2;
-  flex: 1;
-}
-
-.asset-value {
-  color: #00ff88;
-  font-weight: bold;
-  letter-spacing: 0.3px;
-}
-
-/* ── 身心状态条 ── */
-.wellbeing-section {
+/* ── 身心状态 ── */
+.wb-list {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  margin-bottom: 12px;
-  padding: 8px;
-  background: rgba(10, 5, 30, 0.4);
-  border: 1px solid #c900ff30;
-  position: relative;
   overflow: visible;
 }
 
 .wb-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
+  gap: 6px;
+  font-size: 10px;
   position: relative;
 }
 
+.wb-label {
+  color: #94b0c2;
+  width: 24px;
+  flex-shrink: 0;
+  letter-spacing: 1px;
+  font-size: 10px;
+}
+
+.wb-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 1px;
+  overflow: hidden;
+}
+
+.wb-fill {
+  height: 100%;
+  border-radius: 2px;
+  position: relative;
+  overflow: hidden;
+  transition: width 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 渐变光泽 + shimmer */
+.wb-fill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, rgba(255, 255, 255, 0) 45%, rgba(0, 0, 0, 0.25) 100%);
+  pointer-events: none;
+}
+
+.wb-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.4) 50%, transparent 100%);
+  animation: shimmer 2.2s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.wb-value {
+  width: 22px;
+  text-align: right;
+  font-weight: bold;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.wb-emoji {
+  font-size: 10px;
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* wellbeing tooltip */
 .wb-tooltip {
   position: absolute;
   right: 0;
   top: 100%;
   margin-top: 4px;
   z-index: 100;
-  background: rgba(10, 5, 30, 0.95);
+  background: rgba(10, 5, 30, 0.96);
   border: 1px solid #c900ff80;
-  padding: 8px 10px;
-  min-width: 160px;
+  border-radius: 4px;
+  padding: 6px 8px;
+  min-width: 150px;
   box-shadow: 0 0 12px rgba(201, 0, 255, 0.3);
-  font-size: 11px;
+  font-size: 9px;
   pointer-events: none;
 }
 
 .wb-tip-title {
   color: #c900ff;
   font-weight: bold;
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: 1px;
-  margin-bottom: 4px;
-  padding-bottom: 3px;
+  margin-bottom: 3px;
+  padding-bottom: 2px;
   border-bottom: 1px dashed #c900ff40;
 }
 
@@ -929,7 +921,6 @@ const relOpen = ref(false);
   text-shadow: 0 0 4px #ff2d95;
 }
 
-/* Transition for tooltip */
 .wb-tip-enter-active,
 .wb-tip-leave-active {
   transition: opacity 0.15s ease, transform 0.15s ease;
@@ -940,126 +931,228 @@ const relOpen = ref(false);
   transform: translateY(-4px);
 }
 
-.wb-label {
-  color: #94b0c2;
-  width: 32px;
-  flex-shrink: 0;
-  letter-spacing: 1px;
+/* ── 财务总览 ── */
+.finance-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 6px;
 }
 
-.wb-track {
-  flex: 1;
-  height: 10px;
+.finance-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.2);
+  position: relative;
+  font-size: 11px;
+}
+
+.finance-row:hover {
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.savings-row {
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+}
+.savings-row.bankrupt {
+  background: rgba(255, 45, 149, 0.06);
+  border-color: rgba(255, 45, 149, 0.25);
+}
+
+.net-worth-row {
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin: 2px 0;
+}
+
+.finance-label {
+  color: #94b0c2;
+  font-size: 10px;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+}
+
+.finance-value {
+  margin-left: auto;
+  text-align: right;
+  font-weight: bold;
+  font-size: 11px;
+}
+
+.text-green {
+  color: #00ff88;
+  text-shadow: 0 0 6px #00ff88, 0 0 12px #00ff8880;
+}
+
+.text-red {
+  color: #ff2d95;
+  text-shadow: 0 0 6px #ff2d95, 0 0 12px #ff2d9580;
+  animation: redPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes redPulse {
+  0%, 100% { text-shadow: 0 0 6px #ff2d95, 0 0 12px #ff2d9580; }
+  50% { text-shadow: 0 0 10px #ff2d95, 0 0 20px #ff2d95, 0 0 30px #ff2d9580; }
+}
+
+.text-blue {
+  color: #00d4ff;
+  text-shadow: 0 0 6px #00d4ff, 0 0 12px #00d4ff80;
+}
+
+.text-orange {
+  color: #ff8800;
+  text-shadow: 0 0 6px #ff8800, 0 0 12px #ff880080;
+}
+
+/* 存款变化弹跳徽章 */
+.delta-badge {
+  position: absolute;
+  top: -7px;
+  right: 4px;
+  font-size: 9px;
+  padding: 0 4px;
+  font-weight: bold;
+  border-radius: 2px;
+  animation: deltaBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.delta-up {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.15);
+  border: 1px solid #00ff88;
+  text-shadow: 0 0 4px #00ff88;
+  box-shadow: 0 0 6px #00ff8860;
+}
+
+.delta-down {
+  color: #ff2d95;
+  background: rgba(255, 45, 149, 0.15);
+  border: 1px solid #ff2d95;
+  text-shadow: 0 0 4px #ff2d95;
+  box-shadow: 0 0 6px #ff2d9560;
+}
+
+@keyframes deltaBounce {
+  0% { transform: scale(0) translateY(0); opacity: 0; }
+  60% { transform: scale(1.3) translateY(-4px); opacity: 1; }
+  100% { transform: scale(1) translateY(-2px); opacity: 1; }
+}
+
+/* 退休目标进度条 */
+.target-section {
+  margin-top: 2px;
+}
+
+.target-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 9px;
+  color: #6a6a8a;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+
+.target-bar {
+  height: 8px;
   background: rgba(0, 0, 0, 0.6);
-  border: 1px solid #333c57;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
   padding: 1px;
   overflow: hidden;
 }
 
-.wb-fill {
+.target-fill {
   height: 100%;
-  transition: width 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 3px;
+  background: linear-gradient(90deg, #00d4ff 0%, #c900ff 50%, #ff2d95 100%);
+  box-shadow: 0 0 6px rgba(201, 0, 255, 0.6);
+  transition: width 0.4s ease;
 }
 
-.wb-value {
-  width: 28px;
-  text-align: right;
-  font-weight: bold;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.wb-emoji {
-  font-size: 12px;
-  width: 18px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-/* ── 标签行 ── */
-.badge-row {
+/* ── 资产分布 ── */
+.asset-dot-list {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 3px;
 }
 
-.neon-badge {
-  display: inline-flex;
+.asset-dot-row {
+  display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  font-size: 12px;
-  border: 1px solid;
-  letter-spacing: 1px;
-  backdrop-filter: blur(4px);
+  gap: 6px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 10px;
 }
 
-.badge-profession {
-  border-color: #00ff88;
-  color: #00ff88;
-  background: rgba(0, 255, 136, 0.1);
-  box-shadow: 0 0 6px #00ff8860, inset 0 0 6px #00ff8820;
-  text-shadow: 0 0 4px #00ff88;
+.asset-dot-row:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
-.badge-unemployed {
-  border-color: #ff2d95;
-  color: #ff2d95;
-  background: rgba(255, 45, 149, 0.1);
-  box-shadow: 0 0 6px #ff2d9560, inset 0 0 6px #ff2d9520;
-  text-shadow: 0 0 4px #ff2d95;
-  animation: unemployedPulse 2s ease-in-out infinite;
+.asset-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-@keyframes unemployedPulse {
-  0%, 100% { box-shadow: 0 0 6px #ff2d9560, inset 0 0 6px #ff2d9520; }
-  50% { box-shadow: 0 0 12px #ff2d95, inset 0 0 8px #ff2d9540; }
+.asset-dot-name {
+  color: #c2c3c7;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.badge-city {
-  border-color: #00d4ff;
-  color: #00d4ff;
-  background: rgba(0, 212, 255, 0.1);
-  box-shadow: 0 0 6px #00d4ff60, inset 0 0 6px #00d4ff20;
-  text-shadow: 0 0 4px #00d4ff;
+.asset-dot-rate {
+  font-size: 9px;
+  color: #6a6a8a;
+  flex-shrink: 0;
 }
 
-.badge-icon {
-  font-size: 11px;
+.asset-dot-pct {
+  font-weight: bold;
+  font-size: 10px;
+  flex-shrink: 0;
 }
 
-/* ── 折叠区 ── */
-.collapse-section {
-  margin-bottom: 6px;
-}
-
+/* ── 折叠头（资产 / 通用） ── */
 .collapse-header {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  background: rgba(201, 0, 255, 0.06);
-  border: 1px solid #c900ff40;
-  padding: 7px 10px;
+  background: rgba(201, 0, 255, 0.05);
+  border: 1px solid rgba(201, 0, 255, 0.25);
+  border-radius: 4px;
+  padding: 4px 6px;
+  margin-top: 6px;
   cursor: pointer;
   font-family: 'DotGothic16', monospace;
   color: #f4f4f4;
   text-align: left;
   transition: all 0.15s ease;
-  box-shadow: inset 0 0 6px #c900ff10;
 }
 
 .collapse-header:hover {
-  background: rgba(201, 0, 255, 0.15);
+  background: rgba(201, 0, 255, 0.12);
   border-color: #c900ff;
-  box-shadow: 0 0 6px #c900ff30;
+  box-shadow: 0 0 6px rgba(201, 0, 255, 0.3);
 }
 
 .collapse-arrow {
   display: inline-block;
   color: #c900ff;
-  font-size: 10px;
+  font-size: 9px;
   text-shadow: 0 0 4px #c900ff;
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
@@ -1070,42 +1163,227 @@ const relOpen = ref(false);
 }
 
 .collapse-title {
-  font-size: 12px;
+  font-size: 10px;
   color: #c900ff;
-  letter-spacing: 2px;
+  letter-spacing: 1px;
   text-shadow: 0 0 4px #c900ff;
   font-weight: bold;
   flex-shrink: 0;
-}
-
-.collapse-summary {
-  margin-left: auto;
-  font-size: 10px;
-  color: #94b0c2;
-  letter-spacing: 0.5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .collapse-body {
   max-height: 0;
   overflow: hidden;
   transition: max-height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-  background: rgba(10, 5, 30, 0.3);
-  border-left: 1px solid #c900ff30;
-  border-right: 1px solid #c900ff30;
-  border-bottom: 1px solid #c900ff30;
 }
 
 .collapse-body.open {
   max-height: 600px;
 }
 
-/* ── 人际关系详情 ── */
+.asset-body {
+  padding: 0;
+  margin-top: 4px;
+  animation: panelFadeIn 0.2s ease-out;
+}
+
+@keyframes panelFadeIn {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.asset-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  font-size: 10px;
+}
+
+.asset-icon {
+  width: 16px;
+  text-align: center;
+}
+
+.asset-name {
+  color: #94b0c2;
+  flex: 1;
+}
+
+.asset-value {
+  color: #00ff88;
+  font-weight: bold;
+  letter-spacing: 0.3px;
+}
+
+/* ── 退休路径面板 ── */
+.path-panel {
+  border-color: rgba(201, 0, 255, 0.4);
+  /* v2 spec: 紫色 5% 叠在深色底之上，保持可读性 */
+  background: linear-gradient(rgba(201, 0, 255, 0.05), rgba(201, 0, 255, 0.05)), rgba(15, 8, 35, 0.85);
+  box-shadow: inset 0 0 14px rgba(201, 0, 255, 0.08), 0 0 6px rgba(201, 0, 255, 0.12);
+}
+
+.path-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 1px dashed rgba(201, 0, 255, 0.2);
+}
+
+.path-icon {
+  font-size: 13px;
+}
+
+.path-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--path-color, #00d4ff);
+  text-shadow: 0 0 6px var(--path-color, #00d4ff);
+  letter-spacing: 1px;
+}
+
+.path-desc {
+  font-size: 9px;
+  color: #94b0c2;
+  line-height: 1.5;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+
+.skill-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.skill-chip {
+  font-size: 9px;
+  color: #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.5);
+  background: rgba(0, 255, 136, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+  text-shadow: 0 0 3px rgba(0, 255, 136, 0.4);
+}
+
+/* 信念条 */
+.faith-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(201, 0, 255, 0.15);
+}
+
+.faith-label {
+  color: #94b0c2;
+  width: 22px;
+  flex-shrink: 0;
+  letter-spacing: 1px;
+}
+
+.faith-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 1px;
+  overflow: hidden;
+}
+
+.faith-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
+  box-shadow: 0 0 6px currentColor;
+}
+
+.faith-value {
+  width: 20px;
+  text-align: right;
+  font-weight: bold;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.faith-emoji {
+  font-size: 10px;
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.faith-tag {
+  font-size: 9px;
+  flex-shrink: 0;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+/* ── 人际关系折叠面板 ── */
+.panel-title.is-toggle {
+  width: 100%;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin-bottom: 0;
+  text-align: left;
+  font-family: 'DotGothic16', monospace;
+  font-size: 9px;
+  color: #6a6a8a;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.panel-title.is-toggle .toggle-text {
+  color: #6a6a8a;
+}
+
+.toggle-summary {
+  margin-left: auto;
+  font-size: 9px;
+  color: #6a6a8a;
+  letter-spacing: 0.5px;
+  text-transform: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 55%;
+}
+
+.toggle-arrow {
+  color: var(--neon-blue);
+  font-size: 9px;
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: rotate(-90deg);
+}
+
+.toggle-arrow.open {
+  transform: rotate(0deg);
+}
+
+.rel-body {
+  margin-top: 4px;
+}
+
+.rel-body.open {
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
 .rel-group {
-  padding: 6px 10px;
-  border-bottom: 1px dashed #c900ff20;
+  padding: 4px 2px;
+  border-bottom: 1px dashed rgba(201, 0, 255, 0.12);
 }
 
 .rel-group:last-child {
@@ -1113,82 +1391,84 @@ const relOpen = ref(false);
 }
 
 .rel-group-label {
-  font-size: 11px;
+  font-size: 10px;
   color: #c900ff;
   letter-spacing: 1px;
   text-shadow: 0 0 4px #c900ff;
   font-weight: bold;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
 }
 
 .rel-detail {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
 }
 
 .rel-detail-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
+  gap: 5px;
+  font-size: 9px;
 }
 
 .rel-key {
   color: #94b0c2;
-  width: 36px;
+  width: 28px;
   flex-shrink: 0;
   letter-spacing: 0.5px;
 }
 
 .rel-bar-track {
   flex: 1;
-  height: 7px;
+  height: 5px;
   background: rgba(0, 0, 0, 0.6);
-  border: 1px solid #333c57;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
   padding: 1px;
   overflow: hidden;
 }
 
 .rel-bar-track.rel-bar-sm {
-  max-width: 80px;
+  max-width: 70px;
 }
 
 .rel-bar-fill {
   height: 100%;
+  border-radius: 1px;
   transition: width 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .rel-val {
-  width: 24px;
+  width: 18px;
   text-align: right;
   color: #c2c3c7;
   font-weight: bold;
-  font-size: 10px;
+  font-size: 9px;
   flex-shrink: 0;
 }
 
 .rel-tag {
-  font-size: 9px;
+  font-size: 8px;
   color: #94b0c2;
   flex-shrink: 0;
 }
 
 .rel-age-text {
-  font-size: 10px;
+  font-size: 9px;
   color: #c2c3c7;
 }
 
 .rel-cost {
-  font-size: 10px;
+  font-size: 9px;
   color: #ff8800;
   text-shadow: 0 0 4px #ff8800;
 }
 
 .rel-deceased {
-  font-size: 10px;
+  font-size: 9px;
   color: #566c86;
-  padding: 3px 0;
+  padding: 2px 0;
   letter-spacing: 1px;
 }
 
@@ -1198,52 +1478,52 @@ const relOpen = ref(false);
 }
 
 .rel-na {
-  font-size: 10px;
+  font-size: 9px;
   color: #566c86;
-  padding: 3px 0;
+  padding: 2px 0;
   letter-spacing: 1px;
 }
 
 .partner-name-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   margin-bottom: 2px;
 }
 
 .partner-name {
-  font-size: 12px;
+  font-size: 10px;
   font-weight: bold;
   color: #ff2d95;
   text-shadow: 0 0 6px #ff2d95;
 }
 
 .personality-tag {
-  font-size: 9px;
+  font-size: 8px;
   color: #c900ff;
   border: 1px solid #c900ff80;
-  padding: 0 5px;
+  padding: 0 4px;
   border-radius: 2px;
-  background: #c900ff15;
+  background: rgba(201, 0, 255, 0.1);
 }
 
 .partner-trait {
   font-size: 9px;
   color: #ff8cc8;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   font-style: italic;
 }
 
 .memories-row {
   display: flex;
-  gap: 4px;
-  margin-top: 4px;
-  padding-top: 4px;
+  gap: 3px;
+  margin-top: 3px;
+  padding-top: 3px;
   border-top: 1px dashed #ff2d9530;
 }
 
 .memory-tag {
-  font-size: 12px;
+  font-size: 11px;
   cursor: default;
   transition: transform 0.2s;
 }
@@ -1253,41 +1533,39 @@ const relOpen = ref(false);
 }
 
 .rel-child-block {
-  margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px dashed #c900ff30;
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px dashed rgba(201, 0, 255, 0.2);
 }
 
 .rel-child-header {
-  font-size: 10px;
+  font-size: 9px;
   color: #00d4ff;
   text-shadow: 0 0 4px #00d4ff;
-  margin-bottom: 3px;
+  margin-bottom: 2px;
 }
 
 .rel-friend-row {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 10px;
-  padding: 2px 0;
+  gap: 5px;
+  font-size: 9px;
+  padding: 1px 0;
 }
 
 .rel-friend-name {
   color: #e0e0e8;
-  max-width: 100px;
+  max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .rel-friend-val {
-  width: 20px;
+  width: 16px;
   text-align: right;
   font-weight: bold;
-  font-size: 10px;
+  font-size: 9px;
   flex-shrink: 0;
 }
-
-
 </style>

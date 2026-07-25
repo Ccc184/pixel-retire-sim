@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref } from 'vue';
 
 interface Toast {
   id: number;

@@ -1,8 +1,30 @@
 // 职业类型
-export type Profession = '体制内' | '红利行业' | '传统私企' | '自由职业' | '实体创业' | '一线蓝领';
+export type Profession = '体制内' | '红利行业' | '传统私企' | '自由职业' | '实体创业' | '一线蓝领' | '数字游民' | '自由个体';
+
+// 退休路径ID
+export type RetirementPathId = 'ai_symbiote' | 'chain_native' | 'digital_nomad' | 'super_ip' | 'silver_economy' | 'bio_gambler';
+
+// MBTI人格类型
+export type MBTIType = 'INTJ' | 'INTP' | 'ENTJ' | 'ENTP' | 'INFJ' | 'INFP' | 'ENFJ' | 'ENFP' | 'ISTJ' | 'ISFJ' | 'ESTJ' | 'ESFJ' | 'ISTP' | 'ISFP' | 'ESTP' | 'ESFP';
+
+// 叙事事件分支（每条路径有3条分支）
+export type NarrativeBranch =
+  // AI共生者
+  | 'tech_expert' | 'ai_startup' | 'ai_evangelist'
+  // 链上原住民
+  | 'chain_trader' | 'chain_builder' | 'chain_hodler'
+  // 数字游牧民
+  | 'nomad_freelancer' | 'nomad_entrepreneur' | 'nomad_consultant'
+  // 超级IP
+  | 'ip_educator' | 'ip_entertainer' | 'ip_thought_leader'
+  // 银发收割者
+  | 'silver_caregiver' | 'silver_tech' | 'silver_community'
+  // 生物赌徒
+  | 'bio_investor' | 'bio_experimenter' | 'bio_researcher'
+  | 'unassigned';
 
 // 城市类型
-export type CityType = '资本修罗场' | '中坚大后方' | '避风低洼地';
+export type CityType = '资本修罗场' | '中坚大后方' | '避风低洼地' | '海外低成本';
 
 // 经济周期
 export type EconomicCycle = 0 | 1 | 2; // 0=繁荣, 1=平稳, 2=萧条
@@ -48,6 +70,7 @@ export interface DecisionCard {
   cost: number;
   // 新增字段
   category?: '核心决策' | '生活消费' | '社交关系' | '投资理财' | '健康养生' | '技能进修' | '阶段解锁' | '💝 感情';
+  pathId?: RetirementPathId;  // 路径专属卡，仅该路径可抽到
   repeatable?: boolean;        // 是否可重复选择（如体检、旅行）
   maxUses?: number;             // 最大使用次数（undefined=无限）
   ageRange?: [number, number]; // 适用年龄范围（undefined=全年龄）
@@ -158,6 +181,7 @@ export interface GameState {
   stress: number;         // 压力值 0-100
   happiness: number;      // 幸福感 0-100
   health: number;         // 健康值 0-100
+  consecutiveMaxStressYears: number; // 连续压力100的年数（崩溃机制计数器）
 
   // 日常琐事
   dailyEventLog: string[];       // 本年度日常琐事（不进lifeLog）
@@ -170,9 +194,30 @@ export interface GameState {
   lastEventId: string | null;
   pendingAftermath: PendingAftermath | null;
   unlockedAchievements: string[]; // 已解锁成就ID列表
+
+  // === 提前退休路径系统 ===
+  retirementPath: RetirementPathId | null;  // 当前选择的退休路径
+  pathChoiceYear: number;                   // 选择路径的年份
+  pathFaith: number;                        // 信念值 0-100，低于30触发信念动摇
+  pathMilestones: string[];                 // 已触发的路径里程碑事件ID
+  pathCrisisTriggered: boolean;             // 中期危机是否已触发
+  pathEndgameTriggered: boolean;            // 终局判定是否已触发
+  isAllInPath: boolean;                     // 是否已All In（辞职全力投入路径副业）
+  canRetire: boolean;                       // 是否已满足退休条件（玩家可选择何时退休）
+  recentShownCards: string[];               // 最近2-3年展示过的卡ID（防重复）
+  yearOpeningMonologue: string;             // 今年的心境开场白
+  
+  // === MBTI人格系统 ===
+  mbtiType: MBTIType | null;                // 玩家的MBTI人格类型（开局选择，影响独白语气/专属事件/职业微调）
+  
+  // === 叙事事件系统（替代三卡） ===
+  narrativeBranch: NarrativeBranch;         // 当前分支（路径内的故事线）
+  pathSkills: Record<string, number>;       // 技能值（如 { aiSkill: 30, promptMastery: 20 }）
+  narrativeEventFired: Record<string, number>; // 已触发的叙事事件ID → 触发时的年龄
+  triggeredAchievements: string[];          // 已触发的成就事件ID列表
   
   // 游戏阶段
-  gamePhase: 'intro' | 'quiz' | 'setup' | 'playing' | 'ending';
+  gamePhase: 'intro' | 'quiz' | 'setup' | 'path_select' | 'playing' | 'ending';
   currentEndingId: string | null;
 
   // 十字路口系统
@@ -214,6 +259,7 @@ export interface WellbeingChangeEntry {
 export interface YearResult {
   age: number;
   salaryIncome: number;
+  sideHustleIncome: number;      // 路径副业收入（All In 前）
   passiveIncome: number;
   investmentGain: number;
   bankGain: number;
@@ -222,6 +268,8 @@ export interface YearResult {
   fixedDepositGain: number;   // 定期存款收益
   stockGain: number;           // 股票收益
   goldGain: number;            // 黄金收益/亏损
+  chainHoldingsGain: number;   // 链上持仓年度市值变化
+  bioPortfolioGain: number;    // 生物投资组合年度市值变化
   shopRentIncome: number;      // 商铺租金收入
   shopValueChange: number;     // 商铺市值变化
   livingCost: number;
@@ -255,6 +303,7 @@ export interface YearResult {
   wellbeingChanges: WellbeingChangeEntry[];
   // === 新增字段：车房年度开销 ===
   carCost: number;
+  carDepreciation: number;
   propertyMaintenanceCost: number;
   propertyChange: number;
   // 实际存款变化（包含所有因素，用于显示"存款变化"准确值）
@@ -361,4 +410,79 @@ export interface CrossroadEvent {
   conditions: (state: GameState) => boolean;  // 触发条件
   options: CrossroadOption[]; // 2-4个选项
   tag: string;               // 标签用于冷却判定，同tag的事件共享冷却
+}
+
+// ============================================================
+// 叙事事件系统（替代三卡抽卡）
+// ============================================================
+
+// 叙事事件选项
+export interface NarrativeOption {
+  id: string;
+  label: string;             // 选项简短标签
+  description: string;       // 选项详细描述
+  hint: string;              // 提示文本，如 "AI技能+15，压力+8"
+  hintColor: 'positive' | 'negative' | 'neutral' | 'danger';
+  prerequisites?: (state: GameState) => boolean;
+  disabledReason?: string;
+  // 技能变化（如 { aiSkill: 15, promptMastery: 5 }）
+  skillGains?: Record<string, number>;
+  // 财务影响：正=收入，负=支出
+  savingsChange?: number;
+  // 月薪变化（如加薪/降薪）
+  salaryChange?: number;
+  // 被动收入变化
+  passiveIncomeChange?: number;
+  // 状态效果
+  stateEffect?: (state: GameState) => void;
+  // 选择后切换分支
+  branchSwitch?: NarrativeBranch;
+  // 日志文本
+  log: string;
+  // 是否标记为"休养生息"选项
+  isRestOption?: boolean;
+}
+
+// 叙事事件（每年的情境选择，替代三卡）
+export interface NarrativeEvent {
+  id: string;
+  title: string;
+  narrative: string;          // 叙事文本（支持换行\n）
+  pathId: RetirementPathId;   // 所属路径
+  branch?: NarrativeBranch;   // 分支限定，undefined=所有分支可触发
+  ageRange: [number, number]; // 适用年龄范围
+  priority: number;           // 优先级，数字越大越优先
+  weight?: number;            // 随机权重（默认1）
+  conditions?: (state: GameState) => boolean;
+  oncePerGame?: boolean;      // 是否只触发一次
+  options: NarrativeOption[]; // 2-4个选项
+  // 事件类型标记
+  eventType?: 'branch_select' | 'normal' | 'crisis' | 'milestone';
+  // 场景标签：触发特定CSS场景效果（如 'job_loss' | 'promotion' | 'breakup' | 'lottery' | 'illness' | 'wedding'）
+  sceneTag?: string;
+  // MBTI专属事件：设置后跨所有路径触发，仅当玩家mbtiType匹配时可用
+  mbtiExclusive?: MBTIType;
+  // 跨路径事件：设置后忽略pathId过滤（用于MBTI/哲学等通用事件）
+  crossPath?: boolean;
+}
+
+// 成就事件（技能达标后触发的重大成就剧情）
+export interface NarrativeAchievement {
+  id: string;
+  title: string;
+  narrative: string;          // 成就触发的叙事文本
+  pathId: RetirementPathId;
+  branch: NarrativeBranch;    // 所属分支
+  level: 1 | 2 | 3;           // 成就等级（1=初级, 2=中级, 3=终极）
+  // 触发条件：技能阈值
+  skillRequirements: Record<string, number>;
+  // 触发后的效果
+  savingsChange?: number;
+  salaryChange?: number;
+  passiveIncomeChange?: number;
+  stateEffect?: (state: GameState) => void;
+  // 成就日志
+  log: string;
+  // 是否触发退休判定（终极成就）
+  triggersRetirementCheck?: boolean;
 }

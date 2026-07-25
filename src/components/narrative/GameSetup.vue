@@ -2,7 +2,8 @@
 import { ref, computed } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import { CITY_CONFIGS } from '../../utils/math-engine.js'
-import type { CityType, Profession } from '../../types/global.d.js'
+import { MBTI_TRAITS, MBTI_GROUPS, getMBTIProfessionModifier } from '../../data/mbti-system.js'
+import type { CityType, Profession, MBTIType } from '../../types/global.d.js'
 
 const store = useGameStore()
 
@@ -45,16 +46,18 @@ const cityOptions: CityOption[] = [
 ]
 
 const professionOptions: ProfessionOption[] = [
-  { id: '体制内',   label: '体制内',   blurb: '年涨3%·上限2.5倍·铁饭碗' },
-  { id: '红利行业', label: '红利行业', blurb: '35岁前年涨10%·35岁断崖0.6倍' },
-  { id: '传统私企', label: '传统私企', blurb: '年涨4%·上限2.0倍' },
-  { id: '自由职业', label: '自由职业', blurb: '1%基础+随机±20%·副业加成' },
-  { id: '实体创业', label: '实体创业', blurb: '过山车式收入·连续两年亏损即破产' },
-  { id: '一线蓝领', label: '一线蓝领', blurb: '年涨1%·上限1.3倍·45岁身体劳损' },
+  { id: '体制内',   label: '体制内',   blurb: '年涨3%·上限2.5倍·极稳定' },
+  { id: '红利行业', label: '红利行业', blurb: '35岁前年涨10%上限4.5倍·35岁断崖打7折后年涨3%' },
+  { id: '传统私企', label: '传统私企', blurb: '年涨5%·上限3.0倍' },
+  { id: '自由职业', label: '自由职业', blurb: '1.5%基础±14%波动·上限3.2倍' },
+  { id: '实体创业', label: '实体创业', blurb: '年涨2%·上限6.0倍·过山车式收入' },
+  { id: '一线蓝领', label: '一线蓝领', blurb: '年涨3%·上限2.5倍·技术工人凭手艺涨薪' },
 ]
 
 const selectedCity = ref<CityType>('中坚大后方')
 const selectedProfession = ref<Profession>('传统私企')
+const selectedMBTI = ref<MBTIType | null>(null)
+const expandedGroup = ref<string | null>(null)
 const initSalary = ref<number>(10000)
 const targetAge = ref<number>(60)
 const targetWealth = ref<number>(3000000)
@@ -64,6 +67,7 @@ const recommendedTargets: Record<CityType, number> = {
   '资本修罗场': 5000000,
   '中坚大后方': 3000000,
   '避风低洼地': 1500000,
+  '海外低成本': 1000000,
 }
 
 // 切换城市时更新推荐目标
@@ -78,6 +82,7 @@ function selectCity(city: CityType) {
 
 const canStart = computed(() => {
   return (
+    selectedMBTI.value !== null &&
     initSalary.value > 0 &&
     initSalary.value <= 1000000 &&
     targetAge.value > 22 &&
@@ -88,8 +93,31 @@ const canStart = computed(() => {
 
 const effectiveStartSalary = computed(() => {
   const mult = CITY_CONFIGS[selectedCity.value].salaryMultiplier
-  return Math.round(initSalary.value * mult)
+  let salary = initSalary.value * mult
+  if (selectedMBTI.value) {
+    const mbtiMod = getMBTIProfessionModifier(selectedMBTI.value, selectedProfession.value)
+    salary *= mbtiMod.startingSalaryMultiplier
+  }
+  return Math.round(salary)
 })
+
+const selectedTrait = computed(() => {
+  if (!selectedMBTI.value) return null
+  return MBTI_TRAITS[selectedMBTI.value]
+})
+
+const mbtiFitDesc = computed(() => {
+  if (!selectedMBTI.value) return ''
+  return getMBTIProfessionModifier(selectedMBTI.value, selectedProfession.value).fitDescription
+})
+
+function selectMBTI(type: MBTIType) {
+  selectedMBTI.value = type
+}
+
+function toggleGroup(temp: string) {
+  expandedGroup.value = expandedGroup.value === temp ? null : temp
+}
 
 function formatWan(num: number): string {
   if (num >= 10000) {
@@ -99,13 +127,14 @@ function formatWan(num: number): string {
 }
 
 function startGame(): void {
-  if (!canStart.value) return
+  if (!canStart.value || !selectedMBTI.value) return
   store.setupGame(
     selectedCity.value,
     selectedProfession.value,
     initSalary.value,
     targetAge.value,
     targetWealth.value,
+    selectedMBTI.value,
   )
 }
 </script>
@@ -187,10 +216,83 @@ function startGame(): void {
         </div>
       </section>
 
-      <!-- 数值输入 -->
+      <!-- MBTI人格选择 -->
       <section class="setup-section">
         <h3 class="section-title">
           <span class="section-num neon-green-num">03</span>
+          <span class="section-title-text">选择你的人格底色</span>
+        </h3>
+        <p class="mbti-intro">不是性格测试，而是存在主义问卷——你选择的不是四个字母，而是用哪种哲学视角体验这段人生。</p>
+        <div class="mbti-groups">
+          <div
+            v-for="group in MBTI_GROUPS"
+            :key="group.temperament"
+            class="mbti-group"
+            :class="{ expanded: expandedGroup === group.temperament }"
+          >
+            <div class="mbti-group-header" @click="toggleGroup(group.temperament)">
+              <span class="mbti-group-temp" :class="'temp-' + group.temperament.toLowerCase()">{{ group.temperament }}</span>
+              <span class="mbti-group-label">{{ group.label }}</span>
+              <span class="mbti-group-theme">{{ group.theme }}</span>
+              <span class="mbti-group-arrow">{{ expandedGroup === group.temperament ? '▼' : '▶' }}</span>
+            </div>
+            <div v-if="expandedGroup === group.temperament" class="mbti-types-grid">
+              <div
+                v-for="type in group.types"
+                :key="type"
+                class="neon-card mbti-type-card"
+                :class="{ selected: selectedMBTI === type }"
+                @click="selectMBTI(type)"
+              >
+                <div class="card-scanlines" />
+                <div class="mbti-code">{{ type }}</div>
+                <div class="mbti-name">{{ MBTI_TRAITS[type].name }}</div>
+                <div class="mbti-theme">{{ MBTI_TRAITS[type].philosophicalTheme }}</div>
+                <div v-if="selectedMBTI === type" class="selected-indicator">
+                  <span class="indicator-dot" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- 选中人格的哲学展示 -->
+        <div v-if="selectedTrait" class="mbti-detail-panel">
+          <div class="mbti-detail-header">
+            <span class="mbti-detail-code">{{ selectedTrait.code }}</span>
+            <span class="mbti-detail-name">{{ selectedTrait.name }}</span>
+            <span class="mbti-detail-temp" :class="'temp-' + selectedTrait.temperament.toLowerCase()">{{ selectedTrait.temperament }}</span>
+          </div>
+          <div class="mbti-detail-row">
+            <span class="detail-label">哲学主题</span>
+            <span class="detail-value">{{ selectedTrait.philosophicalTheme }}</span>
+          </div>
+          <div class="mbti-detail-row">
+            <span class="detail-label">存在之问</span>
+            <span class="detail-value detail-question">{{ selectedTrait.existentialQuestion }}</span>
+          </div>
+          <div class="mbti-detail-row">
+            <span class="detail-label">核心困境</span>
+            <span class="detail-value">{{ selectedTrait.coreDilemma }}</span>
+          </div>
+          <div class="mbti-detail-row">
+            <span class="detail-label">优势</span>
+            <span class="detail-value detail-strength">{{ selectedTrait.strength }}</span>
+          </div>
+          <div class="mbti-detail-row">
+            <span class="detail-label">阴影</span>
+            <span class="detail-value detail-shadow">{{ selectedTrait.shadow }}</span>
+          </div>
+          <div v-if="mbtiFitDesc" class="mbti-detail-row">
+            <span class="detail-label">职业适配</span>
+            <span class="detail-value detail-fit">{{ mbtiFitDesc }}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 数值输入 -->
+      <section class="setup-section">
+        <h3 class="section-title">
+          <span class="section-num neon-green-num">04</span>
           <span class="section-title-text">设定初始与目标</span>
         </h3>
         <div class="input-grid">
@@ -763,5 +865,210 @@ function startGame(): void {
   box-shadow: none;
   text-shadow: none;
   opacity: 0.5;
+}
+
+/* === MBTI 选择 UI === */
+.mbti-intro {
+  font-size: 12px;
+  color: #c2c3c7;
+  margin: 0;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+  text-align: center;
+  font-style: italic;
+}
+
+.mbti-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mbti-group {
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  background: rgba(10, 5, 30, 0.4);
+  overflow: hidden;
+}
+
+.mbti-group.expanded {
+  border-color: rgba(255, 45, 149, 0.4);
+}
+
+.mbti-group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.mbti-group-header:hover {
+  background: rgba(255, 136, 0, 0.06);
+}
+
+.mbti-group-temp {
+  font-size: 12px;
+  font-weight: bold;
+  font-family: 'DotGothic16', monospace;
+  padding: 2px 8px;
+  border: 1px solid;
+  letter-spacing: 1px;
+}
+
+.temp-nt { color: #00d4ff; border-color: #00d4ff; text-shadow: 0 0 4px #00d4ff; }
+.temp-nf { color: #ff2d95; border-color: #ff2d95; text-shadow: 0 0 4px #ff2d95; }
+.temp-sj { color: #00ff88; border-color: #00ff88; text-shadow: 0 0 4px #00ff88; }
+.temp-sp { color: #ff8800; border-color: #ff8800; text-shadow: 0 0 4px #ff8800; }
+
+.mbti-group-label {
+  font-size: 14px;
+  color: #f4f4f4;
+  font-weight: bold;
+  font-family: 'DotGothic16', monospace;
+}
+
+.mbti-group-theme {
+  font-size: 11px;
+  color: #94b0c2;
+  flex: 1;
+}
+
+.mbti-group-arrow {
+  font-size: 10px;
+  color: #c900ff;
+}
+
+.mbti-types-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 10px;
+}
+
+@media (max-width: 640px) {
+  .mbti-types-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.mbti-type-card {
+  padding: 12px 8px !important;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mbti-code {
+  font-size: 16px;
+  font-weight: bold;
+  color: #00d4ff;
+  letter-spacing: 2px;
+  font-family: 'DotGothic16', monospace;
+  text-shadow: 0 0 4px #00d4ff;
+  position: relative;
+  z-index: 1;
+}
+
+.mbti-type-card.selected .mbti-code {
+  color: #fff;
+  text-shadow: 0 0 8px #ff2d95;
+}
+
+.mbti-name {
+  font-size: 12px;
+  color: #c2c3c7;
+  position: relative;
+  z-index: 1;
+}
+
+.mbti-theme {
+  font-size: 10px;
+  color: #94b0c2;
+  line-height: 1.3;
+  position: relative;
+  z-index: 1;
+}
+
+/* 选中人格详情面板 */
+.mbti-detail-panel {
+  margin-top: 12px;
+  padding: 16px;
+  background: rgba(10, 5, 30, 0.7);
+  border: 1px solid rgba(201, 0, 255, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mbti-detail-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.mbti-detail-code {
+  font-size: 20px;
+  font-weight: bold;
+  color: #ff2d95;
+  letter-spacing: 3px;
+  font-family: 'DotGothic16', monospace;
+  text-shadow: 0 0 8px #ff2d95;
+}
+
+.mbti-detail-name {
+  font-size: 14px;
+  color: #f4f4f4;
+  font-family: 'DotGothic16', monospace;
+}
+
+.mbti-detail-temp {
+  font-size: 10px;
+  padding: 1px 6px;
+  border: 1px solid;
+  margin-left: auto;
+}
+
+.mbti-detail-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.detail-label {
+  font-size: 11px;
+  color: #94b0c2;
+  min-width: 60px;
+  flex-shrink: 0;
+  padding-top: 1px;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 12px;
+  color: #d4d4d8;
+  line-height: 1.6;
+  flex: 1;
+}
+
+.detail-question {
+  color: #c900ff;
+  font-style: italic;
+}
+
+.detail-strength {
+  color: #00ff88;
+}
+
+.detail-shadow {
+  color: #ff8800;
+}
+
+.detail-fit {
+  color: #00d4ff;
 }
 </style>

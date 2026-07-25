@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import type { GameState, YearResult } from '../../types/global.d.js'
 import { playTurn, playDing, playBuzz, playBigGain, playBigLoss } from '../../utils/audio.js'
@@ -14,9 +14,6 @@ const animatedSavingsChange = ref(0)
 const animatedTotalIncome = ref(0)
 const animatedTotalExpense = ref(0)
 const animatedCurrentSavings = ref(0)
-const animatedStress = ref(0)
-const animatedHappiness = ref(0)
-const animatedHealth = ref(0)
 const numbersReady = ref(false)
 
 function animateNumber(target: { value: number }, to: number, duration: number) {
@@ -41,7 +38,6 @@ watch(() => store.showYearEnd, (newVal) => {
     numbersReady.value = true
 
     // 立刻开始数字动画（不做延迟，避免显示¥0）
-    const r = result.value!
     const inc = totalIncome.value
     const exp = totalExpense.value
     const change = actualChange.value
@@ -271,20 +267,24 @@ interface FinanceItem {
   isIncome: boolean
 }
 
-const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[] }>(() => {
-  if (!result.value) return { income: [], expense: [] }
+const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[]; assetChanges: FinanceItem[] }>(() => {
+  if (!result.value) return { income: [], expense: [], assetChanges: [] }
   const r = result.value
   const income: FinanceItem[] = []
   const expense: FinanceItem[] = []
+  const assetChanges: FinanceItem[] = []
 
-  // === 固定收入项 ===
+  // === 固定收入项（现金流入） ===
   if (r.salaryIncome > 0) {
     income.push({ label: '工资薪酬', amount: r.salaryIncome, isIncome: true })
+  }
+  if ((r as any).sideHustleIncome > 0) {
+    income.push({ label: '副业收入', amount: (r as any).sideHustleIncome, isIncome: true })
   }
   if (r.passiveIncome > 0) {
     income.push({ label: '被动收入', amount: r.passiveIncome, isIncome: true })
   }
-  // === 理财投资明细（拆分为6个渠道） ===
+  // === 理财投资明细（拆分为6个渠道）- 现金类理财（存款内部分布的渠道） ===
   if (r.bankGain > 0) {
     income.push({ label: '🏦 余额宝', amount: r.bankGain, isIncome: true })
   }
@@ -311,7 +311,7 @@ const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[] }>
   } else if (r.specGain < 0) {
     expense.push({ label: '₿ 比特币亏损', amount: -r.specGain, isIncome: false })
   }
-  // 商铺租金
+  // 商铺租金（现金收入）
   if ((r as any).shopRentIncome > 0) {
     income.push({ label: '🏪 商铺租金', amount: (r as any).shopRentIncome, isIncome: true })
   }
@@ -320,7 +320,33 @@ const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[] }>
     income.push({ label: '养老金', amount: pensionTotal, isIncome: true })
   }
 
-  // === 固定支出项 ===
+  // === 资产市值变动（非现金，不影响存款，仅改变总资产） ===
+  if ((r as any).chainHoldingsGain > 0) {
+    assetChanges.push({ label: '⛓️ 链上持仓增值', amount: (r as any).chainHoldingsGain, isIncome: true })
+  } else if ((r as any).chainHoldingsGain < 0) {
+    assetChanges.push({ label: '⛓️ 链上持仓缩水', amount: -(r as any).chainHoldingsGain, isIncome: false })
+  }
+  if ((r as any).bioPortfolioGain > 0) {
+    assetChanges.push({ label: '🧬 生科投资增值', amount: (r as any).bioPortfolioGain, isIncome: true })
+  } else if ((r as any).bioPortfolioGain < 0) {
+    assetChanges.push({ label: '🧬 生科投资缩水', amount: -(r as any).bioPortfolioGain, isIncome: false })
+  }
+  if ((r as any).shopValueChange > 0) {
+    assetChanges.push({ label: '🏪 商铺增值', amount: (r as any).shopValueChange, isIncome: true })
+  } else if ((r as any).shopValueChange < 0) {
+    assetChanges.push({ label: '🏪 商铺贬值', amount: -(r as any).shopValueChange, isIncome: false })
+  }
+  if ((r as any).propertyChange > 0) {
+    assetChanges.push({ label: '🏠 房产增值', amount: (r as any).propertyChange, isIncome: true })
+  } else if ((r as any).propertyChange < 0) {
+    assetChanges.push({ label: '🏠 房产贬值', amount: -(r as any).propertyChange, isIncome: false })
+  }
+  // 车辆折旧
+  if ((r as any).carDepreciation && (r as any).carDepreciation < 0) {
+    assetChanges.push({ label: '🚗 车辆折旧', amount: -(r as any).carDepreciation, isIncome: false })
+  }
+
+  // === 固定支出项（现金流出） ===
   if (r.livingCost > 0) {
     expense.push({ label: '生活开销', amount: r.livingCost, isIncome: false })
   }
@@ -329,6 +355,12 @@ const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[] }>
   }
   if (r.insuranceCost > 0) {
     expense.push({ label: '保险保费', amount: r.insuranceCost, isIncome: false })
+  }
+  if ((r as any).carCost > 0) {
+    expense.push({ label: '🚗 养车费用', amount: (r as any).carCost, isIncome: false })
+  }
+  if ((r as any).propertyMaintenanceCost > 0) {
+    expense.push({ label: '🏠 房屋维护', amount: (r as any).propertyMaintenanceCost, isIncome: false })
   }
   if (r.cardCost > 0) {
     expense.push({ label: '卡片花费', amount: r.cardCost, isIncome: false })
@@ -362,7 +394,7 @@ const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[] }>
     }
   }
 
-  return { income, expense }
+  return { income, expense, assetChanges }
 })
 
 const totalIncome = computed(() => {
@@ -371,6 +403,14 @@ const totalIncome = computed(() => {
 
 const totalExpense = computed(() => {
   return financeItems.value.expense.reduce((s, i) => s + i.amount, 0)
+})
+
+const totalAssetChange = computed(() => {
+  let total = 0
+  for (const item of financeItems.value.assetChanges) {
+    total += item.isIncome ? item.amount : -item.amount
+  }
+  return total
 })
 
 const actualChange = computed(() => {
@@ -662,25 +702,41 @@ function handleContinue(): void {
         <!-- 收支明细展开 -->
         <div v-if="showFinanceDetail" class="finance-detail">
           <div class="finance-detail-col">
-            <div class="detail-col-title income-title">收入明细</div>
+            <div class="detail-col-title income-title">现金收入</div>
             <div v-for="(item, idx) in financeItems.income" :key="'in-' + idx" class="detail-row">
               <span class="detail-label">{{ item.label }}</span>
               <span class="detail-amount val-green">+{{ formatMoneyFull(item.amount) }}</span>
             </div>
             <div class="detail-row total-row">
-              <span class="detail-label">收入合计</span>
+              <span class="detail-label">现金收入合计</span>
               <span class="detail-amount val-blue">{{ formatMoneyFull(totalIncome) }}</span>
             </div>
           </div>
           <div class="finance-detail-col">
-            <div class="detail-col-title expense-title">支出明细</div>
+            <div class="detail-col-title expense-title">现金支出</div>
             <div v-for="(item, idx) in financeItems.expense" :key="'ex-' + idx" class="detail-row">
               <span class="detail-label">{{ item.label }}</span>
               <span class="detail-amount val-red">-{{ formatMoneyFull(item.amount) }}</span>
             </div>
             <div class="detail-row total-row">
-              <span class="detail-label">支出合计</span>
+              <span class="detail-label">现金支出合计</span>
               <span class="detail-amount val-orange">{{ formatMoneyFull(totalExpense) }}</span>
+            </div>
+          </div>
+          <!-- 资产市值变动（非现金） -->
+          <div v-if="financeItems.assetChanges.length > 0" class="finance-detail-col full-width">
+            <div class="detail-col-title asset-title">资产市值变动（非现金，不影响存款）</div>
+            <div v-for="(item, idx) in financeItems.assetChanges" :key="'as-' + idx" class="detail-row">
+              <span class="detail-label">{{ item.label }}</span>
+              <span class="detail-amount" :class="item.isIncome ? 'val-green' : 'val-red'">
+                {{ item.isIncome ? '+' : '-' }}{{ formatMoneyFull(item.amount) }}
+              </span>
+            </div>
+            <div class="detail-row total-row">
+              <span class="detail-label">资产市值净变动</span>
+              <span class="detail-amount" :class="totalAssetChange >= 0 ? 'val-green' : 'val-red'">
+                {{ totalAssetChange >= 0 ? '+' : '' }}{{ formatMoneyFull(totalAssetChange) }}
+              </span>
             </div>
           </div>
         </div>
@@ -1284,6 +1340,18 @@ function handleContinue(): void {
 .detail-col-title.expense-title {
   color: #ff8800;
   text-shadow: 0 0 4px rgba(255, 136, 0, 0.4);
+}
+
+.detail-col-title.asset-title {
+  color: #00d4ff;
+  text-shadow: 0 0 4px rgba(0, 212, 255, 0.4);
+}
+
+.finance-detail-col.full-width {
+  grid-column: 1 / -1;
+  border-top: 1px solid rgba(0, 212, 255, 0.2);
+  padding-top: 8px;
+  margin-top: 4px;
 }
 
 .detail-row {

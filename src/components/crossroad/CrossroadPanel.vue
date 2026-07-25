@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import type { CrossroadEvent } from '../../types/global.d.js'
 import { playConfirm } from '../../utils/audio.js'
+import { showNumericalHints } from '../../utils/ui-prefs.js'
 
 const store = useGameStore()
 
@@ -83,7 +84,7 @@ function handleSelect(optionId: string, option: any): void {
             <span v-if="!isOptionAvailable(option)" class="lock-badge">🔒</span>
           </div>
           <p class="option-description">{{ option.description }}</p>
-          <span class="option-hint" :class="'hint-' + option.hintColor">
+          <span v-if="showNumericalHints" class="option-hint" :class="'hint-' + option.hintColor">
             {{ option.hint }}
           </span>
           <span v-if="!isOptionAvailable(option) && getDisabledReason(option)" class="option-disabled-reason">

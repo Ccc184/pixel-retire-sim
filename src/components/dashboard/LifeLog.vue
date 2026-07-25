@@ -5,7 +5,6 @@ import { useGameStore } from '../../store/game.store.js';
 const store = useGameStore();
 const s = computed(() => store.state);
 
-const collapsed = ref(false);
 const logContainer = ref<HTMLElement | null>(null);
 
 // 日常琐事折叠（默认收起）
@@ -52,27 +51,10 @@ const relationshipLogs = computed(() => {
 // 结局触发时给面板加特殊边框
 const isEnding = computed(() => s.value.endingTriggered);
 
-function toggleCollapse() {
-  collapsed.value = !collapsed.value;
-}
-
 // 日志更新时自动滚动到底部（最新在底部）
 watch(
   () => s.value.lifeLog.length,
   async () => {
-    if (collapsed.value) return;
-    await nextTick();
-    if (logContainer.value) {
-      logContainer.value.scrollTop = logContainer.value.scrollHeight;
-    }
-  },
-);
-
-// 折叠展开时也滚到底
-watch(
-  () => collapsed.value,
-  async (v) => {
-    if (v) return;
     await nextTick();
     if (logContainer.value) {
       logContainer.value.scrollTop = logContainer.value.scrollHeight;
@@ -94,43 +76,27 @@ function isNewest(idx: number): boolean {
 
 <template>
   <div
-    class="life-log-panel pixel-panel"
-    :class="{ collapsed, 'ending-border': isEnding }"
+    class="life-log-panel"
+    :class="{ 'ending-border': isEnding }"
   >
-    <!-- 顶部霓虹标题 -->
-    <div class="log-neon-header">
-      <span class="title-deco">◢◤</span>
-      <h2 class="log-title-neon">LIFE LOG</h2>
-      <span class="title-deco">◥◣</span>
+    <!-- 紧凑头部 -->
+    <div class="log-header-bar">
+      <span class="header-title">▸ 人生日志</span>
+      <span class="header-count">{{ displayLogs.length }}</span>
     </div>
 
-    <!-- 折叠头部（可点击） -->
-    <button class="log-header" @click="toggleCollapse" type="button">
-      <span class="header-indicator">
-        <span class="arrow" :class="{ rotated: collapsed }">▶</span>
-      </span>
-      <span class="header-title">▣ 人生日志</span>
-      <span class="header-count">
-        {{ displayLogs.length }} / 80
-      </span>
-      <span class="header-spacer" />
-      <span class="header-hint">
-        {{ collapsed ? '展开' : '折叠' }}
-      </span>
-    </button>
+    <!-- 内容滚动区 -->
+    <div class="log-body" ref="logContainer">
+      <!-- CRT扫描线纹理层（subtle） -->
+      <div class="scanline-overlay" />
 
-    <!-- 可折叠内容区 -->
-    <div class="log-body" :class="{ open: !collapsed }">
       <!-- ============================================================ -->
       <!--  日常琐事折叠区（默认收起，只显示最近3条）                     -->
       <!-- ============================================================ -->
       <div v-if="dailyLogs.length > 0" class="fold-section">
         <button class="fold-header" @click="dailyCollapsed = !dailyCollapsed" type="button">
           <span class="fold-arrow" :class="{ rotated: dailyCollapsed }">▶</span>
-          <span class="fold-title">
-            <span class="fold-icon daily-icon">·</span>
-            日常琐事
-          </span>
+          <span class="fold-title">日常琐事</span>
           <span class="fold-count daily-count">{{ dailyLogs.length }}</span>
         </button>
         <div class="fold-body" :class="{ open: !dailyCollapsed }">
@@ -144,7 +110,6 @@ function isNewest(idx: number): boolean {
                 <span class="age-prefix">AGE</span>
                 <span class="age-num">{{ extractAge(log) }}</span>
               </span>
-              <span class="fold-bullet">·</span>
               <span class="fold-text">{{ log }}</span>
             </li>
           </ul>
@@ -157,10 +122,7 @@ function isNewest(idx: number): boolean {
       <div v-if="relationshipLogs.length > 0" class="fold-section">
         <button class="fold-header" @click="relCollapsed = !relCollapsed" type="button">
           <span class="fold-arrow" :class="{ rotated: relCollapsed }">▶</span>
-          <span class="fold-title">
-            <span class="fold-icon rel-icon">♥</span>
-            关系动态
-          </span>
+          <span class="fold-title">关系动态</span>
           <span class="fold-count rel-count">{{ relationshipLogs.length }}</span>
         </button>
         <div class="fold-body" :class="{ open: !relCollapsed }">
@@ -174,250 +136,231 @@ function isNewest(idx: number): boolean {
                 <span class="age-prefix">AGE</span>
                 <span class="age-num">{{ extractAge(log) }}</span>
               </span>
-              <span class="fold-bullet">♥</span>
               <span class="fold-text">{{ log }}</span>
             </li>
           </ul>
         </div>
       </div>
 
+      <!-- 空状态 -->
+      <div v-if="displayLogs.length === 0" class="log-empty">
+        <span class="empty-cursor">_</span>
+        <span class="empty-text"> 日志空空如也，像素人生尚未开始...</span>
+      </div>
+
       <!-- ============================================================ -->
       <!--  主日志列表                                                     -->
       <!-- ============================================================ -->
-      <div class="log-scroll" ref="logContainer">
-        <!-- CRT扫描线纹理层 -->
-        <div class="scanline-overlay" />
+      <ul class="log-list">
+        <li
+          v-for="(log, idx) in displayLogs"
+          :key="idx"
+          class="log-item"
+          :class="[
+            'tone-' + getLogCategory(log),
+            'bar-' + getLogCategory(log),
+            { 'is-new': isNewest(idx) }
+          ]"
+        >
+          <!-- 时间戳（年龄） -->
+          <span class="log-age-badge">
+            <span class="age-prefix">AGE</span>
+            <span class="age-num">{{ extractAge(log) }}</span>
+          </span>
+          <span class="log-text">{{ log }}</span>
+          <!-- 黑天鹅闪烁边框条 -->
+          <span v-if="getLogCategory(log) === 'swan'" class="swan-flash-bar" />
+        </li>
+      </ul>
+    </div>
 
-        <div v-if="displayLogs.length === 0" class="log-empty">
-          <span class="empty-cursor">_</span>
-          <span> 日志空空如也，像素人生尚未开始...</span>
-        </div>
-
-        <ul class="log-list">
-          <li
-            v-for="(log, idx) in displayLogs"
-            :key="idx"
-            class="log-item"
-            :class="[
-              'tone-' + getLogCategory(log),
-              'bar-' + getLogCategory(log),
-              { 'is-new': isNewest(idx) }
-            ]"
-          >
-            <!-- 时间戳（年龄） -->
-            <span class="log-age-badge">
-              <span class="age-prefix">AGE</span>
-              <span class="age-num">{{ extractAge(log) }}</span>
-            </span>
-            <span class="log-bullet">»</span>
-            <span class="log-text">{{ log }}</span>
-            <!-- 黑天鹅闪烁边框条 -->
-            <span v-if="getLogCategory(log) === 'swan'" class="swan-flash-bar" />
-          </li>
-        </ul>
-      </div>
-
-      <!-- 底部扫描线装饰 -->
-      <div class="log-footer">
-        <span class="scan-line" />
-        <span class="footer-text">
-          [ END OF LOG ]
-        </span>
-        <span class="scan-line" />
-      </div>
+    <!-- 底部标记 -->
+    <div class="log-footer">
+      <span class="footer-text">[ END ]</span>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* ============================================================
+   CSS 变量定义
+   ============================================================ */
 .life-log-panel {
-  font-family: 'DotGothic16', monospace;
-  color: #f4f4f4;
-  padding: 14px 16px;
+  --neon-pink: #ff2d95;
+  --neon-green: #00ff88;
+  --neon-blue: #00d4ff;
+  --neon-purple: #c900ff;
+  --neon-orange: #ff8800;
+  --neon-yellow: #ffec27;
+  --neon-red: #ff4444;
+
+  --color-primary: #e8e0f0;
+  --color-secondary: #94a0b8;
+  --color-dim: #6a6a8a;
+  --bg-panel: rgba(15, 8, 35, 0.85);
+  --border-dim: rgba(255, 255, 255, 0.08);
+  --border-faint: rgba(255, 255, 255, 0.03);
+
+  background: var(--bg-panel);
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   position: relative;
+  font-family: 'Noto Sans SC', sans-serif;
+  color: var(--color-secondary);
+  flex: 1;
+  min-height: 0;
 }
 
-/* 结局触发时的特殊霓虹边框效果 */
+/* ============================================================
+   结局触发时的特殊霓虹边框效果
+   ============================================================ */
 .life-log-panel.ending-border {
   animation: endingBorderPulse 2s ease-in-out infinite;
 }
 
 @keyframes endingBorderPulse {
   0%, 100% {
-    border-color: #ff2d95;
+    border-color: var(--neon-pink);
     box-shadow:
-      0 0 10px #ff2d95,
-      0 0 25px #ff2d9580,
-      0 0 50px #c900ff40,
-      inset 0 0 20px #ff2d9520;
+      0 0 10px var(--neon-pink),
+      0 0 25px rgba(255, 45, 149, 0.5),
+      0 0 50px rgba(201, 0, 255, 0.25),
+      inset 0 0 20px rgba(255, 45, 149, 0.13);
   }
   50% {
-    border-color: #c900ff;
+    border-color: var(--neon-purple);
     box-shadow:
-      0 0 15px #c900ff,
-      0 0 35px #c900ff80,
-      0 0 60px #00d4ff40,
-      inset 0 0 25px #c900ff20;
+      0 0 15px var(--neon-purple),
+      0 0 35px rgba(201, 0, 255, 0.5),
+      0 0 60px rgba(0, 212, 255, 0.25),
+      inset 0 0 25px rgba(201, 0, 255, 0.13);
   }
-}
-
-/* 顶部霓虹标题 */
-.log-neon-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin-bottom: 10px;
-  padding-bottom: 8px;
-  border-bottom: 1px dashed #ff2d9560;
-}
-
-.log-title-neon {
-  font-size: 18px;
-  color: #ff2d95;
-  margin: 0;
-  letter-spacing: 3px;
-  font-weight: bold;
-  text-shadow:
-    0 0 4px #ff2d95,
-    0 0 10px #ff2d95,
-    0 0 20px #ff2d95,
-    0 0 40px #ff2d9580;
-  animation: pinkFlicker 4s ease-in-out infinite;
-}
-
-@keyframes pinkFlicker {
-  0%, 100% { opacity: 1; }
-  45% { opacity: 1; }
-  50% { opacity: 0.65; text-shadow: 0 0 2px #ff2d95; }
-  55% { opacity: 1; }
-}
-
-.title-deco {
-  color: #c900ff;
-  font-size: 12px;
-  text-shadow: 0 0 6px #c900ff;
-}
-
-/* 头部按钮 */
-.log-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  background: rgba(255, 45, 149, 0.08);
-  border: 1px solid #ff2d9540;
-  padding: 8px 12px;
-  cursor: pointer;
-  font-family: 'DotGothic16', monospace;
-  color: #f4f4f4;
-  text-align: left;
-  transition: all 0.15s ease;
-  margin-bottom: 8px;
-  box-shadow: inset 0 0 8px #ff2d9515;
-}
-
-.log-header:hover {
-  background: rgba(255, 45, 149, 0.18);
-  border-color: #ff2d95;
-  box-shadow: 0 0 8px #ff2d9540, inset 0 0 10px #ff2d9520;
-}
-
-.header-indicator {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  background: rgba(10, 5, 30, 0.8);
-  border: 1px solid #ff2d95;
-  box-shadow: 0 0 4px #ff2d95;
-}
-
-.arrow {
-  display: inline-block;
-  color: #ff2d95;
-  font-size: 10px;
-  text-shadow: 0 0 4px #ff2d95;
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-  transform-origin: center;
-}
-
-.arrow.rotated {
-  transform: rotate(-90deg);
-}
-
-.header-title {
-  font-size: 13px;
-  color: #ff2d95;
-  letter-spacing: 2px;
-  text-shadow: 0 0 4px #ff2d95;
-}
-
-.header-count {
-  font-size: 10px;
-  color: #00d4ff;
-  padding: 2px 8px;
-  background: rgba(0, 212, 255, 0.1);
-  border: 1px solid #00d4ff60;
-  text-shadow: 0 0 4px #00d4ff;
-  box-shadow: 0 0 4px #00d4ff30;
-}
-
-.header-spacer {
-  flex: 1;
-}
-
-.header-hint {
-  font-size: 10px;
-  color: #c900ff;
-  letter-spacing: 1px;
-  text-shadow: 0 0 4px #c900ff80;
-}
-
-/* 折叠主体 */
-.log-body {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.log-body.open {
-  max-height: 600px;
 }
 
 /* ============================================================
-   折叠区：日常琐事 / 关系动态
+   紧凑头部
+   ============================================================ */
+.log-header-bar {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border-dim);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.header-title {
+  font-size: 9px;
+  color: var(--color-dim);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-family: 'DotGothic16', monospace;
+}
+
+.header-count {
+  font-size: 9px;
+  color: var(--neon-blue);
+  font-family: 'DotGothic16', monospace;
+  font-weight: 700;
+}
+
+/* ============================================================
+   内容滚动区
+   ============================================================ */
+.log-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 6px 10px;
+  position: relative;
+  scroll-behavior: smooth;
+}
+
+/* 滚动条 - 极简 */
+.log-body::-webkit-scrollbar {
+  width: 4px;
+}
+.log-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.log-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 212, 255, 0.2);
+  border-radius: 2px;
+}
+.log-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 212, 255, 0.4);
+}
+
+/* CRT扫描线叠加 - subtle */
+.scanline-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 212, 255, 0.02) 0px,
+    rgba(0, 212, 255, 0.02) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+}
+
+/* ============================================================
+   空状态
+   ============================================================ */
+.log-empty {
+  padding: 20px 8px;
+  text-align: center;
+  color: var(--color-dim);
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+
+.empty-cursor {
+  color: var(--neon-pink);
+  animation: blink 1s steps(2) infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ============================================================
+   折叠区：日常琐事 / 关系动态（compact）
    ============================================================ */
 .fold-section {
-  margin-bottom: 6px;
+  margin-bottom: 2px;
 }
 
 .fold-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   width: 100%;
-  background: rgba(10, 5, 30, 0.4);
-  border: 1px solid #c900ff30;
-  padding: 5px 10px;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border-faint);
+  padding: 4px 0;
   cursor: pointer;
   font-family: 'DotGothic16', monospace;
-  color: #f4f4f4;
+  color: var(--color-dim);
   text-align: left;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .fold-header:hover {
-  background: rgba(10, 5, 30, 0.6);
-  border-color: #c900ff60;
+  color: var(--color-secondary);
 }
 
 .fold-arrow {
   display: inline-block;
-  font-size: 9px;
-  color: #c900ff;
+  font-size: 8px;
+  color: var(--color-dim);
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -426,44 +369,24 @@ function isNewest(idx: number): boolean {
 }
 
 .fold-title {
-  font-size: 11px;
-  color: #94b0c2;
+  font-size: 9px;
   letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.fold-icon {
-  font-size: 12px;
-}
-
-.fold-icon.daily-icon {
-  color: #00d4ff;
-  text-shadow: 0 0 4px #00d4ff;
-}
-
-.fold-icon.rel-icon {
-  color: #ff2d95;
-  text-shadow: 0 0 4px #ff2d95;
+  text-transform: uppercase;
+  flex: 1;
 }
 
 .fold-count {
-  margin-left: auto;
   font-size: 9px;
-  padding: 1px 6px;
+  padding: 0 2px;
+  font-weight: 700;
 }
 
 .fold-count.daily-count {
-  color: #00d4ff;
-  border: 1px solid #00d4ff40;
-  background: rgba(0, 212, 255, 0.08);
+  color: var(--neon-blue);
 }
 
 .fold-count.rel-count {
-  color: #ff2d95;
-  border: 1px solid #ff2d9540;
-  background: rgba(255, 45, 149, 0.08);
+  color: var(--neon-pink);
 }
 
 .fold-body {
@@ -478,140 +401,45 @@ function isNewest(idx: number): boolean {
 
 .fold-list {
   list-style: none;
-  margin: 4px 0;
-  padding: 0 4px;
+  margin: 0;
+  padding: 2px 0 2px 6px;
 }
 
 .fold-item {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: 5px;
+  padding: 4px 0;
   font-size: 10px;
-  line-height: 1.5;
-  border-left: 2px solid transparent;
+  line-height: 1.4;
+  border-bottom: 1px solid var(--border-faint);
 }
 
-.fold-item-daily {
-  border-left-color: #00d4ff60;
-  background: rgba(0, 212, 255, 0.04);
+.fold-item:last-child {
+  border-bottom: none;
 }
 
 .fold-item-daily .fold-text {
-  color: #94b0c2;
-  font-size: 10px;
-}
-
-.fold-item-rel {
-  border-left-color: #ff2d9560;
-  background: rgba(255, 45, 149, 0.04);
+  color: var(--color-secondary);
 }
 
 .fold-item-rel .fold-text {
   color: #e0a0c8;
-  font-size: 10px;
-}
-
-.fold-bullet {
-  flex-shrink: 0;
-  margin-top: 2px;
-}
-
-.fold-item-daily .fold-bullet {
-  color: #00d4ff;
-  font-size: 14px;
-}
-
-.fold-item-rel .fold-bullet {
-  color: #ff2d95;
-  font-size: 12px;
-}
-
-.daily-badge {
-  background: rgba(0, 212, 255, 0.08) !important;
-  border-color: #00d4ff40 !important;
-}
-
-.daily-badge .age-prefix {
-  color: #00d4ff60 !important;
-}
-
-.daily-badge .age-num {
-  color: #00d4ff !important;
-  text-shadow: 0 0 4px #00d4ff80 !important;
-}
-
-.rel-badge {
-  background: rgba(255, 45, 149, 0.08) !important;
-  border-color: #ff2d9540 !important;
-}
-
-.rel-badge .age-prefix {
-  color: #ff2d9560 !important;
-}
-
-.rel-badge .age-num {
-  color: #ff2d95 !important;
-  text-shadow: 0 0 4px #ff2d9580 !important;
 }
 
 .fold-text {
   flex: 1;
   word-break: break-word;
+  margin-top: 1px;
 }
 
-/* 滚动区域 */
-.log-scroll {
-  max-height: 320px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 8px 4px;
-  background: rgba(5, 2, 15, 0.6);
-  border: 1px solid #c900ff40;
-  position: relative;
-  scroll-behavior: smooth;
-  box-shadow: inset 0 0 12px #00000080;
-}
-
-/* CRT扫描线叠加 */
-.scanline-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  background: repeating-linear-gradient(
-    0deg,
-    rgba(0, 212, 255, 0.03) 0px,
-    rgba(0, 212, 255, 0.03) 1px,
-    transparent 1px,
-    transparent 3px
-  );
-}
-
-/* 空状态 */
-.log-empty {
-  padding: 24px 14px;
-  text-align: center;
-  color: #566c86;
-  font-size: 12px;
-  letter-spacing: 1px;
-}
-
-.empty-cursor {
-  color: #ff2d95;
-  text-shadow: 0 0 6px #ff2d95;
-  animation: blink 1s steps(2) infinite;
-}
-
-@keyframes blink {
-  50% { opacity: 0; }
-}
-
-/* 日志列表 */
+/* ============================================================
+   主日志列表
+   ============================================================ */
 .log-list {
   list-style: none;
   margin: 0;
-  padding: 0 6px 0 4px;
+  padding: 0;
   position: relative;
   z-index: 1;
 }
@@ -619,26 +447,27 @@ function isNewest(idx: number): boolean {
 .log-item {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 6px 10px;
-  font-size: 12px;
-  line-height: 1.6;
-  border-left: 3px solid transparent;
-  border-bottom: 1px dashed rgba(201, 0, 255, 0.1);
+  gap: 5px;
+  padding: 5px 0 5px 4px;
+  border-bottom: 1px solid var(--border-faint);
+  border-left: 2px solid transparent;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--color-secondary);
   transition: background 0.12s, border-color 0.2s;
   position: relative;
   opacity: 0;
-  animation: logSlideIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: logSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .log-item.is-new {
-  animation: logSlideInNew 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation: logSlideInNew 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 @keyframes logSlideIn {
   from {
     opacity: 0;
-    transform: translateX(-6px);
+    transform: translateX(-4px);
   }
   to {
     opacity: 1;
@@ -649,166 +478,119 @@ function isNewest(idx: number): boolean {
 @keyframes logSlideInNew {
   0% {
     opacity: 0;
-    transform: translateX(-12px) translateY(-4px);
-    background: rgba(0, 212, 255, 0.15);
+    transform: translateX(-8px);
+    background: rgba(0, 212, 255, 0.12);
   }
   60% {
     opacity: 1;
     transform: translateX(2px);
-    background: rgba(0, 212, 255, 0.08);
+    background: rgba(0, 212, 255, 0.06);
   }
   100% {
     opacity: 1;
-    transform: translateX(0) translateY(0);
+    transform: translateX(0);
     background: transparent;
   }
 }
 
 .log-item:hover {
-  background: rgba(201, 0, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
 }
 
-/* 年龄badge - 蓝色霓虹小字 */
+/* 年龄 badge - compact inline */
 .log-age-badge {
   flex-shrink: 0;
   display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-width: 36px;
-  padding: 2px 4px;
-  background: rgba(0, 212, 255, 0.1);
-  border: 1px solid #00d4ff60;
+  align-items: baseline;
+  gap: 1px;
+  color: var(--neon-blue);
+  font-weight: 700;
+  font-size: 9px;
+  font-family: 'DotGothic16', monospace;
   margin-top: 1px;
-  box-shadow: 0 0 4px #00d4ff30;
 }
 
 .age-prefix {
-  font-size: 8px;
-  color: #00d4ff80;
-  letter-spacing: 1px;
-  line-height: 1;
+  font-size: 7px;
+  opacity: 0.55;
+  letter-spacing: 0.5px;
 }
 
 .age-num {
-  font-size: 12px;
-  color: #00d4ff;
-  font-weight: bold;
-  text-shadow: 0 0 4px #00d4ff;
-  line-height: 1.2;
-}
-
-.log-bullet {
-  color: #c900ff80;
-  flex-shrink: 0;
-  margin-top: 4px;
-  text-shadow: 0 0 4px #c900ff;
+  font-size: 9px;
+  text-shadow: 0 0 3px currentColor;
 }
 
 .log-text {
   flex: 1;
-  color: #e0e0e8;
   word-break: break-word;
-  text-shadow: 0 0 2px rgba(255, 255, 255, 0.1);
+  margin-top: 1px;
 }
 
 /* ============================================================
-   左侧边框颜色分类
+   左侧边框颜色分类（bar-*）
    ============================================================ */
 
 /* 人际关系日志：左侧粉色竖条 */
 .bar-relationship {
-  border-left-color: #ff2d95 !important;
-  border-left-width: 3px;
+  border-left-color: var(--neon-pink) !important;
 }
 
-/* 日常琐事：左侧蓝色竖条（更细） */
+/* 日常琐事：左侧蓝色竖条 */
 .bar-daily {
-  border-left-color: #00d4ff80 !important;
-  border-left-width: 2px;
-}
-.bar-daily .log-text {
-  font-size: 11px;
-  color: #94b0c2;
+  border-left-color: rgba(0, 212, 255, 0.5) !important;
 }
 
 /* 黑天鹅事件：左侧红色竖条（粗） */
 .bar-swan {
-  border-left-color: #ff004d !important;
-  border-left-width: 4px;
+  border-left-color: var(--neon-red) !important;
+  border-left-width: 3px;
 }
 
 /* 卡片选择：左侧橙色竖条 */
 .bar-card {
-  border-left-color: #ff8800 !important;
-  border-left-width: 3px;
+  border-left-color: var(--neon-orange) !important;
 }
 
 /* ============================================================
-   色调差异（保留原有样式 + 新增类型）
+   色调差异（tone-*）- 保留全部分类色彩编码
    ============================================================ */
+
+/* danger - 危险事件 */
 .log-item.tone-danger {
-  border-left-color: #ff2d95;
-  background: rgba(255, 45, 149, 0.05);
+  border-left-color: var(--neon-pink);
+  background: rgba(255, 45, 149, 0.04);
 }
 .log-item.tone-danger .log-age-badge {
-  background: rgba(255, 45, 149, 0.15);
-  border-color: #ff2d95;
-  box-shadow: 0 0 6px #ff2d9540;
-}
-.log-item.tone-danger .log-age-badge .age-prefix {
-  color: #ff2d9580;
-}
-.log-item.tone-danger .log-age-badge .age-num {
-  color: #ff2d95;
-  text-shadow: 0 0 6px #ff2d95;
-}
-.log-item.tone-danger .log-bullet {
-  color: #ff2d95;
-  text-shadow: 0 0 6px #ff2d95;
+  color: var(--neon-pink);
 }
 .log-item.tone-danger .log-text {
   color: #ff9dcc;
-  text-shadow: 0 0 4px #ff2d9540;
 }
 
-/* 黑天鹅：红色边框闪烁 */
+/* swan - 黑天鹅闪烁 */
 .log-item.tone-swan {
-  border-left-color: #ff004d;
-  border-left-width: 4px;
-  background: rgba(255, 0, 77, 0.08);
-  animation: logSlideIn 0.35s forwards, swanBorderFlash 1.2s ease-in-out 0.35s 3;
+  border-left-color: var(--neon-red);
+  border-left-width: 3px;
+  background: rgba(255, 68, 68, 0.06);
+  animation: logSlideIn 0.3s forwards, swanBorderFlash 1.2s ease-in-out 0.3s 3;
 }
 .log-item.tone-swan .log-age-badge {
-  background: rgba(255, 0, 77, 0.2);
-  border-color: #ff004d;
-  box-shadow: 0 0 8px #ff004d60;
-}
-.log-item.tone-swan .log-age-badge .age-prefix {
-  color: #ff004d80;
-}
-.log-item.tone-swan .log-age-badge .age-num {
-  color: #ff004d;
-  text-shadow: 0 0 8px #ff004d;
-}
-.log-item.tone-swan .log-bullet {
-  color: #ff004d;
-  text-shadow: 0 0 8px #ff004d;
+  color: var(--neon-red);
 }
 .log-item.tone-swan .log-text {
   color: #ff6688;
-  text-shadow: 0 0 6px #ff004d60;
-  font-weight: bold;
+  font-weight: 700;
 }
 
 @keyframes swanBorderFlash {
   0%, 100% {
-    border-left-color: #ff004d;
-    box-shadow: inset 4px 0 12px #ff004d40;
+    border-left-color: var(--neon-red);
+    box-shadow: inset 3px 0 10px rgba(255, 68, 68, 0.25);
   }
   50% {
-    border-left-color: #ff2d95;
-    box-shadow: inset 4px 0 20px #ff004d80, 0 0 12px #ff004d60;
+    border-left-color: var(--neon-pink);
+    box-shadow: inset 3px 0 16px rgba(255, 68, 68, 0.5), 0 0 10px rgba(255, 68, 68, 0.4);
   }
 }
 
@@ -817,9 +599,9 @@ function isNewest(idx: number): boolean {
   top: 0;
   right: 0;
   bottom: 0;
-  width: 3px;
-  background: #ff004d;
-  box-shadow: 0 0 8px #ff004d;
+  width: 2px;
+  background: var(--neon-red);
+  box-shadow: 0 0 6px var(--neon-red);
   animation: swanBarPulse 0.6s ease-in-out infinite;
 }
 
@@ -828,146 +610,87 @@ function isNewest(idx: number): boolean {
   50% { opacity: 0.3; }
 }
 
+/* success - 成功事件 */
 .log-item.tone-success {
-  border-left-color: #00ff88;
+  border-left-color: var(--neon-green);
 }
 .log-item.tone-success .log-age-badge {
-  background: rgba(0, 255, 136, 0.12);
-  border-color: #00ff88;
-  box-shadow: 0 0 6px #00ff8840;
-}
-.log-item.tone-success .log-age-badge .age-prefix {
-  color: #00ff8880;
-}
-.log-item.tone-success .log-age-badge .age-num {
-  color: #00ff88;
-  text-shadow: 0 0 6px #00ff88;
-}
-.log-item.tone-success .log-bullet {
-  color: #00ff88;
-  text-shadow: 0 0 6px #00ff88;
+  color: var(--neon-green);
 }
 .log-item.tone-success .log-text {
   color: #99ffcc;
-  text-shadow: 0 0 4px #00ff8830;
 }
 
-/* 卡片选择事件 - 橙色霓虹 */
+/* card - 卡片选择事件 */
 .log-item.tone-card {
-  border-left-color: #ff8800;
+  border-left-color: var(--neon-orange);
 }
 .log-item.tone-card .log-age-badge {
-  background: rgba(255, 136, 0, 0.12);
-  border-color: #ff880060;
-}
-.log-item.tone-card .log-age-badge .age-prefix {
-  color: #ff880080;
-}
-.log-item.tone-card .log-age-badge .age-num {
-  color: #ff8800;
-  text-shadow: 0 0 4px #ff8800;
-}
-.log-item.tone-card .log-bullet {
-  color: #ff8800;
-  text-shadow: 0 0 4px #ff8800;
+  color: var(--neon-orange);
 }
 .log-item.tone-card .log-text {
   color: #ffcc88;
 }
 
-/* 人际关系事件 - 粉色霓虹 */
+/* relationship - 人际关系事件 */
 .log-item.tone-relationship {
-  border-left-color: #ff2d95;
+  border-left-color: var(--neon-pink);
   background: rgba(255, 45, 149, 0.03);
 }
 .log-item.tone-relationship .log-age-badge {
-  background: rgba(255, 45, 149, 0.1);
-  border-color: #ff2d9560;
-}
-.log-item.tone-relationship .log-age-badge .age-prefix {
-  color: #ff2d9580;
-}
-.log-item.tone-relationship .log-age-badge .age-num {
-  color: #ff2d95;
-  text-shadow: 0 0 4px #ff2d9580;
-}
-.log-item.tone-relationship .log-bullet {
-  color: #ff2d95;
-  text-shadow: 0 0 4px #ff2d95;
+  color: var(--neon-pink);
 }
 .log-item.tone-relationship .log-text {
   color: #e0a0c8;
 }
 
-/* 日常琐事 - 蓝色淡色 */
+/* daily - 日常琐事 */
 .log-item.tone-daily {
-  border-left-color: #00d4ff60;
+  border-left-color: rgba(0, 212, 255, 0.5);
   background: rgba(0, 212, 255, 0.02);
 }
 .log-item.tone-daily .log-age-badge {
-  background: rgba(0, 212, 255, 0.08);
-  border-color: #00d4ff40;
-}
-.log-item.tone-daily .log-age-badge .age-prefix {
-  color: #00d4ff60;
-}
-.log-item.tone-daily .log-age-badge .age-num {
-  color: #00d4ff80;
-  text-shadow: 0 0 2px #00d4ff40;
-}
-.log-item.tone-daily .log-bullet {
-  color: #00d4ff60;
-  text-shadow: none;
+  color: var(--neon-blue);
 }
 .log-item.tone-daily .log-text {
-  color: #94b0c2;
-  font-size: 11px;
+  color: var(--color-secondary);
 }
 
+/* normal - 普通日志 */
 .log-item.tone-normal {
-  border-left-color: #c900ff60;
+  border-left-color: rgba(201, 0, 255, 0.5);
 }
-.log-item.tone-normal .log-bullet {
-  color: #c900ff80;
+.log-item.tone-normal .log-age-badge {
+  color: var(--neon-purple);
 }
 
-/* 底部 */
+/* ============================================================
+   折叠区 badge 变体
+   ============================================================ */
+.daily-badge {
+  color: var(--neon-blue) !important;
+}
+
+.rel-badge {
+  color: var(--neon-pink) !important;
+}
+
+/* ============================================================
+   底部标记
+   ============================================================ */
 .log-footer {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 4px 0;
-  margin-top: 6px;
-}
-
-.scan-line {
-  flex: 1;
-  height: 2px;
-  background: repeating-linear-gradient(
-    90deg,
-    #ff2d95 0,
-    #ff2d95 4px,
-    transparent 4px,
-    transparent 8px
-  );
-  box-shadow: 0 0 4px #ff2d95;
+  justify-content: center;
+  padding: 4px 0;
+  border-top: 1px solid var(--border-dim);
+  flex-shrink: 0;
 }
 
 .footer-text {
-  font-size: 9px;
-  color: #ff2d95;
+  font-size: 8px;
+  color: var(--color-dim);
   letter-spacing: 2px;
-  text-shadow: 0 0 4px #ff2d95;
-}
-
-/* collapsed 状态 */
-.life-log-panel.collapsed .log-scroll {
-  display: none;
-}
-.life-log-panel.collapsed .log-neon-header {
-  margin-bottom: 0;
-}
-.life-log-panel.collapsed .fold-section {
-  display: none;
+  font-family: 'DotGothic16', monospace;
 }
 </style>

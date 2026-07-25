@@ -1,32 +1,54 @@
 <script setup lang="ts">
-import { computed, ref, watch, nextTick } from 'vue'
+import { computed, ref, watch, nextTick, onMounted } from 'vue'
 import type { CSSProperties } from 'vue'
 import { useGameStore } from './store/game.store.js'
 import { CITY_CONFIGS } from './utils/math-engine.js'
 import type { CityType } from './types/global.d.js'
 
 import GameSetup from './components/narrative/GameSetup.vue'
+import PathSelect from './components/narrative/PathSelect.vue'
 import EndingScreen from './components/narrative/EndingScreen.vue'
 
 import CRTBezel from './components/game-board/CRTBezel.vue'
-import PixelCanvas from './components/game-board/PixelCanvas.vue'
+import CSSScene from './components/game-board/CSSScene.vue'
 import CardTransition from './components/game-board/CardTransition.vue'
 import StatsPanel from './components/dashboard/StatsPanel.vue'
-import CardDeck from './components/cards/CardDeck.vue'
+import NarrativeEventPanel from './components/narrative/NarrativeEventPanel.vue'
 import LifeLog from './components/dashboard/LifeLog.vue'
 import CrossroadPanel from './components/crossroad/CrossroadPanel.vue'
 import YearEndPanel from './components/narrative/YearEndPanel.vue'
 import AchievementToast from './components/ui/AchievementToast.vue'
 
 import { playClick, playAchievement } from './utils/audio.js'
+import { registerHintToggleShortcut } from './utils/ui-prefs.js'
+import { getPath } from './data/retirement-paths.js'
 
 const store = useGameStore()
 const toastRef = ref<InstanceType<typeof AchievementToast> | null>(null)
+
+// 注册数值提示切换快捷键（Ctrl+Shift+H）
+onMounted(() => {
+  registerHintToggleShortcut()
+})
 
 const gamePhase = computed(() => store.state.gamePhase)
 const showCitySelect = computed(() => store.showCitySelect)
 
 const cityList: CityType[] = ['资本修罗场', '中坚大后方', '避风低洼地']
+
+// ---- 顶部状态栏数据 ----
+const currentPath = computed(() => store.state.retirementPath ? getPath(store.state.retirementPath) : null)
+const faithLevel = computed(() => store.state.pathFaith ?? 0)
+
+// 婚姻/家庭状态摘要
+const lifeStatusText = computed(() => {
+  const parts: string[] = []
+  if (store.state.isUnemployed) parts.push('失业')
+  else if (store.state.isMarried) parts.push('已婚')
+  if (store.state.hasChild) parts.push('有娃')
+  if (store.state.hasProperty) parts.push('有房')
+  return parts.length > 0 ? parts.join('·') : '单身'
+})
 
 function handleStart(): void {
   playClick()
@@ -53,12 +75,6 @@ function cycleLabel(cycle: number): string {
   if (cycle === 0) return '繁荣'
   if (cycle === 2) return '萧条'
   return '平稳'
-}
-
-function cycleColor(cycle: number): string {
-  if (cycle === 0) return 'var(--neon-green)'
-  if (cycle === 2) return 'var(--neon-pink)'
-  return 'var(--neon-orange)'
 }
 
 // 年度结算显示时，弹出新成就
@@ -185,25 +201,40 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
       </div>
     </div>
 
-    <!-- ============ 顶部标题条（playing 时显示） ============ -->
+    <!-- ============ 顶部状态栏（playing 时显示） ============ -->
     <header v-if="gamePhase === 'playing'" class="top-bar">
       <div class="top-left">
-        <h1 class="top-title">像素退休模拟器</h1>
-        <button class="btn-restart" @click="handleRestart" title="重新开始">
-          ↻ 重来
-        </button>
+        <span class="top-title">像素退休模拟器</span>
+        <button class="btn-restart" @click="handleRestart" title="重新开始">↻ 重来</button>
       </div>
-      <div class="top-info">
-        <span
-          class="cycle-tag"
-          :style="{ color: cycleColor(store.state.economicCycle), textShadow: '0 0 6px ' + cycleColor(store.state.economicCycle) }"
-        >
-          ◆ 经济周期：{{ cycleLabel(store.state.economicCycle) }}
-        </span>
-        <span v-if="store.state.isUnemployed" class="status-tag unemployed">失业中</span>
-        <span v-if="store.state.isMarried" class="status-tag married">已婚</span>
-        <span v-if="store.state.hasChild" class="status-tag child">有娃</span>
-        <span v-if="store.state.hasProperty" class="status-tag house">有房</span>
+      <div class="top-center">
+        <div class="stat-badge badge-age">
+          <span class="icon">📅</span><span class="label">年龄</span>
+          <span class="value">{{ store.state.currentAge }}岁</span>
+        </div>
+        <div class="stat-badge badge-prof">
+          <span class="icon">💼</span><span class="label">职业</span>
+          <span class="value">{{ store.state.isUnemployed ? '待业' : store.state.currentProfession }}</span>
+        </div>
+        <div class="stat-badge badge-city">
+          <span class="icon">🏙️</span><span class="label">城市</span>
+          <span class="value">{{ store.state.currentCity }}</span>
+        </div>
+        <div class="stat-badge badge-cycle">
+          <span class="icon">◆</span><span class="label">周期</span>
+          <span class="value">{{ cycleLabel(store.state.economicCycle) }}</span>
+        </div>
+        <div class="stat-badge badge-status">
+          <span class="icon">💍</span><span class="label">状态</span>
+          <span class="value">{{ lifeStatusText }}</span>
+        </div>
+      </div>
+      <div class="top-right">
+        <div v-if="currentPath" class="faith-meter">
+          <span class="faith-label">信念</span>
+          <div class="faith-bar"><div class="faith-fill" :style="{ width: faithLevel + '%' }" /></div>
+          <span class="faith-value">{{ faithLevel }}</span>
+        </div>
       </div>
     </header>
 
@@ -243,8 +274,8 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
         </p>
 
         <p class="intro-desc">
-          22 岁开局，一张问卷定义宿命，<br>
-          选择城市、职业、理财与人生选择，<br>
+          22 岁开局，一份人格测试定义起点，<br>
+          选择城市、职业、退休路径与人生抉择，<br>
           在霓虹像素的赛博世界里，<br>
           看看你能否安然活到退休。
         </p>
@@ -268,48 +299,36 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
     <!-- ===================== 开局设置 ===================== -->
     <GameSetup v-if="gamePhase === 'setup'" />
 
+    <!-- ===================== 退休路径选择 ===================== -->
+    <PathSelect v-if="gamePhase === 'path_select'" />
+
     <!-- ===================== 游戏主界面 ===================== -->
     <main v-if="gamePhase === 'playing' || gamePhase === 'ending'" class="game-main">
-      <div class="game-layout">
-        <!-- 左：统计面板 -->
-        <aside class="col-left neon-side-panel">
-          <StatsPanel />
-        </aside>
+      <!-- 左：统计面板 -->
+      <aside class="col-left">
+        <StatsPanel />
+      </aside>
 
-        <!-- 中：CRT + 像素画布 + 卡片 -->
-        <section class="col-center">
-          <!-- CRT 电视机霓虹外框 -->
-          <div class="crt-stage">
-            <!-- 电视机外层霓虹光晕 -->
-            <div class="crt-halo" />
-            <!-- 绿色荧光地面反光 -->
-            <div class="crt-floor-glow" />
-            <!-- 电视本体 -->
-            <div class="crt-wrapper">
-              <CRTBezel>
-                <PixelCanvas />
-                <CardTransition
-                  :type="store.cardTransitionType"
-                  @complete="store.setCardTransition(null)"
-                />
-              </CRTBezel>
-              <!-- 电视机底座 -->
-              <div class="crt-stand" />
-              <div class="crt-stand-base" />
-            </div>
-            <!-- 左右小霓虹装饰点 -->
-            <div class="crt-deco-led led-left" />
-            <div class="crt-deco-led led-right" />
-          </div>
+      <!-- 中：CRT + 叙事 -->
+      <section class="col-center">
+        <!-- 极简CRT电视舞台 -->
+        <div class="crt-stage">
+          <CRTBezel>
+            <CSSScene />
+            <CardTransition
+              :type="store.cardTransitionType"
+              @complete="store.setCardTransition(null)"
+            />
+          </CRTBezel>
+        </div>
 
-          <CardDeck />
-        </section>
+        <NarrativeEventPanel />
+      </section>
 
-        <!-- 右：人生日志 -->
-        <aside class="col-right neon-side-panel">
-          <LifeLog />
-        </aside>
-      </div>
+      <!-- 右：人生日志 -->
+      <aside class="col-right">
+        <LifeLog />
+      </aside>
     </main>
 
     <!-- ===================== 城市选择弹窗 ===================== -->
@@ -388,7 +407,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 /* ============================================================
-   顶部条 - 霓虹风格
+   顶部状态栏 - 紧凑霓虹风格
    ============================================================ */
 .top-bar {
   position: relative;
@@ -396,101 +415,117 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 16px;
+  padding: 6px 14px;
   flex-shrink: 0;
-  background: linear-gradient(90deg,
-    rgba(20, 10, 40, 0.92) 0%,
-    rgba(40, 10, 60, 0.88) 50%,
-    rgba(20, 10, 40, 0.92) 100%);
-  border-bottom: 2px solid var(--neon-purple);
-  box-shadow:
-    0 0 12px var(--neon-purple),
-    0 0 24px rgba(201, 0, 255, 0.3),
-    inset 0 -1px 0 rgba(0, 212, 255, 0.4);
+  background: rgba(15, 8, 35, 0.85);
+  border-bottom: 2px solid var(--neon-pink);
+  box-shadow: 0 0 12px rgba(255, 45, 149, 0.15);
+  gap: 10px;
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-  flex-wrap: wrap;
-  gap: 10px;
 }
 
 .top-left {
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-shrink: 0;
 }
 
 .top-title {
-  font-size: 16px;
+  font-size: 15px;
   color: var(--neon-pink);
-  margin: 0;
-  letter-spacing: 3px;
-  text-shadow:
-    0 0 6px var(--neon-pink),
-    0 0 14px var(--neon-pink),
-    0 0 22px var(--neon-purple);
-  animation: neonPulse 3s ease-in-out infinite;
+  letter-spacing: 2px;
+  text-shadow: 0 0 8px var(--neon-pink);
+  font-family: 'DotGothic16', monospace;
 }
 
 .btn-restart {
   font-family: 'DotGothic16', monospace;
-  font-size: 12px;
-  color: var(--neon-orange);
-  background: transparent;
-  border: 1px solid var(--neon-orange);
-  padding: 2px 10px;
+  font-size: 10px;
+  color: var(--neon-red);
+  background: rgba(50, 10, 10, 0.8);
+  border: 1px solid var(--neon-red);
+  padding: 3px 10px;
   border-radius: 3px;
   cursor: pointer;
-  text-shadow: 0 0 4px var(--neon-orange);
-  box-shadow: 0 0 4px rgba(255, 136, 0, 0.3);
   transition: all 0.2s;
   white-space: nowrap;
 }
 .btn-restart:hover {
-  background: rgba(255, 136, 0, 0.15);
-  box-shadow: 0 0 10px rgba(255, 136, 0, 0.5);
-  transform: scale(1.05);
+  background: rgba(255, 68, 68, 0.2);
+  color: #fff;
 }
 
-.top-info {
+.top-center {
   display: flex;
-  gap: 10px;
+  gap: 5px;
   align-items: center;
   flex-wrap: wrap;
+  flex: 1;
+  justify-content: center;
 }
 
-.cycle-tag {
-  font-size: 14px;
-  letter-spacing: 1px;
-  font-weight: bold;
+.stat-badge {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border-dim, rgba(255, 255, 255, 0.08));
+}
+.stat-badge .icon { font-size: 12px; }
+.stat-badge .label { color: var(--text-dim, #6a6a8a); font-size: 9px; }
+.stat-badge .value { font-weight: 700; font-size: 11px; }
+
+.badge-age { border-color: var(--neon-blue); }
+.badge-age .value { color: var(--neon-blue); text-shadow: 0 0 4px var(--neon-blue); }
+.badge-prof { border-color: var(--neon-orange); }
+.badge-prof .value { color: var(--neon-orange); }
+.badge-city { border-color: var(--neon-green); }
+.badge-city .value { color: var(--neon-green); }
+.badge-cycle { border-color: var(--neon-yellow); }
+.badge-cycle .value { color: var(--neon-yellow); }
+.badge-status { border-color: var(--neon-pink); }
+.badge-status .value { color: var(--neon-pink); }
+
+.top-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.status-tag {
-  font-size: 12px;
+.faith-meter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   padding: 3px 10px;
-  border: 1px solid currentColor;
-  letter-spacing: 1px;
-  text-shadow: 0 0 4px currentColor;
-  box-shadow: 0 0 6px currentColor, inset 0 0 4px rgba(255,255,255,0.1);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--neon-purple);
 }
-
-.status-tag.unemployed {
-  color: var(--neon-pink);
-  background: rgba(255, 45, 149, 0.15);
+.faith-label { font-size: 9px; color: var(--text-dim, #6a6a8a); }
+.faith-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--neon-purple);
+  text-shadow: 0 0 6px var(--neon-purple);
 }
-
-.status-tag.married {
-  color: var(--neon-pink);
-  background: rgba(255, 45, 149, 0.15);
+.faith-bar {
+  width: 50px;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
 }
-
-.status-tag.child {
-  color: var(--neon-orange);
-  background: rgba(255, 136, 0, 0.15);
-}
-
-.status-tag.house {
-  color: var(--neon-green);
-  background: rgba(0, 255, 136, 0.15);
+.faith-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--neon-red), var(--neon-orange), var(--neon-green));
+  border-radius: 3px;
+  transition: width 0.5s ease;
 }
 
 /* ============================================================
@@ -764,240 +799,97 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 /* ============================================================
-   游戏主布局
+   游戏主布局 - flex三栏
    ============================================================ */
 .game-main {
   position: relative;
   z-index: 2;
   flex: 1;
-  padding: 8px 12px;
   display: flex;
-  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
   overflow: hidden;
   min-height: 0;
-}
-
-.game-layout {
-  display: grid;
-  grid-template-columns: 220px 1fr 240px;
-  gap: 12px;
-  max-width: 1400px;
+  max-width: 1500px;
   margin: 0 auto;
   width: 100%;
-  align-items: stretch;
-  height: 100%;
-  overflow: hidden;
-  min-height: 0;
 }
 
-.col-left,
-.col-center,
-.col-right {
+.col-left {
+  width: 240px;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  position: relative;
-  z-index: 2;
-  min-height: 0;
-  overflow: hidden;
-}
-
-.col-left,
-.col-right {
+  gap: 6px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .col-center {
+  flex: 1;
   min-width: 0;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
   overflow: hidden;
 }
 
-/* 侧边面板霓虹容器（包裹子组件） */
-.neon-side-panel {
-  position: relative;
-}
-
-.neon-side-panel :deep(> div) {
-  background: rgba(15, 8, 35, 0.78) !important;
-  border-color: var(--neon-purple) !important;
-  box-shadow:
-    0 0 10px var(--neon-purple),
-    0 0 24px rgba(201, 0, 255, 0.3),
-    inset 0 0 16px rgba(201, 0, 255, 0.08) !important;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+.col-right {
+  width: 260px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 /* ============================================================
-   CRT 电视机舞台（居中霓虹视觉焦点）
+   CRT 电视舞台（极简）
    ============================================================ */
 .crt-stage {
-  position: relative;
-  width: 100%;
-  max-width: min(400px, 38vh);
+  flex-shrink: 0;
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  padding: 4px 4px 2px;
-  flex-shrink: 0;
-}
-
-/* 外层紫/橙/粉霓虹光晕 */
-.crt-halo {
-  position: absolute;
-  inset: -10px -20px 20px -20px;
-  border-radius: 40px / 28px;
-  background: transparent;
-  box-shadow:
-    0 0 20px var(--neon-purple),
-    0 0 40px var(--neon-pink),
-    0 0 80px rgba(255, 136, 0, 0.4),
-    0 0 120px rgba(201, 0, 255, 0.25);
-  pointer-events: none;
-  z-index: 0;
-  animation: crtHaloPulse 4s ease-in-out infinite;
-}
-
-@keyframes crtHaloPulse {
-  0%, 100% {
-    opacity: 0.85;
-    filter: brightness(1);
-  }
-  50% {
-    opacity: 1;
-    filter: brightness(1.2);
-  }
-}
-
-/* 绿色荧光地面反光 */
-.crt-floor-glow {
-  position: absolute;
-  bottom: -6px;
-  left: 10%;
-  right: 10%;
-  height: 40px;
-  background: radial-gradient(
-    ellipse 70% 100% at 50% 0%,
-    rgba(0, 255, 136, 0.35) 0%,
-    rgba(0, 255, 136, 0.12) 30%,
-    transparent 70%
-  );
-  pointer-events: none;
-  z-index: 0;
-  filter: blur(4px);
-}
-
-.crt-wrapper {
   position: relative;
-  z-index: 2;
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+/* 覆盖 CRTBezel 内部样式，保持极简 */
+.crt-stage :deep(.crt-screen-wrap) {
   width: 100%;
 }
 
-/* 覆盖 CRTBezel 内部样式，加入紫橙霓虹边框 */
-.crt-wrapper :deep(.crt-bezel) {
-  background: linear-gradient(145deg, #1a0f35 0%, #2a1250 40%, #1a0a2e 100%);
+.crt-stage :deep(.crt-screen-frame) {
   box-shadow:
-    inset 0 0 50px rgba(0, 0, 0, 0.95),
-    inset 0 0 20px rgba(201, 0, 255, 0.25),
-    0 0 0 2px var(--neon-purple),
-    0 0 0 5px #0a0518,
-    0 0 0 7px var(--neon-orange),
-    0 0 20px var(--neon-purple),
-    0 0 40px rgba(255, 136, 0, 0.4),
-    0 10px 50px rgba(0, 0, 0, 0.8);
+    inset 0 3px 8px rgba(0, 0, 0, 0.9),
+    inset 0 -1px 4px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(201, 0, 255, 0.15),
+    0 0 12px rgba(201, 0, 255, 0.12),
+    0 4px 20px rgba(0, 0, 0, 0.6);
 }
 
-/* 隐藏 CRTBezel 内部自带的底座（App.vue 有霓虹版底座） */
-.crt-wrapper :deep(.crt-stand) {
-  display: none !important;
-}
-
-/* 电视机底座 */
-.crt-stand {
-  width: 35%;
-  height: 12px;
-  margin: -2px auto 0;
-  background: linear-gradient(180deg, #2a1250 0%, #0f0820 100%);
-  border: 2px solid var(--neon-purple);
-  border-top: none;
-  box-shadow:
-    0 0 8px var(--neon-purple),
-    inset 0 2px 4px rgba(201, 0, 255, 0.2);
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
-}
-
-.crt-stand-base {
-  width: 55%;
-  height: 8px;
-  margin: -1px auto 0;
-  background: linear-gradient(180deg, #1a0a2e 0%, #050210 100%);
-  border: 2px solid var(--neon-orange);
-  border-top: none;
-  box-shadow:
-    0 3px 10px rgba(0, 0, 0, 0.7),
-    0 0 8px rgba(255, 136, 0, 0.4);
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
-}
-
-/* CRT 两侧小LED装饰 */
-.crt-deco-led {
-  position: absolute;
-  top: 48px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  z-index: 3;
-  animation: ledBlink 1.8s ease-in-out infinite;
-}
-
-.led-left {
-  left: 14px;
-  background: var(--neon-pink);
-  box-shadow: 0 0 8px var(--neon-pink), 0 0 16px var(--neon-pink);
-}
-
-.led-right {
-  right: 14px;
-  background: var(--neon-orange);
-  box-shadow: 0 0 8px var(--neon-orange), 0 0 16px var(--neon-orange);
-  animation-delay: 0.9s;
-}
-
-@keyframes ledBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
+.crt-stage :deep(.crt-screen) {
+  aspect-ratio: 16 / 10;
 }
 
 /* ============================================================
    响应式布局
    ============================================================ */
-/* 窄屏：缩小侧栏 */
 @media (max-width: 1100px) {
-  .game-layout {
-    grid-template-columns: 180px 1fr 200px;
-    gap: 10px;
-  }
+  .col-left { width: 200px; }
+  .col-right { width: 220px; }
+  .crt-stage { max-width: 460px; }
 }
 
-/* 超窄屏：单栏布局（小窗口） */
-@media (max-width: 820px) {
-  .game-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
-    gap: 4px;
-  }
+@media (max-width: 900px) {
+  .game-main { flex-direction: column; }
   .col-left, .col-right {
-    display: none;
+    width: 100%;
+    max-height: 180px;
   }
-  .crt-stage {
-    max-width: min(220px, 32vh);
-    flex-shrink: 1;
-  }
+  .crt-stage { max-width: 400px; }
 }
 
 /* ============================================================
