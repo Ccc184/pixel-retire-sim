@@ -22,6 +22,7 @@
  */
 import type { NarrativeEvent, GameState } from '../types/global.d.js';
 import { getAllExtraEvents } from './narrative-registry.js';
+import { clamp } from '../utils/clamp.js';
 
 // 加载其他路径的叙事数据（模块自注册到 narrative-registry）
 import './narrative-data-chain.js';
@@ -48,11 +49,6 @@ function ensureSkills(state: GameState): void {
   if (!state.pathSkills) {
     (state as any).pathSkills = {};
   }
-}
-
-/** 数值钳制 */
-function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
 }
 
 // ============================================================

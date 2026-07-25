@@ -14,10 +14,7 @@
  */
 import type { NarrativeEvent, NarrativeOption, RetirementPathId, GameState } from '../types/global.d.js';
 import { registerNarrativeEvents } from './narrative-registry.js';
-
-function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
-}
+import { clamp } from '../utils/clamp.js';
 
 // ============================================================
 // 路径配置：技能名、主题色、专属文案

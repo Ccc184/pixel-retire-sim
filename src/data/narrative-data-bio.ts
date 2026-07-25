@@ -29,6 +29,7 @@
 import type { NarrativeEvent, NarrativeAchievement, GameState } from '../types/global.d.js';
 import { registerNarrativeEvents } from './narrative-registry.js';
 import { registerAchievements } from './narrative-achievements.js';
+import { clamp } from '../utils/clamp.js';
 
 // ============================================================
 // 辅助函数
@@ -39,11 +40,6 @@ function ensureSkills(state: GameState): void {
   if (!state.pathSkills) {
     (state as any).pathSkills = {};
   }
-}
-
-/** 数值钳制 */
-function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
 }
 
 /** 读取生物科技投资组合价值 */

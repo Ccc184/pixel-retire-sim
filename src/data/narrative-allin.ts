@@ -16,11 +16,7 @@
 import type { NarrativeEvent, GameState } from '../types/global.d.js';
 import { registerNarrativeEvents } from './narrative-registry.js';
 import { canAllIn, applyAllIn } from './retirement-paths.js';
-
-/** 数值钳制 */
-function clamp(val: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, val));
-}
+import { clamp } from '../utils/clamp.js';
 
 const allInEvents: NarrativeEvent[] = [
 
