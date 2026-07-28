@@ -881,13 +881,21 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
    CRT 电视舞台（极简）—— 占满中间栏，无左右留白
    ============================================================ */
 .crt-stage {
-  flex-shrink: 0;
+  flex-shrink: 1;
   display: flex;
   justify-content: center;
   align-items: center;
   position: relative;
   width: 100%;
   margin: 0 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* 保障叙事面板有足够高度显示卡片 */
+.col-center :deep(.narrative-panel) {
+  min-height: 45%;
+  flex-shrink: 0;
 }
 
 /* 覆盖 CRTBezel 内部样式，保持极简 */
@@ -906,12 +914,14 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 
 .crt-stage :deep(.crt-screen) {
   aspect-ratio: 21 / 9;
+  max-height: 55vh;
 }
 
 /* 大屏下 CRT 屏幕用更宽的比例填满空间 */
 @media (min-width: 1600px) {
   .crt-stage :deep(.crt-screen) {
     aspect-ratio: 24 / 9;
+    max-height: 50vh;
   }
 }
 
