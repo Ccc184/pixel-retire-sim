@@ -833,7 +833,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 /* ============================================================
-   游戏主布局 - flex三栏
+   游戏主布局 - flex三栏（大屏自适应，无 max-width 限制）
    ============================================================ */
 .game-main {
   position: relative;
@@ -844,13 +844,11 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   padding: 8px;
   overflow: hidden;
   min-height: 0;
-  max-width: 1500px;
-  margin: 0 auto;
   width: 100%;
 }
 
 .col-left {
-  width: 240px;
+  width: clamp(200px, 15vw, 300px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -871,7 +869,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 .col-right {
-  width: 260px;
+  width: clamp(220px, 17vw, 340px);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
@@ -910,9 +908,58 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   aspect-ratio: 21 / 9;
 }
 
+/* 大屏下 CRT 屏幕用更宽的比例填满空间 */
+@media (min-width: 1600px) {
+  .crt-stage :deep(.crt-screen) {
+    aspect-ratio: 24 / 9;
+  }
+}
+
 /* ============================================================
    响应式布局
    ============================================================ */
+
+/* 大屏（≥1600px）：整体放大，填满屏幕 */
+@media (min-width: 1600px) {
+  .game-main {
+    gap: 12px;
+    padding: 12px;
+  }
+  .top-bar {
+    padding: 8px 20px;
+  }
+  .top-title {
+    font-size: 18px;
+  }
+  .stat-badge {
+    font-size: 14px;
+    padding: 4px 12px;
+  }
+  .stat-badge .label { font-size: 11px; }
+  .stat-badge .value { font-size: 14px; }
+  .stat-badge .icon { font-size: 14px; }
+}
+
+/* 超大屏（≥2200px）：进一步放大 */
+@media (min-width: 2200px) {
+  .game-main {
+    gap: 16px;
+    padding: 16px;
+  }
+  .top-bar {
+    padding: 10px 28px;
+  }
+  .top-title {
+    font-size: 22px;
+  }
+  .stat-badge {
+    font-size: 16px;
+    padding: 5px 14px;
+  }
+  .stat-badge .label { font-size: 12px; }
+  .stat-badge .value { font-size: 16px; }
+  .stat-badge .icon { font-size: 16px; }
+}
 
 /* 平板：收窄侧栏 */
 @media (max-width: 1100px) {
