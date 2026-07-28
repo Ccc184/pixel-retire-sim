@@ -852,7 +852,7 @@ function handleContinue(): void {
       <div class="yearend-footer">
         <button class="btn-continue" @click="handleContinue">
           <span class="btn-arrow">&#9654;</span>
-          <span class="btn-text">进入{{ state.currentAge + 1 }}岁 ▶</span>
+          <span class="btn-text">进入{{ state.currentAge }}岁 ▶</span>
         </button>
       </div>
     </div>
