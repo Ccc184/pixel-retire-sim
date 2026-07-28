@@ -916,49 +916,31 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 /* ============================================================
-   响应式布局
+   响应式布局 — 大屏使用 zoom 等比放大（简洁高效，无遗漏）
    ============================================================ */
 
-/* 大屏（≥1600px）：整体放大，填满屏幕 */
-@media (min-width: 1600px) {
-  .game-main {
-    gap: 12px;
-    padding: 12px;
+/* 大屏（≥1400px，27寸1080p等）：整体放大1.1倍 */
+@media (min-width: 1400px) {
+  .app-root {
+    height: calc(100dvh / 1.1);
+    zoom: 1.1;
   }
-  .top-bar {
-    padding: 8px 20px;
-  }
-  .top-title {
-    font-size: 18px;
-  }
-  .stat-badge {
-    font-size: 14px;
-    padding: 4px 12px;
-  }
-  .stat-badge .label { font-size: 11px; }
-  .stat-badge .value { font-size: 14px; }
-  .stat-badge .icon { font-size: 14px; }
 }
 
-/* 超大屏（≥2200px）：进一步放大 */
-@media (min-width: 2200px) {
-  .game-main {
-    gap: 16px;
-    padding: 16px;
+/* 超大屏（≥1900px，27寸2K等）：整体放大1.25倍 */
+@media (min-width: 1900px) {
+  .app-root {
+    height: calc(100dvh / 1.25);
+    zoom: 1.25;
   }
-  .top-bar {
-    padding: 10px 28px;
+}
+
+/* 4K（≥2400px）：整体放大1.5倍 */
+@media (min-width: 2400px) {
+  .app-root {
+    height: calc(100dvh / 1.5);
+    zoom: 1.5;
   }
-  .top-title {
-    font-size: 22px;
-  }
-  .stat-badge {
-    font-size: 16px;
-    padding: 5px 14px;
-  }
-  .stat-badge .label { font-size: 12px; }
-  .stat-badge .value { font-size: 16px; }
-  .stat-badge .icon { font-size: 16px; }
 }
 
 /* 平板：收窄侧栏 */
