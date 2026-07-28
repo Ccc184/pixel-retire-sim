@@ -1,16 +1,15 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { shallowRef } from 'vue';
-import type { GameState, Profession, CityType, OriginChoices, YearResult, DecisionCard, CrossroadEvent, NarrativeEvent, MBTIType } from '../types/global.d.js';
-import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth } from '../utils/math-engine.js';
-import { DECISION_CARDS, drawRandomCards, trackCardUsage } from '../data/cards.js';
+import type { GameState, Profession, CityType, OriginChoices, YearResult, CrossroadEvent, NarrativeEvent, MBTIType, SalaryChangeEntry } from '../types/global.d.js';
+import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth } from '../utils/math-engine.js';
 import { rollRandomEvents } from '../data/events.js';
 import { rollDailyEvents, applyDailyEventEffects } from '../data/daily-events.js';
 import { ENDINGS, buildEndingText, CITY_REASON_QUOTES, CAREER_MOTIVATION_QUOTES, RISK_ATTITUDE_QUOTES } from '../utils/narrative.js';
 import { initParents, initFriends, processRelationships, resetMarriedFriendSet } from '../utils/relationships.js';
 import { scheduleSave, loadSave, clearSave } from './persist.js';
 import { detectCrossroad } from '../data/crossroads.js';
-import { CARD_ECHOS, detectCardEchoes } from '../data/card-echoes.js';
+import { detectCardEchoes } from '../data/card-echoes.js';
 import { BLIND_BOX_OUTCOMES, detectBlindBoxOutcomes } from '../data/blind-box-outcomes.js';
 import { processRomanceYear } from '../data/romance.js';
 import { checkAchievements } from '../data/achievements.js';
@@ -19,9 +18,6 @@ import { selectNarrativeEvent } from '../data/narrative-events.js';
 import { checkAchievements as checkNarrativeAchievements } from '../data/narrative-achievements.js';
 import { getMBTIProfessionModifier, getActiveMBTIMechanics, getActiveMBTITrait } from '../data/mbti-system.js';
 import type { RetirementPathId } from '../types/global.d.js';
-
-// 伴侣候选名字池（保留用于结婚卡兜底）
-const partnerNames = ['晓芸', '佳慧', '雨萱', '思琪', '子涵', '浩然', '宇轩', '俊杰', '天翔', '明远'];
 
 // 创建初始状态
 function createInitialState(): GameState {
@@ -58,8 +54,8 @@ function createInitialState(): GameState {
     usedMinimalism: false,
     hasMBA: false,
     hasRetirementPlan: false,
-    // 财务（v2平衡：基础年支出3.6万，更符合实际生活成本）
-    annualBaseCost: 36000,
+    // 财务（v10平衡：基础年支出4.8万=4000/月，更符合二线城市年轻人的实际生活成本）
+    annualBaseCost: 48000,
     passiveIncome: 0,
     currentMortgageCost: 0,
     mortgageRemainingYears: 0,
@@ -113,6 +109,7 @@ function createInitialState(): GameState {
     pathCrisisTriggered: false,
     pathEndgameTriggered: false,
     isAllInPath: false,
+    hasCompany: false,
     canRetire: false,
     recentShownCards: [],
     yearOpeningMonologue: '',
@@ -132,11 +129,12 @@ function createInitialState(): GameState {
     // 卡片连锁反应待触发队列
     pendingCardEchoes: [] as { cardId: string; triggerAge: number; delayYears: number }[],
     // 盲盒待揭晓队列
-    pendingBlindBoxes: [] as { outcomeId: string; triggerAge: number }[],
+    pendingBlindBoxes: [] as { outcomeId: string; triggerAge: number; triggerCardId?: string; delayYears?: number }[],
     // 人生总账单累计追踪
     lifetimeSalary: 0,
     lifetimeInvestmentGain: 0,
     lifetimeSideHustle: 0,
+    currentYearSideHustle: 0,
     lifetimeLivingCost: 0,
     lifetimeMortgage: 0,
     lifetimeChildCost: 0,
@@ -170,12 +168,12 @@ export const useGameStore = defineStore('game', () => {
   if (initialState.isAllInPath === undefined) {
     initialState.isAllInPath = false;
   }
+  // 兼容旧存档：确保 hasCompany 字段存在
+  if (initialState.hasCompany === undefined) {
+    initialState.hasCompany = false;
+  }
   const state = ref<GameState>(initialState);
   
-  // 当前抽取的卡片
-  const currentCards = shallowRef<DecisionCard[]>([]);
-  // 选中的卡片ID
-  const selectedCardIds = ref<string[]>([]);
   // 年度结算结果
   const lastYearResult = ref<YearResult | null>(null);
   // 当年电视窗口情绪（剧情驱动）
@@ -193,10 +191,6 @@ export const useGameStore = defineStore('game', () => {
 
   // 资产获得动画通知（买房/买车等即时视觉反馈）
   const assetAcquired = ref<{ type: 'house' | 'car' | 'job' | 'love' | 'money'; label: string } | null>(null);
-  function setAssetAcquired(type: 'house' | 'car' | 'job' | 'love' | 'money', label: string) {
-    assetAcquired.value = { type, label };
-    setTimeout(() => { assetAcquired.value = null; }, 1500);
-  }
 
   // 卡片转场动画类型
   const cardTransitionType = ref<string | null>(null);
@@ -267,8 +261,6 @@ export const useGameStore = defineStore('game', () => {
     };
     fresh.gamePhase = 'setup';
     state.value = fresh;
-    currentCards.value = [];
-    selectedCardIds.value = [];
     currentNarrativeEvent.value = null;
     selectedNarrativeOptionId.value = null;
     currentAchievement.value = null;
@@ -284,18 +276,19 @@ export const useGameStore = defineStore('game', () => {
     clearSave();
   }
   
-  function setupGame(city: CityType, profession: Profession, initSalary: number, targetAge: number, targetWealth: number, mbtiType: MBTIType) {
+  function setupGame(city: CityType, profession: Profession, initSalary: number, targetWealth: number, mbtiType: MBTIType | null) {
     const cityConfig = CITY_CONFIGS[city];
     state.value.currentCity = city;
     state.value.currentProfession = profession;
     state.value.initMonthlySalary = initSalary;
-    state.value.targetAge = targetAge;
+    state.value.targetAge = 60; // 统一硬上限：60岁强制结算，退休时机由玩家自主决定
     state.value.targetWealth = targetWealth;
     state.value.mbtiType = mbtiType;
 
-    // 应用MBTI×职业微调：初始薪资微调
-    const mbtiProfMod = getMBTIProfessionModifier(mbtiType, profession);
-    const adjustedInitSalary = Math.round(initSalary * mbtiProfMod.startingSalaryMultiplier);
+    // 应用MBTI×职业微调：初始薪资微调（可选，未选MBTI时不修正）
+    const adjustedInitSalary = mbtiType
+      ? Math.round(initSalary * getMBTIProfessionModifier(mbtiType, profession).startingSalaryMultiplier)
+      : initSalary;
 
     state.value.careerStartSalary = Math.round(adjustedInitSalary * cityConfig.salaryMultiplier);
     state.value.currentMonthlySalary = state.value.careerStartSalary;
@@ -318,7 +311,7 @@ export const useGameStore = defineStore('game', () => {
     state.value.triggeredAchievements = [];
     crossroadFiredTags.value = new Map();
 
-    addLog(`第22岁，你在${city}开始了${profession}的职业生涯，初始月薪${state.value.currentMonthlySalary}元。${mbtiProfMod.fitDescription ? mbtiProfMod.fitDescription + '。' : ''}像素人生，正式开局。`);
+    addLog(`第22岁，你在${city}开始了${profession}的职业生涯，初始月薪${state.value.currentMonthlySalary}元。像素人生，正式开局。`);
 
     // 路径选择阶段不抽事件，等玩家选完路径再抽
     currentNarrativeEvent.value = null;
@@ -334,6 +327,7 @@ export const useGameStore = defineStore('game', () => {
     state.value.retirementPath = pathId;
     state.value.pathChoiceYear = state.value.currentAge;
     state.value.pathFaith = 40; // 初始信念值降低：需要长期积累才能达到All In阈值(90)
+    // targetAge保持60不变——退休时机由玩家自主决定，路径不再绑定年龄
     state.value.pathMilestones = [];
     state.value.pathCrisisTriggered = false;
     state.value.pathEndgameTriggered = false;
@@ -352,6 +346,18 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /** 生成年初心境独白 */
+  // 追踪最近使用的独白（基础文本+MBTI前缀），避免短期循环重复
+  const recentBaseMonologues: string[] = []; // 最近5年的base monologue
+  const recentMbtiPrefixes: string[] = [];   // 最近5年的MBTI前缀
+  const MAX_RECENT_MEMORY = 5;
+
+  function pickWithoutRecent<T>(pool: T[], recent: T[]): T {
+    // 从pool中随机选一个不在recent里的；如果全部在recent里，则随机选
+    const available = pool.filter(item => !recent.includes(item));
+    const source = available.length > 0 ? available : pool;
+    return source[Math.floor(Math.random() * source.length)];
+  }
+
   function generateYearOpeningMonologue() {
     const path = getPath(state.value.retirementPath);
     if (!path) {
@@ -366,65 +372,42 @@ export const useGameStore = defineStore('game', () => {
     let baseMonologue = '';
     for (const group of monologueSource) {
       if (age >= group.ageRange[0] && age <= group.ageRange[1]) {
-        const texts = group.texts;
-        baseMonologue = texts[Math.floor(Math.random() * texts.length)];
+        baseMonologue = pickWithoutRecent(group.texts, recentBaseMonologues);
         break;
       }
     }
     if (!baseMonologue) {
       // 超龄后用最后一段
       const lastGroup = monologueSource[monologueSource.length - 1];
-      baseMonologue = lastGroup.texts[Math.floor(Math.random() * lastGroup.texts.length)];
+      baseMonologue = pickWithoutRecent(lastGroup.texts, recentBaseMonologues);
     }
+    // 记录最近使用
+    recentBaseMonologues.push(baseMonologue);
+    if (recentBaseMonologues.length > MAX_RECENT_MEMORY) recentBaseMonologues.shift();
 
     // MBTI人格独白上色：以气质群风格为独白添加存在主义前缀
     const mbtiTrait = getActiveMBTITrait(state.value);
     if (mbtiTrait) {
-      const mbtiPrefix = generateMBTIMonologuePrefix(mbtiTrait.monologueStyle);
+      // 获取对应风格的前缀池，避开最近使用过的
+      const style = mbtiTrait.monologueStyle;
+      const prefixPools: Record<string, string[]> = {
+        '冷峻': ['你看着窗外的城市，像看一个等待被解构的系统。','逻辑是干净的，生活是脏的。你习惯了这种落差。','你把情绪折叠好，放进抽屉。今天也要运转。','代码不会撒谎，人会。你更愿意和代码待着。','系统可以优化，人生不行。你接受了这个bug。','窗外的城市是一个巨型状态机，每个人都是一个节点。','你见过太多承诺化为乌有，只信数据。','你学会了不在无法解决的问题上消耗算力。'],
+        '炽热': ['有什么东西在你胸腔里燃烧，你说不清那是什么。','你用力活着，像怕来不及似的。','今天的阳光打在脸上，你突然想拥抱什么。','你觉得自己能改变世界，至少能改变点什么。','那团火还在，只是烧得更稳了。','你握紧拳头又松开，手心有汗。','你不再想改变世界，只想让今天不白过。','火小了，但还没灭。余温也是温。'],
+        '沉稳': ['闹钟响了。你起身，叠被，倒水。秩序是一种安慰。','日子像砖块，一块一块垒起来，你信这个。','你把昨天的事在脑子里过一遍，确认没有遗漏。','你列了今天的待办清单，一件一件来。','你不再追求速度，开始追求可持续。','保温杯里的茶温度刚好，你喝了一口。','清单短了，但每件都更重要了。','你学会了说"不"，这比说"好"难多了。'],
+        '灵动': ['风从窗口灌进来，你的念头跟着跑了一会儿。','你突然想起一件不相干的事，笑了。','今天的可能性是敞开的，你喜欢这种感觉。','你想试试所有的门，哪怕大部分是锁着的。','好奇心还在，但不再漫无目的。','楼下有人在唱歌，跑调了，但很好听。','你找到了几扇能推开的门，不再敲那些关着的。','你对新鲜事物保持兴趣，但已经知道大部分是噪音。'],
+        '温柔': ['你泡了一杯茶，看着茶叶在水里慢慢展开。','你注意到路边有朵花开了，停下来看了一会儿。','你给在乎的人发了一条消息，然后安静地等。','你想对世界好一点，虽然世界不总是回报你。','温柔不是软弱，是选择不伤害。','猫蹭了蹭你的腿，你蹲下来摸了摸它。','你学会了先对自己好一点，再对别人好。','你不再急着证明什么，安静本身就是力量。'],
+        '锐利': ['你的目光扫过房间，自动标记了三个待解决的问题。','你讨厌浪费时间，所以你已经在想了。','你闻到了空气里的机会，也闻到了风险。','你能一眼看穿别人的敷衍，这让你不太受欢迎。','你的判断力越来越准，但开口越来越少。','你在三秒内评估了今天的优先级，然后开始做第一件。','你看穿了也不说了，有些真相不值得。','你不再试图说服任何人，用结果说话。'],
+      };
+      const pool = prefixPools[style] || prefixPools['沉稳'];
+      const mbtiPrefix = pickWithoutRecent(pool, recentMbtiPrefixes);
+      recentMbtiPrefixes.push(mbtiPrefix);
+      if (recentMbtiPrefixes.length > MAX_RECENT_MEMORY) recentMbtiPrefixes.shift();
       state.value.yearOpeningMonologue = mbtiPrefix + baseMonologue;
     } else {
       state.value.yearOpeningMonologue = baseMonologue;
     }
   }
 
-  /** 根据MBTI独白语气风格生成存在主义前缀 */
-  function generateMBTIMonologuePrefix(style: string): string {
-    const prefixes: Record<string, string[]> = {
-      '冷峻': [
-        '你看着窗外的城市，像看一个等待被解构的系统。',
-        '逻辑是干净的，生活是脏的。你习惯了这种落差。',
-        '你把情绪折叠好，放进抽屉。今天也要运转。',
-      ],
-      '炽热': [
-        '有什么东西在你胸腔里燃烧，你说不清那是什么。',
-        '你用力活着，像怕来不及似的。',
-        '今天的阳光打在脸上，你突然想拥抱什么。',
-      ],
-      '沉稳': [
-        '闹钟响了。你起身，叠被，倒水。秩序是一种安慰。',
-        '日子像砖块，一块一块垒起来，你信这个。',
-        '你把昨天的事在脑子里过一遍，确认没有遗漏。',
-      ],
-      '灵动': [
-        '风从窗口灌进来，你的念头跟着跑了一会儿。',
-        '你突然想起一件不相干的事，笑了。',
-        '今天的可能性是敞开的，你喜欢这种感觉。',
-      ],
-      '温柔': [
-        '你泡了一杯茶，看着茶叶在水里慢慢展开。',
-        '你注意到路边有朵花开了，停下来看了一会儿。',
-        '你给在乎的人发了一条消息，然后安静地等。',
-      ],
-      '锐利': [
-        '你的目光扫过房间，自动标记了三个待解决的问题。',
-        '你讨厌浪费时间，所以你已经在想了。',
-        '你闻到了空气里的机会，也闻到了风险。',
-      ],
-    };
-    const pool = prefixes[style] || prefixes['沉稳'];
-    return pool[Math.floor(Math.random() * pool.length)] + ' ';
-  }
-  
   function continueGame() {
     if (savedState) {
       // 兼容旧存档：补充缺失字段
@@ -440,250 +423,98 @@ export const useGameStore = defineStore('game', () => {
     }
   }
   
-  // ========== 卡片系统 ==========
-  function drawNewCards() {
-    // 获取当前路径权重
-    const path = getPath(state.value.retirementPath);
-    const weights = path?.cardWeights;
-
-    // 先生成新年的心境独白（在抽卡之前）
-    generateYearOpeningMonologue();
-
-    // 先检测是否触发十字路口
-    const crossroad = detectCrossroad(state.value, crossroadFiredTags.value);
-    if (crossroad) {
-      currentCrossroad.value = crossroad;
-      showCrossroad.value = true;
-      currentCards.value = [];
-      selectedCardIds.value = [];
-      return;
+  // ========== 盲盒系统共享变量（applyNarrativeOption 使用） ==========
+  const registeredBlindBoxKeys = new Set<string>();
+  function matchTrigger(triggerId: string, cardId: string): boolean {
+    if (triggerId.endsWith('*')) {
+      return cardId.startsWith(triggerId.slice(0, -1));
     }
-
-    // 没有十字路口，正常抽卡（传入路径权重）
-    currentCrossroad.value = null;
-    showCrossroad.value = false;
-    currentCards.value = drawRandomCards(state.value, 3, weights);
-    selectedCardIds.value = [];
-
-    // 记录展示过的卡，用于防重复
-    const cardIds = currentCards.value.map(c => c.id);
-    state.value.recentShownCards = [...state.value.recentShownCards, ...cardIds].slice(-12);
+    return triggerId === cardId;
   }
-  
-  function toggleCard(cardId: string) {
-    const idx = selectedCardIds.value.indexOf(cardId);
-    if (idx >= 0) {
-      selectedCardIds.value.splice(idx, 1);
-    } else {
-      selectedCardIds.value.push(cardId);
-    }
-  }
-  
-  function applySelectedCards(): { logs: string[]; totalCost: number; isRestYear: boolean; cardDetails: { title: string; log: string; before: { stress: number; happiness: number; health: number; savings: number } }[] } {
-    const logs: string[] = [];
-    const cardDetails: { title: string; log: string; before: { stress: number; happiness: number; health: number; savings: number } }[] = [];
-    let totalCost = 0;
-    
-    // 没有选任何卡 = 休养生息（v10校准：增强恢复效果）
-    const isRestYear = selectedCardIds.value.length === 0;
-    if (isRestYear) {
-      // v10：基础恢复提高到-14压力，+8健康，+6幸福
-      let stressRelief = 14;
-      let healthGain = 8;
-      let happinessGain = 6;
-      if (state.value.stress > 95) { stressRelief += 12; healthGain += 4; happinessGain += 3; }
-      else if (state.value.stress > 85) { stressRelief += 8; healthGain += 3; happinessGain += 2; }
-      else if (state.value.stress > 70) { stressRelief += 5; healthGain += 2; }
-      // MBTI人格休养加成（INTP/ISFP等内省型恢复更快）
-      const mbtiRestMechCard = getActiveMBTIMechanics(state.value);
-      if (mbtiRestMechCard) stressRelief += mbtiRestMechCard.restBonus;
-      state.value.stress = Math.max(0, state.value.stress - stressRelief);
-      state.value.health = Math.min(100, state.value.health + healthGain);
-      state.value.happiness = Math.min(100, state.value.happiness + happinessGain);
-      const restLogs = [
-        `第${state.value.currentAge}岁，这一年你没有刻意追求什么。推掉了不必要的应酬，每天早睡早起，周末去公园散步。压力像退潮的海水慢慢退去，你重新感受到了生活的质感。`,
-        `第${state.value.currentAge}岁，这一年你按下了暂停键。读了几本一直想读的书，给家人做了很多顿饭。虽然存款没怎么涨，但心里那块紧绷的弦终于松了。`,
-        `第${state.value.currentAge}岁，休养生息的一年。你学会了对不必要的事情说"不"，把时间还给了自己。体检报告上的箭头少了几个，镜子里的自己看起来精神了不少。`,
-      ];
-      const restLog = restLogs[Math.floor(Math.random() * restLogs.length)];
-      logs.push(restLog);
-      addLog(restLog);
-      return { logs, totalCost, isRestYear: true, cardDetails };
-    }
+  const suspenseHints: Record<string, string> = {
+    'insurance': '签完保单的那一刻，你有一种说不清的预感——这份保险，迟早会派上用场。',
+    'minimalism': '房间空了，但你的心里好像多了一些说不清的东西。也许，这种生活方式的真正效果，要过些年才能感受到。',
+    'side_hustle': '深夜的服务器指示灯一闪一闪，像一颗小心脏在跳动。你有一种预感——这台机器的命运，和你的人生绑在了一起。',
+    'marry': '领了证，你以为这就是故事的结局。后来你才明白，这其实只是第一章。',
+    'have_child': '那个小小的生命安静地睡着了。你看着天花板想——这个孩子会给你的人生带来什么？你不知道。但你知道，一切都不一样了。',
+    'buy_house': '钥匙在手里沉甸甸的。三十年的贷款合同压在抽屉最底层。你有一种预感——这套房子会改变你的生活，但怎么改变，你现在还不知道。',
+    'buy_house*': '钥匙在手里沉甸甸的。三十年的贷款合同压在抽屉最底层。你有一种预感——这套房子会改变你的生活，但怎么改变，你现在还不知道。',
+    'resign': '走出写字楼的那一刻，阳光很刺眼。你不知道这个决定是对的、还是错的——但你知道答案不会马上来。',
+    'gym': '健身卡挂在包里，你摸了摸它。它现在只是一张塑料卡片，但也许有一天，它会变成某种更重要的东西。',
+    'buy_car': '坐进驾驶座的那一刻，你觉得自己拥有了整条路。但你还不知道——路，也会改变你。',
+    'buy_car*': '坐进驾驶座的那一刻，你觉得自己拥有了整条路。但你还不知道——路，也会改变你。',
+    'buy_lottery': '你把彩票小心翼翼地夹进钱包最里层。五十块钱买来的不是一张数字，是一整年的幻想权。',
+    'windfall_gamble': '你按下确认键的那一刻，账户里少了三十万。你关掉电脑，走到阳台上深呼吸了三次。命运已经下注了。',
+    'travel': '火车开动了，窗外的风景开始后退。你望着窗外想——这次旅行的意义，也许现在还看不到。',
+    'crypto_bet': '你按下了"买入"键。屏幕上那串数字开始跳动。你告诉自己"就赌这一次"——但你心里知道，故事不会这么简单就结束。',
+    'therapy': '走出咨询室的时候，你深吸了一口气。天空好像蓝了一点。也许，改变已经在悄悄发生了。',
+    'upskill': '培训结束了，你拿到证书的那一刻觉得自己升级了。但真正的考验，从来不在课堂上。',
+    'hedge_option': '期权合同签完了。你祈祷它永远用不上，但你清楚，有些事情不是祈祷就能避免的。',
+    'mba': '开学的第一天，你坐在教室最后一排。你不知道这两年会给你带来什么——但你知道，人生不会因为没有尝试而后悔。',
+    'buy_second_house': '第二份贷款合同签完了。你看着两个房子的钥匙，心里五味杂陈。投资的对错，要交给时间来评判。',
+    'treat_parents': '爸妈吃得开心，你也开心。但看着他们花白的头发，你心里隐隐有一种不安——你好像应该为他们做更多。',
+    'dinner_friends': '散场的时候你发了条动态圈"青春不散场"。但你知道，有些人走着走着就散了。这一次，会不一样吗？',
+    'hobby_class': '第一节课结束了，老师夸你"有天赋"还是"有勇气"？你分不清。但至少，你开始了一段新的旅程。',
+    'health_food': '你做的第一顿饭虽然不怎么样，但冰箱里终于有了新鲜蔬菜。你隐隐觉得——这也许会改变你的生活。',
+    'cut_social': '退完最后一个群的时候，你的手指停了两秒。你告诉自己这是"断舍离"，但心里隐隐觉得——有些后果，现在还看不到。',
+    'geo_arbitrage': '火车带着你离开旧城市。窗外的风景变了，你的生活也会变。但变成什么样，现在还说不清。',
+    'parent_travel': '旅行结束了，照片存了三百多张。你看着爸妈的笑脸，心里暖暖的。这种温暖，也许会在未来的某个时刻，变成更重要的力量。',
+    'child_tutoring': '辅导班报名表交了，钱也付了。你看着孩子不情愿的背影想——这笔投入，最终会开花吗？',
+    'invest_fund': '定投设置好了，每个月自动扣款。你告诉自己"坚持就是胜利"——但真正的考验，是坚持过程中的那些跌跌撞撞。',
+    'side_gig': '私活交稿的那一刻，你松了口气。你有一种预感——这次经历，也许会在未来某个时刻以意想不到的方式回报你。',
+    'volunteer': '做义工回来的时候，天色已暗。你在路边站了一会儿，心里有种说不清的感觉。也许，这份善意终会以某种方式回到你身上。',
+    'gift_partner': '惊喜送出去了，对方笑了。你心里也有一种说不清的感觉——也许是甜蜜，也许是别的什么。时间会告诉你。',
+    'mentor': '新人学会了，对你说的第一句话是"谢谢老师"。你笑了，但心里隐隐觉得——带新人这件事，也许会给你带来意想不到的收获。',
+    'upgrade_side_hustle': '新方向探索开始了。你有一种预感——这条路的终点，和你想象的可能完全不同。',
+    'invest_fixed_deposit': '定期存款确认存入。你看着"年化3%"的数字，心想——钱这东西，慢慢来也是一种力量。',
+    'commercial_pension': '养老保险签了。你想象着60岁的自己收到这笔钱时的样子。也许到那时，你才能理解今天的这个决定有多重要。',
+    'upgrade_server': '服务器升级完成，风扇安静地转着。你有一种预感——这台机器的命运，和你的人生轨迹，正在悄悄交汇。',
+    // AI共生者路径专属悬念提示
+    // 原则：写当下的具体细节，不写"将来会怎样"。让玩家当时觉得只是句感慨，
+    // 盲盒触发时才意识到这句平淡的话原来埋了伏笔。
+    'ai_prompt_dojo': '外卖盒堆成小山的那个月结束了。你把记满提示词的文档命名为"杂记.docx"，随手丢进D盘一个叫"乱七八糟"的文件夹。',
+    'ai_automate_self': '脚本跑起来了。测试环境里一个小小的绿色"通过"。你截了张图，没发动态圈，存进了相册深处。',
+    'ai_open_source_tool': '项目上线了，12个star，10个是你自己点的。第11个star来自一个你叫不出名字的账号，头像是一只猫。',
+    'ai_health_warning': '医生让你少熬夜多运动。你点了点头，出门就去便利店买了一杯冰美式。',
+    'ai_partner_talk': '她最后说了句"你自己想清楚吧"，然后去阳台抽烟了。你觉得这事就算过去了。',
+    'ai_all_in_product': '辞职信发出去了。你盯着"已发送"看了十秒，然后下楼去便利店买了包烟。你已经三年没抽了。',
+    // 链上原住民路径专属悬念提示
+    'chain_first_bet': '你按下了"买入"键。窗外的路灯亮了，你的手指在确认键上停了一秒。',
+    'chain_hodl_crisis': '你关掉了交易软件。屏幕黑了，你的脸映在上面，表情很平静。',
+    'chain_build_defi': '合约部署成功。区块确认数在跳，你靠在椅背上，喝了一口凉掉的咖啡。',
+    'chain_all_in': '辞职邮件发出去了。你在公司群里留了一句"Going full-time crypto"，然后关掉了手机。',
+    'chain_friend_call': '你看着他发的那条消息，想了想，还是转了一笔U过去。不多，就当支持朋友。',
+    'chain_regulation': '你看完了那篇监管文章，把链接存进了一个叫"重要"的文件夹。',
+    // 数字游牧民路径专属悬念提示
+    'nomad_first_trip': '机票确认了。你看着行程单上那个陌生的城市名字，把行李箱从床底拖了出来。',
+    'nomad_client_referral': '交付了。客户回了一个"赞"的表情。你关了电脑，走到阳台上看了一会儿远处的山。',
+    'nomad_culture_shock': '你用刚学会的泰语点了一碗面。阿姨笑着点头，端上来的东西和你想的不太一样。',
+    'nomad_all_in': '单程票买好了。日期是下个月一号。你把订票截图发给了妈妈，她回了一个"注意安全"。',
+    'nomad_health_issue': '按摩师说你的腰椎"不太好"。你笑着说没事，回去贴了块膏药继续干活。',
+    'nomad_community': '群建好了，第一句话是你发的："有没有在清迈的朋友？"五分钟没人回复。',
+    // 超级IP路径专属悬念提示
+    'ip_first_viral': '你刷新了一下页面。播放量从三百跳到了三千。你又刷新了一下，一万。',
+    'ip_brand_deal': '合同签了。钱到账的那天你请自己吃了一顿好的，但发出去的广告你自己没转发。',
+    'ip_all_in': '辞职信递了。走出公司的时候你拍了一条短视频，手有点抖。',
+    'ip_controversy': '你发了那条回应。关掉评论区，把手机调成了勿扰模式。',
+    'ip_algorithm_change': '后台数据掉了一半。你盯着曲线看了很久，然后打开了一个新文档。',
+    'ip_mentor_betrayal': '你看着那条消息，沉默了很久。最后你只回了一个字："好。"',
+    // 银发守夜人路径专属悬念提示
+    'silver_first_death': '你帮她整理了遗物。床头柜里有一张你的照片，背后写着"好小伙子"。',
+    'silver_expand': '新站的钥匙拿到了。你站在空荡荡的房间里，闻着新刷的墙漆味。',
+    'silver_all_in': '返程票退了。你站在退票窗口前，手里攥着找零的硬币。',
+    'silver_family_doubt': '你爸没说话，转身进了屋。你妈在背后说了一句"吃饭吧"。',
+    'silver_policy_win': '提案交上去了。接待的人说"回去等消息"，你点了点头。',
+    'silver_accident': '你在急救室外坐了四个小时。走廊的灯很白，白得让你睁不开眼。',
+    // 生物赌徒路径专属悬念提示
+    'bio_first_protocol': '你把补剂按天数分装好，放进了一个印着"实验中"的药盒。',
+    'bio_big_bet': '转账确认了。你在投资备忘录上写了一行字："高风险，高不确定性，高信念。"',
+    'bio_self_experiment': '你抽了今天的第一管血，贴好标签放进冰箱。样本编号是N=1-037。',
+    'bio_all_in': '辞职了。你把工牌放在桌上，带走的只有一个装着论文的U盘。',
+    'bio_breakthrough_news': '你读完那篇论文，在页边空白处写了三个字："等三年。"',
+    'bio_friend_warning': '他说完"你疯了"就挂了电话。你看了看桌上的补剂，没动。',
+  };
 
-    for (const cardId of selectedCardIds.value) {
-      // 特殊处理：地理套利需要城市选择
-      if (cardId === 'geo_arbitrage') {
-        showCitySelect.value = true;
-        continue;
-      }
-      
-      const card = currentCards.value.find(c => c.id === cardId);
-      if (!card) continue;
-      
-      // 检查前置条件
-      if (card.prerequisites && !card.prerequisites(state.value)) continue;
-      
-      const beforeCard = { stress: state.value.stress, happiness: state.value.happiness, health: state.value.health, savings: state.value.currentSavings };
-      const result = card.effect(state.value);
-      totalCost += result.cost;
-      logs.push(result.log);
-      // 同时把卡片效果日志加入 lifeLog，确保LifeLog面板能看到
-      addLog(result.log);
-      cardDetails.push({ title: card.title, log: result.log, before: beforeCard });
-    }
-
-    // 拦截结婚卡 → 与现有恋人结婚或闪婚
-    if (selectedCardIds.value.includes('marry')) {
-      if (state.value.partner && !state.value.partner.hasDivorced && 
-          state.value.partner.datingStage !== 'single' && state.value.partner.datingStage !== 'divorced' &&
-          state.value.partner.datingStage !== 'married') {
-        // 与现有恋人结婚：快速推进到已婚
-        state.value.partner.datingStage = 'married';
-        state.value.partner.marriedYear = state.value.currentAge;
-        state.value.partner.affection = Math.min(100, state.value.partner.affection + 15);
-        state.value.partner.trust = Math.min(100, state.value.partner.trust + 10);
-        state.value.isMarried = true;
-      } else if (!state.value.partner || state.value.partner.datingStage === 'single' || state.value.partner.datingStage === 'divorced') {
-        // 闪婚：没有恋人就选结婚卡 = 相亲闪婚
-        const personality = ['温柔型','事业型','浪漫型','节俭型','独立型'][Math.floor(Math.random()*5)] as any;
-        state.value.partner = {
-          name: partnerNames[Math.floor(Math.random() * partnerNames.length)],
-          age: state.value.currentAge + Math.floor(Math.random() * 4) - 1,
-          affection: 50 + Math.floor(Math.random() * 20),  // 闪婚感情基础弱一些
-          trust: 40 + Math.floor(Math.random() * 20),
-          marriedYear: state.value.currentAge,
-          hasDivorced: false,
-          personality,
-          datingStage: 'married',
-          meetYear: state.value.currentAge,
-          trait: '相亲认识的',
-          memories: [{ age: state.value.currentAge, event: '闪婚', emoji: '💍' }],
-          crushFrom: 'blind_date',
-        };
-        state.value.isMarried = true;
-      }
-    }
-
-    // 拦截生育卡 → 初始化子女
-    if (selectedCardIds.value.includes('have_child')) {
-      if (state.value.children.length === 0) {
-        state.value.children.push({
-          birthYear: state.value.currentAge,
-          gender: Math.random() < 0.5 ? '男' : '女',
-          growthStage: '婴儿',
-          academicPerformance: 50,
-          rebelliousness: 0,
-          monthlyExpense: 2000,
-        });
-      }
-    }
-    
-    state.value.currentSavings -= totalCost;
-    
-    // 记录卡片使用历史（用于冷却和重复判断，写入可序列化的 usedCardHistory）
-    for (const cardId of selectedCardIds.value) {
-      trackCardUsage(state.value, cardId);
-    }
-
-    // 注册连锁反应 + 盲盒（统一处理，避免echo和盲盒在同一年重复触发）
-    // 先注册盲盒，记录已占用的 (cardId, delayYears) 组合，echo跳过冲突项
-    const registeredBlindBoxKeys = new Set<string>();
-
-    // 注册盲盒结果 + 生成悬念提示
-    // 选卡时根据当前状态只注册第一条满足条件的分支
-    // 只有当盲盒成功注册（matched 存在）时才生成悬念提示
-    const suspenseHints: Record<string, string> = {
-      'insurance': '签完保单的那一刻，你有一种说不清的预感——这份保险，迟早会派上用场。',
-      'minimalism': '房间空了，但你的心里好像多了一些说不清的东西。也许，这种生活方式的真正效果，要过些年才能感受到。',
-      'side_hustle': '深夜的服务器指示灯一闪一闪，像一颗小心脏在跳动。你有一种预感——这台机器的命运，和你的人生绑在了一起。',
-      'marry': '领了证，你以为这就是故事的结局。后来你才明白，这其实只是第一章。',
-      'have_child': '那个小小的生命安静地睡着了。你看着天花板想——这个孩子会给你的人生带来什么？你不知道。但你知道，一切都不一样了。',
-      'buy_house': '钥匙在手里沉甸甸的。三十年的贷款合同压在抽屉最底层。你有一种预感——这套房子会改变你的生活，但怎么改变，你现在还不知道。',
-      'buy_house*': '钥匙在手里沉甸甸的。三十年的贷款合同压在抽屉最底层。你有一种预感——这套房子会改变你的生活，但怎么改变，你现在还不知道。',
-      'resign': '走出写字楼的那一刻，阳光很刺眼。你不知道这个决定是对的、还是错的——但你知道答案不会马上来。',
-      'gym': '健身卡挂在包里，你摸了摸它。它现在只是一张塑料卡片，但也许有一天，它会变成某种更重要的东西。',
-      'buy_car': '坐进驾驶座的那一刻，你觉得自己拥有了整条路。但你还不知道——路，也会改变你。',
-      'buy_car*': '坐进驾驶座的那一刻，你觉得自己拥有了整条路。但你还不知道——路，也会改变你。',
-      'buy_lottery': '你把彩票小心翼翼地夹进钱包最里层。五十块钱买来的不是一张数字，是一整年的幻想权。',
-      'windfall_gamble': '你按下确认键的那一刻，账户里少了三十万。你关掉电脑，走到阳台上深呼吸了三次。命运已经下注了。',
-      'travel': '火车开动了，窗外的风景开始后退。你望着窗外想——这次旅行的意义，也许现在还看不到。',
-      'crypto_bet': '你按下了"买入"键。屏幕上那串数字开始跳动。你告诉自己"就赌这一次"——但你心里知道，故事不会这么简单就结束。',
-      'therapy': '走出咨询室的时候，你深吸了一口气。天空好像蓝了一点。也许，改变已经在悄悄发生了。',
-      'upskill': '培训结束了，你拿到证书的那一刻觉得自己升级了。但真正的考验，从来不在课堂上。',
-      'hedge_option': '期权合同签完了。你祈祷它永远用不上，但你清楚，有些事情不是祈祷就能避免的。',
-      'mba': '开学的第一天，你坐在教室最后一排。你不知道这两年会给你带来什么——但你知道，人生不会因为没有尝试而后悔。',
-      'buy_second_house': '第二份贷款合同签完了。你看着两个房子的钥匙，心里五味杂陈。投资的对错，要交给时间来评判。',
-      'treat_parents': '爸妈吃得开心，你也开心。但看着他们花白的头发，你心里隐隐有一种不安——你好像应该为他们做更多。',
-      'dinner_friends': '散场的时候你发了条朋友圈"青春不散场"。但你知道，有些人走着走着就散了。这一次，会不一样吗？',
-      'hobby_class': '第一节课结束了，老师夸你"有天赋"还是"有勇气"？你分不清。但至少，你开始了一段新的旅程。',
-      'health_food': '你做的第一顿饭虽然不怎么样，但冰箱里终于有了新鲜蔬菜。你隐隐觉得——这也许会改变你的生活。',
-      'cut_social': '退完最后一个群的时候，你的手指停了两秒。你告诉自己这是"断舍离"，但心里隐隐觉得——有些后果，现在还看不到。',
-      'geo_arbitrage': '火车带着你离开旧城市。窗外的风景变了，你的生活也会变。但变成什么样，现在还说不清。',
-      'parent_travel': '旅行结束了，照片存了三百多张。你看着爸妈的笑脸，心里暖暖的。这种温暖，也许会在未来的某个时刻，变成更重要的力量。',
-      'child_tutoring': '辅导班报名表交了，钱也付了。你看着孩子不情愿的背影想——这笔投入，最终会开花吗？',
-      'invest_fund': '定投设置好了，每个月自动扣款。你告诉自己"坚持就是胜利"——但真正的考验，是坚持过程中的那些跌跌撞撞。',
-      'side_gig': '私活交稿的那一刻，你松了口气。你有一种预感——这次经历，也许会在未来某个时刻以意想不到的方式回报你。',
-      'volunteer': '做义工回来的时候，天色已暗。你在路边站了一会儿，心里有种说不清的感觉。也许，这份善意终会以某种方式回到你身上。',
-      'gift_partner': '惊喜送出去了，对方笑了。你心里也有一种说不清的感觉——也许是甜蜜，也许是别的什么。时间会告诉你。',
-      'mentor': '新人学会了，对你说的第一句话是"谢谢老师"。你笑了，但心里隐隐觉得——带新人这件事，也许会给你带来意想不到的收获。',
-      'upgrade_side_hustle': '新方向探索开始了。你有一种预感——这条路的终点，和你想象的可能完全不同。',
-      'invest_fixed_deposit': '定期存款确认存入。你看着"年化3%"的数字，心想——钱这东西，慢慢来也是一种力量。',
-      'commercial_pension': '养老保险签了。你想象着60岁的自己收到这笔钱时的样子。也许到那时，你才能理解今天的这个决定有多重要。',
-      'upgrade_server': '服务器升级完成，风扇安静地转着。你有一种预感——这台机器的命运，和你的人生轨迹，正在悄悄交汇。',
-    };
-    // triggerCardId 匹配辅助：支持 'buy_house*' 前缀通配
-    function matchTrigger(triggerId: string, cardId: string): boolean {
-      if (triggerId.endsWith('*')) {
-        return cardId.startsWith(triggerId.slice(0, -1));
-      }
-      return triggerId === cardId;
-    }
-    for (const cardId of selectedCardIds.value) {
-      const outcomes = BLIND_BOX_OUTCOMES.filter(o => matchTrigger(o.triggerCardId, cardId));
-      // 按 delayYears 排序，优先注册延迟较短的分支
-      const sorted = outcomes.sort((a, b) => a.delayYears - b.delayYears);
-      const matched = sorted.find(o => o.condition(state.value));
-      if (matched) {
-        state.value.pendingBlindBoxes!.push({
-          outcomeId: matched.id,
-          triggerAge: state.value.currentAge + matched.delayYears,
-        });
-        registeredBlindBoxKeys.add(`${cardId}:${matched.delayYears}`);
-        // 只有盲盒成功注册时才生成悬念提示
-        const hint = suspenseHints[cardId] || suspenseHints[matched.triggerCardId] || '你做了一个决定。这个决定会在未来某个时刻，以你意想不到的方式产生影响。';
-        addLog(hint);
-        logs.push(hint);
-      }
-    }
-
-    // 注册echo连锁反应（跳过与盲盒同cardId+同delayYears的，避免重复触发）
-    for (const cardId of selectedCardIds.value) {
-      const echoes = CARD_ECHOS.filter(e => matchTrigger(e.triggerCardId, cardId));
-      for (const echo of echoes) {
-        const key = `${cardId}:${echo.delayYears}`;
-        if (registeredBlindBoxKeys.has(key)) continue;
-        state.value.pendingCardEchoes!.push({
-          cardId: cardId,
-          triggerAge: state.value.currentAge,
-          delayYears: echo.delayYears,
-        });
-      }
-    }
-    
-    // 检测重大状态变化，触发资产获得动画
-    for (const cid of selectedCardIds.value) {
-      if (cid.startsWith('buy_house')) {
-        setAssetAcquired('house', '喜提新居!');
-      } else if (cid.startsWith('buy_car')) {
-        setAssetAcquired('car', '喜提爱车!');
-      }
-    }
-
-    selectedCardIds.value = [];
-    return { logs, totalCost, isRestYear: false, cardDetails };
-  }
-  
   function applyGeoArbitrage(newCity: CityType) {
     if (newCity === state.value.currentCity) {
       showCitySelect.value = false;
@@ -697,6 +528,9 @@ export const useGameStore = defineStore('game', () => {
   }
   
   // ========== 十字路口选择 ==========
+  // #1修复：暂存十字路口效果，供commitYear追踪wellbeingChanges
+  const pendingCrossroadEffect = ref<{ savings: number; stress: number; happiness: number; health: number; passiveIncome: number; salary: number } | null>(null);
+
   function selectCrossroadOption(optionId: string) {
     const crossroad = currentCrossroad.value;
     if (!crossroad) return;
@@ -704,22 +538,49 @@ export const useGameStore = defineStore('game', () => {
     const option = crossroad.options.find(o => o.id === optionId);
     if (!option) return;
 
+    // #1修复：记录十字路口前的快照
+    const snap = {
+      savings: state.value.currentSavings,
+      stress: state.value.stress,
+      happiness: state.value.happiness,
+      health: state.value.health,
+      passiveIncome: state.value.passiveIncome,
+      salary: state.value.currentMonthlySalary,
+    };
+
     // 应用选项效果
     const stressBeforeCross = state.value.stress;
+    const salaryBeforeCross = state.value.currentMonthlySalary;
     const result = option.effect(state.value);
     addLog(result.log);
+    // 记录十字路口选项导致的薪资变化
+    const salaryDiffCross = state.value.currentMonthlySalary - salaryBeforeCross;
+    if (salaryDiffCross !== 0) {
+      const sign = salaryDiffCross > 0 ? '+' : '-';
+      addLog(`月薪从¥${salaryBeforeCross.toLocaleString()}调整为¥${state.value.currentMonthlySalary.toLocaleString()}（${sign}¥${Math.abs(salaryDiffCross).toLocaleString()}）。`);
+    }
 
     // v11: 压力抑制机制——高压时十字路口压力加成也被削减
     if (state.value.stress > stressBeforeCross) {
       const stressAdd = state.value.stress - stressBeforeCross;
       let dampenedAdd = stressAdd;
-      if (stressBeforeCross > 85) {
-        dampenedAdd = Math.round(stressAdd * 0.25);
-      } else if (stressBeforeCross > 70) {
-        dampenedAdd = Math.round(stressAdd * 0.5);
+      if (stressBeforeCross > 90) {
+        dampenedAdd = Math.round(stressAdd * 0.30);
+      } else if (stressBeforeCross > 75) {
+        dampenedAdd = Math.round(stressAdd * 0.60);
       }
       state.value.stress = Math.min(100, stressBeforeCross + dampenedAdd);
     }
+
+    // #1修复：暂存十字路口效果差值，供commitYear的wellbeingChanges追踪
+    pendingCrossroadEffect.value = {
+      savings: state.value.currentSavings - snap.savings,
+      stress: state.value.stress - snap.stress,
+      happiness: state.value.happiness - snap.happiness,
+      health: state.value.health - snap.health,
+      passiveIncome: state.value.passiveIncome - snap.passiveIncome,
+      salary: state.value.currentMonthlySalary - snap.salary,
+    };
 
     // 记录冷却
     crossroadFiredTags.value.set(crossroad.tag, state.value.currentAge);
@@ -731,8 +592,10 @@ export const useGameStore = defineStore('game', () => {
     currentCrossroad.value = null;
     showCrossroad.value = false;
 
-    // 抽取当年度的叙事事件
-    drawNarrativeEvent();
+    // #2修复：十字路口年不再强制抽取叙事事件——给玩家喘息空间
+    // 玩家直接进入"度过这一年"流程，commitYear会处理结算
+    currentNarrativeEvent.value = null;
+    selectedNarrativeOptionId.value = null;
 
     scheduleSave(state.value);
   }
@@ -803,7 +666,7 @@ export const useGameStore = defineStore('game', () => {
       ];
       const restLog = restLogs[Math.floor(Math.random() * restLogs.length)];
       logs.push(restLog);
-      addLog(restLog);
+      // 不直接addLog，yearLog会包含它
       return { logs, totalCost, isRestYear: true, cardDetails };
     }
 
@@ -820,11 +683,19 @@ export const useGameStore = defineStore('game', () => {
       savings: state.value.currentSavings,
     };
 
-    // 应用技能增益
+    // 应用技能增益（上限100，50以上边际递减）
     if (option.skillGains) {
+      if (!state.value.pathSkills) state.value.pathSkills = {};
       for (const [skill, gain] of Object.entries(option.skillGains)) {
-        if (!state.value.pathSkills) state.value.pathSkills = {};
-        state.value.pathSkills[skill] = (state.value.pathSkills[skill] || 0) + gain;
+        const current = state.value.pathSkills[skill] || 0;
+        if (current >= 100) continue; // 已达上限，不再增长
+        let effectiveGain = gain;
+        if (current > 50) {
+          // 50以上边际递减：每超1点衰减1%，最低保留10%
+          const decay = Math.max(0.1, 1 - (current - 50) / 100);
+          effectiveGain = Math.round(gain * decay);
+        }
+        state.value.pathSkills[skill] = Math.min(100, current + effectiveGain);
       }
     }
 
@@ -839,7 +710,14 @@ export const useGameStore = defineStore('game', () => {
 
     // 应用月薪变化
     if (option.salaryChange) {
+      const salaryBefore = state.value.currentMonthlySalary;
       state.value.currentMonthlySalary = Math.max(0, state.value.currentMonthlySalary + option.salaryChange);
+      const salaryAfter = state.value.currentMonthlySalary;
+      const diff = salaryAfter - salaryBefore;
+      if (diff !== 0) {
+        const sign = diff > 0 ? '+' : '-';
+        addLog(`月薪从¥${salaryBefore.toLocaleString()}调整为¥${salaryAfter.toLocaleString()}（${sign}¥${Math.abs(diff).toLocaleString()}）。`);
+      }
     }
 
     // 应用被动收入变化
@@ -858,12 +736,12 @@ export const useGameStore = defineStore('game', () => {
       if (state.value.stress > stressBefore) {
         const stressAdd = state.value.stress - stressBefore;
         let dampenedAdd = stressAdd;
-        if (stressBefore > 85) {
-          // 压力>85时，事件压力加成只保留25%
-          dampenedAdd = Math.round(stressAdd * 0.25);
-        } else if (stressBefore > 70) {
-          // 压力>70时，事件压力加成只保留50%
-          dampenedAdd = Math.round(stressAdd * 0.5);
+        if (stressBefore > 90) {
+          // 压力>90时，事件压力加成只保留30%
+          dampenedAdd = Math.round(stressAdd * 0.30);
+        } else if (stressBefore > 75) {
+          // 压力>75时，事件压力加成只保留60%
+          dampenedAdd = Math.round(stressAdd * 0.60);
         }
         state.value.stress = Math.min(100, stressBefore + dampenedAdd);
       }
@@ -874,22 +752,138 @@ export const useGameStore = defineStore('game', () => {
       state.value.narrativeBranch = option.branchSwitch;
     }
 
+    // 如果选项标记触发退休判定
+    if (option.triggersRetirementCheck) {
+      const path = getPath(state.value.retirementPath);
+      if (path && path.checkSuccess(state.value)) {
+        state.value.pathEndgameTriggered = true;
+        triggerEarlyRetirement(true);
+      }
+    }
+
     const isRestYear = option.isRestOption || false;
 
-    // 记录日志
+    // 记录日志（注意：option.log 通过 logs 数组传给 buildYearLog 作为年度总结，
+    // 不直接 addLog，避免在 lifeLog 中与 yearLog 重复显示）
     logs.push(option.log);
-    addLog(option.log);
     cardDetails.push({ title: event.title, log: option.log, before: beforeOption });
 
     // 标记事件已触发
     if (!state.value.narrativeEventFired) state.value.narrativeEventFired = {};
     state.value.narrativeEventFired[event.id] = state.value.currentAge;
 
+    // === 盲盒注册：当选项标记了 blindBoxTrigger 时，注册对应的延迟盲盒 ===
+    if (option.blindBoxTrigger) {
+      const triggerId = option.blindBoxTrigger;
+      const outcomes = BLIND_BOX_OUTCOMES.filter(o => matchTrigger(o.triggerCardId, triggerId));
+      const sorted = outcomes.sort((a, b) => a.delayYears - b.delayYears);
+      const matched = sorted.find(o => o.condition(state.value));
+      if (matched) {
+        if (!state.value.pendingBlindBoxes) state.value.pendingBlindBoxes = [];
+        // 防重复：同一triggerId同一delayYears只注册一次
+        const key = `${triggerId}:${matched.delayYears}`;
+        if (!registeredBlindBoxKeys.has(key)) {
+          state.value.pendingBlindBoxes.push({
+            outcomeId: matched.id,
+            triggerAge: state.value.currentAge + matched.delayYears,
+            // 修复#4：存储触发卡片ID和延迟年数，揭晓时根据当前状态重新评估条件
+            triggerCardId: triggerId,
+            delayYears: matched.delayYears,
+          });
+          registeredBlindBoxKeys.add(key);
+          // 添加悬念提示
+          const hint = suspenseHints[triggerId] || '你做了一个决定。这个决定会在未来某个时刻，以你意想不到的方式产生影响。';
+          addLog(hint);
+          logs.push(hint);
+        }
+      }
+    }
+
     // 清除当前事件
     currentNarrativeEvent.value = null;
     selectedNarrativeOptionId.value = null;
 
     return { logs, totalCost, isRestYear, cardDetails };
+  }
+
+  // ========== 年度工作小结生成 ==========
+  // 根据薪资变动明细生成一句话叙事，让玩家感知到今年工作上发生了什么
+  function generateWorkSummary(state: GameState, breakdown: SalaryChangeEntry[], totalDelta: number): string {
+    if (state.isUnemployed && state.currentMonthlySalary === 0) {
+      return '今年失去了工作来源，正在寻找新的机会。';
+    }
+    if (totalDelta === 0) {
+      return '今年工作按部就班，薪资没有变化。';
+    }
+
+    // 找出影响最大的因素
+    const sorted = [...breakdown].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+    const mainFactor = sorted[0];
+
+    if (totalDelta > 0) {
+      const pct = state.currentMonthlySalary > 0
+        ? Math.round(totalDelta / (state.currentMonthlySalary - totalDelta) * 100)
+        : 0;
+      if (mainFactor?.source === '35岁危机') {
+        return `今年遭遇了职场的35岁关口，薪资有所调整，但仍在坚持。`;
+      }
+      if (mainFactor?.source === '涨薪封顶') {
+        return `今年虽然表现不错，但薪资已到天花板，增长受限。`;
+      }
+      if (mainFactor?.source === '工作突破') {
+        return `${mainFactor.note || '今年工作上迎来了重要突破'}，月薪增长${pct}%。`;
+      }
+      if (mainFactor?.source === '技能提升' || mainFactor?.source === '技能驱动') {
+        return `专业能力持续精进，带动薪资稳步提升${pct > 0 ? '约' + pct + '%' : ''}。`;
+      }
+      if (mainFactor?.source === '黄金年龄') {
+        return `正值职业黄金期，经验和精力都在最佳状态，薪资水涨船高。`;
+      }
+      if (mainFactor?.source === '行业红利') {
+        return `赶上了行业的红利期，薪资跟着行业大势上涨。`;
+      }
+      if (mainFactor?.source === '经济萧条' || mainFactor?.source === '事业遇冷') {
+        return `虽然大环境不景气，但你的收入依然保持了小幅增长。`;
+      }
+      if (mainFactor?.source === '接单丰收' || mainFactor?.source === '好运连连') {
+        return `今年运势不错，接到了好项目/好客户，收入有明显提升。`;
+      }
+      if (mainFactor?.source === '成就达成') {
+        return `能力突破带来了薪资的跃升。`;
+      }
+      if (mainFactor?.source === '增长瓶颈' || mainFactor?.source === '收入触顶') {
+        return `事业进入平台期，收入增速放缓。`;
+      }
+      if (state.isAllInPath) {
+        return `事业稳步推进，收入${pct > 0 ? '增长约' + pct + '%' : '小幅调整'}。`;
+      }
+      return `今年薪资稳步上调${pct > 0 ? '约' + pct + '%' : ''}，${mainFactor?.note || '工作表现获得认可'}。`;
+    } else {
+      // 降薪
+      const pct = Math.round(Math.abs(totalDelta) / (state.currentMonthlySalary - totalDelta) * 100);
+      if (mainFactor?.source === '35岁危机') {
+        return `35岁这一年，行业优化来袭，薪资下调约${pct}%，前路变得艰难。`;
+      }
+      if (mainFactor?.source === '经济萧条') {
+        return `经济大环境不景气，公司冻薪降薪，收入缩水约${pct}%。`;
+      }
+      if (mainFactor?.source === '接单困难') {
+        return `今年客源减少、项目不顺，收入下降约${pct}%。`;
+      }
+      if (mainFactor?.source === '年龄瓶颈') {
+        return `年龄增长带来职场竞争力下降，薪资停滞不前。`;
+      }
+      if (mainFactor?.source === '事业遇冷') {
+        return `事业遭遇寒流，收入下降约${pct}%。`;
+      }
+      if (mainFactor?.source === '薪资调整') {
+        return `${mainFactor.note || '工作发生变动'}，薪资下调约${pct}%。`;
+      }
+      if (mainFactor?.source === '失业') {
+        return '失去了工作，月薪归零。';
+      }
+      return `今年薪资有所下调${pct > 0 ? '约' + pct + '%' : ''}，需要加倍努力。`;
+    }
   }
 
   // ========== 年度结算核心 ==========
@@ -913,6 +907,10 @@ export const useGameStore = defineStore('game', () => {
     const prevHappiness = state.value.happiness;
     const prevHealth = state.value.health;
     const prevPassiveIncome = state.value.passiveIncome;
+    const prevMonthlySalary = state.value.currentMonthlySalary; // 年初月薪，用于结算面板显示薪资变化
+    const yearStartSalary = state.value.currentMonthlySalary; // 年度涨薪封顶用：记录年初薪资基准
+    // 保存年初技能快照，用于信念值漂移判断
+    (state.value as any)._prevPathSkills = { ...(state.value.pathSkills || {}) };
     const prevUnemployed = state.value.isUnemployed;
     const wasMarried = state.value.isMarried;
     const hadProperty = state.value.hasProperty;
@@ -922,6 +920,8 @@ export const useGameStore = defineStore('game', () => {
 
     // 用于按来源追踪变化
     const wellbeingChanges: { source: string; stress: number; happiness: number; health: number; savings: number }[] = [];
+    // 薪资变动明细收集
+    const salaryBreakdown: SalaryChangeEntry[] = [];
 
     // 辅助函数：快照当前值
     const snapshot = () => ({
@@ -983,7 +983,17 @@ export const useGameStore = defineStore('game', () => {
 
     // 3. 年度调薪（在结算前）
     if (!state.value.isUnemployed) {
-      applySalaryRaise(state.value);
+      const salaryBefore = state.value.currentMonthlySalary;
+      const raiseBreakdown = applySalaryRaise(state.value);
+      const salaryAfter = state.value.currentMonthlySalary;
+      const salaryDiff = salaryAfter - salaryBefore;
+      // 收集系统调薪的明细
+      salaryBreakdown.push(...raiseBreakdown);
+      if (salaryDiff > 0) {
+        addLog(`第${state.value.currentAge}岁，月薪从¥${salaryBefore.toLocaleString()}调整为¥${salaryAfter.toLocaleString()}（+¥${salaryDiff.toLocaleString()}）。`);
+      } else if (salaryDiff < 0) {
+        addLog(`第${state.value.currentAge}岁，月薪从¥${salaryBefore.toLocaleString()}调整为¥${salaryAfter.toLocaleString()}（-¥${Math.abs(salaryDiff).toLocaleString()}）。`);
+      }
     }
 
     // 4. 经济周期随机变化
@@ -1083,6 +1093,18 @@ export const useGameStore = defineStore('game', () => {
     }
     recordChange('blackSwan', beforeBlackSwan);
 
+    // 5.5 年度薪资涨幅封顶：防止事件涨薪+年度涨薪+成就涨薪叠加导致单年暴涨
+    // 打工阶段单年涨幅不超过25%，All In后不超过50%（降薪不封顶）
+    if (!state.value.isUnemployed && yearStartSalary > 0) {
+      const beforeClamp = state.value.currentMonthlySalary;
+      clampAnnualSalaryGrowth(state.value, yearStartSalary);
+      const afterClamp = state.value.currentMonthlySalary;
+      if (afterClamp < beforeClamp) {
+        const clampDelta = afterClamp - beforeClamp;
+        salaryBreakdown.push({ source: '涨薪封顶', amount: clampDelta, note: '单年涨幅过高，部分涨薪被封顶限制' });
+      }
+    }
+
     // 6. 执行年度财务结算（calculateYearlySettlement 内部会：
     //    - 记录 mortgageCost（不再直接扣减 savings）
     //    - 计算 netChange = totalIncome - (livingCost + insuranceCost + mortgageCost)
@@ -1106,6 +1128,9 @@ export const useGameStore = defineStore('game', () => {
     result.echoFinancialChange = echoFinancialChange;
     result.wellbeingChanges = wellbeingChanges;
 
+    // 副业收入已结算入账，重置本年累积
+    state.value.currentYearSideHustle = 0;
+
     // 记录日常琐事、人际关系、恋爱日志到 YearResult
     result.dailyEvents = dailyLogs;
     result.relationshipChanges = relationshipLogs;
@@ -1128,6 +1153,34 @@ export const useGameStore = defineStore('game', () => {
     result.healthChange = state.value.health - prevHealth;
     // 实际存款变化（包含所有因素：工资、开销、卡片、事件、盲盒等）
     (result as any).actualSavingsChange = state.value.currentSavings - yearStartSavings;
+    // 年度月薪变化（涨薪/降薪/事件导致的薪资变化）
+    const totalSalaryChange = state.value.currentMonthlySalary - prevMonthlySalary;
+    (result as any).salaryChange = totalSalaryChange;
+
+    // 补齐薪资变动明细：计算已追踪项总和，差额归入"事件影响"（卡片选择/盲盒/黑天鹅/失业/All In同步等）
+    const trackedSalaryDelta = salaryBreakdown.reduce((sum, e) => sum + e.amount, 0);
+    const residualDelta = totalSalaryChange - trackedSalaryDelta;
+    if (Math.abs(residualDelta) >= 1) {
+      // 判断是什么导致的差额
+      let residualLabel = '事件影响';
+      let residualNote = '本年卡片选择、盲盒或突发事件带来的薪资变动';
+      if (state.value.isUnemployed && state.value.currentMonthlySalary === 0) {
+        residualLabel = '失业';
+        residualNote = '失去工作，月薪归零';
+      } else if (residualDelta < -5000) {
+        residualLabel = '薪资调整';
+        residualNote = '工作变动或突发事件导致薪资下调';
+      } else if (residualDelta > 5000) {
+        residualLabel = '工作突破';
+        residualNote = '重要选择或机遇带来薪资跃升';
+      }
+      salaryBreakdown.push({ source: residualLabel, amount: residualDelta, note: residualNote });
+    }
+    (result as any).salaryBreakdown = salaryBreakdown;
+
+    // 生成年度工作小结（一句话叙事）
+    const workSummary = generateWorkSummary(state.value, salaryBreakdown, totalSalaryChange);
+    (result as any).workSummary = workSummary;
 
     lastYearResult.value = result;
 
@@ -1148,6 +1201,10 @@ export const useGameStore = defineStore('game', () => {
           addLog(`第${state.value.currentAge}岁，时间洗刷了情感的伤口，你重新开始参加朋友聚会，甚至愿意在菜单上点一份双人套餐。——后遗症【情感创伤】消退。`);
         } else if (type === '健康警示') {
           addLog(`第${state.value.currentAge}岁，你养成了定期体检的习惯，那个因为重病留下的'健康警示'终于被你用自律彻底拔除。——后遗症【健康警示】消退。`);
+        } else if (type === '认知干扰') {
+          addLog(`第${state.value.currentAge}岁，最后一层神经广告残留终于被认知清洗清除，你不再在梦里听见推销话术，记忆重新属于自己。——后遗症【认知干扰】消退。`);
+        } else if (type === '医疗纠纷') {
+          addLog(`第${state.value.currentAge}岁，官司终于落槌，不管结果如何，你从这场漫长的纠纷中解脱出来。——后遗症【医疗纠纷】消退。`);
         }
       }
     }
@@ -1173,7 +1230,14 @@ export const useGameStore = defineStore('game', () => {
         state.value.currentSavings += narrAchievement.savingsChange;
       }
       if (narrAchievement.salaryChange) {
+        const achSalaryBefore = state.value.currentMonthlySalary;
         state.value.currentMonthlySalary = Math.max(0, state.value.currentMonthlySalary + narrAchievement.salaryChange);
+        const achDiff = state.value.currentMonthlySalary - achSalaryBefore;
+        if (achDiff !== 0) {
+          salaryBreakdown.push({ source: '成就达成', amount: achDiff, note: `达成成就「${narrAchievement.title}」带来的薪资变化` });
+          const sign = achDiff > 0 ? '+' : '-';
+          addLog(`【成就】月薪从¥${achSalaryBefore.toLocaleString()}调整为¥${state.value.currentMonthlySalary.toLocaleString()}（${sign}¥${Math.abs(achDiff).toLocaleString()}）。`);
+        }
       }
       if (narrAchievement.passiveIncomeChange) {
         state.value.passiveIncome += narrAchievement.passiveIncomeChange;
@@ -1203,6 +1267,20 @@ export const useGameStore = defineStore('game', () => {
           triggerEarlyRetirement(true);
           return;
         }
+      }
+    }
+
+    // 7.7 修复#7：成就涨薪纳入封顶计算——在成就处理之后再执行一次封顶
+    // 防止年度涨薪+成就涨薪叠加导致单年暴涨（与5.5的封顶共用同一基准 yearStartSalary）
+    if (!state.value.isUnemployed && yearStartSalary > 0) {
+      const beforeAchClamp = state.value.currentMonthlySalary;
+      clampAnnualSalaryGrowth(state.value, yearStartSalary);
+      const afterAchClamp = state.value.currentMonthlySalary;
+      if (afterAchClamp < beforeAchClamp) {
+        const achClampDelta = afterAchClamp - beforeAchClamp;
+        salaryBreakdown.push({ source: '涨薪封顶', amount: achClampDelta, note: '成就涨薪叠加后超出年度上限，部分涨薪被封顶' });
+        // 同步更新 salaryChange
+        (result as any).salaryChange = state.value.currentMonthlySalary - prevMonthlySalary;
       }
     }
 
@@ -1236,8 +1314,9 @@ export const useGameStore = defineStore('game', () => {
 
     // 10. 检查提前退休（路径成功判定）——不再自动触发，改为标记 canRetire
     if (state.value.retirementPath && !state.value.pathEndgameTriggered) {
-      const path = getPath(state.value.retirementPath);
-      if (path && path.checkSuccess(state.value)) {
+      // 使用 checkCanRetire 统一判定：既检查路径专属成功条件，也检查通用财富自由
+      // 这避免了"玩家有500万存款但因路径条件未满足（如被动收入不足）而无法退休"的问题
+      if (checkCanRetire(state.value)) {
         // 标记玩家可以退休了，但不强制触发——玩家可以选择继续或退休
         if (!state.value.canRetire) {
           state.value.canRetire = true;
@@ -1246,34 +1325,47 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    // 10.5 信念值自然漂移（v3平衡：加入边际递减，防止信念值过早达到All In阈值）
+    // 10.5 信念值自然漂移（v4平衡：增加正向来源，确保不同玩法都能逐步积累信念）
     if (state.value.retirementPath) {
-      const path = getPath(state.value.retirementPath);
       // 每年信念值缓慢漂移，压力高时下降，幸福高时上升
       let drift = 0;
-      if (state.value.stress > 70) drift -= 2;  // 高压轻微动摇
-      if (state.value.stress > 85) drift -= 1;  // 极高压力再-1
-      if (state.value.happiness > 70) drift += 2; // 幸福时信念坚定
-      if (state.value.health < 40) drift -= 1;  // 健康差时动摇
+      // 负向：压力与健康
+      if (state.value.stress > 80) drift -= 2;  // 极高压轻微动摇（门槛从70提高到80）
+      if (state.value.stress > 90) drift -= 1;  // 濒危压力再-1
+      if (state.value.health < 30) drift -= 1;  // 健康很差时动摇（门槛从40降到30）
       if (result.netChange < 0) drift -= 1;     // 入不敷出时焦虑
 
-      // 边际递减：信念值越高，正向漂移越弱、负向漂移越强
-      // 模拟"高信念时更难再提升，且更容易因挫折动摇"的心理规律
-      const faith = state.value.pathFaith;
-      if (faith >= 70) {
-        // 70-79: 正向漂移减半，负向漂移×1.5
-        if (drift > 0) drift = Math.floor(drift / 2);
-        else if (drift < 0) drift = Math.round(drift * 1.5);
+      // 正向：多维度信念来源（确保不同玩法都能积累）
+      if (state.value.happiness > 60) drift += 1; // 幸福时信念坚定（门槛从70降到60）
+      if (state.value.happiness > 80) drift += 1; // 非常幸福再+1
+      // 技能成长带来信念（只要有在成长，就坚定信心）
+      const prevSkills = (state.value as any)._prevPathSkills;
+      const currSkills = state.value.pathSkills || {};
+      let skillGrew = false;
+      if (prevSkills) {
+        for (const k of Object.keys(currSkills)) {
+          if ((currSkills as any)[k] > (prevSkills as any)[k]) { skillGrew = true; break; }
+        }
       }
-      if (faith >= 80) {
-        // 80-89: 正向漂移再减1，负向漂移再+1
-        if (drift > 0) drift = drift - 1;
-        else if (drift < 0) drift = drift - 1;
+      if (skillGrew) drift += 1;
+      // 存款增长带来安全感（年净收入为正且有积蓄）
+      if (result.netChange > 0 && state.value.currentSavings > 50000) drift += 1;
+      // 长期坚持带来信念（同一职业工作5年以上，每年缓慢积累信心）
+      // 这帮助佛系玩家通过"坚持"来积累信念，而非只靠冒险选择
+      if (state.value.totalYearsWorked >= 5 && !state.value.isUnemployed) drift += 1;
+      // 信念值很低时的触底反弹（适度求生本能，但不过强，让信念崩塌成为真实威胁）
+      if (state.value.pathFaith < 15) drift += 2;   // 信念极低：适度反思，+2
+      if (state.value.pathFaith < 8) drift += 1;    // 濒临崩溃：最后挣扎，+1
+
+      // 边际递减（v3：80+时仅轻微减速，让不同玩法的玩家都能缓慢爬升）
+      const faith = state.value.pathFaith;
+      if (faith >= 85) {
+        // 85-89: 正向漂移-1（保留大部分增长动力）
+        if (drift > 0) drift = Math.max(1, drift - 1);
       }
       if (faith >= 90) {
-        // 90+: 正向漂移归零（极难再提升），负向漂移再+2
-        if (drift > 0) drift = 0;
-        else if (drift < 0) drift = drift - 2;
+        // 90+: 正向漂移-2（但至少保留1，确保缓慢增长可能）
+        if (drift > 0) drift = Math.max(1, drift - 2);
       }
 
       // MBTI人格信念修正：faithMultiplier>1时信念更坚定（正向漂移增强，负向漂移减弱）
@@ -1291,19 +1383,34 @@ export const useGameStore = defineStore('game', () => {
         return;
       }
 
-      // 超过路径目标退休年龄+5年：
-      // - 如果已满足退休条件但玩家一直没点退休 → 自动帮其退休（成功结局）
-      // - 如果仍未满足退休条件 → 路径失败
-      if (path && state.value.currentAge > path.targetRetireAge + 5 && !state.value.pathEndgameTriggered) {
-        state.value.pathEndgameTriggered = true;
-        if (state.value.canRetire) {
-          addLog(`第${state.value.currentAge}岁，时光不等人。你已经攒够了资本——但你发现"攒够了"这三个字，你其实早就想说，只是一直在等一个"更好的时机"。时机从来不会"更好"，它只会"更晚"。今天，你不再等了。`);
-          chooseRetire();
-        } else {
-          addLog(`第${state.value.currentAge}岁，你已经${state.value.currentAge}岁了。曾经以为${path.targetRetireAge}岁就能自由，但你把自由想成了一个终点——一个到了就能停下来的地方。其实自由从来不在前面，它在你身后的每一个你本可以停下来的路口。你错过了它们。时间不会等你，但它会教你后悔。`);
-          triggerEarlyRetirement(false);
-        }
-        return;
+      // 注：旧版有"超过路径退休年龄+5年自动失败"机制，
+      // 现已移除——退休时机由玩家自主决定，60岁统一封顶。
+      // 信念崩塌(pathFaith<=0)仍保留为唯一的路径失败触发器。
+    }
+
+    // 10.6 自然年度恢复（非休养生息年也有微量恢复，防止死亡螺旋）
+    // 代表玩家日常生活中的自然调节：周末休息、运动、社交等
+    if (!isRestYear) {
+      // 压力自然恢复：压力越高，恢复越多（身体的求生反弹）
+      let naturalStressRelief = 0;
+      if (state.value.stress > 85) naturalStressRelief = 5;
+      else if (state.value.stress > 70) naturalStressRelief = 3;
+      else if (state.value.stress > 50) naturalStressRelief = 1;
+      // MBTI人格日常调节（restBonus的一半）
+      const mbtiRestMechNatural = getActiveMBTIMechanics(state.value);
+      if (mbtiRestMechNatural) naturalStressRelief += Math.floor(mbtiRestMechNatural.restBonus / 2);
+      state.value.stress = Math.max(0, state.value.stress - naturalStressRelief);
+
+      // 健康自然恢复：健康越差，恢复越多（身体的自愈机制）
+      let naturalHealthGain = 0;
+      if (state.value.health < 30) naturalHealthGain = 4;
+      else if (state.value.health < 50) naturalHealthGain = 2;
+      else if (state.value.health < 70 && state.value.stress < 50) naturalHealthGain = 1;
+      state.value.health = Math.min(100, state.value.health + naturalHealthGain);
+
+      // 幸福适应：极低幸福时缓慢回升（享乐适应）
+      if (state.value.happiness < 30) {
+        state.value.happiness = Math.min(100, state.value.happiness + 2);
       }
     }
 
@@ -1456,7 +1563,7 @@ export const useGameStore = defineStore('game', () => {
     // 没有日常事件的平淡年份
     const templates = [
       `第${age}岁，这一年像一杯白开水，喝的时候没感觉，但渴的时候才知道它的好。你在${profession}的岗位上日复一日，存款涨到了${savings}元。`,
-      `第${age}岁，你把生活过成了循环播放——地铁、工位、外卖、床。偶尔刷到朋友的朋友圈，他们好像都比你过得精彩，但你关掉手机后，觉得自己的日子也还行。`,
+      `第${age}岁，你把生活过成了循环播放——地铁、工位、外卖、床。偶尔刷到朋友的动态圈，他们好像都比你过得精彩，但你关掉手机后，觉得自己的日子也还行。`,
       `第${age}岁，你学会了在加班的间隙里找乐子：偷吃零食、摸鱼刷手机、跟同事吐槽甲方。日子虽然重复，但这些小事让你觉得还没被生活完全磨平。`,
       `第${age}岁，你开始理解什么叫"日子是用来过的，不是用来熬的"。买菜、做饭、洗碗、倒垃圾，这些琐碎的事情里居然藏着一种奇怪的安全感。存款${savings}元，不多不少。`,
       `第${age}岁，你这一年没什么好说的。工作还行，身体还行，感情还行。三个"还行"凑在一起，就是大多数人的一年。`,
@@ -1553,8 +1660,6 @@ export const useGameStore = defineStore('game', () => {
     state.value = createInitialState();
     // 重置跨局模块级状态，避免上一局的"已结婚朋友"集合泄漏到新局
     resetMarriedFriendSet();
-    currentCards.value = [];
-    selectedCardIds.value = [];
     currentNarrativeEvent.value = null;
     selectedNarrativeOptionId.value = null;
     currentAchievement.value = null;
@@ -1617,8 +1722,6 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     state,
-    currentCards,
-    selectedCardIds,
     lastYearResult,
     yearMood,
     eventPopup,
@@ -1658,9 +1761,6 @@ export const useGameStore = defineStore('game', () => {
     continueGame,
     selectRetirementPath,
     generateYearOpeningMonologue,
-    drawNewCards,
-    toggleCard,
-    applySelectedCards,
     applyGeoArbitrage,
     commitYear,
     chooseRetire,
@@ -1671,7 +1771,6 @@ export const useGameStore = defineStore('game', () => {
     resetGame,
     testSkipToRetirement,
     addLog,
-    DECISION_CARDS,
     ENDINGS,
   };
 });

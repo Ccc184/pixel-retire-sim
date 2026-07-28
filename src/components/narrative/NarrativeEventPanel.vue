@@ -3,15 +3,13 @@ import { computed } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import { playSelect, playConfirm } from '../../utils/audio.js'
 import { showNumericalHints } from '../../utils/ui-prefs.js'
+import { fmtSigned, fmt } from '../../utils/format.js'
 import type { NarrativeOption } from '../../types/global.d.js'
 
 const store = useGameStore()
 
 const currentEvent = computed(() => store.currentNarrativeEvent)
 const selectedOptionId = computed(() => store.selectedNarrativeOptionId)
-
-// 成就展示
-const achievementData = computed(() => store.currentAchievement)
 
 function isOptionAvailable(option: NarrativeOption): boolean {
   if (!option.prerequisites) return true
@@ -109,7 +107,7 @@ const skillLabels: Record<string, string> = {
   contentSkill: '内容创作',
   audienceSkill: '受众运营',
   brandSkill: '品牌价值',
-  // 银发收割者
+  // 银发守夜人
   careSkill: '护理专业',
   managementSkill: '运营管理',
   policySkill: '政策资源',
@@ -141,9 +139,7 @@ const skillLabels: Record<string, string> = {
     <!-- 财务预警条 -->
     <div class="finance-warning-bar" :class="'warn-' + safetyLevel">
       <span class="warn-icon-main">
-        <span v-if="safetyLevel === 'danger'">🔴</span>
-        <span v-else-if="safetyLevel === 'warning'">🟡</span>
-        <span v-else>🟢</span>
+        <span class="warn-dot" :class="'dot-' + safetyLevel">●</span>
       </span>
       <span class="warn-label">
         <template v-if="safetyLevel === 'danger'">财务预警</template>
@@ -153,9 +149,9 @@ const skillLabels: Record<string, string> = {
       <span class="warn-detail">
         预计年末存款
         <strong :class="estimatedDelta >= 0 ? 'text-green' : 'text-red'">
-          {{ estimatedDelta >= 0 ? '+' : '' }}¥{{ estimatedDelta.toLocaleString() }}
+          {{ fmtSigned(estimatedDelta) }}
         </strong>
-        → ¥{{ Math.round(estimatedYearEndSavings).toLocaleString() }}
+        → {{ fmt(Math.round(estimatedYearEndSavings)) }}
       </span>
     </div>
 
@@ -253,22 +249,6 @@ const skillLabels: Record<string, string> = {
         <span class="btn-arrow">★</span>
       </button>
     </div>
-
-    <!-- 成就触发展示 -->
-    <transition name="achievement-pop">
-      <div v-if="achievementData" class="achievement-overlay">
-        <div class="achievement-card">
-          <div class="achievement-badge">★</div>
-          <h3 class="achievement-title">{{ achievementData.title }}</h3>
-          <div class="achievement-narrative">
-            <p v-for="(line, i) in achievementData.narrative.split('\n')" :key="i">{{ line }}</p>
-          </div>
-          <button class="btn-ack-achievement" @click="store.dismissAchievement()">
-            继续
-          </button>
-        </div>
-      </div>
-    </transition>
   </div>
 </template>
 
@@ -382,6 +362,13 @@ const skillLabels: Record<string, string> = {
   font-size: 12px;
   flex-shrink: 0;
 }
+
+.warn-dot {
+  font-size: 10px;
+}
+.dot-safe { color: var(--neon-green); text-shadow: 0 0 6px var(--neon-green); }
+.dot-warning { color: var(--neon-orange); text-shadow: 0 0 6px var(--neon-orange); }
+.dot-danger { color: var(--neon-pink); text-shadow: 0 0 6px var(--neon-pink); }
 
 .warn-label {
   font-weight: bold;
@@ -536,8 +523,9 @@ const skillLabels: Record<string, string> = {
 
 .option-card.selected {
   border-color: var(--neon-pink);
-  background: rgba(255, 45, 149, 0.1);
-  box-shadow: 0 0 10px var(--neon-pink), inset 0 0 10px rgba(255, 45, 149, 0.08);
+  background: rgba(255, 45, 149, 0.15);
+  box-shadow: 0 0 16px var(--neon-pink), inset 0 0 16px rgba(255, 45, 149, 0.12);
+  transform: translateY(-2px);
 }
 
 .option-card.disabled {
@@ -740,105 +728,5 @@ const skillLabels: Record<string, string> = {
 
 .btn-arrow {
   font-size: 10px;
-}
-
-/* ============================================================
-   成就展示浮层
-   ============================================================ */
-.achievement-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(5, 0, 15, 0.85);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 200;
-  padding: 20px;
-}
-
-.achievement-card {
-  position: relative;
-  width: min(520px, 100%);
-  background: rgba(15, 8, 35, 0.95);
-  border: 3px solid var(--neon-green);
-  border-radius: 6px;
-  padding: 28px 24px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 14px;
-  box-shadow:
-    0 0 20px var(--neon-green),
-    0 0 50px rgba(0, 255, 136, 0.3),
-    inset 0 0 30px rgba(0, 255, 136, 0.05);
-  text-align: center;
-}
-
-.achievement-badge {
-  font-size: 36px;
-  color: var(--neon-green);
-  text-shadow: 0 0 12px var(--neon-green), 0 0 24px var(--neon-green);
-  animation: badgeGlow 2s ease-in-out infinite;
-}
-
-@keyframes badgeGlow {
-  0%, 100% { text-shadow: 0 0 12px var(--neon-green), 0 0 24px var(--neon-green); }
-  50% { text-shadow: 0 0 16px var(--neon-green), 0 0 32px var(--neon-green), 0 0 48px rgba(0, 255, 136, 0.5); }
-}
-
-.achievement-title {
-  font-size: 22px;
-  color: #fff;
-  margin: 0;
-  letter-spacing: 2px;
-  text-shadow: 0 0 8px var(--neon-green);
-}
-
-.achievement-narrative {
-  font-size: 14px;
-  color: #d4d0e0;
-  line-height: 1.8;
-  max-width: 440px;
-}
-
-.achievement-narrative p {
-  margin: 0;
-}
-
-.achievement-narrative p + p {
-  margin-top: 8px;
-}
-
-.btn-ack-achievement {
-  margin-top: 4px;
-  padding: 8px 32px;
-  background: rgba(0, 30, 10, 0.85);
-  border: 2px solid var(--neon-green);
-  color: var(--neon-green);
-  font-size: 14px;
-  letter-spacing: 2px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-family: 'DotGothic16', monospace;
-  text-shadow: 0 0 6px var(--neon-green);
-  border-radius: 4px;
-}
-
-.btn-ack-achievement:hover {
-  background: rgba(0, 255, 136, 0.15);
-  color: #fff;
-  transform: scale(1.05);
-}
-
-/* 成就弹出动画 */
-.achievement-pop-enter-active {
-  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.achievement-pop-enter-from {
-  opacity: 0;
-  transform: scale(0.8);
 }
 </style>

@@ -9,7 +9,7 @@ import type { CrossroadEvent, GameState } from '../types/global.d.js';
 // 2. chain_native  链上原住民
 // 3. digital_nomad 数字游牧民
 // 4. super_ip      超级IP
-// 5. silver_economy 银发收割者
+// 5. silver_economy 银发守夜人
 // 6. bio_gambler   生物赌徒
 //
 // 另附6个通用事件（优先级4-6，cooldown=8）
@@ -25,7 +25,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     id: 'ai_skill_devaluation',
     title: '跃迁之殇',
     narrative: '28岁这年，AI模型完成了一次你没预料到的跃迁。\n你赖以吃饭的提示工程和模型调优技能，在新版本面前突然变得像十年前的五笔打字——不是没用，是不再值钱了。\n你看着招聘网站上"AI辅助开发"变成了"AI原生开发"，JD里熟悉的框架和工具链一夜之间全换了名字。\n公司新来的应届生用自然语言就能写出你熬三天才能调通的模块。主管看你的眼神开始变了，那种"你是不是已经被淘汰了"的眼神。\n深夜你坐在出租屋里，屏幕上是最新的模型论文，你第一次感到自己在和机器赛跑，而跑道正在你脚下消失。',
-    ageRange: [27, 30],
+    ageRange: [25, 29],
     priority: 10,
     cooldown: 999,
     tag: 'ai_crisis_1',
@@ -35,16 +35,17 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
         id: 'ai1_dive_deeper',
         label: 'All in最新技术栈，每天学习16小时',
         description: '疯狂追赶技术前沿，牺牲健康和社交',
-        hint: '高压追赶，可能燃尽',
+        hint: 'AI技能+15 · 月薪×1.3 · 压力+12 · 健康-8',
         hintColor: 'danger',
         effect: (s: GameState) => {
-          s.health = Math.max(0, s.health - 15);
-          s.stress = Math.min(100, s.stress + 20);
-          s.happiness = Math.max(0, s.happiness - 10);
-          s.pathFaith = Math.min(100, s.pathFaith + 10);
+          s.health = Math.max(0, s.health - 8);
+          s.stress = Math.min(100, s.stress + 12);
+          s.happiness = Math.max(0, s.happiness - 5);
+          s.pathFaith = Math.min(100, s.pathFaith + 5);
           s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 1.3);
           s.isUpskilled = true;
-          return { log: '你把自己锁在房间里，卸载了所有娱乐APP，每天只睡四五个小时。三个月后你重新掌握了新的技术栈，在公司内部做了一次技术分享，台下的应届生开始用你当年看大牛的眼神看你。但体检报告上多了三个箭头，你很久没和人面对面吃过饭了。你知道你赢了这一局，但你不确定自己还能赢几局。', cost: 0 };
+          if (s.pathSkills) s.pathSkills.aiSkill = Math.min(100, (s.pathSkills.aiSkill || 0) + 15);
+          return { log: '你把自己锁在房间里，卸载了所有娱乐APP，每天只睡四五个小时。三个月后你重新掌握了新的技术栈，在公司内部做了一次技术分享，台下的应届生开始用你当年看大牛的眼神看你。但体检报告上多了几个箭头，你很久没和人面对面吃过饭了。你知道你赢了这一局，但你不确定自己还能赢几局。', cost: 0 };
         },
       },
       {
@@ -65,12 +66,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
         id: 'ai1_teach_others',
         label: '做AI教育，教别人用AI',
         description: '利用信息差做培训/知识付费，赚后知后觉者的钱',
-        hint: '短期来钱快，但信念可能动摇',
+        hint: '存款+5~10万 · 信念-8 · 压力+5',
         hintColor: 'negative',
         prerequisites: (s: GameState) => s.currentSavings >= 20000,
         disabledReason: '需要至少2万启动资金做课程和推广',
         effect: (s: GameState) => {
-          s.pathFaith = Math.max(0, s.pathFaith - 15);
+          s.pathFaith = Math.max(0, s.pathFaith - 8);
           s.hasSideHustle = true;
           s.currentSavings += 50000 + Math.floor(Math.random() * 50000);
           s.happiness = Math.max(0, s.happiness - 5);
@@ -82,15 +83,15 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
         id: 'ai1_accept_fate',
         label: '接受降薪，躺平做AI时代的"打字员"',
         description: '不追了，用AI辅助做基础工作，接受平庸',
-        hint: '压力骤减，但收入天花板低',
+        hint: '压力-20 · 健康+5 · 信念-6 · 月薪×0.7',
         hintColor: 'negative',
         effect: (s: GameState) => {
-          s.pathFaith = Math.max(0, s.pathFaith - 25);
-          s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 0.6);
+          s.pathFaith = Math.max(0, s.pathFaith - 6);
+          s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 0.7);
           s.stress = Math.max(0, s.stress - 20);
           s.happiness = Math.min(100, s.happiness + 10);
           s.health = Math.min(100, s.health + 5);
-          return { log: '你不再追新模型了。每天上班用AI完成分配的任务，到点下班，回家做饭看剧。工资降了一大截，但你第一次发现晚上的时间可以这么长。同事们在讨论最新论文的时候你插不上话，但你也不焦虑了。你想，也许做一个AI时代的普通人也没那么可怕——直到月底看到工资条的时候，心还是揪了一下。', cost: 0 };
+          return { log: '你不再追新模型了。每天上班用AI完成分配的任务，到点下班，回家做饭看剧。工资降了一截，但你第一次发现晚上的时间可以这么长。同事们在讨论最新论文的时候你插不上话，但你也不焦虑了。你想，也许做一个AI时代的普通人也没那么可怕——虽然月底看到工资条的时候，心还是揪了一下。', cost: 0 };
         },
       },
     ],
@@ -100,7 +101,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'ai_all_in_product',
     title: '造物主的诱惑',
-    narrative: '32岁，你在AI圈摸爬滚打多年，终于看到了一个真正的机会。\n一个垂直领域的AI产品想法在你脑子里转了三个月——你知道现有方案的所有缺陷，你知道用户在抱怨什么，你甚至知道怎么用一半的成本做到两倍的效果。\n但要做出来，你需要辞职，需要投入全部积蓄，需要找技术合伙人，需要在半年内跑出MVP拿到融资，否则就什么都不是。\n你算了一笔账：如果成了，35岁前财富自由；如果败了，三十多岁重新找工作，简历上还多了一段"创业失败"。\n身边有人支持你，说这是AI人最好的时代；也有人劝你，说现在All in就是49年加入国军。你站在阳台抽烟到凌晨三点，烟盒空了，天快亮了。',
+    narrative: '32岁，你站在一个产品方向的岔路口。\n你团队做的AI工具已经有了第一批用户，但你清楚——如果只是做一个"好用的小工具"，天花板很快就会到。你需要选择一个真正能规模化的方向。\n\n垂直领域的AI产品想法在你脑子里转了三个月。你知道现有方案的所有缺陷，你知道用户在抱怨什么，你甚至知道怎么用一半的成本做到两倍的效果。\n\n但要做出来，你需要做出一个重大决定：是继续做小而美的工具，还是赌一把做平台？是面向企业收大单，还是面向个人做订阅？是坚持独立做，还是接受大厂的战略投资？\n\n你算了一笔账：如果选对了方向并做成了，35岁前可能真的自由；如果选错了，你会浪费最宝贵的两年窗口期。\n身边有人支持你All in产品，也有人劝你"先活着再说"。你站在阳台抽烟到凌晨三点，烟盒空了，天快亮了。',
     ageRange: [31, 34],
     priority: 9,
     cooldown: 999,
@@ -111,13 +112,13 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
         id: 'ai2_full_send',
         label: '辞职All in，卖房卖车凑启动资金',
         description: '全身心投入创业，赌上一切',
-        hint: '成王败寇，没有回头路',
+        hint: '信念+15 · 压力+20 · 健康-5 · 失业',
         hintColor: 'danger',
         prerequisites: (s: GameState) => s.currentSavings >= 80000,
         disabledReason: '至少需要8万积蓄才能支撑MVP开发',
         effect: (s: GameState) => {
-          s.stress = Math.min(100, s.stress + 30);
-          s.health = Math.max(0, s.health - 10);
+          s.stress = Math.min(100, s.stress + 20);
+          s.health = Math.max(0, s.health - 5);
           s.pathFaith = Math.min(100, s.pathFaith + 15);
           s.isUnemployed = true;
           s.preUnemployedSalary = s.currentMonthlySalary;
@@ -125,24 +126,37 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
 
           const roll = Math.random();
           if (roll < 0.20) {
-            // 20% 大成
+            // 20% 大成 → 直接All In成功
             s.currentSavings += 500000 + Math.floor(Math.random() * 500000);
             s.happiness = Math.min(100, s.happiness + 25);
             s.passiveIncome += 8000;
             s.pathFaith = Math.min(100, s.pathFaith + 20);
+            // 成功创业 = 正式All In，清除失业状态
+            s.isAllInPath = true;
+            s.isUnemployed = false;
+            s.currentProfession = 'AI工作室创始人';
+            s.hasCompany = true;
+            s.currentMonthlySalary = Math.round((s.preUnemployedSalary || 10000) * 1.5);
+            s.careerStartSalary = s.currentMonthlySalary;
             return { log: '你辞职了。前四个月每天只睡三小时，代码改了又改，第一版产品上线那天服务器崩了三次。但用户数据曲线像火箭一样往上冲。三个月后你拿到了TS，投资人说"这个赛道我们只投你"。你在会议室里强装镇定，出门后在电梯里一个人笑出了声。你终于不是在追浪的人了，你成了造浪的人。', cost: 80000 };
           } else if (roll < 0.50) {
-            // 30% 小成，勉强活着
+            // 30% 小成 → 也算All In，但收入较低
             s.currentSavings += 50000;
             s.hasSideHustle = true;
             s.happiness = Math.max(0, s.happiness - 5);
+            // 小成也正式All In，清除失业状态
+            s.isAllInPath = true;
+            s.isUnemployed = false;
+            s.currentProfession = '自由职业';
+            s.currentMonthlySalary = Math.round((s.preUnemployedSalary || 10000) * 0.8);
+            s.careerStartSalary = s.currentMonthlySalary;
             return { log: '你做出了产品，有了一些用户，但增长曲线总是差一口气。投资人见了十几个，都说"再看看数据"。你把团队裁到只剩自己和一个合伙人，在共享办公里租了最小的工位。产品没死，但也没活。你开始怀疑自己是不是只适合做0到1，不适合做1到100。每个月看账面数字的时候，都像在看倒计时。', cost: 80000 };
           } else {
-            // 50% 失败
+            // 50% 失败 → 保持失业，通过失业事件链恢复
             s.currentSavings = Math.max(0, s.currentSavings - 80000);
-            s.happiness = Math.max(0, s.happiness - 25);
-            s.pathFaith = Math.max(0, s.pathFaith - 20);
-            s.health = Math.max(0, s.health - 10);
+            s.happiness = Math.max(0, s.happiness - 20);
+            s.pathFaith = Math.max(0, s.pathFaith - 12);
+            s.health = Math.max(0, s.health - 5);
             return { log: '你做了半年，产品上线后用户留存不到5%。钱烧完了，合伙人走了，服务器下个月就停。你在最后一天导出了所有数据，一个人在空荡荡的办公室坐到天亮。投出去的简历石沉大海，HR问你"这一年空窗期在做什么"，你不知道怎么开口。你妈打电话问你最近怎么样，你说"还行"，挂了电话盯着天花板看了很久。', cost: 80000 };
           }
         },
@@ -226,7 +240,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.happiness = Math.min(100, s.happiness + 10);
           s.stress = Math.min(100, s.stress + 10);
           s.currentSavings = Math.max(0, s.currentSavings - 30000);
-          return { log: '你在会议上站起来说"这个项目我不做"。全场安静了三秒，老板的脸黑了。你当天就被HR请出了公司，没有N+1，因为你是"主动辞职"。走出写字楼的时候阳光很刺眼，你不知道下份工作在哪里，但你感到一种奇异的轻松。晚上你翻到大学时写的博客，标题是"技术应该向善"。你截了个图发了条朋友圈，很多人点赞，但没人给你内推。', cost: 0 };
+          return { log: '你在会议上站起来说"这个项目我不做"。全场安静了三秒，老板的脸黑了。你当天就被HR请出了公司，没有N+1，因为你是"主动辞职"。走出写字楼的时候阳光很刺眼，你不知道下份工作在哪里，但你感到一种奇异的轻松。晚上你翻到大学时写的博客，标题是"技术应该向善"。你截了个图发了条动态圈，很多人点赞，但没人给你内推。', cost: 0 };
         },
       },
       {
@@ -302,7 +316,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     priority: 10,
     cooldown: 999,
     tag: 'chain_crash',
-    conditions: (s: GameState) => s.retirementPath === 'chain_native' && !s.crossroadFired['chain_crash'],
+    conditions: (s: GameState) => s.retirementPath === 'chain_native' && !s.isAllInPath && !s.crossroadFired['chain_crash'],
     options: [
       {
         id: 'ch1_hold_rumor',
@@ -555,37 +569,37 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   // 路径三：数字游牧民 (digital_nomad)
   // ============================================================
 
-  // Nomad-1: 28岁 签证收紧
+  // Nomad-1: 28岁 居住证收紧
   {
     id: 'nomad_visa_crackdown',
-    title: '国界的重量',
-    narrative: '28岁，你正在清迈的咖啡馆里写代码，手机弹出一条推送：你目前持有的旅游签政策收紧了。\n不是一个国家的问题——东南亚多个国家开始整顿数字游民，签证审查变严，旅游签打工被查到将面临高额罚款甚至驱逐。你常去的 co-working space 里有人被移民局带走了，传言是房东举报的。\n你翻了翻护照，上面的签证章盖了密密麻麻一页，但没有一个国家给你真正的居留权。你是"全球公民"——这是你博客上的自我介绍，但此刻你意识到，全球公民的另一个意思是：哪里都不是你的家。\n机票搜索页面开着，你可以飞去另一个还没收紧的国家继续游牧，也可以选择办一张需要花钱的"黄金签证"，或者——回国。\n咖啡馆外的热带暴雨倾盆而下，你桌上的泰式冰咖啡已经不冰了。',
+    title: '城市的门槛',
+    narrative: '28岁，你正在大理的咖啡馆里写代码，手机弹出一条推送：你目前所在的旅居城市短租政策收紧了。\n不是一座城市的问题——多个热门旅居城市开始整顿短租市场，居住证审查变严，违规短租被查到将面临高额罚款甚至被清退。你常去的 co-working space 里有人被有关部门带走了，传言是房东举报的。\n你翻了翻身份证，上面的暂住登记办了一个又一个，但没有一座城市给你真正的归属感。你是"数字游民"——这是你博客上的自我介绍，但此刻你意识到，数字游民的另一个意思是：哪里都不是你的家。\n机票搜索页面开着，你可以去另一个还没收紧的城市继续游牧，也可以选择办一张需要花钱的"长期居住证"，或者——回来。\n咖啡馆外的暴雨倾盆而下，你桌上的冰咖啡已经不冰了。',
     ageRange: [27, 30],
     priority: 10,
     cooldown: 999,
     tag: 'nomad_visa',
-    conditions: (s: GameState) => s.retirementPath === 'digital_nomad' && !s.crossroadFired['nomad_visa'],
+    conditions: (s: GameState) => s.retirementPath === 'digital_nomad' && !s.isAllInPath && !s.crossroadFired['nomad_visa'],
     options: [
       {
         id: 'nm1_golden_visa',
-        label: '花钱办数字游民签证/黄金签证',
+        label: '花钱办长期居住证',
         description: '投资获得合法居留身份，解决根本问题',
         hint: '花钱买身份，一劳永逸',
         hintColor: 'danger',
         prerequisites: (s: GameState) => s.currentSavings >= 150000,
-        disabledReason: '黄金签证/DN签证至少需要15万资金证明和费用',
+        disabledReason: '长期居住证至少需要15万资金证明和费用',
         effect: (s: GameState) => {
           s.currentSavings = Math.max(0, s.currentSavings - 80000);
           s.isGeoArbitrage = true;
           s.pathFaith = Math.min(100, s.pathFaith + 15);
           s.stress = Math.max(0, s.stress - 15);
           s.happiness = Math.min(100, s.happiness + 10);
-          return { log: '你研究了三个月，选择了一个欧洲小国的数字游民签证。准备材料、开证明、公证翻译花了不少钱和时间，但当你拿到居留卡的那一刻，你终于不再害怕敲门声了。你在那个国家租了一间小公寓，有了固定地址，可以收快递、办银行卡、甚至约家庭医生。自由不是没有国界的——但你用钱给自己买了一块可以落脚的地方。', cost: 80000 };
+          return { log: '你研究了三个月，选择了一个对数字游民友好的城市办了长期居住证。准备材料、开证明、办手续花了不少钱和时间，但当你拿到居住证的那一刻，你终于不再害怕敲门声了。你在那座城市租了一间小公寓，有了固定地址，可以收快递、办银行卡、甚至约家庭医生。自由不是没有门槛的——但你用钱给自己买了一块可以落脚的地方。', cost: 80000 };
         },
       },
       {
         id: 'nm1_keep_moving',
-        label: '继续飞，换个政策宽松的国家',
+        label: '继续走，换个政策宽松的城市',
         description: '游击战术，哪里宽松去哪里',
         hint: '保持自由但永远在路上',
         hintColor: 'neutral',
@@ -595,12 +609,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.pathFaith = Math.min(100, s.pathFaith + 5);
           s.health = Math.max(0, s.health - 5);
           s.happiness = Math.max(0, s.happiness - 5);
-          return { log: '你收拾行李飞去了另一个政策更宽松的国家，然后是下一个，再下一个。你学会了在飞机上写代码、在机场候机厅开视频会议、用不同国家的SIM卡注册账号。你见识了更多的风景和文化，但行李箱的轮子换了两次，你已经记不清上次在一张床上连续睡超过一个月是什么时候了。自由的代价是永远的漂泊——有时候你觉得这是浪漫，有时候你觉得这是逃亡。', cost: 20000 };
+          return { log: '你收拾行李去了另一个政策更宽松的城市，然后是下一个，再下一个。你学会了在高铁上写代码、在候车厅开视频会议、用不同城市的共享办公空间。你见识了更多的风景和文化，但行李箱的轮子换了两次，你已经记不清上次在一张床上连续睡超过一个月是什么时候了。自由的代价是永远的漂泊——有时候你觉得这是浪漫，有时候你觉得这是逃亡。', cost: 20000 };
         },
       },
       {
         id: 'nm1_return_home',
-        label: '回国待一段时间，重新规划',
+        label: '回来待一段时间，重新规划',
         description: '暂时回去，避避风头再出来',
         hint: '安全但可能被"稳定"吸回去',
         hintColor: 'negative',
@@ -616,18 +630,18 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           const roll = Math.random();
           if (roll < 0.40) {
             s.pathFaith = Math.min(100, s.pathFaith + 10);
-            return { log: '你回了国，住在父母家。熟悉的食物、熟悉的语言、不用每次买东西都换算汇率，日子确实舒服。但三个月后你开始焦躁——地铁太挤、空气太差、加班文化让你窒息。你开始重新看机票，这次你做了更充分的准备。你知道游牧生活不容易，但你更知道自己已经过不惯朝九晚五的日子了。', cost: 0 };
+            return { log: '你回来了，住在父母家。熟悉的食物、熟悉的口音、不用每次买东西都重新适应物价，日子确实舒服。但三个月后你开始焦躁——地铁太挤、空气太差、加班文化让你窒息。你开始重新看机票，这次你做了更充分的准备。你知道游牧生活不容易，但你更知道自己已经过不惯朝九晚五的日子了。', cost: 0 };
           } else {
             s.pathFaith = Math.max(0, s.pathFaith - 15);
             s.stress = Math.min(100, s.stress + 10);
-            return { log: '你回了国，朋友介绍了一份不错的工作，爸妈天天给你做吃的。你本来打算待三个月就走，但三个月变成了半年，半年变成了一年。你买了些家具，养了只猫，生活有了"根"的感觉。有时候你翻到以前在世界各地拍的照片，心里会有个声音说"你本来可以过另一种生活"。但你已经不确定那是不是你真正想要的了。', cost: 0 };
+            return { log: '你回来了，朋友介绍了一份不错的工作，爸妈天天给你做吃的。你本来打算待三个月就走，但三个月变成了半年，半年变成了一年。你买了些家具，养了只猫，生活有了"根"的感觉。有时候你翻到以前在各地拍的照片，心里会有个声音说"你本来可以过另一种生活"。但你已经不确定那是不是你真正想要的了。', cost: 0 };
           }
         },
       },
       {
         id: 'nm1_remote_company',
         label: '入职一家支持远程的海外公司',
-        description: '拿工签/雇主担保，获得合法身份',
+        description: '签正式合同/办工作居住证，获得合法身份',
         hint: '用工作换身份，失去部分自由',
         hintColor: 'positive',
         effect: (s: GameState) => {
@@ -636,7 +650,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.pathFaith = Math.max(0, s.pathFaith - 5);
           s.isGeoArbitrage = true;
           s.happiness = Math.min(100, s.happiness + 5);
-          return { log: '你面试了一家 fully remote 的海外公司，拿到了offer和雇主担保的工作签证。你不再是一个"黑"在某个国家的游民了——你有合法的工作身份、纳税记录、社保号。代价是你不能再随心所欲地选择居住地，团队有时区要求，你需要固定时间上线开会。你少了一些自由，但多了一份踏实。你把这当作游牧生活的2.0版本——不再流浪，而是选择一片草地扎营。', cost: 0 };
+          return { log: '你面试了一家 fully remote 的海外公司，拿到了offer和工作居住证。你不再是一个"漂"在某座城市的游民了——你有合法的工作身份、纳税记录、社保账户。代价是你不能再随心所欲地选择居住地，团队有时区要求，你需要固定时间上线开会。你少了一些自由，但多了一份踏实。你把这当作游牧生活的2.0版本——不再流浪，而是选择一片草地扎营。', cost: 0 };
         },
       },
     ],
@@ -646,7 +660,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'nomad_partner_settle',
     title: '停留的理由',
-    narrative: '31岁，你在巴厘岛认识了TA。\n一开始只是旅途中的邂逅——你们在同一个冲浪班，在同一个cafe办公，在同一片海滩看日落。但不知道从什么时候开始，你们的行程开始同步，机票买同一个目的地，Airbnb订两居室而不是两个单间。\n现在TA说："我想停下来了。"\nTA不是游牧民，TA有积蓄，想在葡萄牙或者墨西哥买个小房子，过有花园的生活。TA说："你也可以settle down啊，我们远程工作不影响赚钱，但我不想一辈子住酒店。"\n你理解TA——你自己也有过厌倦打包行李的时刻。但"定居"这两个字让你本能地想逃。你选择这条路就是为了不被任何地方拴住，而现在有一个你在乎的人，请求你为TA停留。\n晚餐桌上蜡烛在摇曳，TA在等你的回答。',
+    narrative: '31岁，你在丽江认识了TA。\n一开始只是旅途中的邂逅——你们在同一个骑行团，在同一个cafe办公，在同一片湖边看日落。但不知道从什么时候开始，你们的行程开始同步，机票买同一个目的地，短租平台订两居室而不是两个单间。\n现在TA说："我想停下来了。"\nTA不是游牧民，TA有积蓄，想在大理或者成都买个小房子，过有花园的生活。TA说："你也可以settle down啊，我们远程工作不影响赚钱，但我不想一辈子住酒店。"\n你理解TA——你自己也有过厌倦打包行李的时刻。但"定居"这两个字让你本能地想逃。你选择这条路就是为了不被任何地方拴住，而现在有一个你在乎的人，请求你为TA停留。\n晚餐桌上蜡烛在摇曳，TA在等你的回答。',
     ageRange: [30, 33],
     priority: 9,
     cooldown: 999,
@@ -680,11 +694,11 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
             personality: '浪漫型',
             datingStage: 'married',
             meetYear: s.currentAge - 1,
-            trait: '喜欢冲浪和烹饪',
-            memories: [{ age: s.currentAge, event: '在巴厘岛相遇', emoji: '🌊' }],
+            trait: '喜欢骑行和烹饪',
+            memories: [{ age: s.currentAge, event: '在丽江相遇', emoji: '🌊' }],
             crushFrom: 'travel',
           };
-          return { log: '你们在里斯本老城区买了一间带小阳台的公寓。你第一次去宜家买家具，第一次有了自己的厨房，第一次在同一个地址收到了信件。早上你在阳台写代码，TA在厨房煮咖啡，阳光洒在地板上。你偶尔还会想起以前在路上的日子，看到游牧群里的朋友在新的国家打卡，心里会痒一下。但当TA从身后抱住你的时候，你知道有些东西比自由更重——或者说，那是另一种自由。', cost: 100000 };
+          return { log: '你们在成都老城区买了一间带小阳台的公寓。你第一次去宜家买家具，第一次有了自己的厨房，第一次在同一个地址收到了信件。早上你在阳台写代码，TA在厨房煮咖啡，阳光洒在地板上。你偶尔还会想起以前在路上的日子，看到游牧群里的朋友在新的城市打卡，心里会痒一下。但当TA从身后抱住你的时候，你知道有些东西比自由更重——或者说，那是另一种自由。', cost: 100000 };
         },
       },
       {
@@ -715,10 +729,10 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
             datingStage: 'married',
             meetYear: s.currentAge - 1,
             trait: '热爱旅行但也需要归属',
-            memories: [{ age: s.currentAge, event: '在巴厘岛相遇', emoji: '🌊' }],
+            memories: [{ age: s.currentAge, event: '在丽江相遇', emoji: '🌊' }],
             crushFrom: 'travel',
           };
-          return { log: '你们在清迈租了一间带花园的小别墅作为base，签了长约，买了些植物和一只猫。每年你们依然会出行三四个月，但有一个地方永远等着你们回来。你学会了在"出发"和"回家"之间找平衡。朋友说你们是"半游牧"，你觉得挺好——你有了可以回去的地方，也保留了随时出发的勇气。', cost: 50000 };
+          return { log: '你们在大理租了一间带花园的小别墅作为base，签了长约，买了些植物和一只猫。每年你们依然会出行三四个月，但有一个地方永远等着你们回来。你学会了在"出发"和"回家"之间找平衡。朋友说你们是"半游牧"，你觉得挺好——你有了可以回去的地方，也保留了随时出发的勇气。', cost: 50000 };
         },
       },
       {
@@ -746,15 +760,15 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
               datingStage: 'married',
               meetYear: s.currentAge - 1,
               trait: '被你带上路的游牧新人',
-              memories: [{ age: s.currentAge, event: '在巴厘岛相遇', emoji: '🌊' }],
+              memories: [{ age: s.currentAge, event: '在丽江相遇', emoji: '🌊' }],
               crushFrom: 'travel',
             };
-            return { log: '你花了很多个夜晚和TA长谈，分享你在路上见过的极光、沙漠、雪山和那些改变了你世界观的人和事。你答应TA每到一个地方至少待两个月，不再走马观花。慢慢地，TA也开始享受这种生活了——在墨西哥学西班牙语，在葡萄牙学冲浪，在日本学陶艺。你们成了路上的伴侣，一起飞，一起停，一起把世界当成家。', cost: 0 };
+            return { log: '你花了很多个夜晚和TA长谈，分享你在路上见过的极光、沙漠、雪山和那些改变了你世界观的人和事。你答应TA每到一个地方至少待两个月，不再走马观花。慢慢地，TA也开始享受这种生活了——在重庆学川剧，在成都学茶艺，在景德镇学陶艺。你们成了路上的伴侣，一起走，一起停，一起把远方当成家。', cost: 0 };
           } else {
             s.pathFaith = Math.max(0, s.pathFaith - 10);
             s.happiness = Math.max(0, s.happiness - 20);
             s.stress = Math.min(100, s.stress + 20);
-            return { log: '你试图说服TA继续上路，但TA说"我已经漂了够久了"。你们大吵了一架，TA说你爱的不是自由是逃避。你一个人飞去了下一个国家，但这一次风景都变得索然无味。你在陌生的酒店房间里刷TA的朋友圈，看到TA在你们一起去过的海滩发了一张照片，配文是"some people are just passing through"。你关上手机，第一次觉得路上的夜特别冷。', cost: 0 };
+            return { log: '你试图说服TA继续上路，但TA说"我已经漂了够久了"。你们大吵了一架，TA说你爱的不是自由是逃避。你一个人去了下一个城市，但这一次风景都变得索然无味。你在陌生的酒店房间里刷TA的动态圈，看到TA在你们一起去过的湖边发了一张照片，配文是"some people are just passing through"。你关上手机，第一次觉得路上的夜特别冷。', cost: 0 };
           }
         },
       },
@@ -769,17 +783,17 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.happiness = Math.max(0, s.happiness - 20);
           s.stress = Math.min(100, s.stress + 10);
           s.health = Math.max(0, s.health - 5);
-          return { log: '你们在巴厘岛的海滩上做了最后的告别。TA说"你是一只候鸟，不要为我折翼"，你说"对不起"。你们拥抱了很久，然后你拖着行李箱走向了相反的方向。飞机起飞的时候你哭了，旁边的老奶奶递给你一张纸巾。你继续飞，去了更多的国家，看了更多的风景，但有时候在某个陌生城市的清晨醒来，你会想：如果那天你说了"好，我们settle down"，现在会是什么样子？', cost: 0 };
+          return { log: '你们在丽江的古城里做了最后的告别。TA说"你是一只候鸟，不要为我折翼"，你说"对不起"。你们拥抱了很久，然后你拖着行李箱走向了相反的方向。飞机起飞的时候你哭了，旁边的老奶奶递给你一张纸巾。你继续飞，去了更多的城市，看了更多的风景，但有时候在某个陌生城市的清晨醒来，你会想：如果那天你说了"好，我们settle down"，现在会是什么样子？', cost: 0 };
         },
       },
     ],
   },
 
-  // Nomad-3: 34岁 全球征税追讨
+  // Nomad-3: 34岁 税务追讨
   {
     id: 'nomad_tax_pursuit',
     title: '万里追税',
-    narrative: '34岁，你收到了一封来自母国税务局的邮件。\n不是诈骗——你的名字、护照号、海外收入估算都写得清清楚楚。新出台的全球征税法案意味着，即使你不住在国内，即使你的收入来自海外公司，你依然需要向母国申报并补缴税款，加上罚金和滞纳金，数字大得让你头晕。\n你以为离开那个系统就不再受它管辖，你以为数字游民的收入"隐于链上"就查不到。但CRS信息交换早就把你的海外账户信息报回去了——你在新加坡开的银行账户、你在葡萄牙收的租金、你在交易所里的交易记录，它们比你更"忠于"你的祖国。\n游牧群里炸了锅，有人说已经收到了类似的信件，有人在讨论要不要换国籍，有人说"跑得了和尚跑不了庙"。你父母在国内，你不可能永远不回去。\n你点开那封邮件的附件，是一张限期补报通知书。',
+    narrative: '34岁，你收到了一封来自户籍地税务局的邮件。\n不是诈骗——你的名字、身份证号、异地收入估算都写得清清楚楚。新出台的个税申报新规意味着，即使你长期在外地旅居，即使你的收入来自远程客户，你依然需要向户籍地申报并补缴税款，加上罚金和滞纳金，数字大得让你头晕。\n你以为离开那个系统就不再受它管辖，你以为数字游民的收入"隐于链上"就查不到。但大数据税务稽查早就把你的异地账户信息关联起来了——你在上海开的银行账户、你在成都收的租金、你在交易所里的交易记录，它们比你更"忠于"你的家乡。\n游牧群里炸了锅，有人说已经收到了类似的信件，有人在讨论要不要迁户籍，有人说"跑得了和尚跑不了庙"。你父母在老家，你不可能永远不回去。\n你点开那封邮件的附件，是一张限期补报通知书。',
     ageRange: [33, 36],
     priority: 9,
     cooldown: 999,
@@ -799,17 +813,17 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.pathFaith = Math.max(0, s.pathFaith - 10);
           s.stress = Math.max(0, s.stress - 10);
           s.happiness = Math.max(0, s.happiness - 5);
-          return { log: '你请了一个专门处理跨境税务的会计师，花了两个月整理了所有海外收入记录，补缴了税款和滞纳金。钱出去的那一刻你心疼了很久，但你收到了税务局的结清证明——你终于可以光明正大地用自己的护照回国了，不用在海关担心被拦下。你明白了一件事：在这个世界上，只有死亡和税收是不可避免的，哪怕你跑到天涯海角。', cost: 80000 };
+          return { log: '你请了一个专门处理异地税务的会计师，花了两个月整理了所有异地收入记录，补缴了税款和滞纳金。钱出去的那一刻你心疼了很久，但你收到了税务局的结清证明——你终于可以光明正大地回家了，不用再担心被查。你明白了一件事：在这个世界上，只有死亡和税收是不可避免的，哪怕你跑到天涯海角。', cost: 80000 };
         },
       },
       {
         id: 'nm3_change_citizenship',
-        label: '换国籍，放弃母国身份',
-        description: '通过投资入籍计划获得新护照，一劳永逸',
+        label: '迁户籍，放弃原籍',
+        description: '通过人才引进落户获得新户籍，一劳永逸',
         hint: '彻底解决税务问题，但与过去切割',
         hintColor: 'danger',
         prerequisites: (s: GameState) => s.currentSavings >= 300000,
-        disabledReason: '投资入籍至少需要30万资金',
+        disabledReason: '人才引进落户至少需要30万资金',
         effect: (s: GameState) => {
           s.currentSavings = Math.max(0, s.currentSavings - 250000);
           s.isGeoArbitrage = true;
@@ -817,7 +831,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.stress = Math.min(100, s.stress + 15);
           s.happiness = Math.max(0, s.happiness - 10);
           if (s.parents.isAlive) s.parents.relationShip = Math.max(0, s.parents.relationShip - 25);
-          return { log: '你卖了一些资产，通过一个加勒比小国的投资入籍计划拿到了新护照。宣誓入籍那天，你拿着那本全新的护照，心情复杂得像打翻了五味瓶。你不再是那个国家的纳税人了，但你也不再是那个国家的公民了。回国需要签证，父母在视频里沉默了很久。你获得了税务上的自由，但失去了某种更深层的东西——你成了真正的世界公民，而世界公民的代价是没有根。', cost: 250000 };
+          return { log: '你卖了一些资产，通过海南自贸港的人才引进落户政策拿到了新户口本和税收优惠资格。落户那天，你拿着那本全新的户口本，心情复杂得像打翻了五味瓶。你不再受原籍地税务机关管辖了，但你也不再是老家的注册居民了。回老家探亲成了走亲戚，父母在视频里沉默了很久。你获得了税务上的优惠，但失去了某种更深层的东西——你成了真正的数字游民，而数字游民的代价是没有根。', cost: 250000 };
         },
       },
       {
@@ -846,8 +860,8 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
       },
       {
         id: 'nm3_return_negotiate',
-        label: '回国和税务局协商，主动投案',
-        description: '主动回国配合调查，争取宽大处理',
+        label: '回来和税务局协商，主动投案',
+        description: '主动回来配合调查，争取宽大处理',
         hint: '面对问题，争取最好结果',
         hintColor: 'neutral',
         effect: (s: GameState) => {
@@ -863,11 +877,11 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
             s.stress = Math.max(0, s.stress - 10);
             s.happiness = Math.max(0, s.happiness - 5);
             if (s.parents.isAlive) s.parents.relationShip = Math.min(100, s.parents.relationShip + 10);
-            return { log: '你买了回国的机票，带着所有材料主动去了税务局。因为是首次申报且态度良好，税务人员给了你比较宽松的补税方案，罚金减了大半。你在国内待了三个月处理这些事，住在父母家。爸妈没说什么但每天给你做你爱吃的菜。处理完后你又可以出国了，但你决定先在国内待一段时间。也许世界再大，你还是需要一个可以安心回去的地方。', cost: 50000 };
+            return { log: '你买了回来的机票，带着所有材料主动去了税务局。因为是首次申报且态度良好，税务人员给了你比较宽松的补税方案，罚金减了大半。你在老家待了三个月处理这些事，住在父母家。爸妈没说什么但每天给你做你爱吃的菜。处理完后你又可以出行了，但你决定先在老家待一段时间。也许世界再大，你还是需要一个可以安心回去的地方。', cost: 50000 };
           } else {
             s.happiness = Math.max(0, s.happiness - 20);
             s.pathFaith = Math.max(0, s.pathFaith - 25);
-            return { log: '你主动回国配合调查，但流程比你想象的复杂得多。补税加罚金比你预估的多了一倍，而且你的护照被限制出境六个月。你被困在国内，住在父母家，每天去税务局和银行跑腿。你看着窗外的灰色天空，想起在巴厘岛冲浪的日子，像上辈子的事。你不确定自己还能不能出去了，或者说，还想不想出去了。', cost: 50000 };
+            return { log: '你主动回来配合调查，但流程比你想象的复杂得多。补税加罚金比你预估的多了一倍，而且你的身份证被限制出行六个月。你被困在老家，住在父母家，每天去税务局和银行跑腿。你看着窗外的灰色天空，想起在洱海边骑行的日子，像上辈子的事。你不确定自己还能不能出去了，或者说，还想不想出去了。', cost: 50000 };
           }
         },
       },
@@ -882,7 +896,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'ip_first_crisis',
     title: '风暴初临',
-    narrative: '28岁，你第一次尝到了"红"的代价。\n你发了一条随口吐槽的微博/视频——可能是对某个热点事件的评论，可能是对某个品牌的评价，可能只是一个不太恰当的比喻。一觉醒来，评论区炸了。\n截图被转发了几万次，断章取义的版本开始流传。有人扒出了你三年前的朋友圈，有人翻出了你还没出名时的贴吧发言。#某某某道歉#的话题冲上了热搜，品牌方开始私信问你"怎么回事"，经纪人（如果有的话）电话被打爆了。\n你坐在电脑前手心出汗，第一次意识到：你说的每一句话不再只是"你说的话"，它们是弹药，是呈堂证供，是可以被无限放大和解读的公共文本。\n手机还在不停震动，你有三个选择：道歉、硬刚、装死。每个选择都有代价。',
+    narrative: '28岁，你第一次尝到了"红"的代价。\n你发了一条随口吐槽的社交平台/视频——可能是对某个热点事件的评论，可能是对某个品牌的评价，可能只是一个不太恰当的比喻。一觉醒来，评论区炸了。\n截图被转发了几万次，断章取义的版本开始流传。有人扒出了你三年前的动态圈，有人翻出了你还没出名时的贴吧发言。#某某某道歉#的话题冲上了热搜，品牌方开始私信问你"怎么回事"，经纪人（如果有的话）电话被打爆了。\n你坐在电脑前手心出汗，第一次意识到：你说的每一句话不再只是"你说的话"，它们是弹药，是呈堂证供，是可以被无限放大和解读的公共文本。\n手机还在不停震动，你有三个选择：道歉、硬刚、装死。每个选择都有代价。',
     ageRange: [27, 30],
     priority: 10,
     cooldown: 999,
@@ -978,7 +992,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     priority: 9,
     cooldown: 999,
     tag: 'ip_ad_dilemma',
-    conditions: (s: GameState) => s.retirementPath === 'super_ip' && !s.crossroadFired['ip_ad_dilemma'],
+    conditions: (s: GameState) => s.retirementPath === 'super_ip' && !s.isAllInPath && !s.crossroadFired['ip_ad_dilemma'],
     options: [
       {
         id: 'ip2_refuse',
@@ -1067,7 +1081,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     priority: 9,
     cooldown: 999,
     tag: 'ip_cancel',
-    conditions: (s: GameState) => s.retirementPath === 'super_ip' && !s.crossroadFired['ip_cancel'],
+    conditions: (s: GameState) => s.retirementPath === 'super_ip' && !s.isAllInPath && !s.crossroadFired['ip_cancel'],
     options: [
       {
         id: 'ip3_full_apology',
@@ -1164,7 +1178,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   },
 
   // ============================================================
-  // 路径五：银发收割者 (silver_economy)
+  // 路径五：银发守夜人 (silver_economy)
   // ============================================================
 
   // Silver-1: 30岁 巨头下场
@@ -1650,7 +1664,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'bio_have_child_decision',
     title: '永生者的困境',
-    narrative: '35岁，你在生物科技领域深耕多年，看到了普通人看不到的东西。\n你跟踪的几个长寿技术方向正在突破——基因编辑、senolytics、细胞重编程、器官克隆。你的行业判断告诉你：如果这些技术按目前的速度发展，你这一代人有可能活到120岁甚至更长，而且不是在病床上躺到120岁，是健康寿命大幅延长。\n这个认知改变了你的时间观。如果你的生命将是一百年甚至更长，那"三十多岁要孩子"是不是太早了？你还有六七十年的职业生涯、六七十年的探索和自由。但另一方面，如果你真的能活那么久，没有一个延续你基因和记忆的人，会不会在一百年后感到彻底的孤独？\n你的伴侣（如果有的话）在等你的决定。你父母在催。你的理性在告诉你"等技术成熟了再说"，但你的生物本能在说"不要错过窗口期"。更现实的是：如果长寿技术真的来了，你的孩子可能活150岁——你真的有权把一个人带到这么长的生命里吗？\n深夜你读着最新的论文，屏幕的光映在你脸上。',
+    narrative: '35岁，你在生物科技领域深耕多年，看到了普通人看不到的东西。\n你跟踪的几个长寿技术方向正在突破——基因编辑、senolytics（清理剂）、细胞重编程、器官克隆。你的行业判断告诉你：如果这些技术按目前的速度发展，你这一代人有可能活到120岁甚至更长，而且不是在病床上躺到120岁，是健康寿命大幅延长。\n这个认知改变了你的时间观。如果你的生命将是一百年甚至更长，那"三十多岁要孩子"是不是太早了？你还有六七十年的职业生涯、六七十年的探索和自由。但另一方面，如果你真的能活那么久，没有一个延续你基因和记忆的人，会不会在一百年后感到彻底的孤独？\n你的伴侣（如果有的话）在等你的决定。你父母在催。你的理性在告诉你"等技术成熟了再说"，但你的生物本能在说"不要错过窗口期"。更现实的是：如果长寿技术真的来了，你的孩子可能活150岁——你真的有权把一个人带到这么长的生命里吗？\n深夜你读着最新的论文，屏幕的光映在你脸上。',
     ageRange: [34, 37],
     priority: 9,
     cooldown: 999,
@@ -1793,7 +1807,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
             s.happiness = Math.max(0, s.happiness - 20);
             s.stress = Math.min(100, s.stress + 15);
             if (s.friends.length > 0) s.friends[0].relation = Math.max(0, s.friends[0].relation - 30);
-            return { log: '你把钱借了出去，之后那个朋友就像人间蒸发了一样。微信不回，电话不接，共同的朋友说他/她到处借钱赌输了/被骗了。你想过走法律途径但没有借条（有也没用），只能自认倒霉。钱没了，朋友也没了。你妈说得对："借钱给朋友就是花钱买敌人。"你花了三万块买了这个教训。', cost: 30000 };
+            return { log: '你把钱借了出去，之后那个朋友就像人间蒸发了一样。社交软件不回，电话不接，共同的朋友说他/她到处借钱赌输了/被骗了。你想过走法律途径但没有借条（有也没用），只能自认倒霉。钱没了，朋友也没了。你妈说得对："借钱给朋友就是花钱买敌人。"你花了三万块买了这个教训。', cost: 30000 };
           }
         },
       },
@@ -1854,7 +1868,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'wedding_gift_pressure',
     title: '红色炸弹',
-    narrative: '25岁之后，请柬像雪片一样飞来。\n这个月你已经收到了第三张红色请柬——大学室友、前同事、远房表姐。每个人都在结婚，每个人都在办酒，每个人都期待你出现在现场并递上一个厚厚的红包。\n你算了一下，这个月的份子钱加起来相当于你半个月的工资。更要命的是，有些朋友你已经两三年没联系了，请柬是通过微信群发的，你甚至不确定他/她还记不记得你的名字。但大家都随，你不随，就成了"那个人"。\n你看着抽屉里一叠红色请柬，有些婚礼你想去——那些真正重要的朋友；有些你只想转账了事；有些你想假装没看到。但社交规则像一张无形的网，你逃不掉。\n手机又震了一下，是另一个朋友发来的："兄弟/姐妹，我要结婚了，务必来啊！"',
+    narrative: '25岁之后，请柬像雪片一样飞来。\n这个月你已经收到了第三张红色请柬——大学室友、前同事、远房表姐。每个人都在结婚，每个人都在办酒，每个人都期待你出现在现场并递上一个厚厚的红包。\n你算了一下，这个月的份子钱加起来相当于你半个月的工资。更要命的是，有些朋友你已经两三年没联系了，请柬是通过社交软件群发的，你甚至不确定他/她还记不记得你的名字。但大家都随，你不随，就成了"那个人"。\n你看着抽屉里一叠红色请柬，有些婚礼你想去——那些真正重要的朋友；有些你只想转账了事；有些你想假装没看到。但社交规则像一张无形的网，你逃不掉。\n手机又震了一下，是另一个朋友发来的："兄弟/姐妹，我要结婚了，务必来啊！"',
     ageRange: [25, 35],
     priority: 4,
     cooldown: 8,
@@ -1874,7 +1888,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.happiness = Math.min(100, s.happiness + 5);
           s.stress = Math.min(100, s.stress + 10);
           s.lifetimeGiftMoney += 20000;
-          return { log: '你场场婚礼都到场，红包包得比谁都厚。婚礼上你认识了不少人，加了一堆微信，朋友们都说你"够意思"。但你这个月吃了半个月泡面，信用卡账单让你倒吸一口凉气。你安慰自己这些都是"人脉投资"，但你不确定这些人脉什么时候能变现——如果能变现的话。', cost: 20000 };
+          return { log: '你场场婚礼都到场，红包包得比谁都厚。婚礼上你认识了不少人，加了一堆社交软件，朋友们都说你"够意思"。但你这个月吃了半个月泡面，信用卡账单让你倒吸一口凉气。你安慰自己这些都是"人脉投资"，但你不确定这些人脉什么时候能变现——如果能变现的话。', cost: 20000 };
         },
       },
       {
@@ -1922,7 +1936,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.happiness = Math.max(0, s.happiness - 10);
           s.stress = Math.max(0, s.stress - 5);
           s.lifetimeGiftMoney += 1000;
-          return { log: '你开始找各种理由缺席婚礼——加班、出差、家里有事。大部分人没说什么，但你能感觉到一些关系在慢慢变淡。几年后你发现自己的社交圈缩小了很多，真正还联系的朋友一只手数得过来。你省了不少钱，但有时候刷朋友圈看到别人婚礼的合影，你会想：这些年你到底省下了什么，又错过了什么？', cost: 1000 };
+          return { log: '你开始找各种理由缺席婚礼——加班、出差、家里有事。大部分人没说什么，但你能感觉到一些关系在慢慢变淡。几年后你发现自己的社交圈缩小了很多，真正还联系的朋友一只手数得过来。你省了不少钱，但有时候刷动态圈看到别人婚礼的合影，你会想：这些年你到底省下了什么，又错过了什么？', cost: 1000 };
         },
       },
     ],
@@ -1932,7 +1946,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'ex_contact',
     title: '来自过去的消息',
-    narrative: '深夜，手机屏幕亮了一下。\n是一个你以为早就忘了的人——那个曾经和你规划过未来、最后却在某个雨天消失在你世界里的前任。\n消息很简单："最近还好吗？"\n四个字，但你的心跳瞬间加速了。你点开他/她的朋友圈——他/她看起来过得不错，好像瘦了/胖了，好像换了城市，身边好像没有别人。\n你们当初分手的原因你已经记不太清了——是异地？是误会？是某件现在想起来微不足道的小事？还是你们都太年轻不知道怎么爱一个人？\n你盯着那四个字看了很久。窗外是城市的夜景，房间里只有手机屏幕的光。你可以不回，可以礼貌回复，可以问他/她为什么突然找你，也可以——\n你的手指悬在屏幕上方，迟迟没有落下。',
+    narrative: '深夜，手机屏幕亮了一下。\n是一个你以为早就忘了的人——那个曾经和你规划过未来、最后却在某个雨天消失在你世界里的前任。\n消息很简单："最近还好吗？"\n四个字，但你的心跳瞬间加速了。你点开他/她的动态圈——他/她看起来过得不错，好像瘦了/胖了，好像换了城市，身边好像没有别人。\n你们当初分手的原因你已经记不太清了——是异地？是误会？是某件现在想起来微不足道的小事？还是你们都太年轻不知道怎么爱一个人？\n你盯着那四个字看了很久。窗外是城市的夜景，房间里只有手机屏幕的光。你可以不回，可以礼貌回复，可以问他/她为什么突然找你，也可以——\n你的手指悬在屏幕上方，迟迟没有落下。',
     ageRange: [26, 40],
     priority: 5,
     cooldown: 8,
@@ -2007,7 +2021,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'class_reunion_gap',
     title: '十年之后',
-    narrative: '毕业十周年同学聚会，你本来不想去，但班长打了三个电话，你还是去了。\n酒店包厢里坐了三桌人。当年睡你上铺的兄弟开着宝马来的，手腕上是你半年工资的表；当年成绩最差的那个同学做了直播带货，手机不停地弹交易通知；当年的班花嫁了个有钱人，浑身名牌但笑容里有你看不懂的疲惫。\n也有人过得不太好——那个曾经意气风发的学生会主席在一个小公司做中层，头发稀疏了不少；那个最有才华的文艺女生在老家当老师，说话间全是柴米油盐。\n你坐在角落里，看着这群熟悉又陌生的人。大家在敬酒、在吹牛、在加微信、在暗暗比较。有人问你"现在混得怎么样"，你笑了笑说"还行"。\n你端着酒杯，突然意识到：十年前你们坐在同一间教室里，以为未来有无限可能；十年后你们坐在同一张酒桌上，人生的差距已经大到像不同的物种。这杯酒，有点苦。',
+    narrative: '毕业十周年同学聚会，你本来不想去，但班长打了三个电话，你还是去了。\n酒店包厢里坐了三桌人。当年睡你上铺的兄弟开着宝马来的，手腕上是你半年工资的表；当年成绩最差的那个同学做了直播带货，手机不停地弹交易通知；当年的班花嫁了个有钱人，浑身名牌但笑容里有你看不懂的疲惫。\n也有人过得不太好——那个曾经意气风发的学生会主席在一个小公司做中层，头发稀疏了不少；那个最有才华的文艺女生在老家当老师，说话间全是柴米油盐。\n你坐在角落里，看着这群熟悉又陌生的人。大家在敬酒、在吹牛、在加社交软件、在暗暗比较。有人问你"现在混得怎么样"，你笑了笑说"还行"。\n你端着酒杯，突然意识到：十年前你们坐在同一间教室里，以为未来有无限可能；十年后你们坐在同一张酒桌上，人生的差距已经大到像不同的物种。这杯酒，有点苦。',
     ageRange: [28, 40],
     priority: 4,
     cooldown: 8,
@@ -2016,7 +2030,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     options: [
       {
         id: 'ub4_network',
-        label: '积极社交，加微信聊合作',
+        label: '积极社交，加社交软件聊合作',
         description: '把聚会当人脉场，混个脸熟',
         hint: '功利但有效',
         hintColor: 'neutral',
@@ -2028,10 +2042,10 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           if (roll < 0.40) {
             s.passiveIncome += 2000;
             s.happiness = Math.min(100, s.happiness + 5);
-            return { log: '你端着酒杯挨个敬酒，加了二十多个微信。三个月后一个同学真的给你介绍了一个不错的副业机会/合作项目，赚了一笔小钱。你发现同学聚会虽然虚荣，但确实是一个低成本拓展人脉的场合——前提是你要有被别人利用的价值。你开始理解那些在聚会上积极社交的人了。', cost: 2000 };
+            return { log: '你端着酒杯挨个敬酒，加了二十多个社交软件。三个月后一个同学真的给你介绍了一个不错的副业机会/合作项目，赚了一笔小钱。你发现同学聚会虽然虚荣，但确实是一个低成本拓展人脉的场合——前提是你要有被别人利用的价值。你开始理解那些在聚会上积极社交的人了。', cost: 2000 };
           } else {
             s.happiness = Math.max(0, s.happiness - 5);
-            return { log: '你加了一堆微信，回家后发现大部分人不会通过你的消息，通过了的也只是在朋友圈点赞之交。你在聚会上说了太多恭维的话，喝了太多酒，回家的时候胃里翻江倒海。你觉得自己像个小丑，但你不确定那些看起来谈笑风生的人是不是也有同样的感觉。', cost: 2000 };
+            return { log: '你加了一堆社交软件，回家后发现大部分人不会通过你的消息，通过了的也只是在动态圈点赞之交。你在聚会上说了太多恭维的话，喝了太多酒，回家的时候胃里翻江倒海。你觉得自己像个小丑，但你不确定那些看起来谈笑风生的人是不是也有同样的感觉。', cost: 2000 };
           }
         },
       },
@@ -2045,7 +2059,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.currentSavings = Math.max(0, s.currentSavings - 1000);
           s.happiness = Math.min(100, s.happiness + 10);
           s.stress = Math.max(0, s.stress - 5);
-          return { log: '你找了个角落的位置坐下，只和旁边几个当年真正要好的朋友聊天。你们聊的不是房子车子票子，是当年一起逃过的课、一起打过的游戏、一起暗恋过的人。那几个小时你忘了比较，忘了落差，仿佛回到了十年前那个什么都没有但什么都不怕的年纪。聚会散场后你们几个单独加了微信群，约定以后每年小聚。这才是同学聚会该有的样子。', cost: 1000 };
+          return { log: '你找了个角落的位置坐下，只和旁边几个当年真正要好的朋友聊天。你们聊的不是房子车子票子，是当年一起逃过的课、一起打过的游戏、一起暗恋过的人。那几个小时你忘了比较，忘了落差，仿佛回到了十年前那个什么都没有但什么都不怕的年纪。聚会散场后你们几个单独加了社交软件群，约定以后每年小聚。这才是同学聚会该有的样子。', cost: 1000 };
         },
       },
       {
@@ -2083,7 +2097,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'parents_marriage_pressure',
     title: '春节审判',
-    narrative: '春节回家，饭桌上的气氛一如既往地微妙。\n你妈夹了一块排骨放到你碗里，看似随意地说："你王阿姨家的孩子都生二胎了。"你爸沉默地喝了一口酒，但你知道他在等你的回答。\n这是每年春节的固定节目——从"有没有对象"到"什么时候结婚"到"什么时候要孩子"，问题随着你的年龄逐年升级。你解释过很多次：现在事业在上升期、在大城市压力大、不想将就、还没遇到合适的人……但这些理由在父母眼里都是借口。\n你理解他们——他们那个年代二十多岁就结婚生子是天经地义，他们的朋友圈里都在抱孙子，他们怕你老了没人照顾。但你也有你自己的节奏和选择。\n窗外是鞭炮声，电视里是春节联欢晚会，你妈还在絮絮叨叨。这顿饭，又是一场持久战。',
+    narrative: '春节回家，饭桌上的气氛一如既往地微妙。\n你妈夹了一块排骨放到你碗里，看似随意地说："你王阿姨家的孩子都生二胎了。"你爸沉默地喝了一口酒，但你知道他在等你的回答。\n这是每年春节的固定节目——从"有没有对象"到"什么时候结婚"到"什么时候要孩子"，问题随着你的年龄逐年升级。你解释过很多次：现在事业在上升期、在大城市压力大、不想将就、还没遇到合适的人……但这些理由在父母眼里都是借口。\n你理解他们——他们那个年代二十多岁就结婚生子是天经地义，他们的动态圈里都在抱孙子，他们怕你老了没人照顾。但你也有你自己的节奏和选择。\n窗外是鞭炮声，电视里是春节联欢晚会，你妈还在絮絮叨叨。这顿饭，又是一场持久战。',
     ageRange: [25, 35],
     priority: 5,
     cooldown: 8,
@@ -2199,7 +2213,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
         disabledReason: '你没多少积蓄可投',
         effect: (s: GameState) => {
           s.currentSavings = Math.max(0, s.currentSavings - 50000);
-          s.stress = Math.min(100, s.stress + 20);
+          s.stress = Math.min(100, s.stress + 10);
 
           const roll = Math.random();
           if (roll < 0.10) {
@@ -2207,10 +2221,10 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
             s.happiness = Math.min(100, s.happiness + 20);
             return { log: '你投了五万块进去。第一个月真的收到了5000块"收益"，第二个月又是5000。你后悔没多投点的时候，第三个月收益率涨到了12%。一年后你投的五万变成了十五万——这次居然是真的！你兴奋地请朋友吃了顿大餐。但你后来才知道，这种项目十有八九是庞氏骗局，你只是运气好及时下了车。你不知道自己该庆幸还是后怕。', cost: 50000 };
           } else {
-            s.happiness = Math.max(0, s.happiness - 30);
-            s.pathFaith = Math.max(0, s.pathFaith - 10);
-            s.stress = Math.min(100, s.stress + 20);
-            s.health = Math.max(0, s.health - 10);
+            s.happiness = Math.max(0, s.happiness - 15);
+            s.pathFaith = Math.max(0, s.pathFaith - 5);
+            s.stress = Math.min(100, s.stress + 10);
+            s.health = Math.max(0, s.health - 5);
             return { log: '你投了五万块进去。前两个月确实收到了"收益"，你兴奋地追加了更多。第三个月APP打不开了，联系人失联了，群解散了。你去报警，警察做了笔录说"这种骗局很难追回"。你坐在派出所门口，脑子里一片空白——那是你攒了好几年的钱。你想抽自己一耳光，但疼的不是脸，是心。你终于明白了：天上不会掉馅饼，掉下来的都是陷阱。', cost: 50000 };
           }
         },

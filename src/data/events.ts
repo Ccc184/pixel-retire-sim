@@ -38,13 +38,43 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
     aftermath: '健康警示' as AftermathType,
     aftermathDuration: 3,
   },
+  // 事件2.5：大模型误诊事故
+  {
+    id: 'ai_misdiagnosis',
+    eventName: '大模型误诊事故',
+    description: 'AI诊断系统误判了你的检查报告，等发现时病情已经延误——算法的置信度是99%，而你是那1%。',
+    probability: () => 0.02,
+    condition: (state: GameState) => state.isInsured || state.health < 70,
+    effect: (state: GameState) => {
+      state.health = Math.max(0, state.health - 10);
+      state.happiness = Math.max(0, state.happiness - 5);
+      const medicalCost = 10000 + Math.floor(Math.random() * 20001); // 1-3万
+      state.currentSavings -= medicalCost;
+      state.stress = Math.min(100, state.stress + 10);
+      const log = `第${state.currentAge}岁，你在全自动体检舱做了年度筛查，AI诊断系统给出了"一切正常"的结论，置信度99.7%。你放心地去忙工作了。三个月后一次偶然的人工复查发现了问题——病灶已经扩散，错过了最佳干预期。你躺在病床上盯着天花板，想起那份报告上绿色的"健康"标签，第一次对算法产生了深深的不信任。治疗加维权花了${medicalCost}元，身体和钱包都挨了一刀。`;
+      return { log, loss: medicalCost, aftermath: '医疗纠纷' as AftermathType };
+    },
+    aftermath: '医疗纠纷' as AftermathType,
+    aftermathDuration: 1,
+  },
   // 事件3：遭遇行业寒冬裁员
   {
     id: 'layoff',
     eventName: '遭遇行业寒冬裁员',
     description: 'HR的语气很官方，但你明白，这是行业的冬天。',
     probability: (state: GameState) => {
+      // All In后、开公司后、自由职业/实体创业不会被裁员
+      if (state.isAllInPath || state.hasCompany) return 0;
       if (state.currentProfession === '体制内' || state.currentProfession === '自由职业' || state.currentProfession === '实体创业') return 0;
+      // 28岁前不触发裁员（给玩家足够积累期，避免早期失业导致破产死亡螺旋）
+      if (state.currentAge < 28) return 0;
+      // 再就业稳定期：曾经失业过且当前薪资明显低于失业前薪资的玩家，裁员概率大幅降低
+      // 这避免"失业→再就业→立刻又失业"的死亡螺旋
+      if (state.preUnemployedSalary > 0 && state.currentMonthlySalary > 0 &&
+          state.currentMonthlySalary < state.preUnemployedSalary * 0.85 &&
+          state.totalUnemployedYears > 0) {
+        return 0.02; // 再就业稳定期：裁员概率降到2%
+      }
       let baseRate = 0.08; // 红利行业基础
       if (state.currentProfession === '传统私企') {
         baseRate = state.currentAge >= 40 ? 0.15 : 0.06;
@@ -53,12 +83,24 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
       if (state.currentCity === '资本修罗场') baseRate += 0.05;
       if (state.currentCity === '避风低洼地') baseRate *= 0.5;
       if (state.isUpskilled) baseRate *= 0.5;
+      // 路径技能等效保护：路径技能达到一定水平时，裁员概率降低（等效isUpskilled）
+      // 这确保通过叙事事件积累技能的玩家也能获得职业安全感
+      const pathSkillLevel = Math.max(
+        state.pathSkills?.aiSkill || 0,
+        state.pathSkills?.tradingSkill || 0,
+        state.pathSkills?.brandSkill || 0,
+        state.pathSkills?.careSkill || 0,
+        state.pathSkills?.bioKnowledge || 0,
+        state.pathSkills?.crossCulturalSkill || 0,
+      );
+      if (!state.isUpskilled && pathSkillLevel >= 30) baseRate *= 0.6;
+      if (!state.isUpskilled && pathSkillLevel >= 50) baseRate *= 0.5;
       if (state.economicCycle === 2) baseRate *= 2;
       // 35岁危机
       if (state.currentProfession === '红利行业' && state.currentAge >= 35) baseRate = 0.25;
       return baseRate;
     },
-    condition: (state: GameState) => !state.isUnemployed,
+    condition: (state: GameState) => !state.isUnemployed && !state.isAllInPath && !state.hasCompany,
     effect: (state: GameState) => {
       state.preUnemployedSalary = state.currentMonthlySalary;
       state.currentMonthlySalary = 0;
@@ -110,38 +152,77 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
       return { log };
     },
   },
-  // 事件7：遭遇精密电信诈骗
+  // 事件7：遭遇AI深度伪造诈骗
   {
     id: 'scam',
-    eventName: '遭遇精密电信诈骗',
-    description: '你接到一个"官方"电话，回过神来，账户已少了一大截。',
+    eventName: '遭遇AI深度伪造诈骗',
+    description: '视频电话里是你妈哭泣的脸，声音也是她的——那是AI用她动态圈三分钟视频训练出来的。',
     probability: () => 0.03,
     condition: () => true,
     effect: (state: GameState) => {
-      const loss = Math.min(Math.round(state.currentSavings * 0.2), 50000); // v2：诈骗损失封顶5万
-      const log = `第${state.currentAge}岁，你接到了一个伪装成官方的电话，你的理性和警觉在那一瞬间全部失效。回过神来，账户里的血汗钱蒸发了${loss}元。`;
+      const loss = Math.min(Math.round(state.currentSavings * 0.15), 80000); // 损失存款15%，封顶8万
+      const log = `第${state.currentAge}岁，你接到了一个视频电话，屏幕上是你妈哭泣的脸，声音也是她的。你二话不说转了账。后来你才知道，那是AI用她动态圈三分钟视频训练出来的深度伪造。回过神来，账户里蒸发了${loss}元。`;
       return { log, loss, aftermath: '心理阴影' as AftermathType };
     },
     aftermath: '心理阴影' as AftermathType,
+    aftermathDuration: 2,
+  },
+  // 事件7.5：神经黑客攻击
+  {
+    id: 'neuro_hack',
+    eventName: '神经黑客攻击',
+    description: '你的脑机接口被黑客入侵，记忆被窃取、广告被强行植入——数字时代的入侵不再止于屏幕。',
+    probability: () => 0.02,
+    condition: (state: GameState) => state.retirementPath === 'ai_symbiote' && state.pathFaith >= 50 || state.currentAge >= 35,
+    effect: (state: GameState) => {
+      state.stress = Math.min(100, state.stress + 20);
+      state.happiness = Math.max(0, state.happiness - 10);
+      const loss = Math.min(Math.round(state.currentSavings * 0.05), 20000); // 存款损失5%，封顶2万
+      state.currentSavings -= loss;
+      const log = `第${state.currentAge}岁，你清晨醒来时发现视野边缘浮动着陌生的霓虹广告——不是AR弹窗，是直接投射在你的视觉皮层上的。你的脑机接口被黑客入侵了。记忆碎片像被人翻过的抽屉：童年的片段被替换成产品植入，昨晚的梦境里多了一段你从未去过的购物中心。你花了${loss}元做紧急认知清洗，但闭上眼睛仍能听见那些低语般的推销话术。`;
+      return { log, loss, aftermath: '认知干扰' as AftermathType };
+    },
+    aftermath: '认知干扰' as AftermathType,
     aftermathDuration: 2,
   },
   // 事件8：遭遇婚变导致财产分割
   {
     id: 'divorce',
     eventName: '遭遇婚变导致财产分割',
-    description: '爱情走到尽头，你们平分了财产，也平分了过往。',
+    description: '爱情走到尽头，你们平分了所有资产——存款、房子、持仓，也平分了过往。',
     probability: () => 0.03,
     condition: (state: GameState) => state.isMarried,
     effect: (state: GameState) => {
-      const loss = Math.round(state.currentSavings * 0.3); // v2平衡：离婚财产分割从50%降至30%
+      // 离婚分割所有资产（loss字段会由store统一从存款扣除，其他资产直接修改）
+      const savingsLoss = Math.round(state.currentSavings * 0.3);
+      // 房产分割：有房则房产价值折损30%（归并补偿）
+      if (state.hasProperty && state.propertyValue) {
+        state.propertyValue = Math.round(state.propertyValue * 0.7);
+      }
+      // 链上持仓分割
+      const chainHoldings = (state as any).chainHoldings || 0;
+      if (chainHoldings > 0) {
+        (state as any).chainHoldings = Math.round(chainHoldings * 0.7);
+      }
+      // 生物投资组合分割
+      const bioPortfolio = (state as any).bioPortfolio || 0;
+      if (bioPortfolio > 0) {
+        (state as any).bioPortfolio = Math.round(bioPortfolio * 0.7);
+      }
+      // 被动收入也受影响（赡养费）
+      if (state.passiveIncome > 0) {
+        state.passiveIncome = Math.round(state.passiveIncome * 0.8);
+      }
       state.isMarried = false;
-      // 同步伴侣离婚状态，避免 datingStage 仍停留在 married
       if (state.partner) {
         state.partner.datingStage = 'divorced';
         state.partner.hasDivorced = true;
       }
-      const log = `第${state.currentAge}岁，那张曾经写满誓言的纸被撕成两半。你们平分了房子、存款，也平分了那些回不去的夜晚。你重新变成了一个人。`;
-      return { log, loss, aftermath: '情感创伤' as AftermathType };
+      // 幸福和压力冲击
+      state.happiness = Math.max(0, state.happiness - 15);
+      state.stress = Math.min(100, state.stress + 15);
+      const log = `第${state.currentAge}岁，那张曾经写满誓言的纸被撕成两半。你们平分了房子、存款、持仓，也平分了那些回不去的夜晚。你重新变成了一个人。`;
+      return { log, loss: savingsLoss, aftermath: '情感创伤' as AftermathType };
     },
     aftermath: '情感创伤' as AftermathType,
     aftermathDuration: 3,
@@ -151,10 +232,15 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
     id: 'inflation',
     eventName: '全球宏观恶性通胀爆发年',
     description: '超市的价签一天一换，你的钱就像融化的冰块。',
-    probability: () => 0.05,
+    probability: (state: GameState) => {
+      // 一生最多触发2次，概率3%
+      const hits = (state as any)._inflationHits || 0;
+      return hits >= 2 ? 0 : 0.03;
+    },
     condition: () => true,
     effect: (state: GameState) => {
-      state.annualBaseCost = state.annualBaseCost * 1.5;
+      state.annualBaseCost = Math.round(state.annualBaseCost * 1.3);
+      (state as any)._inflationHits = ((state as any)._inflationHits || 0) + 1;
       const log = `第${state.currentAge}岁，超市价签飞涨的速度超过了你的心跳。你推着购物车，第一次觉得手里的纸币像刚从火炉里抢出来的雪片。`;
       return { log };
     },
@@ -172,22 +258,71 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
       return { log, loss: -gain }; // 负loss=收益
     },
   },
-  // 事件11：高风险投机项目一夜爆仓
+  // 事件11：高风险投机/链上/生物持仓暴跌爆仓
   {
     id: 'spec_crash',
-    eventName: '高风险投机项目一夜爆仓',
+    eventName: '高风险仓位一夜爆仓',
     description: '你盯着屏幕上的断崖线，账户瞬间变成废墟。',
     probability: (state: GameState) => {
-      if (state.speculationPct <= 30) return 0;
-      return state.economicCycle === 2 ? 0.45 : 0.25;
+      // 触发条件：传统投机>20%、链上持仓>年收入2倍、生物持仓>年收入2倍
+      const chainH = (state as any).chainHoldings || 0;
+      const bioP = (state as any).bioPortfolio || 0;
+      const annualIncome = state.currentMonthlySalary * 12;
+      const hasRiskyPosition = state.speculationPct > 20 || chainH > annualIncome * 2 || bioP > annualIncome * 2;
+      if (!hasRiskyPosition) return 0;
+      return state.economicCycle === 2 ? 0.40 : 0.20;
     },
-    condition: (state: GameState) => state.speculationPct > 30,
+    condition: (state: GameState) => {
+      const chainH = (state as any).chainHoldings || 0;
+      const bioP = (state as any).bioPortfolio || 0;
+      const annualIncome = state.currentMonthlySalary * 12;
+      return state.speculationPct > 20 || chainH > annualIncome * 2 || bioP > annualIncome * 2;
+    },
     effect: (state: GameState) => {
-      const lossRate = state.hasHedgeOption ? 0.10 : 0.70;
-      const loss = Math.round(state.currentSavings * (state.speculationPct / 100) * lossRate);
-      state.hasHedgeOption = false; // 对冲期权用完
-      const log = `第${state.currentAge}岁，你死死盯着K线图，那根绿柱像断头台一样落下。账户瞬间蒸发${loss}元，你关掉屏幕，房间里只剩下心跳和耳鸣。`;
+      const lossRate = state.hasHedgeOption ? 0.10 : 0.60;
+      let loss = Math.round(state.currentSavings * (state.speculationPct / 100) * lossRate);
+      // 链上持仓暴跌
+      const chainH = (state as any).chainHoldings || 0;
+      const annualIncome = state.currentMonthlySalary * 12;
+      if (chainH > annualIncome * 2) {
+        const chainLossRate = state.hasHedgeOption ? 0.12 : 0.35;
+        const chainLoss = Math.round(chainH * chainLossRate);
+        (state as any).chainHoldings = chainH - chainLoss;
+        loss += Math.round(chainLoss * 0.2); // 部分连锁反应到存款
+      }
+      // 生物持仓临床失败暴跌
+      const bioP = (state as any).bioPortfolio || 0;
+      if (bioP > annualIncome * 2) {
+        const bioLossRate = state.hasHedgeOption ? 0.15 : 0.35;
+        const bioLoss = Math.round(bioP * bioLossRate);
+        (state as any).bioPortfolio = bioP - bioLoss;
+        loss += Math.round(bioLoss * 0.15);
+      }
+      state.hasHedgeOption = false;
+      state.happiness = Math.max(0, state.happiness - 10);
+      state.stress = Math.min(100, state.stress + 12);
+      const log = `第${state.currentAge}岁，你死死盯着屏幕，那根断崖线像断头台一样落下。账户瞬间蒸发，你关掉屏幕，房间里只剩下心跳和耳鸣。`;
       return { log, loss };
+    },
+  },
+  // 事件11.5：加密交易所跑路
+  {
+    id: 'exchange_collapse',
+    eventName: '加密交易所跑路',
+    description: '你存币的中心化交易所一夜之间卷款跑路，提币页面变成了404——链上的资产，留在了中心化的口袋里。',
+    probability: () => 0.015,
+    condition: (state: GameState) => {
+      const chainH = (state as any).chainHoldings || 0;
+      return chainH > 100000;
+    },
+    effect: (state: GameState) => {
+      const chainH = (state as any).chainHoldings || 0;
+      const chainLoss = Math.round(chainH * 0.25);
+      (state as any).chainHoldings = chainH - chainLoss;
+      state.stress = Math.min(100, state.stress + 15);
+      state.happiness = Math.max(0, state.happiness - 10);
+      const log = `第${state.currentAge}岁，你像往常一样打开交易所APP想看看行情，却发现页面一片空白——官方社群已解散，创始人的社交账号全部注销，提币通道永远停留在"系统维护中"。你存在里面的${chainLoss.toLocaleString()}元等值加密货币，一夜之间化为一串冰冷的哈希值。你想起那句"Not your keys, not your coins"，苦笑了一下——道理你都懂，只是没想到跑路的剧本会轮到自己。`;
+      return { log, loss: 0 };
     },
   },
   // 事件12：固定资产估值物价重估暴跌
@@ -336,7 +471,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
   {
     id: 'opportunity_headhunter',
     eventName: '猎头主动联系',
-    description: '一个猎头在LinkedIn上找到你，说有个岗位很适合你。',
+    description: '一个猎头在职业社交网络上找到你，说有个岗位很适合你。',
     probability: (state: GameState) => {
       if (!state.isUnemployed) return 0;
       if (state.currentAge > 45) return 0.03; // 45岁后猎头不怎么找了
@@ -357,7 +492,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
         state.currentMonthlySalary = Math.round(state.preUnemployedSalary * (0.95 + Math.random() * 0.25));
         state.happiness = Math.min(100, state.happiness + 15);
         state.stress = Math.max(0, state.stress - 12);
-        const log = `第${state.currentAge}岁，一个猎头在LinkedIn上找到你。你本来没抱希望，没想到对方公司开的条件相当不错。三轮面试后你拿到了offer，薪资不比之前差。你给猎头发了条"谢谢"，他回了个"恭喜，这是你应得的"。`;
+        const log = `第${state.currentAge}岁，一个猎头在职业社交网络上找到你。你本来没抱希望，没想到对方公司开的条件相当不错。三轮面试后你拿到了offer，薪资不比之前差。你给猎头发了条"谢谢"，他回了个"恭喜，这是你应得的"。`;
         return { log, loss: 0 };
       } else if (roll < 0.60) {
         // 一般机会：薪资低一点
@@ -507,12 +642,12 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
         // 8%概率真暴富
         const gain = 200000 + Math.floor(Math.random() * 300000);
         state.happiness = Math.min(100, state.happiness + 15); // v2：+20→+15
-        return { log: `第${state.currentAge}岁，你几年前随手买的一点股票/币/副业，突然成了风口。媒体上全是它的新闻，朋友圈人人都在讨论。你打开账户——涨了${gain.toLocaleString()}元。你关掉手机，去楼下吃了碗面，加了个蛋。`, loss: -gain };
+        return { log: `第${state.currentAge}岁，你几年前随手买的一点股票/币/副业，突然成了风口。媒体上全是它的新闻，动态圈人人都在讨论。你打开账户——涨了${gain.toLocaleString()}元。你关掉手机，去楼下吃了碗面，加了个蛋。`, loss: -gain };
       } else if (roll < 0.30) {
         // 22%概率小赚一笔
         const gain = 20000 + Math.floor(Math.random() * 50000);
         state.happiness = Math.min(100, state.happiness + 10);
-        return { log: `第${state.currentAge}岁，你持有的项目突然涨了一波。虽然不是暴富，但也赚了${gain.toLocaleString()}元。你截了个图发了条朋友圈又删了——低调也是一种幸福。`, loss: -gain };
+        return { log: `第${state.currentAge}岁，你持有的项目突然涨了一波。虽然不是暴富，但也赚了${gain.toLocaleString()}元。你截了个图发了条动态圈又删了——低调也是一种幸福。`, loss: -gain };
       } else {
         // 70%概率只是虚惊一场，风口一过又跌了
         return { log: `第${state.currentAge}岁，你持有的项目突然被媒体报道成了"下一个风口"。你看着账户涨了一天，第二天就跌回去了。你苦笑——风口上飞起来的猪，风一停摔得比谁都惨。`, loss: 0 };

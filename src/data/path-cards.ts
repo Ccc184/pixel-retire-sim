@@ -10,26 +10,26 @@ import type { DecisionCard, GameState } from '../types/global.d.js';
 // 辅助：初始化路径专属状态字段（防御性默认值）
 // ============================================================
 function ensureAiState(s: GameState) {
-  if ((s as any).aiSkillLevel === undefined) (s as any).aiSkillLevel = 0;
+  if (s.aiSkillLevel === undefined) s.aiSkillLevel = 0;
 }
 function ensureChainState(s: GameState) {
-  if ((s as any).chainHoldings === undefined) (s as any).chainHoldings = 0;
+  if (s.chainHoldings === undefined) s.chainHoldings = 0;
 }
 function ensureNomadState(s: GameState) {
-  if ((s as any).nomadClients === undefined) (s as any).nomadClients = 0;
+  if (s.nomadClients === undefined) s.nomadClients = 0;
 }
 function ensureIpState(s: GameState) {
-  if ((s as any).ipFollowers === undefined) (s as any).ipFollowers = 500;
-  if ((s as any).ipReputation === undefined) (s as any).ipReputation = 30;
+  if (s.ipFollowers === undefined) s.ipFollowers = 500;
+  if (s.ipReputation === undefined) s.ipReputation = 30;
 }
 function ensureSilverState(s: GameState) {
-  if (!(s as any).silverBusiness) {
-    (s as any).silverBusiness = { clients: 0, reputation: 20, monthlyRevenue: 0 };
+  if (!s.silverBusiness) {
+    s.silverBusiness = { clients: 0, reputation: 20, monthlyRevenue: 0 };
   }
 }
 function ensureBioState(s: GameState) {
-  if ((s as any).bioPortfolio === undefined) (s as any).bioPortfolio = 0;
-  if ((s as any).biologicalAge === undefined) (s as any).biologicalAge = 0;
+  if (s.bioPortfolio === undefined) s.bioPortfolio = 0;
+  if (s.biologicalAge === undefined) s.biologicalAge = 0;
 }
 
 // ============================================================
@@ -50,7 +50,7 @@ const aiSymbioteCards: DecisionCard[] = [
     prerequisites: (s) => s.retirementPath === 'ai_symbiote',
     effect: (s: GameState) => {
       ensureAiState(s);
-      (s as any).aiSkillLevel = Math.min(100, (s as any).aiSkillLevel + 15);
+      s.aiSkillLevel = Math.min(100, s.aiSkillLevel! + 15);
       s.stress = Math.min(100, s.stress + 8);
       s.happiness = Math.max(0, s.happiness - 3);
       s.pathFaith = Math.min(100, s.pathFaith + 5);
@@ -72,10 +72,10 @@ const aiSymbioteCards: DecisionCard[] = [
     category: '核心决策',
     ageRange: [25, 33],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'ai_symbiote' && (s as any).aiSkillLevel >= 20 && !s.isUnemployed,
+    prerequisites: (s) => s.retirementPath === 'ai_symbiote' && (s.aiSkillLevel ?? 0) >= 20 && !s.isUnemployed,
     effect: (s: GameState) => {
       ensureAiState(s);
-      (s as any).aiSkillLevel = Math.min(100, (s as any).aiSkillLevel + 10);
+      s.aiSkillLevel = Math.min(100, s.aiSkillLevel! + 10);
       s.passiveIncome += 15000;
       s.stress = Math.max(0, s.stress - 10);
       s.pathFaith = Math.min(100, s.pathFaith + 8);
@@ -96,21 +96,21 @@ const aiSymbioteCards: DecisionCard[] = [
     id: 'ai_open_source_tool',
     pathId: 'ai_symbiote',
     title: '开源一个AI开发工具',
-    description: '你把自己用了半年的AI辅助开发框架放到了GitHub上。第一天只有12个star，其中10个是你自己点的。第三天突然有人在推特上推荐了它，star开始疯长。一个月后你有了3000个star，几家公司发来了offer，还有人给项目打了赏。你突然意识到：在AI时代，最好的简历不是履历表，是你公开的作品。',
+    description: '你把自己用了半年的AI辅助开发框架放到了开源社区上。第一天只有12个star，其中10个是你自己点的。第三天突然有人在推特上推荐了它，star开始疯长。一个月后你有了3000个star，几家公司发来了offer，还有人给项目打了赏。你突然意识到：在AI时代，最好的简历不是履历表，是你公开的作品。',
     hint: 'AI技能+10 · 被动收入+¥8,000/年 · 信念+10 · 幸福+5',
     cost: 0,
     category: '社交关系',
     ageRange: [26, 36],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'ai_symbiote' && (s as any).aiSkillLevel >= 35,
+    prerequisites: (s) => s.retirementPath === 'ai_symbiote' && (s.aiSkillLevel ?? 0) >= 35,
     effect: (s: GameState) => {
       ensureAiState(s);
-      (s as any).aiSkillLevel = Math.min(100, (s as any).aiSkillLevel + 10);
+      s.aiSkillLevel = Math.min(100, s.aiSkillLevel! + 10);
       s.passiveIncome += 8000;
       s.pathFaith = Math.min(100, s.pathFaith + 10);
       s.happiness = Math.min(100, s.happiness + 5);
       s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 1.12);
-      const log = `第${s.currentAge}岁，你把自用的AI工具放上了GitHub。它像一颗投入湖面的石子，激起了远超预期的涟漪。陌生人给你发感谢信，说你的工具让他们提前下了班。你第一次理解了"构建者"的快乐——你造的东西在你睡觉的时候，正在帮助千里之外的某个人。`;
+      const log = `第${s.currentAge}岁，你把自用的AI工具放上了开源社区。它像一颗投入湖面的石子，激起了远超预期的涟漪。陌生人给你发感谢信，说你的工具让他们提前下了班。你第一次理解了"构建者"的快乐——你造的东西在你睡觉的时候，正在帮助千里之外的某个人。`;
       return { log, cost: 0 };
     },
     logTemplate: '第{年龄}岁，你开源了AI工具，意外收获了全球开发者的认可。',
@@ -168,7 +168,7 @@ const aiSymbioteCards: DecisionCard[] = [
         s.partner!.trust = Math.max(0, s.partner!.trust - 10);
         s.happiness = Math.max(0, s.happiness - 8);
         s.pathFaith = Math.min(100, s.pathFaith + 8);
-        (s as any).aiSkillLevel = Math.min(100, (s as any).aiSkillLevel + 5);
+        s.aiSkillLevel = Math.min(100, s.aiSkillLevel! + 5);
         s.stress = Math.min(100, s.stress + 10);
         return { log: `第${s.currentAge}岁，你在卧室门口站了三分钟，最终回到了电脑前。你告诉自己"再熬一熬就好了，等我做成了一切都会好的"。但你心里有个声音在说：有些东西碎了，就拼不回来了。屏幕上的AI回复了一句"理解你的处境"，你觉得讽刺极了。`, cost: 0 };
       }
@@ -187,7 +187,7 @@ const aiSymbioteCards: DecisionCard[] = [
     category: '核心决策',
     ageRange: [28, 40],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'ai_symbiote' && (s as any).aiSkillLevel >= 50 && s.currentSavings >= 60000 && !s.isUnemployed,
+    prerequisites: (s) => s.retirementPath === 'ai_symbiote' && (s.aiSkillLevel ?? 0) >= 50 && s.currentSavings >= 60000 && !s.isUnemployed,
     effect: (s: GameState) => {
       ensureAiState(s);
       s.isUnemployed = true;
@@ -197,12 +197,18 @@ const aiSymbioteCards: DecisionCard[] = [
       const success = Math.random() < 0.5;
       if (success) {
         s.passiveIncome += 60000;
-        (s as any).aiSkillLevel = Math.min(100, (s as any).aiSkillLevel + 15);
+        s.aiSkillLevel = Math.min(100, s.aiSkillLevel! + 15);
         s.pathFaith = Math.min(100, s.pathFaith + 15);
         s.happiness = Math.min(100, s.happiness + 15);
+        // 成功All In：进入自由职业状态（还没注册公司）
+        s.isAllInPath = true;
+        s.isUnemployed = false;
+        s.currentProfession = '自由职业';
+        s.currentMonthlySalary = Math.round(s.preUnemployedSalary * 0.6); // 初期收入比工资低
+        s.careerStartSalary = s.currentMonthlySalary;
         return { log: `第${s.currentAge}岁，你递交了辞职信，在出租屋里开始了创业。前六个月你每天工作十六个小时，第七个月产品上线，第十个月开始有了付费用户。一年后你的MRR超过了以前的年薪。你坐在新租的办公室里，看着增长曲线，想起写辞职信的那个下午——你赌赢了。`, cost: 80000 };
       } else {
-        (s as any).aiSkillLevel = Math.min(100, (s as any).aiSkillLevel + 5);
+        s.aiSkillLevel = Math.min(100, s.aiSkillLevel! + 5);
         s.pathFaith = Math.max(0, s.pathFaith - 15);
         s.happiness = Math.max(0, s.happiness - 15);
         s.health = Math.max(0, s.health - 8);
@@ -230,13 +236,13 @@ const chainNativeCards: DecisionCard[] = [
     repeatable: true,
     cooldown: 3,
     maxUses: 4,
-    prerequisites: (s) => s.retirementPath === 'chain_native' && s.currentSavings >= 25000 && !(s as any).hasAbandonedCrypto,
+    prerequisites: (s) => s.retirementPath === 'chain_native' && s.currentSavings >= 25000 && !s.hasAbandonedCrypto,
     effect: (s: GameState) => {
       ensureChainState(s);
       const buy = 20000;
       // 模拟50%概率买在低点（持仓价值上升），50%继续下跌
       const multiplier = Math.random() < 0.5 ? 1.8 : 0.7;
-      (s as any).chainHoldings += Math.round(buy * multiplier);
+      s.chainHoldings = s.chainHoldings! + Math.round(buy * multiplier);
       s.pathFaith = Math.min(100, s.pathFaith + 10);
       s.stress = Math.min(100, s.stress + 10);
       s.happiness = Math.max(0, s.happiness - 3);
@@ -257,7 +263,7 @@ const chainNativeCards: DecisionCard[] = [
     category: '投资理财',
     ageRange: [24, 36],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'chain_native' && s.currentSavings >= 35000 && !(s as any).hasAbandonedCrypto,
+    prerequisites: (s) => s.retirementPath === 'chain_native' && s.currentSavings >= 35000 && !s.hasAbandonedCrypto,
     effect: (s: GameState) => {
       ensureChainState(s);
       const success = Math.random() < 0.6;
@@ -268,7 +274,7 @@ const chainNativeCards: DecisionCard[] = [
         s.happiness = Math.min(100, s.happiness + 5);
         return { log: `第${s.currentAge}岁，你深入研究了DeFi协议，成为了流动性提供者。收益每天到账，那种"钱在睡觉时也在工作"的感觉让你着迷。你开始理解为什么有人说"DeFi是传统金融的掘墓人"——当然，你也没忘记设好止损提醒。`, cost: 30000 };
       } else {
-        (s as any).chainHoldings = Math.round((s as any).chainHoldings * 0.6);
+        s.chainHoldings = Math.round(s.chainHoldings! * 0.6);
         s.pathFaith = Math.max(0, s.pathFaith - 10);
         s.happiness = Math.max(0, s.happiness - 10);
         s.health = Math.max(0, s.health - 3);
@@ -289,14 +295,14 @@ const chainNativeCards: DecisionCard[] = [
     category: '社交关系',
     ageRange: [25, 38],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'chain_native' && (s as any).chainHoldings >= 20000,
+    prerequisites: (s) => s.retirementPath === 'chain_native' && (s.chainHoldings ?? 0) >= 20000,
     effect: (s: GameState) => {
       ensureChainState(s);
       s.pathFaith = Math.min(100, s.pathFaith + 12);
       s.passiveIncome += 6000;
       s.stress = Math.min(100, s.stress + 5);
       s.happiness = Math.min(100, s.happiness + 8);
-      (s as any).chainHoldings += 5000;
+      s.chainHoldings = s.chainHoldings! + 5000;
       const log = `第${s.currentAge}岁，你从一个沉默的持币者变成了DAO的核心贡献者。你写提案、辩论、投票，和世界各地的陌生人在Discord里争论到凌晨。你第一次觉得自己不是在"炒币"，而是在参与建造一个新的体系——一个不需要信任任何人、只需要信任代码的体系。这种归属感，比赚钱更让你踏实。`;
       return { log, cost: 0 };
     },
@@ -338,7 +344,7 @@ const chainNativeCards: DecisionCard[] = [
     category: '💝 感情',
     ageRange: [25, 40],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'chain_native' && s.partner !== null && s.partner.datingStage !== 'single' && s.partner.datingStage !== 'divorced' && !(s as any).hasAbandonedCrypto,
+    prerequisites: (s) => s.retirementPath === 'chain_native' && s.partner !== null && s.partner.datingStage !== 'single' && s.partner.datingStage !== 'divorced' && !s.hasAbandonedCrypto,
     effect: (s: GameState) => {
       ensureChainState(s);
       const confess = Math.random() < 0.5;
@@ -347,8 +353,8 @@ const chainNativeCards: DecisionCard[] = [
         s.partner!.trust = Math.min(100, s.partner!.trust + 15);
         s.pathFaith = Math.max(0, s.pathFaith - 5);
         s.happiness = Math.min(100, s.happiness + 5);
-        (s as any).chainHoldings = Math.round((s as any).chainHoldings * 0.85);
-        s.currentSavings += Math.round((s as any).chainHoldings * 0.1);
+        s.chainHoldings = Math.round(s.chainHoldings! * 0.85);
+        s.currentSavings += Math.round(s.chainHoldings * 0.1);
         return { log: `第${s.currentAge}岁，你选择了坦白。你打开电脑让TA看所有的持仓和交易记录，承认了你的赌注和恐惧。你们长谈了一整夜，最后约定：最多只拿总资产的30%放在链上，其余转回法币作为家庭储备。你心里虽然不舍，但看到TA终于松了一口气的表情，你知道透明比暴富更重要。`, cost: 0 };
       } else {
         s.partner!.affection = Math.max(0, s.partner!.affection - 12);
@@ -373,7 +379,7 @@ const chainNativeCards: DecisionCard[] = [
     category: '核心决策',
     ageRange: [28, 45],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'chain_native' && (s as any).chainHoldings >= 50000,
+    prerequisites: (s) => s.retirementPath === 'chain_native' && (s.chainHoldings ?? 0) >= 50000,
     effect: (s: GameState) => {
       ensureChainState(s);
       s.pathFaith = Math.min(100, s.pathFaith + 10);
@@ -390,12 +396,12 @@ const chainNativeCards: DecisionCard[] = [
 // 路径3：数字游牧民 (digital_nomad) - 6张卡
 // ============================================================
 const digitalNomadCards: DecisionCard[] = [
-  // 卡1：早期 - 拿下第一个海外长期客户
+  // 卡1：早期 - 拿下第一个远程长期客户
   {
     id: 'nomad_first_client',
     pathId: 'digital_nomad',
-    title: '拿下第一个海外长期客户',
-    description: '你在Upwork上投了四十封proposal，终于有一个美国创业公司回复了你。面试时你的网络在巴厘岛的咖啡馆里断了三次，你以为没戏了，但对方说"喜欢你的作品，下周一开始"。第一笔美元到账的时候你换算成人民币，手在抖——相当于你以前一个半月的工资。你坐在稻田边，电脑开着，周围是蛙鸣，你想：这就是我想要的生活。',
+    title: '拿下第一个远程长期客户',
+    description: '你在Upwork上投了四十封proposal，终于有一个深圳的创业公司回复了你。面试时你的网络在咖啡馆里断了三次，你以为没戏了，但对方说"喜欢你的作品，你会用AI编程器和通用大模型吧？那效率应该很快，下周一开始"。第一笔到账的时候你换算了一下——用AI辅助开发，实际工时只有报价的一半，时薪是白天的三倍。你坐在稻田边，电脑开着，周围是蛙鸣，你想：这就是我想要的生活。',
     hint: '薪资+30% · 被动收入+¥5,000/年 · 信念+8 · 幸福+10 · 花费¥0',
     cost: 0,
     category: '核心决策',
@@ -404,25 +410,25 @@ const digitalNomadCards: DecisionCard[] = [
     prerequisites: (s) => s.retirementPath === 'digital_nomad',
     effect: (s: GameState) => {
       ensureNomadState(s);
-      (s as any).nomadClients += 1;
+      s.nomadClients = s.nomadClients! + 1;
       s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 1.3);
       s.passiveIncome += 5000;
       s.pathFaith = Math.min(100, s.pathFaith + 8);
       s.happiness = Math.min(100, s.happiness + 10);
       s.stress = Math.max(0, s.stress - 5);
-      const log = `第${s.currentAge}岁，你签下了第一个海外长期客户。第一笔美元到账通知弹出来的时候，你正在一个陌生国度的路边摊吃炒面。你看着那条到账通知，又看着面前热气腾腾的面、身边路过的僧侣、远处的晚霞——你觉得你做出了22岁以来最正确的决定。`;
+      const log = `第${s.currentAge}岁，你签下了第一个远程长期客户。到账通知弹出来的时候，你正在一座陌生小城的路边摊吃炒面。你看着那条到账通知，又看着面前热气腾腾的面、身边路过的行人、远处的晚霞——你觉得你做出了22岁以来最正确的决定。`;
       return { log, cost: 0 };
     },
-    logTemplate: '第{年龄}岁，你签下第一个海外客户，地理套利开始兑现。',
+    logTemplate: '第{年龄}岁，你签下第一个远程客户，地理套利开始兑现。',
   },
 
-  // 卡2：中期 - 搬到一个新国家
+  // 卡2：中期 - 搬到一座新城市
   {
     id: 'nomad_new_country',
     pathId: 'digital_nomad',
-    title: '搬去一个新的国家生活',
-    description: '你在一个地方住了半年，新鲜感退去，你开始觉得无聊。你在Nomad List上翻了一整夜，最后买了一张去里斯本/墨西哥城/曼谷/第比利斯的单程票。打包行李只需要一个小时——你早就学会了只带必需品。但在飞机上你突然想：这种永远在路上的状态，到底是自由还是逃避？飞机穿入云层，你闭上了眼睛，到了再说吧。',
-    hint: '年支出-10%（更低成本地）或+10%（欧洲）· 信念+5 · 幸福+8 · 压力-3 · 花费¥8,000',
+    title: '搬去一座新的城市生活',
+    description: '你在一个地方住了半年，新鲜感退去，你开始觉得无聊。你在Nomad List上翻了一整夜，最后买了一张去成都/昆明/大理/丽江的单程票。打包行李只需要一个小时——你早就学会了只带必需品。但在飞机上你突然想：这种永远在路上的状态，到底是自由还是逃避？飞机穿入云层，你闭上了眼睛，到了再说吧。',
+    hint: '年支出-10%（更低成本地）或+10%（一线城市）· 信念+5 · 幸福+8 · 压力-3 · 花费¥8,000',
     cost: 8000,
     category: '生活消费',
     ageRange: [24, 40],
@@ -441,11 +447,11 @@ const digitalNomadCards: DecisionCard[] = [
       } else {
         s.annualBaseCost = Math.round(s.annualBaseCost * 1.1);
       }
-      (s as any).nomadClients += Math.random() < 0.3 ? 1 : 0;
+      s.nomadClients = s.nomadClients! + (Math.random() < 0.3 ? 1 : 0);
       const log = `第${s.currentAge}岁，你又一次降落在一个陌生的机场。空气的味道不一样，语言不一样，插座形状不一样。最初的一周是混乱的——办电话卡、找公寓、试新餐馆——但混乱中有一种活着的感觉。你不知道下一站是哪里，但你知道你还不想停下来。`;
       return { log, cost: 8000 };
     },
-    logTemplate: '第{年龄}岁，你降落在新的国度，世界又展开了一页。',
+    logTemplate: '第{年龄}岁，你降落在新的城市，世界又展开了一页。',
   },
 
   // 卡3：社交 - 在游牧社区找到归属
@@ -453,7 +459,7 @@ const digitalNomadCards: DecisionCard[] = [
     id: 'nomad_community',
     pathId: 'digital_nomad',
     title: '加入数字游民共居社区',
-    description: '你一个人旅行久了，开始厌倦一个人吃饭、一个人看海、一个人对着电脑笑。你搬进了一个共居空间，里面全是和你一样的人——开发者、设计师、写手、创业者。你们白天各自工作，傍晚一起做饭冲浪，周末去探索附近的小镇。你终于不再解释你的生活方式了，因为周围的人都和你一样。',
+    description: '你一个人旅行久了，开始厌倦一个人吃饭、一个人看海、一个人对着电脑笑。你搬进了一个共居空间，里面全是和你一样的人——开发者、设计师、写手、创业者。你们白天各自工作，傍晚一起做饭骑行，周末去探索附近的小镇。你终于不再解释你的生活方式了，因为周围的人都和你一样。',
     hint: '客户+1 · 信念+10 · 幸福+12 · 压力-8 · 花费¥12,000/年（共居费）',
     cost: 12000,
     category: '社交关系',
@@ -462,23 +468,23 @@ const digitalNomadCards: DecisionCard[] = [
     prerequisites: (s) => s.retirementPath === 'digital_nomad' && s.isGeoArbitrage,
     effect: (s: GameState) => {
       ensureNomadState(s);
-      (s as any).nomadClients += 1;
+      s.nomadClients = s.nomadClients! + 1;
       s.passiveIncome += 6000;
       s.pathFaith = Math.min(100, s.pathFaith + 10);
       s.happiness = Math.min(100, s.happiness + 12);
       s.stress = Math.max(0, s.stress - 8);
-      const log = `第${s.currentAge}岁，你搬进了共居空间，推开门的那一刻你笑了——客厅里有人在敲代码，有人在Skype开会，有人在弹吉他，冰箱上贴满了世界各地的贴纸。你终于不用解释"你是做什么的""你从哪来""你什么时候回去"了。在这里，所有人都没有"回去"的计划。`;
+      const log = `第${s.currentAge}岁，你搬进了共居空间，推开门的那一刻你笑了——客厅里有人在用AI编程器写代码，有人在Zoom开会，有人在弹吉他，冰箱上贴满了各地的贴纸。你终于不用解释"你是做什么的""你从哪来""你什么时候回去"了。在这里，所有人都没有"回去"的计划。`;
       return { log, cost: 12000 };
     },
     logTemplate: '第{年龄}岁，你找到了同类，游牧路上不再孤单。',
   },
 
-  // 卡4：健康 - 异国生病
+  // 卡4：健康 - 异乡生病
   {
     id: 'nomad_illness_abroad',
     pathId: 'digital_nomad',
-    title: '在异国他乡生病',
-    description: '你在一个语言不通的小国发烧到39度。你一个人躺在民宿的硬板床上，连爬起来倒水的力气都没有。你翻遍手机不知道当地急救电话是多少，医保能不能报也不确定。你给妈妈打了个电话，听到她声音的那一刻你差点哭出来。你说"没事，就是有点感冒"，挂了电话后你还是哭了。',
+    title: '在异乡生病',
+    description: '你在一个偏远的小城发烧到39度。你一个人躺在民宿的硬板床上，连爬起来倒水的力气都没有。你翻遍手机不知道附近哪家医院好，医保能不能报也不确定。你给妈妈打了个电话，听到她声音的那一刻你差点哭出来。你说"没事，就是有点感冒"，挂了电话后你还是哭了。',
     hint: '健康-15 · 信念-10 · 花费¥15,000（自费医疗）· 压力+10 · 幸福-12',
     cost: 15000,
     category: '健康养生',
@@ -492,10 +498,10 @@ const digitalNomadCards: DecisionCard[] = [
       s.pathFaith = Math.max(0, s.pathFaith - 10);
       s.stress = Math.min(100, s.stress + 10);
       s.happiness = Math.max(0, s.happiness - 12);
-      const log = `第${s.currentAge}岁，你在异国的小旅馆里发着高烧，窗外是陌生的街景和听不懂的语言。你想喝口热水都得自己撑着去烧，那一刻你无比怀念家里妈妈熬的粥。病好之后你买了一份全球医疗保险，也第一次认真考虑：如果有一天你走不动了，你要在哪里停下来？`;
+      const log = `第${s.currentAge}岁，你在异乡的小旅馆里发着高烧，窗外是陌生的街景和听不懂的方言。你想喝口热水都得自己撑着去烧，那一刻你无比怀念家里妈妈熬的粥。病好之后你买了一份商业医疗保险，也第一次认真考虑：如果有一天你走不动了，你要在哪里停下来？`;
       return { log, cost: 15000 };
     },
-    logTemplate: '第{年龄}岁，你在异国生病，自由的代价第一次如此真实。',
+    logTemplate: '第{年龄}岁，你在异乡生病，自由的代价第一次如此真实。',
   },
 
   // 卡5：感情 - 路上的爱情
@@ -503,7 +509,7 @@ const digitalNomadCards: DecisionCard[] = [
     id: 'nomad_road_romance',
     pathId: 'digital_nomad',
     title: '在路上遇到一个人',
-    description: '你在墨西哥瓦哈卡的一个厨艺课上遇到了TA。TA来自另一个国家，也在游牧。你们一起学做taco、一起去看玛雅遗址、一起在星空下喝梅斯卡尔。你知道你们的签证都有到期日，你们的下一站可能在不同的大陆。但此刻你们在一起，这个"此刻"比任何"以后"都真实。机场告别时你们都没哭，只是交换了一个很长的拥抱。',
+    description: '你在成都的一个厨艺课上遇到了TA。TA来自另一座城市，也在游牧。你们一起学做川菜、一起去看三星堆、一起在星空下喝米酒。你知道你们的租期都有到期日，你们的下一站可能在不同的城市。但此刻你们在一起，这个"此刻"比任何"以后"都真实。机场告别时你们都没哭，只是交换了一个很长的拥抱。',
     hint: '幸福+15 · 信念+5 · 压力+5（离别的忧伤）· 花费¥5,000',
     cost: 5000,
     category: '💝 感情',
@@ -534,7 +540,7 @@ const digitalNomadCards: DecisionCard[] = [
           memories: [{ age: s.currentAge, event: '在路上相遇', emoji: '🌍' }],
           crushFrom: 'travel',
         };
-        return { log: `第${s.currentAge}岁，你在路上遇到了一个人。你们一起看了玛雅金字塔，在星空下跳舞，在机场告别时你们都哭了。但这一次不一样——你们约定了下一站在里斯本见面。也许这就是游牧路上最美的事：你永远不知道下一个转弯会遇到谁。`, cost: 5000 };
+        return { log: `第${s.currentAge}岁，你在路上遇到了一个人。你们一起看了长城，在星空下跳舞，在机场告别时你们都哭了。但这一次不一样——你们约定了下一站在成都见面。也许这就是游牧路上最美的事：你永远不知道下一个转弯会遇到谁。`, cost: 5000 };
       }
       return { log: `第${s.currentAge}岁，你在路上遇到了一个人，你们一起度过了闪闪发光的两周。在机场你们拥抱告别，没有留联系方式，也没有约定再见。有些人注定只是你人生旅途中的一站，但窗外掠过的风景，会永远留在你心里。`, cost: 5000 };
     },
@@ -546,13 +552,13 @@ const digitalNomadCards: DecisionCard[] = [
     id: 'nomad_productize',
     pathId: 'digital_nomad',
     title: '把服务产品化：从出卖时间到出售结果',
-    description: '你做了几年自由职业，发现了一个残酷的事实：只要你还在按小时收费，你就永远不可能自由——因为你的时间是有限的。你开始把你的服务打包成标准化产品：固定价格、固定交付周期、固定范围。你花了三个月重新设计你的网站和报价单，拒绝了所有不匹配的客户。收入短期下降了，但你终于有了可扩展性。',
+    description: '你做了几年自由职业，发现了一个残酷的事实：只要你还在按小时收费，你就永远不可能自由——因为你的时间是有限的。而AI正在让"按小时"这件事越来越不值钱。你开始把服务打包成标准化产品：固定价格、固定交付周期、固定范围。你用AI编程器和通用大模型把交付流程自动化了80%，拒绝了所有不匹配的客户。收入短期下降了，但你终于有了可扩展性——你的收入不再跟你的工时挂钩。',
     hint: '被动收入+¥25,000/年 · 压力-10 · 信念+10 · 幸福+5 · 花费¥0',
     cost: 0,
     category: '核心决策',
     ageRange: [28, 42],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'digital_nomad' && (s as any).nomadClients >= 2,
+    prerequisites: (s) => s.retirementPath === 'digital_nomad' && (s.nomadClients ?? 0) >= 2,
     effect: (s: GameState) => {
       ensureNomadState(s);
       s.passiveIncome += 25000;
@@ -560,7 +566,7 @@ const digitalNomadCards: DecisionCard[] = [
       s.pathFaith = Math.min(100, s.pathFaith + 10);
       s.happiness = Math.min(100, s.happiness + 5);
       s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 0.8); // 主动收入减少但被动增加
-      const log = `第${s.currentAge}岁，你完成了从"卖时间"到"卖结果"的转型。你不再接按小时计费的活儿，你的产品页面明码标价，客户自助下单。你第一次可以在旅行的时候不看邮箱——因为你的收入不再依赖你实时在线。这是你理解"地点自由"之后理解的第二课：真正的自由是不依赖时间换钱。`;
+      const log = `第${s.currentAge}岁，你完成了从"卖时间"到"卖结果"的转型。你不再接按小时计费的活儿，你的产品页面明码标价，客户自助下单，AI帮你处理了大部分执行。你第一次可以在旅行的时候不看邮箱——因为你的收入不再依赖你实时在线。这是你理解"地点自由"之后理解的第二课：真正的自由是不依赖时间换钱。`;
       return { log, cost: 0 };
     },
     logTemplate: '第{年龄}岁，你把服务产品化，真正的自由开始成形。',
@@ -585,8 +591,8 @@ const superIpCards: DecisionCard[] = [
     prerequisites: (s) => s.retirementPath === 'super_ip',
     effect: (s: GameState) => {
       ensureIpState(s);
-      (s as any).ipFollowers += 2000;
-      (s as any).ipReputation = Math.min(100, (s as any).ipReputation + 10);
+      s.ipFollowers = s.ipFollowers! + 2000;
+      s.ipReputation = Math.min(100, s.ipReputation! + 10);
       s.pathFaith = Math.min(100, s.pathFaith + 8);
       s.happiness = Math.min(100, s.happiness + 5);
       s.stress = Math.min(100, s.stress + 3);
@@ -609,11 +615,11 @@ const superIpCards: DecisionCard[] = [
     repeatable: true,
     cooldown: 2,
     maxUses: 5,
-    prerequisites: (s) => s.retirementPath === 'super_ip' && (s as any).ipFollowers >= 5000,
+    prerequisites: (s) => s.retirementPath === 'super_ip' && (s.ipFollowers ?? 0) >= 5000,
     effect: (s: GameState) => {
       ensureIpState(s);
       s.passiveIncome += 8000;
-      (s as any).ipReputation = Math.max(0, (s as any).ipReputation - 5);
+      s.ipReputation = Math.max(0, s.ipReputation! - 5);
       s.pathFaith = Math.max(0, s.pathFaith - 3);
       s.stress = Math.min(100, s.stress + 8);
       s.happiness = Math.min(100, s.happiness + 3);
@@ -636,11 +642,11 @@ const superIpCards: DecisionCard[] = [
     repeatable: true,
     cooldown: 3,
     maxUses: 3,
-    prerequisites: (s) => s.retirementPath === 'super_ip' && (s as any).ipFollowers >= 10000,
+    prerequisites: (s) => s.retirementPath === 'super_ip' && (s.ipFollowers ?? 0) >= 10000,
     effect: (s: GameState) => {
       ensureIpState(s);
-      (s as any).ipFollowers += 5000;
-      (s as any).ipReputation = Math.min(100, (s as any).ipReputation + 8);
+      s.ipFollowers = s.ipFollowers! + 5000;
+      s.ipReputation = Math.min(100, s.ipReputation! + 8);
       s.pathFaith = Math.min(100, s.pathFaith + 5);
       s.happiness = Math.min(100, s.happiness + 10);
       s.stress = Math.max(0, s.stress - 3);
@@ -663,14 +669,14 @@ const superIpCards: DecisionCard[] = [
     repeatable: true,
     cooldown: 5,
     maxUses: 2,
-    prerequisites: (s) => s.retirementPath === 'super_ip' && (s as any).ipFollowers >= 20000,
+    prerequisites: (s) => s.retirementPath === 'super_ip' && (s.ipFollowers ?? 0) >= 20000,
     effect: (s: GameState) => {
       ensureIpState(s);
       s.happiness = Math.max(0, s.happiness - 20);
       s.stress = Math.min(100, s.stress + 25);
       s.health = Math.max(0, s.health - 8);
       s.pathFaith = Math.max(0, s.pathFaith - 15);
-      (s as any).ipReputation = Math.max(0, (s as any).ipReputation - 10);
+      s.ipReputation = Math.max(0, s.ipReputation! - 10);
       const log = `第${s.currentAge}岁，你被网暴了。你这才知道原来语言真的可以杀人——不是比喻，是那种实实在在的、让你吃不下饭睡不着觉的恶意。你卸载了所有社交APP，三天没出门。第四天你打开电脑，看到还有几百个老粉丝在评论区说"我们支持你"。你哭了，然后开始写回应。不是为了说服那些骂你的人，是为了那些还相信你的人。`;
       return { log, cost: 0 };
     },
@@ -695,15 +701,15 @@ const superIpCards: DecisionCard[] = [
       if (chooseAuthentic) {
         s.partner!.affection = Math.min(100, s.partner!.affection + 15);
         s.partner!.trust = Math.min(100, s.partner!.trust + 12);
-        (s as any).ipFollowers = Math.max(500, (s as any).ipFollowers - 3000);
-        (s as any).ipReputation = Math.min(100, (s as any).ipReputation + 10);
+        s.ipFollowers = Math.max(500, s.ipFollowers! - 3000);
+        s.ipReputation = Math.min(100, s.ipReputation! + 10);
         s.happiness = Math.min(100, s.happiness + 8);
         s.pathFaith = Math.max(0, s.pathFaith - 3);
         return { log: `第${s.currentAge}岁，TA的话像一盆冷水浇醒了你。你开始刻意"关镜头"——和朋友吃饭时不拍照，和TA约会时不构思文案，甚至刻意发一些不完美的、有瑕疵的内容。掉了一些粉，但留下来的人说"你越来越真实了"。你终于明白：最好的人设是没有人设。`, cost: 0 };
       } else {
         s.partner!.affection = Math.max(0, s.partner!.affection - 15);
         s.partner!.trust = Math.max(0, s.partner!.trust - 12);
-        (s as any).ipFollowers += 2000;
+        s.ipFollowers = s.ipFollowers! + 2000;
         s.pathFaith = Math.max(0, s.pathFaith - 8);
         s.stress = Math.min(100, s.stress + 12);
         s.happiness = Math.max(0, s.happiness - 10);
@@ -724,14 +730,14 @@ const superIpCards: DecisionCard[] = [
     category: '核心决策',
     ageRange: [28, 45],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'super_ip' && (s as any).ipFollowers >= 30000 && (s as any).ipReputation >= 50,
+    prerequisites: (s) => s.retirementPath === 'super_ip' && (s.ipFollowers ?? 0) >= 30000 && (s.ipReputation ?? 0) >= 50,
     effect: (s: GameState) => {
       ensureIpState(s);
       s.passiveIncome += 40000;
       s.pathFaith = Math.min(100, s.pathFaith + 12);
       s.happiness = Math.min(100, s.happiness + 10);
       s.stress = Math.min(100, s.stress + 10);
-      (s as any).ipReputation = Math.min(100, (s as any).ipReputation + 5);
+      s.ipReputation = Math.min(100, s.ipReputation! + 5);
       const log = `第${s.currentAge}岁，你推出了付费课程和社群。第一批学员的作业和反馈让你每天都在感动——有人说你的课改变了TA的职业方向，有人说因为你的社群TA找到了同路人。你终于不再靠广告看甲方脸色了，你的收入直接来自那些真正认可你价值的人。这是你做内容以来最有安全感的时刻。`;
       return { log, cost: 5000 };
     },
@@ -740,7 +746,7 @@ const superIpCards: DecisionCard[] = [
 ];
 
 // ============================================================
-// 路径5：银发收割者 (silver_economy) - 6张卡
+// 路径5：银发守夜人 (silver_economy) - 6张卡
 // ============================================================
 const silverEconomyCards: DecisionCard[] = [
   // 卡1：早期 - 上门护理服务
@@ -757,7 +763,7 @@ const silverEconomyCards: DecisionCard[] = [
     prerequisites: (s) => s.retirementPath === 'silver_economy',
     effect: (s: GameState) => {
       ensureSilverState(s);
-      const biz = (s as any).silverBusiness;
+      const biz = s.silverBusiness!;
       biz.clients += 3;
       biz.monthlyRevenue += 3000;
       biz.reputation = Math.min(100, biz.reputation + 8);
@@ -784,7 +790,7 @@ const silverEconomyCards: DecisionCard[] = [
     prerequisites: (s) => s.retirementPath === 'silver_economy',
     effect: (s: GameState) => {
       ensureSilverState(s);
-      const biz = (s as any).silverBusiness;
+      const biz = s.silverBusiness!;
       biz.reputation = Math.min(100, biz.reputation + 15);
       biz.monthlyRevenue += 5000;
       s.pathFaith = Math.min(100, s.pathFaith + 8);
@@ -807,10 +813,10 @@ const silverEconomyCards: DecisionCard[] = [
     category: '社交关系',
     ageRange: [26, 38],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'silver_economy' && (s as any).silverBusiness && (s as any).silverBusiness.reputation >= 40,
+    prerequisites: (s) => s.retirementPath === 'silver_economy' && !!(s.silverBusiness && s.silverBusiness.reputation >= 40),
     effect: (s: GameState) => {
       ensureSilverState(s);
-      const biz = (s as any).silverBusiness;
+      const biz = s.silverBusiness!;
       biz.clients += 10;
       biz.monthlyRevenue += 8000;
       biz.reputation = Math.min(100, biz.reputation + 12);
@@ -836,10 +842,10 @@ const silverEconomyCards: DecisionCard[] = [
     repeatable: true,
     cooldown: 4,
     maxUses: 3,
-    prerequisites: (s) => s.retirementPath === 'silver_economy' && (s as any).silverBusiness && (s as any).silverBusiness.clients >= 5,
+    prerequisites: (s) => s.retirementPath === 'silver_economy' && !!(s.silverBusiness && s.silverBusiness.clients >= 5),
     effect: (s: GameState) => {
       ensureSilverState(s);
-      const biz = (s as any).silverBusiness;
+      const biz = s.silverBusiness!;
       biz.clients = Math.max(0, biz.clients - 1);
       biz.reputation = Math.min(100, biz.reputation + 5); // 家属感激
       s.happiness = Math.max(0, s.happiness - 10);
@@ -863,7 +869,7 @@ const silverEconomyCards: DecisionCard[] = [
     category: '💝 感情',
     ageRange: [28, 40],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'silver_economy' && (s as any).silverBusiness && (s as any).silverBusiness.clients >= 8,
+    prerequisites: (s) => s.retirementPath === 'silver_economy' && !!(s.silverBusiness && s.silverBusiness.clients >= 8),
     effect: (s: GameState) => {
       s.parents.relationShip = Math.min(100, s.parents.relationShip + 20);
       s.pathFaith = Math.min(100, s.pathFaith + 15);
@@ -887,10 +893,10 @@ const silverEconomyCards: DecisionCard[] = [
     category: '核心决策',
     ageRange: [30, 45],
     repeatable: false,
-    prerequisites: (s) => s.retirementPath === 'silver_economy' && (s as any).silverBusiness && (s as any).silverBusiness.monthlyRevenue >= 10000 && s.currentSavings >= 80000,
+    prerequisites: (s) => s.retirementPath === 'silver_economy' && !!(s.silverBusiness && s.silverBusiness.monthlyRevenue >= 10000 && s.currentSavings >= 80000),
     effect: (s: GameState) => {
       ensureSilverState(s);
-      const biz = (s as any).silverBusiness;
+      const biz = s.silverBusiness!;
       s.stress = Math.min(100, s.stress + 20);
       const success = Math.random() < 0.6;
       if (success) {
@@ -934,7 +940,7 @@ const bioGamblerCards: DecisionCard[] = [
     prerequisites: (s) => s.retirementPath === 'bio_gambler',
     effect: (s: GameState) => {
       ensureBioState(s);
-      (s as any).biologicalAge -= 2;
+      s.biologicalAge = s.biologicalAge! - 2;
       s.health = Math.min(100, s.health + 8);
       s.pathFaith = Math.min(100, s.pathFaith + 8);
       s.happiness = Math.max(0, s.happiness - 2); // 严格自律也有代价
@@ -965,12 +971,12 @@ const bioGamblerCards: DecisionCard[] = [
       s.stress = Math.min(100, s.stress + 12);
       const success = Math.random() < 0.6;
       if (success) {
-        (s as any).bioPortfolio += Math.round(30000 * 1.5);
+        s.bioPortfolio = s.bioPortfolio! + Math.round(30000 * 1.5);
         s.happiness = Math.min(100, s.happiness + 5);
         return { log: `第${s.currentAge}岁，你加仓了抗衰赛道。这次你赌对了——临床数据持续向好，你的持仓水涨船高。你在论坛上和"同路人"庆祝，有人说"我们这代人可能真的能活到150岁"。你开了一瓶红酒（白藜芦醇，你笑了），觉得未来从未如此清晰。`, cost: 30000 };
       } else {
         // 失败时：先把加仓金额加入持仓，再整体跌40%（正确模拟加仓后暴跌）
-        (s as any).bioPortfolio = Math.round(((s as any).bioPortfolio + 30000) * 0.6);
+        s.bioPortfolio = Math.round((s.bioPortfolio! + 30000) * 0.6);
         s.happiness = Math.max(0, s.happiness - 8);
         s.pathFaith = Math.max(0, s.pathFaith - 8);
         return { log: `第${s.currentAge}岁，你加仓了，但FDA给了个临床暂停，相关板块暴跌。你的账户一天内缩水40%，你盯着屏幕上的红色数字，心跳加速。但你没有卖——你告诉自己，新药研发从来不是一帆风顺的，十个项目失败九个，但只要一个成功就能覆盖所有损失。你深吸一口气，关掉了行情软件。`, cost: 30000 };
@@ -993,12 +999,12 @@ const bioGamblerCards: DecisionCard[] = [
     prerequisites: (s) => s.retirementPath === 'bio_gambler',
     effect: (s: GameState) => {
       ensureBioState(s);
-      (s as any).biologicalAge -= 1;
+      s.biologicalAge = s.biologicalAge! - 1;
       s.pathFaith = Math.min(100, s.pathFaith + 12);
       s.happiness = Math.min(100, s.happiness + 8);
       s.stress = Math.max(0, s.stress - 3);
       s.passiveIncome += 5000;
-      const log = `第${s.currentAge}岁，你加入了长寿研究社区，不再是一个孤独的"药罐子"。你和MIT的博士后讨论senolytics，和硅谷的投资人交换基因检测数据，和日本的医生交流最新的临床指南。你意识到：你不是在做一件奇怪的事，你是在参与一场人类最古老的战役——对抗死亡。`;
+      const log = `第${s.currentAge}岁，你加入了长寿研究社区，不再是一个孤独的"药罐子"。你和MIT的博士后讨论senolytics（清理剂），和硅谷的投资人交换基因检测数据，和日本的医生交流最新的临床指南。你意识到：你不是在做一件奇怪的事，你是在参与一场人类最古老的战役——对抗死亡。`;
       return { log, cost: 2000 };
     },
     logTemplate: '第{年龄}岁，你找到了同路人，在长寿路上不再独行。',
@@ -1024,7 +1030,7 @@ const bioGamblerCards: DecisionCard[] = [
       s.pathFaith = Math.max(0, s.pathFaith - 12);
       s.stress = Math.min(100, s.stress + 10);
       s.happiness = Math.max(0, s.happiness - 8);
-      (s as any).biologicalAge += 1; // 损伤让生物年龄回升
+      s.biologicalAge = s.biologicalAge! + 1; // 损伤让生物年龄回升
       const log = `第${s.currentAge}岁，你的体检报告给了你一巴掌。转氨酶飘红，医生警告你立即停用不明来源的补剂。你花了一周研究哪些补剂有真正的临床证据、哪些只是营销噱头，扔掉了一半瓶子。这次教训让你明白：抗衰不是吃越多药越好，Less is more。你开始学会敬畏身体的复杂性。`;
       return { log, cost: 8000 };
     },
@@ -1057,7 +1063,7 @@ const bioGamblerCards: DecisionCard[] = [
         s.partner!.affection = Math.max(0, s.partner!.affection - 12);
         s.partner!.trust = Math.max(0, s.partner!.trust - 8);
         s.pathFaith = Math.min(100, s.pathFaith + 8);
-        (s as any).biologicalAge -= 1;
+        s.biologicalAge = s.biologicalAge! - 1;
         s.stress = Math.min(100, s.stress + 10);
         s.happiness = Math.max(0, s.happiness - 8);
         return { log: `第${s.currentAge}岁，你礼貌地拒绝了蛋糕，也拒绝了TA的提议。你说"等技术突破了我们可以一起补回来"。TA没说话，但那个晚上你们之间沉默了很久。你知道你选择了一条孤独的路——不是所有人都愿意为了不确定的未来牺牲确定的现在。但你相信，时间会证明你是对的。`, cost: 0 };
@@ -1083,7 +1089,7 @@ const bioGamblerCards: DecisionCard[] = [
       s.stress = Math.min(100, s.stress + 15);
       const success = Math.random() < 0.5;
       if (success) {
-        (s as any).biologicalAge -= 5;
+        s.biologicalAge = s.biologicalAge! - 5;
         s.health = Math.min(100, s.health + 10);
         s.pathFaith = Math.min(100, s.pathFaith + 15);
         s.happiness = Math.min(100, s.happiness + 10);
@@ -1092,7 +1098,7 @@ const bioGamblerCards: DecisionCard[] = [
         s.health = Math.max(0, s.health - 15);
         s.pathFaith = Math.max(0, s.pathFaith - 10);
         s.happiness = Math.max(0, s.happiness - 12);
-        (s as any).biologicalAge += 2;
+        s.biologicalAge = s.biologicalAge! + 2;
         return { log: `第${s.currentAge}岁，你参与了临床试验，但你被分到了安慰剂组——或者更糟，药物在你身上产生了副作用。你经历了两周的疲劳和轻度肝损伤，试验结束后医生让你回来复查。你有些失望，但不后悔。因为如果没有人愿意当"小白鼠"，医学就永远不会进步。只是这个小白鼠，这次轮到你当了。`, cost: -10000 };
       }
     },

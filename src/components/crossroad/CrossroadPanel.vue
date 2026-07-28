@@ -4,8 +4,10 @@ import { useGameStore } from '../../store/game.store.js'
 import type { CrossroadEvent } from '../../types/global.d.js'
 import { playConfirm } from '../../utils/audio.js'
 import { showNumericalHints } from '../../utils/ui-prefs.js'
+import { fmt, fmtExact } from '../../utils/format.js'
 
 const store = useGameStore()
+const s = store.state
 
 const event = computed<CrossroadEvent | null>(() => store.currentCrossroad)
 
@@ -15,6 +17,34 @@ const optionLetters: Record<number, string> = {
   2: 'C',
   3: 'D',
 }
+
+// 修复#8：财务预估——展示当前财务快照，帮助玩家做决策
+const currentSavings = computed(() => s.currentSavings)
+const monthlySalary = computed(() => s.currentMonthlySalary)
+const monthlyPassiveIncome = computed(() => Math.round((s.passiveIncome || 0) / 12))
+const annualMortgage = computed(() => s.currentMortgageCost || 0)
+const hasMortgage = computed(() => annualMortgage.value > 0)
+const hasCar = computed(() => s.hasCar)
+
+// 年支出预估（基础生活费+房贷+保险+养车+子女）
+const annualExpenseEstimate = computed(() => {
+  let total = s.annualBaseCost + s.currentMortgageCost + s.insurancePremium
+  if (s.hasCar) total += (s as any).annualCarCost || 0
+  const children = (s as any).children || []
+  for (const child of children) {
+    if (child.monthlyExpense) total += child.monthlyExpense * 12
+  }
+  return total
+})
+
+// 年收入预估
+const annualIncomeEstimate = computed(() => {
+  if (s.isUnemployed) return s.passiveIncome
+  return s.currentMonthlySalary * 12 + s.passiveIncome
+})
+
+// 年结余预估
+const annualNetEstimate = computed(() => annualIncomeEstimate.value - annualExpenseEstimate.value)
 
 // 判断选项是否可用
 function isOptionAvailable(option: { prerequisites?: (state: any) => boolean }): boolean {
@@ -65,6 +95,39 @@ function handleSelect(optionId: string, option: any): void {
         <div class="narrative-bar" aria-hidden="true" />
         <div class="narrative-text">
           <p v-for="(line, idx) in event.narrative.split('\n')" :key="idx">{{ line }}</p>
+        </div>
+      </div>
+
+      <!-- 修复#8：财务快照——帮助玩家评估选项可行性 -->
+      <div class="crossroad-finance-snapshot">
+        <div class="finance-snapshot-title">▣ 当前财务状况</div>
+        <div class="finance-snapshot-grid">
+          <div class="finance-snap-item">
+            <span class="snap-label">存款</span>
+            <span class="snap-value" :class="currentSavings >= 0 ? 'val-green' : 'val-red'">{{ fmt(currentSavings) }}</span>
+          </div>
+          <div class="finance-snap-item">
+            <span class="snap-label">月薪</span>
+            <span class="snap-value val-blue">{{ monthlySalary > 0 ? fmtExact(monthlySalary) : '失业' }}</span>
+          </div>
+          <div class="finance-snap-item" v-if="monthlyPassiveIncome > 0">
+            <span class="snap-label">被动收入</span>
+            <span class="snap-value val-green">{{ fmtExact(monthlyPassiveIncome) }}<span class="snap-unit">/月</span></span>
+          </div>
+          <div class="finance-snap-item" v-if="hasMortgage">
+            <span class="snap-label">房贷</span>
+            <span class="snap-value val-orange">{{ fmt(annualMortgage) }}<span class="snap-unit">/年</span></span>
+          </div>
+          <div class="finance-snap-item" v-if="hasCar">
+            <span class="snap-label">养车</span>
+            <span class="snap-value val-orange">{{ fmt((s as any).annualCarCost || 0) }}<span class="snap-unit">/年</span></span>
+          </div>
+          <div class="finance-snap-item">
+            <span class="snap-label">年结余预估</span>
+            <span class="snap-value" :class="annualNetEstimate >= 0 ? 'val-green' : 'val-red'">
+              {{ annualNetEstimate >= 0 ? '+' : '' }}{{ fmt(annualNetEstimate) }}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -296,6 +359,63 @@ function handleSelect(optionId: string, option: any): void {
 .narrative-text p:last-child {
   margin-bottom: 0;
 }
+
+/* ============================================================
+   财务快照区（修复#8）
+   ============================================================ */
+.crossroad-finance-snapshot {
+  position: relative;
+  z-index: 2;
+  padding: 10px 14px;
+  background: rgba(0, 30, 20, 0.4);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  border-radius: 4px;
+}
+
+.finance-snapshot-title {
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #00ff88;
+  text-shadow: 0 0 4px rgba(0, 255, 136, 0.4);
+  margin-bottom: 8px;
+}
+
+.finance-snapshot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.finance-snap-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 80px;
+}
+
+.snap-label {
+  font-size: 10px;
+  color: #7a9bb5;
+  letter-spacing: 1px;
+}
+
+.snap-value {
+  font-size: 13px;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+}
+
+.snap-unit {
+  font-size: 9px;
+  font-weight: normal;
+  color: #7a9bb5;
+  margin-left: 2px;
+}
+
+.val-green { color: #00ff88; text-shadow: 0 0 4px rgba(0, 255, 136, 0.3); }
+.val-red { color: #ff2d95; text-shadow: 0 0 4px rgba(255, 45, 149, 0.3); }
+.val-blue { color: #00d4ff; text-shadow: 0 0 4px rgba(0, 212, 255, 0.3); }
+.val-orange { color: #ff8800; text-shadow: 0 0 4px rgba(255, 136, 0, 0.3); }
 
 /* ============================================================
    选项区

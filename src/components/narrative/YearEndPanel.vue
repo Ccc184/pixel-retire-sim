@@ -3,16 +3,18 @@ import { ref, computed, watch } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import type { GameState, YearResult } from '../../types/global.d.js'
 import { playTurn, playDing, playBuzz, playBigGain, playBigLoss } from '../../utils/audio.js'
+import { fmt, fmtExact, fmtSigned, fmtSalaryDelta, fmtWan } from '../../utils/format.js'
 
 const store = useGameStore()
 
 const result = computed<YearResult | null>(() => store.lastYearResult)
 const state = computed<GameState>(() => store.state)
 
+// 修复#3：成就展示移到年度结算面板——当年触发的成就在这里展示，不再弹到下一年叙事事件上
+const achievementData = computed(() => store.currentAchievement)
+
 // 数字动画状态
 const animatedSavingsChange = ref(0)
-const animatedTotalIncome = ref(0)
-const animatedTotalExpense = ref(0)
 const animatedCurrentSavings = ref(0)
 const numbersReady = ref(false)
 
@@ -37,22 +39,15 @@ watch(() => store.showYearEnd, (newVal) => {
     playTurn()
     numbersReady.value = true
 
-    // 立刻开始数字动画（不做延迟，避免显示¥0）
-    const inc = totalIncome.value
-    const exp = totalExpense.value
     const change = actualChange.value
     const isBigGain = change > 50000
     const isBigLoss = change < -30000
 
-    // 存款动画从旧值开始
+    // 存款变化和存款余额动画
     animatedSavingsChange.value = 0
-    animatedTotalIncome.value = 0
-    animatedTotalExpense.value = 0
     animatedCurrentSavings.value = state.value.currentSavings - change
 
     animateNumber(animatedSavingsChange, change, 700)
-    animateNumber(animatedTotalIncome, inc, 600)
-    animateNumber(animatedTotalExpense, exp, 600)
     animateNumber(animatedCurrentSavings, state.value.currentSavings, 900)
 
     // 播放对应音效
@@ -114,7 +109,7 @@ const mainEvent = computed<string>(() => {
 // ================================================================
 //  故事流事件（所有剧情事件平铺展示）
 // ================================================================
-type StoryType = 'blackswan' | 'romance' | 'blindbox' | 'card' | 'echo' | 'daily' | 'relationship'
+type StoryType = 'blackswan' | 'romance' | 'blindbox' | 'card' | 'echo' | 'daily' | 'relationship' | 'work'
 
 interface StoryEvent {
   type: StoryType
@@ -191,6 +186,12 @@ const allStoryEvents = computed<StoryEvent[]>(() => {
     tryAdd(log, 'daily')
   }
 
+  // 4.5 年度工作小结（一句话概括今年的工作/收入变化）
+  const workSummary = (r as any).workSummary as string | undefined
+  if (workSummary && workSummary.trim()) {
+    events.push({ text: workSummary, type: 'work' })
+  }
+
   // 5. 连锁反应（延迟的卡片后续事件）
   const echoLogs: string[] = (r as any).echoLogs || []
   for (const log of echoLogs) {
@@ -214,13 +215,14 @@ const allStoryEvents = computed<StoryEvent[]>(() => {
 // 故事流图标
 function storyIcon(type: string): string {
   const map: Record<string, string> = {
-    blackswan: '⚠️',
-    romance: '💕',
-    blindbox: '📦',
-    card: '🃏',
-    echo: '📎',
-    daily: '📅',
-    relationship: '👥',
+    blackswan: '!',
+    romance: '◇',
+    blindbox: '?',
+    card: '◆',
+    echo: '▸',
+    daily: '·',
+    relationship: '◈',
+    work: '▲',
   }
   return map[type] || '·'
 }
@@ -235,6 +237,7 @@ function storyColor(type: string): string {
     echo: '#5b9eff',
     daily: '#6b8299',
     relationship: '#ff8800',
+    work: '#4fc3f7',
   }
   return map[type] || '#6b8299'
 }
@@ -286,25 +289,25 @@ const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[]; a
   }
   // === 理财投资明细（拆分为6个渠道）- 现金类理财（存款内部分布的渠道） ===
   if (r.bankGain > 0) {
-    income.push({ label: '🏦 余额宝', amount: r.bankGain, isIncome: true })
+    income.push({ label: '◈ 余额宝', amount: r.bankGain, isIncome: true })
   }
   if ((r as any).fixedDepositGain > 0) {
-    income.push({ label: '📋 定期存款', amount: (r as any).fixedDepositGain, isIncome: true })
+    income.push({ label: '▣ 定期存款', amount: (r as any).fixedDepositGain, isIncome: true })
   }
   if (r.fundGain > 0) {
-    income.push({ label: '📊 基金收益', amount: r.fundGain, isIncome: true })
+    income.push({ label: '◆ 基金收益', amount: r.fundGain, isIncome: true })
   } else if (r.fundGain < 0) {
-    expense.push({ label: '📊 基金亏损', amount: -r.fundGain, isIncome: false })
+    expense.push({ label: '◆ 基金亏损', amount: -r.fundGain, isIncome: false })
   }
   if ((r as any).stockGain > 0) {
-    income.push({ label: '📈 股票收益', amount: (r as any).stockGain, isIncome: true })
+    income.push({ label: '▲ 股票收益', amount: (r as any).stockGain, isIncome: true })
   } else if ((r as any).stockGain < 0) {
-    expense.push({ label: '📈 股票亏损', amount: -(r as any).stockGain, isIncome: false })
+    expense.push({ label: '▲ 股票亏损', amount: -(r as any).stockGain, isIncome: false })
   }
   if ((r as any).goldGain > 0) {
-    income.push({ label: '🥇 黄金收益', amount: (r as any).goldGain, isIncome: true })
+    income.push({ label: '★ 黄金收益', amount: (r as any).goldGain, isIncome: true })
   } else if ((r as any).goldGain < 0) {
-    expense.push({ label: '🥇 黄金亏损', amount: -(r as any).goldGain, isIncome: false })
+    expense.push({ label: '★ 黄金亏损', amount: -(r as any).goldGain, isIncome: false })
   }
   if (r.specGain > 0) {
     income.push({ label: '₿ 比特币收益', amount: r.specGain, isIncome: true })
@@ -313,7 +316,7 @@ const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[]; a
   }
   // 商铺租金（现金收入）
   if ((r as any).shopRentIncome > 0) {
-    income.push({ label: '🏪 商铺租金', amount: (r as any).shopRentIncome, isIncome: true })
+    income.push({ label: '◆ 商铺租金', amount: (r as any).shopRentIncome, isIncome: true })
   }
   const pensionTotal = (r.pensionIncome || 0) + (r.retireIncome || 0)
   if (pensionTotal > 0) {
@@ -322,28 +325,28 @@ const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[]; a
 
   // === 资产市值变动（非现金，不影响存款，仅改变总资产） ===
   if ((r as any).chainHoldingsGain > 0) {
-    assetChanges.push({ label: '⛓️ 链上持仓增值', amount: (r as any).chainHoldingsGain, isIncome: true })
+    assetChanges.push({ label: '◇ 链上持仓增值', amount: (r as any).chainHoldingsGain, isIncome: true })
   } else if ((r as any).chainHoldingsGain < 0) {
-    assetChanges.push({ label: '⛓️ 链上持仓缩水', amount: -(r as any).chainHoldingsGain, isIncome: false })
+    assetChanges.push({ label: '◇ 链上持仓缩水', amount: -(r as any).chainHoldingsGain, isIncome: false })
   }
   if ((r as any).bioPortfolioGain > 0) {
-    assetChanges.push({ label: '🧬 生科投资增值', amount: (r as any).bioPortfolioGain, isIncome: true })
+    assetChanges.push({ label: '◊ 生科投资增值', amount: (r as any).bioPortfolioGain, isIncome: true })
   } else if ((r as any).bioPortfolioGain < 0) {
-    assetChanges.push({ label: '🧬 生科投资缩水', amount: -(r as any).bioPortfolioGain, isIncome: false })
+    assetChanges.push({ label: '◊ 生科投资缩水', amount: -(r as any).bioPortfolioGain, isIncome: false })
   }
   if ((r as any).shopValueChange > 0) {
-    assetChanges.push({ label: '🏪 商铺增值', amount: (r as any).shopValueChange, isIncome: true })
+    assetChanges.push({ label: '◆ 商铺增值', amount: (r as any).shopValueChange, isIncome: true })
   } else if ((r as any).shopValueChange < 0) {
-    assetChanges.push({ label: '🏪 商铺贬值', amount: -(r as any).shopValueChange, isIncome: false })
+    assetChanges.push({ label: '◆ 商铺贬值', amount: -(r as any).shopValueChange, isIncome: false })
   }
   if ((r as any).propertyChange > 0) {
-    assetChanges.push({ label: '🏠 房产增值', amount: (r as any).propertyChange, isIncome: true })
+    assetChanges.push({ label: '▣ 房产增值', amount: (r as any).propertyChange, isIncome: true })
   } else if ((r as any).propertyChange < 0) {
-    assetChanges.push({ label: '🏠 房产贬值', amount: -(r as any).propertyChange, isIncome: false })
+    assetChanges.push({ label: '▣ 房产贬值', amount: -(r as any).propertyChange, isIncome: false })
   }
   // 车辆折旧
   if ((r as any).carDepreciation && (r as any).carDepreciation < 0) {
-    assetChanges.push({ label: '🚗 车辆折旧', amount: -(r as any).carDepreciation, isIncome: false })
+    assetChanges.push({ label: '◎ 车辆折旧', amount: -(r as any).carDepreciation, isIncome: false })
   }
 
   // === 固定支出项（现金流出） ===
@@ -357,10 +360,10 @@ const financeItems = computed<{ income: FinanceItem[]; expense: FinanceItem[]; a
     expense.push({ label: '保险保费', amount: r.insuranceCost, isIncome: false })
   }
   if ((r as any).carCost > 0) {
-    expense.push({ label: '🚗 养车费用', amount: (r as any).carCost, isIncome: false })
+    expense.push({ label: '◎ 养车费用', amount: (r as any).carCost, isIncome: false })
   }
   if ((r as any).propertyMaintenanceCost > 0) {
-    expense.push({ label: '🏠 房屋维护', amount: (r as any).propertyMaintenanceCost, isIncome: false })
+    expense.push({ label: '▣ 房屋维护', amount: (r as any).propertyMaintenanceCost, isIncome: false })
   }
   if (r.cardCost > 0) {
     expense.push({ label: '卡片花费', amount: r.cardCost, isIncome: false })
@@ -418,6 +421,30 @@ const actualChange = computed(() => {
   return result.value.actualSavingsChange ?? (totalIncome.value - totalExpense.value)
 })
 
+// 月薪变化
+const salaryChange = computed(() => {
+  if (!result.value) return 0
+  return (result.value as any).salaryChange ?? 0
+})
+
+// 薪资变动明细
+const salaryDetailRows = computed(() => {
+  if (!result.value) return []
+  const breakdown = (result.value as any).salaryBreakdown as any[] || []
+  return breakdown
+    .filter(e => Math.abs(e.amount) >= 1)
+    .map(e => ({
+      source: e.source,
+      note: e.note || '',
+      amount: Math.round(e.amount),
+    }))
+})
+
+// 月被动收入（年被动收入/12，更符合玩家日常认知）
+const monthlyPassiveIncome = computed(() => {
+  return Math.round((state.value.passiveIncome || 0) / 12)
+})
+
 // ================================================================
 //  身心变化明细（按来源）
 // ================================================================
@@ -456,7 +483,7 @@ const milestoneLines = computed<string[]>(() => {
 
   // 财务回顾
   if (state.value.currentSavings > 500000) {
-    lines.push(`这些年你攒下了${Math.round(state.value.currentSavings / 10000)}万。虽然跟朋友圈那些"年入百万"的大佬没法比，但至少你不用看银行余额脸色过日子了。`)
+    lines.push(`这些年你攒下了${Math.round(state.value.currentSavings / 10000)}万。虽然跟动态圈那些"年入百万"的大佬没法比，但至少你不用看银行余额脸色过日子了。`)
   } else if (state.value.currentSavings > 100000) {
     lines.push(`存款${Math.round(state.value.currentSavings / 10000)}万左右，说多不多说少不少。你在余额和花呗之间走钢丝——还走得挺稳。`)
   } else if (state.value.currentSavings < 0) {
@@ -476,7 +503,7 @@ const milestoneLines = computed<string[]>(() => {
     } else if (p.datingStage === 'dating') {
       lines.push(`你正在和${p.name}约会。${p.affection > 50 ? '一切都刚刚好，像春天的风。' : '你还在确定自己的心意，但每次看到ta的消息还是会笑。'}`)
     } else if (p.datingStage === 'crush') {
-      lines.push(`你对${p.name}有好感。你反复翻看ta的朋友圈，研究每一条动态的含义，但从来不敢主动发消息。`)
+      lines.push(`你对${p.name}有好感。你反复翻看ta的动态圈，研究每一条动态的含义，但从来不敢主动发消息。`)
     }
   } else if (p?.datingStage === 'divorced' || p?.hasDivorced) {
     lines.push(`${age}岁了，经历过一段婚姻。你不再急着找下一个人，一个人吃饭旅行到处走走停停，也觉得挺好。`)
@@ -518,30 +545,16 @@ const milestoneLines = computed<string[]>(() => {
 })
 
 // ================================================================
-//  格式化工具
+//  格式化工具（使用公共 utils/format.ts）
 // ================================================================
-function formatMoney(n: number): string {
-  const abs = Math.abs(n)
-  if (abs >= 100000000) {
-    return (n / 100000000).toFixed(2).replace(/\.?0+$/, '') + '亿'
-  }
-  if (abs >= 10000) {
-    return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万'
-  }
-  return Math.round(n).toLocaleString('en-US')
-}
-
-function formatMoneyFull(n: number): string {
-  const v = Math.round(n)
-  if (v < 0) return '-¥' + Math.abs(v).toLocaleString('en-US')
-  return '¥' + v.toLocaleString('en-US')
-}
-
-function formatSigned(n: number): string {
-  if (n > 0) return '+¥' + formatMoney(n)
-  if (n < 0) return '-¥' + formatMoney(Math.abs(n))
-  return '¥0'
-}
+// 模板中使用的格式化函数映射：
+// - fmtMoney: 金额（自动万/亿，带¥）—— 用于存款、收支等大数字
+// - fmtSalary: 薪资（精确到元，带¥）—— 用于月薪、薪资变动等千级数字
+// - fmtSigned: 变动额（带+/-¥，自动万/亿）—— 用于存款变化
+// - fmtSalaryDelta: 薪资变动（带↑↓箭头，精确到元）
+const fmtMoney = fmt
+const fmtSalary = fmtExact
+const fmtChange = fmtSigned
 
 // 进度条颜色
 function barColor(val: number, type: 'health' | 'stress' | 'happiness'): string {
@@ -588,6 +601,10 @@ function handleContinue(): void {
   } else if (actualChange.value < 0) {
     playBuzz()
   }
+  // 修复#3：关闭年度结算时一并清除成就展示
+  if (store.currentAchievement) {
+    store.dismissAchievement()
+  }
   store.dismissYearEnd()
 }
 </script>
@@ -617,205 +634,280 @@ function handleContinue(): void {
         <span class="divider-dot" />
       </div>
 
-      <!-- 里程碑叙事 -->
-      <div v-if="milestoneLines.length > 0" class="milestone-section">
-        <p v-for="(line, idx) in milestoneLines" :key="'ms-' + idx" class="milestone-line">
-          {{ line }}
-        </p>
-        <div class="divider">
-          <span class="divider-line" />
+      <!-- ============================================================
+           分区一：年度金句（大字号、居中、霓虹色）
+           ============================================================ -->
+      <div class="panel-section section-quote">
+        <div class="section-header">
+          <span class="section-tag">◆ YEARLY QUOTE ◆</span>
+        </div>
+        <div class="main-event-section">
+          <p class="main-event-text">{{ mainEvent }}</p>
         </div>
       </div>
 
-      <!-- 主事件区：大号居中引号样式 -->
-      <div class="main-event-section">
-        <p class="main-event-text">{{ mainEvent }}</p>
-      </div>
-
-      <!-- 这一年的故事 -->
-      <div v-if="allStoryEvents.length > 0" class="story-stream">
-        <div
-          v-for="(evt, idx) in allStoryEvents"
-          :key="'story-' + idx"
-          class="story-line"
-          :class="'story-type-' + evt.type"
-          :style="{ '--story-color': storyColor(evt.type) }"
-        >
-          <span class="story-icon">{{ storyIcon(evt.type) }}</span>
-          <span class="story-text">{{ evt.text }}</span>
+      <!-- ============================================================
+           分区二：事件回顾（日志风格）
+           ============================================================ -->
+      <div class="panel-section section-events">
+        <div class="section-header">
+          <span class="section-tag">▣ EVENT LOG</span>
         </div>
-      </div>
 
-      <!-- 分割线 -->
-      <div class="divider">
-        <span class="divider-line" />
-      </div>
+        <!-- 里程碑叙事（5年回顾） -->
+        <div v-if="milestoneLines.length > 0" class="milestone-section">
+          <p v-for="(line, idx) in milestoneLines" :key="'ms-' + idx" class="milestone-line">
+            {{ line }}
+          </p>
+        </div>
 
-      <!-- 财务数字区域（紧凑一行） -->
-      <div class="finance-section compact">
-        <div class="finance-compact-grid">
-          <div class="finance-item">
-            <span class="finance-label">存款变化</span>
-            <span
-              class="finance-value"
-              :class="[
-                actualChange >= 0 ? 'val-green' : 'val-red',
-                Math.abs(actualChange) > 50000 ? 'val-big' : ''
-              ]"
-            >
-              {{ formatSigned(actualChange) }}
-            </span>
-          </div>
-          <div class="finance-item">
-            <span class="finance-label">收入</span>
-            <span class="finance-value val-blue">
-              {{ formatMoneyFull(totalIncome) }}
-            </span>
-          </div>
-          <div class="finance-item">
-            <span class="finance-label">支出</span>
-            <span class="finance-value val-orange">
-              {{ formatMoneyFull(totalExpense) }}
-            </span>
-          </div>
-          <div class="finance-item">
-            <span class="finance-label">存款</span>
-            <span
-              class="finance-value"
-              :class="state.currentSavings >= 0 ? 'val-green' : 'val-red'"
-            >
-              {{ formatMoneyFull(state.currentSavings) }}
-            </span>
+        <!-- 故事流：年度所有事件 -->
+        <div v-if="allStoryEvents.length > 0" class="story-stream">
+          <div
+            v-for="(evt, idx) in allStoryEvents"
+            :key="'story-' + idx"
+            class="story-line"
+            :class="'story-type-' + evt.type"
+            :style="{ '--story-color': storyColor(evt.type) }"
+          >
+            <span class="story-icon">{{ storyIcon(evt.type) }}</span>
+            <span class="story-text">{{ evt.text }}</span>
           </div>
         </div>
 
-        <!-- 收支明细展开按钮 -->
-        <button
-          class="detail-toggle"
-          :class="{ expanded: showFinanceDetail }"
-          @click="showFinanceDetail = !showFinanceDetail"
-        >
-          <span class="fold-arrow">{{ showFinanceDetail ? '▲' : '▼' }}</span>
-          <span>{{ showFinanceDetail ? '收起明细' : '查看收支明细' }}</span>
-        </button>
+        <!-- 无事件时的占位 -->
+        <div v-else class="no-events-placeholder">
+          <span class="no-events-text">—— 这一年风平浪静 ——</span>
+        </div>
+      </div>
 
-        <!-- 收支明细展开 -->
-        <div v-if="showFinanceDetail" class="finance-detail">
-          <div class="finance-detail-col">
-            <div class="detail-col-title income-title">现金收入</div>
-            <div v-for="(item, idx) in financeItems.income" :key="'in-' + idx" class="detail-row">
-              <span class="detail-label">{{ item.label }}</span>
-              <span class="detail-amount val-green">+{{ formatMoneyFull(item.amount) }}</span>
-            </div>
-            <div class="detail-row total-row">
-              <span class="detail-label">现金收入合计</span>
-              <span class="detail-amount val-blue">{{ formatMoneyFull(totalIncome) }}</span>
-            </div>
+      <!-- ============================================================
+           分区二点五：成就解锁（当年触发的成就在此展示）
+           ============================================================ -->
+      <div v-if="achievementData" class="panel-section section-achievement">
+        <div class="section-header">
+          <span class="section-tag achievement-tag">★ ACHIEVEMENT UNLOCKED ★</span>
+        </div>
+        <div class="achievement-display">
+          <div class="achievement-badge-large">★</div>
+          <h3 class="achievement-title-large">{{ achievementData.title }}</h3>
+          <div class="achievement-narrative-large">
+            <p v-for="(line, i) in achievementData.narrative.split('\n')" :key="'ach-' + i">{{ line }}</p>
           </div>
-          <div class="finance-detail-col">
-            <div class="detail-col-title expense-title">现金支出</div>
-            <div v-for="(item, idx) in financeItems.expense" :key="'ex-' + idx" class="detail-row">
-              <span class="detail-label">{{ item.label }}</span>
-              <span class="detail-amount val-red">-{{ formatMoneyFull(item.amount) }}</span>
-            </div>
-            <div class="detail-row total-row">
-              <span class="detail-label">现金支出合计</span>
-              <span class="detail-amount val-orange">{{ formatMoneyFull(totalExpense) }}</span>
-            </div>
-          </div>
-          <!-- 资产市值变动（非现金） -->
-          <div v-if="financeItems.assetChanges.length > 0" class="finance-detail-col full-width">
-            <div class="detail-col-title asset-title">资产市值变动（非现金，不影响存款）</div>
-            <div v-for="(item, idx) in financeItems.assetChanges" :key="'as-' + idx" class="detail-row">
-              <span class="detail-label">{{ item.label }}</span>
-              <span class="detail-amount" :class="item.isIncome ? 'val-green' : 'val-red'">
-                {{ item.isIncome ? '+' : '-' }}{{ formatMoneyFull(item.amount) }}
+        </div>
+      </div>
+
+      <!-- ============================================================
+           分区三：数字总结（收支/资产/健康/幸福/压力）
+           ============================================================ -->
+      <div class="panel-section section-numbers">
+        <div class="section-header">
+          <span class="section-tag">▣ DATA SUMMARY</span>
+        </div>
+
+        <!-- 财务数字区域（紧凑一行） -->
+        <div class="finance-section compact">
+          <div class="finance-compact-grid">
+            <!-- 月薪：精确到元，带涨跌箭头 -->
+            <div class="finance-item">
+              <span class="finance-label">月薪</span>
+              <span
+                class="finance-value"
+                :class="state.currentMonthlySalary > 0 ? 'val-blue' : 'val-red'"
+              >
+                {{ state.currentMonthlySalary > 0 ? fmtSalary(state.currentMonthlySalary) : '失业' }}
+              </span>
+              <span
+                v-if="salaryChange !== 0"
+                class="finance-sub"
+                :class="salaryChange > 0 ? 'val-green' : 'val-red'"
+              >
+                {{ fmtSalaryDelta(salaryChange) }}
               </span>
             </div>
-            <div class="detail-row total-row">
-              <span class="detail-label">资产市值净变动</span>
-              <span class="detail-amount" :class="totalAssetChange >= 0 ? 'val-green' : 'val-red'">
-                {{ totalAssetChange >= 0 ? '+' : '' }}{{ formatMoneyFull(totalAssetChange) }}
+            <!-- 被动收入/月：退休核心指标，除以12更直观 -->
+            <div class="finance-item">
+              <span class="finance-label">被动收入</span>
+              <span
+                class="finance-value"
+                :class="monthlyPassiveIncome > 0 ? 'val-green' : ''"
+              >
+                {{ monthlyPassiveIncome > 0 ? fmtSalary(monthlyPassiveIncome) : '¥0' }}
+              </span>
+              <span class="finance-sub unit-label">/月</span>
+            </div>
+            <!-- 年结余：今年存下/亏掉的钱 -->
+            <div class="finance-item">
+              <span class="finance-label">年结余</span>
+              <span
+                class="finance-value"
+                :class="[
+                  actualChange >= 0 ? 'val-green' : 'val-red',
+                  Math.abs(actualChange) > 50000 ? 'val-big' : ''
+                ]"
+              >
+                {{ numbersReady ? fmtChange(animatedSavingsChange) : fmtChange(actualChange) }}
+              </span>
+            </div>
+            <!-- 存款：当前总存款 -->
+            <div class="finance-item">
+              <span class="finance-label">存款</span>
+              <span
+                class="finance-value"
+                :class="state.currentSavings >= 0 ? 'val-green' : 'val-red'"
+              >
+                {{ numbersReady ? fmtMoney(animatedCurrentSavings) : fmtMoney(state.currentSavings) }}
               </span>
             </div>
           </div>
+
+          <!-- 收支明细展开按钮 -->
+          <button
+            class="detail-toggle"
+            :class="{ expanded: showFinanceDetail }"
+            @click="showFinanceDetail = !showFinanceDetail"
+          >
+            <span class="fold-arrow">{{ showFinanceDetail ? '▲' : '▼' }}</span>
+            <span>{{ showFinanceDetail ? '收起明细' : '查看收支明细' }}</span>
+          </button>
+
+          <!-- 收支明细展开 -->
+          <div v-if="showFinanceDetail" class="finance-detail">
+            <div class="finance-detail-col">
+              <div class="detail-col-title income-title">现金收入</div>
+              <div v-for="(item, idx) in financeItems.income" :key="'in-' + idx" class="detail-row">
+                <span class="detail-label">{{ item.label }}</span>
+                <span class="detail-amount val-green">+{{ fmtMoney(item.amount) }}</span>
+              </div>
+              <div class="detail-row total-row">
+                <span class="detail-label">现金收入合计</span>
+                <span class="detail-amount val-blue">{{ fmtMoney(totalIncome) }}</span>
+              </div>
+            </div>
+            <div class="finance-detail-col">
+              <div class="detail-col-title expense-title">现金支出</div>
+              <div v-for="(item, idx) in financeItems.expense" :key="'ex-' + idx" class="detail-row">
+                <span class="detail-label">{{ item.label }}</span>
+                <span class="detail-amount val-red">-{{ fmtMoney(item.amount) }}</span>
+              </div>
+              <div class="detail-row total-row">
+                <span class="detail-label">现金支出合计</span>
+                <span class="detail-amount val-orange">{{ fmtMoney(totalExpense) }}</span>
+              </div>
+            </div>
+            <!-- 资产市值变动（非现金） -->
+            <div v-if="financeItems.assetChanges.length > 0" class="finance-detail-col full-width">
+              <div class="detail-col-title asset-title">资产市值变动（非现金，不影响存款）</div>
+              <div v-for="(item, idx) in financeItems.assetChanges" :key="'as-' + idx" class="detail-row">
+                <span class="detail-label">{{ item.label }}</span>
+                <span class="detail-amount" :class="item.isIncome ? 'val-green' : 'val-red'">
+                  {{ item.isIncome ? '+' : '-' }}{{ fmtMoney(item.amount) }}
+                </span>
+              </div>
+              <div class="detail-row total-row">
+                <span class="detail-label">资产市值净变动</span>
+                <span class="detail-amount" :class="totalAssetChange >= 0 ? 'val-green' : 'val-red'">
+                  {{ totalAssetChange >= 0 ? '+' : '' }}{{ fmtMoney(totalAssetChange) }}
+                </span>
+              </div>
+            </div>
+            <!-- 月薪变动明细 -->
+            <div v-if="salaryDetailRows.length > 0 && salaryChange !== 0" class="finance-detail-col full-width">
+              <div class="detail-col-title salary-title">月薪变动明细</div>
+              <div v-for="(item, idx) in salaryDetailRows" :key="'sal-' + idx" class="detail-row salary-detail-row">
+                <span class="detail-label">
+                  <span class="salary-source">{{ item.source }}</span>
+                  <span v-if="item.note" class="salary-note">{{ item.note }}</span>
+                </span>
+                <span class="detail-amount" :class="item.amount >= 0 ? 'val-green' : 'val-red'">
+                  {{ item.amount >= 0 ? '+' : '' }}{{ fmtSalary(item.amount) }}
+                </span>
+              </div>
+              <div class="detail-row total-row">
+                <span class="detail-label">月薪净变动</span>
+                <span class="detail-amount" :class="salaryChange >= 0 ? 'val-green' : 'val-red'">
+                  {{ fmtSalaryDelta(salaryChange) }}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- 身心状态区域（紧凑一行） -->
-      <div class="wellbeing-section compact">
-        <div class="wb-compact-row">
-          <div class="wb-item">
-            <span class="wb-label">健康</span>
-            <span class="wb-num" :style="{ color: barColor(state.health, 'health') }">
-              {{ state.health }}
-            </span>
-            <span class="wb-delta" :class="deltaClass(result.healthChange, 'health')">
-              ({{ formatDelta(result.healthChange) }})
-            </span>
+        <!-- 身心状态区域（紧凑一行） -->
+        <div class="wellbeing-section compact">
+          <div class="wb-compact-row">
+            <div class="wb-item">
+              <span class="wb-label">健康</span>
+              <span class="wb-num" :style="{ color: barColor(state.health, 'health') }">
+                {{ state.health }}
+              </span>
+              <span class="wb-delta" :class="deltaClass(result.healthChange, 'health')">
+                ({{ formatDelta(result.healthChange) }})
+              </span>
+            </div>
+            <div class="wb-item">
+              <span class="wb-label">压力</span>
+              <span class="wb-num" :style="{ color: barColor(state.stress, 'stress') }">
+                {{ state.stress }}
+              </span>
+              <span class="wb-delta" :class="deltaClass(result.stressChange, 'stress')">
+                ({{ formatDelta(result.stressChange) }})
+              </span>
+            </div>
+            <div class="wb-item">
+              <span class="wb-label">幸福</span>
+              <span class="wb-num" :style="{ color: barColor(state.happiness, 'happiness') }">
+                {{ state.happiness }}
+              </span>
+              <span class="wb-delta" :class="deltaClass(result.happinessChange, 'happiness')">
+                ({{ formatDelta(result.happinessChange) }})
+              </span>
+            </div>
           </div>
-          <div class="wb-item">
-            <span class="wb-label">压力</span>
-            <span class="wb-num" :style="{ color: barColor(state.stress, 'stress') }">
-              {{ state.stress }}
-            </span>
-            <span class="wb-delta" :class="deltaClass(result.stressChange, 'stress')">
-              ({{ formatDelta(result.stressChange) }})
-            </span>
-          </div>
-          <div class="wb-item">
-            <span class="wb-label">幸福</span>
-            <span class="wb-num" :style="{ color: barColor(state.happiness, 'happiness') }">
-              {{ state.happiness }}
-            </span>
-            <span class="wb-delta" :class="deltaClass(result.happinessChange, 'happiness')">
-              ({{ formatDelta(result.happinessChange) }})
-            </span>
-          </div>
-        </div>
 
-        <!-- 身心变化明细展开按钮 -->
-        <button
-          v-if="wellbeingDetailRows.length > 0"
-          class="detail-toggle"
-          :class="{ expanded: showWellbeingDetail }"
-          @click="showWellbeingDetail = !showWellbeingDetail"
-        >
-          <span class="fold-arrow">{{ showWellbeingDetail ? '▲' : '▼' }}</span>
-          <span>{{ showWellbeingDetail ? '收起变化来源' : '查看变化来源' }}</span>
-        </button>
+          <!-- 身心变化明细展开按钮 -->
+          <button
+            v-if="wellbeingDetailRows.length > 0"
+            class="detail-toggle"
+            :class="{ expanded: showWellbeingDetail }"
+            @click="showWellbeingDetail = !showWellbeingDetail"
+          >
+            <span class="fold-arrow">{{ showWellbeingDetail ? '▲' : '▼' }}</span>
+            <span>{{ showWellbeingDetail ? '收起变化来源' : '查看变化来源' }}</span>
+          </button>
 
-        <!-- 身心变化明细 -->
-        <div v-if="showWellbeingDetail && wellbeingDetailRows.length > 0" class="wellbeing-detail">
-          <div class="wb-detail-header">
-            <span class="wb-detail-col">来源</span>
-            <span class="wb-detail-col">压力</span>
-            <span class="wb-detail-col">幸福</span>
-            <span class="wb-detail-col">健康</span>
-          </div>
-          <div v-for="(row, idx) in wellbeingDetailRows" :key="'wb-' + idx" class="wb-detail-row">
-            <span class="wb-detail-col wb-source">{{ row.label }}</span>
-            <span class="wb-detail-col" :class="deltaClass(row.stress, 'stress')">
-              {{ row.stress !== 0 ? formatDelta(row.stress) : '-' }}
-            </span>
-            <span class="wb-detail-col" :class="deltaClass(row.happiness, 'happiness')">
-              {{ row.happiness !== 0 ? formatDelta(row.happiness) : '-' }}
-            </span>
-            <span class="wb-detail-col" :class="deltaClass(row.health, 'health')">
-              {{ row.health !== 0 ? formatDelta(row.health) : '-' }}
-            </span>
-          </div>
-          <div class="wb-detail-row wb-total-row">
-            <span class="wb-detail-col wb-source">年度合计</span>
-            <span class="wb-detail-col" :class="deltaClass(result.stressChange, 'stress')">
-              {{ formatDelta(result.stressChange) }}
-            </span>
-            <span class="wb-detail-col" :class="deltaClass(result.happinessChange, 'happiness')">
-              {{ formatDelta(result.happinessChange) }}
-            </span>
-            <span class="wb-detail-col" :class="deltaClass(result.healthChange, 'health')">
-              {{ formatDelta(result.healthChange) }}
-            </span>
+          <!-- 身心变化明细 -->
+          <div v-if="showWellbeingDetail && wellbeingDetailRows.length > 0" class="wellbeing-detail">
+            <div class="wb-detail-header">
+              <span class="wb-detail-col">来源</span>
+              <span class="wb-detail-col">压力</span>
+              <span class="wb-detail-col">幸福</span>
+              <span class="wb-detail-col">健康</span>
+            </div>
+            <div v-for="(row, idx) in wellbeingDetailRows" :key="'wb-' + idx" class="wb-detail-row">
+              <span class="wb-detail-col wb-source">{{ row.label }}</span>
+              <span class="wb-detail-col" :class="deltaClass(row.stress, 'stress')">
+                {{ row.stress !== 0 ? formatDelta(row.stress) : '-' }}
+              </span>
+              <span class="wb-detail-col" :class="deltaClass(row.happiness, 'happiness')">
+                {{ row.happiness !== 0 ? formatDelta(row.happiness) : '-' }}
+              </span>
+              <span class="wb-detail-col" :class="deltaClass(row.health, 'health')">
+                {{ row.health !== 0 ? formatDelta(row.health) : '-' }}
+              </span>
+            </div>
+            <div class="wb-detail-row wb-total-row">
+              <span class="wb-detail-col wb-source">年度合计</span>
+              <span class="wb-detail-col" :class="deltaClass(result.stressChange, 'stress')">
+                {{ formatDelta(result.stressChange) }}
+              </span>
+              <span class="wb-detail-col" :class="deltaClass(result.happinessChange, 'happiness')">
+                {{ formatDelta(result.happinessChange) }}
+              </span>
+              <span class="wb-detail-col" :class="deltaClass(result.healthChange, 'health')">
+                {{ formatDelta(result.healthChange) }}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -824,7 +916,7 @@ function handleContinue(): void {
       <div class="yearend-footer">
         <button class="btn-continue" @click="handleContinue">
           <span class="btn-arrow">&#9654;</span>
-          <span class="btn-text">继续下一岁</span>
+          <span class="btn-text">进入{{ state.currentAge + 1 }}岁 ▶</span>
         </button>
       </div>
     </div>
@@ -881,7 +973,7 @@ function handleContinue(): void {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   padding: 24px 20px;
   background: #0d0e1a;
   z-index: 152;
@@ -1030,15 +1122,92 @@ function handleContinue(): void {
 }
 
 /* ============================================================
+   面板分区容器（三大区域）
+   ============================================================ */
+.panel-section {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 分区一：年度金句 - 品红色霓虹 */
+.section-quote {
+  padding: 12px 10px 8px;
+  background: rgba(255, 45, 149, 0.04);
+  border: 1px solid rgba(255, 45, 149, 0.25);
+  box-shadow: inset 0 0 14px rgba(255, 45, 149, 0.06), 0 0 10px rgba(255, 45, 149, 0.1);
+}
+
+/* 分区二：事件回顾 - 蓝色霓虹 */
+.section-events {
+  padding: 10px;
+  background: rgba(0, 212, 255, 0.03);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  box-shadow: inset 0 0 12px rgba(0, 212, 255, 0.05);
+}
+
+/* 分区三：数字总结 - 绿色霓虹 */
+.section-numbers {
+  padding: 10px;
+  background: rgba(0, 255, 136, 0.03);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  box-shadow: inset 0 0 12px rgba(0, 255, 136, 0.05);
+  gap: 8px;
+}
+
+/* 分区标题条 */
+.section-header {
+  text-align: center;
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.section-tag {
+  font-size: 10px;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+.section-quote .section-tag {
+  color: #ff2d95;
+  text-shadow: 0 0 6px #ff2d95, 0 0 12px rgba(255, 45, 149, 0.5);
+}
+
+.section-events .section-tag {
+  color: #00d4ff;
+  text-shadow: 0 0 6px #00d4ff;
+}
+
+.section-numbers .section-tag {
+  color: #00ff88;
+  text-shadow: 0 0 6px #00ff88;
+}
+
+/* 无事件占位 */
+.no-events-placeholder {
+  text-align: center;
+  padding: 10px 0;
+}
+
+.no-events-text {
+  font-size: 12px;
+  color: #5f6b7a;
+  letter-spacing: 2px;
+  font-style: italic;
+}
+
+/* ============================================================
    里程碑区域
    ============================================================ */
 .milestone-section {
   position: relative;
   z-index: 2;
-  padding: 12px 16px;
-  background: rgba(255, 236, 39, 0.05);
-  border: 1px solid rgba(255, 236, 39, 0.2);
-  box-shadow: inset 0 0 12px rgba(255, 236, 39, 0.05);
+  padding: 10px 12px;
+  background: rgba(255, 236, 39, 0.04);
+  border: 1px dashed rgba(255, 236, 39, 0.2);
 }
 
 .milestone-line {
@@ -1054,24 +1223,38 @@ function handleContinue(): void {
 }
 
 /* ============================================================
-   主事件区 - 大号居中引号样式
+   分区一：年度金句区 - 大号居中霓虹引号样式
    ============================================================ */
 .main-event-section {
   position: relative;
   z-index: 2;
   text-align: center;
-  padding: 16px 12px;
+  padding: 8px 8px 4px;
 }
 
 .main-event-text {
   margin: 0;
-  font-size: 18px;
+  font-size: 20px;
   line-height: 1.8;
-  color: #e0e0e0;
+  color: #ffe0f0;
   font-family: 'ZCOOL KuaiLe', 'Noto Sans SC', sans-serif;
   position: relative;
   display: inline-block;
-  max-width: 90%;
+  max-width: 95%;
+  text-shadow:
+    0 0 6px #ff2d95,
+    0 0 14px rgba(255, 45, 149, 0.6),
+    0 0 28px rgba(255, 45, 149, 0.3);
+  animation: quoteGlow 3s ease-in-out infinite;
+}
+
+@keyframes quoteGlow {
+  0%, 100% {
+    text-shadow: 0 0 6px #ff2d95, 0 0 14px rgba(255, 45, 149, 0.6), 0 0 28px rgba(255, 45, 149, 0.3);
+  }
+  50% {
+    text-shadow: 0 0 10px #ff2d95, 0 0 22px rgba(255, 45, 149, 0.8), 0 0 40px rgba(198, 0, 255, 0.4);
+  }
 }
 
 .main-event-text::before {
@@ -1099,12 +1282,12 @@ function handleContinue(): void {
 }
 
 /* ============================================================
-   故事流区域（所有剧情事件平铺展示）
+   故事流区域（日志风格，事件回顾分区内）
    ============================================================ */
 .story-stream {
   position: relative;
   z-index: 2;
-  padding: 6px 14px;
+  padding: 4px 8px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1151,15 +1334,15 @@ function handleContinue(): void {
 }
 
 /* ============================================================
-   财务数字区域（紧凑版）
+   财务数字区域（数字总结分区内）
    ============================================================ */
 .finance-section.compact {
   position: relative;
   z-index: 2;
-  padding: 10px 14px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(201, 0, 255, 0.25);
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.4);
+  padding: 10px 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
 }
 
 .finance-compact-grid {
@@ -1188,6 +1371,18 @@ function handleContinue(): void {
   font-weight: bold;
   font-size: 13px;
   letter-spacing: 0.5px;
+}
+
+.finance-sub {
+  font-size: 10px;
+  font-weight: normal;
+  letter-spacing: 0;
+  margin-top: -1px;
+}
+
+.unit-label {
+  color: #7a95a8;
+  font-size: 9px;
 }
 
 .val-green {
@@ -1221,14 +1416,14 @@ function handleContinue(): void {
 }
 
 /* ============================================================
-   身心状态区域（紧凑版）
+   身心状态区域（数字总结分区内）
    ============================================================ */
 .wellbeing-section.compact {
   position: relative;
   z-index: 2;
-  padding: 10px 14px;
-  background: rgba(10, 5, 30, 0.4);
-  border: 1px solid rgba(201, 0, 255, 0.25);
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 255, 136, 0.15);
 }
 
 .wb-compact-row {
@@ -1347,6 +1542,28 @@ function handleContinue(): void {
   text-shadow: 0 0 4px rgba(0, 212, 255, 0.4);
 }
 
+.detail-col-title.salary-title {
+  color: #4fc3f7;
+  text-shadow: 0 0 4px rgba(79, 195, 247, 0.4);
+}
+
+.salary-detail-row .detail-label {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+}
+
+.salary-source {
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.salary-note {
+  font-size: 10px;
+  color: #7a95a8;
+  font-style: italic;
+}
+
 .finance-detail-col.full-width {
   grid-column: 1 / -1;
   border-top: 1px solid rgba(0, 212, 255, 0.2);
@@ -1436,14 +1653,17 @@ function handleContinue(): void {
 }
 
 /* ============================================================
-   继续按钮
+ /* 继续按钮
    ============================================================ */
 .yearend-footer {
-  position: relative;
-  z-index: 2;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   display: flex;
   justify-content: center;
-  padding-top: 4px;
+  padding: 12px 0 8px;
+  background: linear-gradient(transparent, rgba(10, 5, 25, 0.95) 40%);
+  margin-top: 8px;
 }
 
 .btn-continue {
@@ -1536,6 +1756,77 @@ function handleContinue(): void {
 .btn-text {
   position: relative;
   z-index: 1;
+}
+
+/* ============================================================
+   成就解锁区域（绿色霓虹，分区二点五）
+   ============================================================ */
+.section-achievement {
+  padding: 14px 10px;
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+  box-shadow: inset 0 0 16px rgba(0, 255, 136, 0.08), 0 0 12px rgba(0, 255, 136, 0.15);
+  animation: achievementSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes achievementSlideIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.achievement-tag {
+  color: #00ff88;
+  text-shadow: 0 0 6px #00ff88, 0 0 14px rgba(0, 255, 136, 0.5);
+  animation: achievementTagPulse 2s ease-in-out infinite;
+}
+
+@keyframes achievementTagPulse {
+  0%, 100% { text-shadow: 0 0 6px #00ff88, 0 0 14px rgba(0, 255, 136, 0.5); }
+  50% { text-shadow: 0 0 10px #00ff88, 0 0 22px rgba(0, 255, 136, 0.8), 0 0 36px rgba(0, 255, 136, 0.3); }
+}
+
+.achievement-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.achievement-badge-large {
+  font-size: 28px;
+  color: #00ff88;
+  text-shadow: 0 0 10px #00ff88, 0 0 20px #00ff88;
+  animation: badgeGlowLarge 2s ease-in-out infinite;
+}
+
+@keyframes badgeGlowLarge {
+  0%, 100% { text-shadow: 0 0 10px #00ff88, 0 0 20px #00ff88; }
+  50% { text-shadow: 0 0 14px #00ff88, 0 0 28px #00ff88, 0 0 40px rgba(0, 255, 136, 0.5); }
+}
+
+.achievement-title-large {
+  margin: 0;
+  font-size: 18px;
+  color: #fff;
+  letter-spacing: 2px;
+  text-shadow: 0 0 6px #00ff88;
+}
+
+.achievement-narrative-large {
+  font-size: 13px;
+  color: #c8e6c9;
+  line-height: 1.8;
+  max-width: 440px;
+}
+
+.achievement-narrative-large p {
+  margin: 0;
+}
+
+.achievement-narrative-large p + p {
+  margin-top: 6px;
 }
 
 /* ============================================================

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { GameState } from '../../types/global.d.js'
+import { fmt, fmtNum } from '../../utils/format.js'
 
 const props = defineProps<{
   state: GameState
@@ -8,14 +9,8 @@ const props = defineProps<{
 
 const s = computed(() => props.state)
 
-// ========== 金额格式化 ==========
-function fmtNum(n: number): string {
-  return Math.round(n).toLocaleString('en-US')
-}
-
-function fmtMoney(n: number): string {
-  return '¥' + fmtNum(n)
-}
+// 金额格式化（使用公共工具）
+const fmtMoney = fmt
 
 // ========== 收入分项 ==========
 const incomeItems = computed(() => {
@@ -145,7 +140,7 @@ const powerCards = computed<PowerCard[]>(() => {
   if (travelTimes >= 10) {
     cards.push({ emoji: '✈️', title: '环球旅行', number: fmtNum(travelTimes), unit: '次', joke: `绕地球${Math.floor(travelTimes / 4)}圈，空姐能叫出你名字`, cls: 'cyan' })
   } else if (travelTimes >= 1) {
-    cards.push({ emoji: '✈️', title: '环球旅行', number: fmtNum(travelTimes), unit: '次', joke: '朋友圈摄影大赛冠军预定', cls: 'cyan' })
+    cards.push({ emoji: '✈️', title: '环球旅行', number: fmtNum(travelTimes), unit: '次', joke: '动态圈摄影大赛冠军预定', cls: 'cyan' })
   } else {
     cards.push({ emoji: '✈️', title: '国内游', number: fmtNum(Math.floor(net / 3000)), unit: '次', joke: '先把国内景点打卡了再说', cls: 'cyan' })
   }
@@ -169,7 +164,7 @@ const powerCards = computed<PowerCard[]>(() => {
   } else if (cats >= 1) {
     cards.push({ emoji: '🐱', title: '养猫一辈子', number: fmtNum(cats), unit: '只', joke: '猫会把你送走（真的）', cls: 'pink2' })
   } else {
-    cards.push({ emoji: '🐱', title: '云吸猫', number: '∞', unit: '', joke: 'B站猫片随便看，还不用铲屎', cls: 'pink2' })
+    cards.push({ emoji: '🐱', title: '云吸猫', number: '∞', unit: '', joke: '视频平台猫片随便看，还不用铲屎', cls: 'pink2' })
   }
 
   // 🏥 大病医疗：50万/次

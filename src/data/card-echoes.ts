@@ -23,7 +23,7 @@ export const CARD_ECHOS: CardEcho[] = [
   {
     triggerCardId: 'resign',
     delayYears: 3,
-    getText: (s) => `第${s.currentAge}岁，你刷朋友圈看到前公司团建照片。曾经的工位已经被一个00后占了，他笑得和你当年一模一样——但工资比你当年高。`,
+    getText: (s) => `第${s.currentAge}岁，你刷动态圈看到前公司团建照片。曾经的工位已经被一个00后占了，他笑得和你当年一模一样——但工资比你当年高。`,
     applyEffect: (s) => { s.stress = Math.min(100, s.stress + 5); },
   },
 

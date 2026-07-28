@@ -22,7 +22,7 @@ export function initParents(): ParentState {
 }
 
 // ============================================================
-// 初始化朋友圈（3个朋友）
+// 初始化动态圈（3个朋友）
 // ============================================================
 export function initFriends(): FriendState[] {
   // 新一局开始时清空已结婚朋友集合，避免上一局残留导致本局朋友不再触发婚礼随份子
@@ -334,7 +334,7 @@ function processFriends(state: GameState, logs: string[]) {
 
     // 渐行渐远
     if (friend.relation < 15 && Math.random() < 0.1) {
-      logs.push(`你发现${friend.name}的朋友圈已经对你不可见了。你们就这样在时间的缝隙里散落了。——渐行渐远`);
+      logs.push(`你发现${friend.name}的动态圈已经对你不可见了。你们就这样在时间的缝隙里散落了。——渐行渐远`);
     }
 
     // 朋友结婚随份子（使用 Set 追踪，避免不安全的 (friend as any)）

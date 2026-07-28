@@ -18,6 +18,7 @@ import LifeLog from './components/dashboard/LifeLog.vue'
 import CrossroadPanel from './components/crossroad/CrossroadPanel.vue'
 import YearEndPanel from './components/narrative/YearEndPanel.vue'
 import AchievementToast from './components/ui/AchievementToast.vue'
+import CyberConfirm from './components/ui/CyberConfirm.vue'
 
 import { playClick, playAchievement } from './utils/audio.js'
 import { registerHintToggleShortcut } from './utils/ui-prefs.js'
@@ -25,6 +26,7 @@ import { getPath } from './data/retirement-paths.js'
 
 const store = useGameStore()
 const toastRef = ref<InstanceType<typeof AchievementToast> | null>(null)
+const confirmRef = ref<InstanceType<typeof CyberConfirm> | null>(null)
 
 // 注册数值提示切换快捷键（Ctrl+Shift+H）
 onMounted(() => {
@@ -62,9 +64,12 @@ function handleTestSkip(): void {
 }
 
 function handleRestart(): void {
-  if (confirm('确定要放弃当前人生，重新开始吗？')) {
-    store.resetGame()
-  }
+  playClick()
+  confirmRef.value?.open()
+}
+
+function handleRestartConfirm(): void {
+  store.resetGame()
 }
 
 function handleCityPick(city: CityType): void {
@@ -209,23 +214,23 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
       </div>
       <div class="top-center">
         <div class="stat-badge badge-age">
-          <span class="icon">📅</span><span class="label">年龄</span>
+          <span class="icon icon-age">◈</span><span class="label">年龄</span>
           <span class="value">{{ store.state.currentAge }}岁</span>
         </div>
         <div class="stat-badge badge-prof">
-          <span class="icon">💼</span><span class="label">职业</span>
+          <span class="icon icon-prof">◆</span><span class="label">职业</span>
           <span class="value">{{ store.state.isUnemployed ? '待业' : store.state.currentProfession }}</span>
         </div>
         <div class="stat-badge badge-city">
-          <span class="icon">🏙️</span><span class="label">城市</span>
+          <span class="icon icon-city">▣</span><span class="label">城市</span>
           <span class="value">{{ store.state.currentCity }}</span>
         </div>
         <div class="stat-badge badge-cycle">
-          <span class="icon">◆</span><span class="label">周期</span>
+          <span class="icon icon-cycle">◆</span><span class="label">周期</span>
           <span class="value">{{ cycleLabel(store.state.economicCycle) }}</span>
         </div>
         <div class="stat-badge badge-status">
-          <span class="icon">💍</span><span class="label">状态</span>
+          <span class="icon icon-status">◇</span><span class="label">状态</span>
           <span class="value">{{ lifeStatusText }}</span>
         </div>
       </div>
@@ -274,10 +279,12 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
         </p>
 
         <p class="intro-desc">
-          22 岁开局，一份人格测试定义起点，<br>
-          选择城市、职业、退休路径与人生抉择，<br>
-          在霓虹像素的赛博世界里，<br>
-          看看你能否安然活到退休。
+          22岁，你走出校门，口袋里装着第一份offer。<br>
+          城市、行业、起薪——这些选择将决定你未来三十年的轨迹。<br>
+          买房还是攒钱？跳槽还是熬着？结婚还是一个人？<br>
+          每一年都在结算，每一步都不可逆。<br>
+          你需要在60岁之前，攒够退休的资本。<br><br>
+          <span class="intro-hint">// 没有正确答案，只有你的选择 //</span>
         </p>
 
         <button class="btn-start-big" @click="handleStart">
@@ -371,6 +378,14 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 
     <!-- ===================== 成就弹窗 ===================== -->
     <AchievementToast ref="toastRef" />
+
+    <!-- ===================== 赛博确认弹窗 ===================== -->
+    <CyberConfirm
+      ref="confirmRef"
+      title="系统警告"
+      message="确定要放弃当前人生，重新开始吗？所有进度将被清除。"
+      @confirm="handleRestartConfirm"
+    />
   </div>
 </template>
 
@@ -479,6 +494,12 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 .stat-badge .icon { font-size: 12px; }
 .stat-badge .label { color: var(--text-dim, #6a6a8a); font-size: 9px; }
 .stat-badge .value { font-weight: 700; font-size: 11px; }
+
+.icon-age { color: var(--neon-blue); text-shadow: 0 0 4px var(--neon-blue), 0 0 8px var(--neon-blue); }
+.icon-prof { color: var(--neon-orange); text-shadow: 0 0 4px var(--neon-orange), 0 0 8px var(--neon-orange); }
+.icon-city { color: var(--neon-green); text-shadow: 0 0 4px var(--neon-green), 0 0 8px var(--neon-green); }
+.icon-cycle { color: var(--neon-yellow); text-shadow: 0 0 4px var(--neon-yellow), 0 0 8px var(--neon-yellow); }
+.icon-status { color: var(--neon-pink); text-shadow: 0 0 4px var(--neon-pink), 0 0 8px var(--neon-pink); }
 
 .badge-age { border-color: var(--neon-blue); }
 .badge-age .value { color: var(--neon-blue); text-shadow: 0 0 4px var(--neon-blue); }
@@ -665,6 +686,14 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   text-shadow: 0 0 6px rgba(255, 204, 170, 0.4);
 }
 
+.intro-hint {
+  font-size: 12px;
+  color: var(--neon-purple);
+  letter-spacing: 2px;
+  opacity: 0.8;
+  text-shadow: 0 0 6px var(--neon-purple);
+}
+
 /* ---- PRESS START 大按钮 ---- */
 .btn-start-big {
   position: relative;
@@ -780,7 +809,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 .btn-test-skip {
-  display: block;
+  display: none; /* 测试按钮默认隐藏，开发时可通过 devtools 启用 */
   margin: 12px auto 0;
   padding: 6px 16px;
   background: transparent;
@@ -877,6 +906,27 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 /* ============================================================
    响应式布局
    ============================================================ */
+/* 超窄屏提示：最小支持宽度900px */
+@media (max-width: 899px) {
+  .app-root::before {
+    content: '屏幕宽度不足 · 建议在PC端或横屏体验';
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.95);
+    color: #ff2d95;
+    font-size: 14px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 8px #ff2d95;
+    font-family: 'DotGothic16', monospace;
+    z-index: 99999;
+    text-align: center;
+    padding: 20px;
+  }
+}
+
 @media (max-width: 1100px) {
   .col-left { width: 200px; }
   .col-right { width: 220px; }

@@ -1,5 +1,5 @@
-import type { GameState, CityType, Profession, CityConfig, YearResult } from '../types/global.d.js';
-import { getPathSideIncome, getPath } from '../data/retirement-paths.js';
+import type { GameState, CityType, Profession, CityConfig, YearResult, SalaryChangeEntry } from '../types/global.d.js';
+import { getPath } from '../data/retirement-paths.js';
 import { getActiveMBTIMechanics, getMBTIProfessionModifier } from '../data/mbti-system.js';
 
 // ========== 城市配置常量（严格按设计书第三章）==========
@@ -59,44 +59,86 @@ export function randomRange(min: number, max: number): number {
 // 3. 萧条年只是减缓涨薪，不是完全冻结
 // 4. 路径信念高的人有额外涨薪加成（创业精神/内驱力）
 // 5. 30-45岁是黄金涨薪期，之后逐渐放缓但不会停止
-export function applySalaryRaise(state: GameState): void {
+export function applySalaryRaise(state: GameState): SalaryChangeEntry[] {
   const initialRealSalary = state.careerStartSalary;
-  if (initialRealSalary <= 0) return;
+  if (initialRealSalary <= 0) return [];
 
-  // === All In 后的涨薪逻辑：技能驱动，不走职业等级体系 ===
+  const breakdown: SalaryChangeEntry[] = [];
+  const salaryBefore = state.currentMonthlySalary;
+
+  // === All In 后的涨薪逻辑：技能驱动+口碑复利+增长递减，不走职业等级体系 ===
   if (state.isAllInPath) {
     const pathSkills = state.pathSkills || {};
     const maxSkill = Math.max(0, ...Object.values(pathSkills));
-    // 每年根据技能成长涨薪：每100点技能带来5%涨薪，上限30%
-    const skillGrowthRate = Math.min(maxSkill / 1000 * 0.05, 0.3);
-    const faithBonus = state.pathFaith > 70 ? 1.05 : 1.0;
+    let skillGrowthRate = Math.min(maxSkill / 25 * 0.02, 0.10);
+    const faithBonus = state.pathFaith > 70 ? 1.03 : 1.0;
+    const salaryMultiple = state.currentMonthlySalary / Math.max(1, initialRealSalary);
+    let growthDecay = 1.0;
+    if (salaryMultiple >= 5) growthDecay = 0.6;
+    else if (salaryMultiple >= 3) growthDecay = 0.75;
+    else if (salaryMultiple >= 2) growthDecay = 0.9;
+    const reputationBonus = salaryMultiple >= 2 ? 1.02 : 1.0;
     const depressionMult = state.economicCycle === 2 ? 0.5 : 1.0;
-    const totalRaise = skillGrowthRate * faithBonus * depressionMult;
-    // All In 后上限放宽：初始薪资×10（自由职业/创业天花板高）
-    const cap = initialRealSalary * 10;
-    const newSalary = state.currentMonthlySalary * (1 + totalRaise);
-    state.currentMonthlySalary = Math.round(Math.min(newSalary, cap));
-    return;
+    const randomness = 0.95 + Math.random() * 0.1;
+    const totalRaise = skillGrowthRate * faithBonus * reputationBonus * growthDecay * depressionMult * randomness;
+    const cap = initialRealSalary * 6;
+    const newSalary = Math.round(Math.min(state.currentMonthlySalary * (1 + totalRaise), cap));
+    const delta = newSalary - salaryBefore;
+
+    if (Math.abs(delta) >= 1) {
+      let label = '事业增长';
+      let note = '';
+      if (state.economicCycle === 2) {
+        label = '事业遇冷';
+        note = '经济大环境萧条，业务增长放缓';
+      } else if (salaryMultiple >= 5) {
+        label = '增长瓶颈';
+        note = '客户市场趋于饱和，增速放缓';
+      } else if (skillGrowthRate >= 0.08) {
+        label = '技能驱动';
+        note = '专业能力持续提升，收入水涨船高';
+      } else if (faithBonus > 1.0) {
+        label = '口碑复利';
+        note = '信念坚定带来良好口碑，客户转介绍增加';
+      } else if (randomness > 1.05) {
+        label = '好运连连';
+        note = '今年接到几个大单，收入意外增长';
+      } else if (randomness < 0.97) {
+        label = '平平淡淡';
+        note = '今年业务平稳，没有太大起伏';
+      } else {
+        label = '稳步发展';
+        note = '客户和收入稳步增长';
+      }
+      if (newSalary >= cap && salaryBefore < cap) {
+        label = '收入触顶';
+        note = '已达到当前赛道的收入天花板';
+      }
+      breakdown.push({ source: label, amount: delta, note });
+    }
+
+    state.currentMonthlySalary = newSalary;
+    return breakdown;
   }
 
   // 技能加成：取路径技能最高值，每10点技能带来1%额外涨薪
   const pathSkills = state.pathSkills || {};
   const maxSkill = Math.max(0, ...Object.values(pathSkills));
-  const skillBonus = 1 + Math.min(maxSkill / 1000, 0.3); // 最多+30%
+  const skillBonus = 1 + Math.min(maxSkill / 1000, 0.3);
 
   // 信念加成：信念>70时额外+5%涨薪
   const faithBonus = state.pathFaith > 70 ? 1.05 : 1.0;
 
-  // MBTI人格×职业涨薪微调（2-5%，不改变平衡只增加人格感）
+  // MBTI人格×职业涨薪微调
   const mbtiProfMod = getMBTIProfessionModifier((state as any).mbtiType, state.currentProfession);
   const mbtiGrowthMult = mbtiProfMod.salaryGrowthMultiplier;
 
-  // 年龄乘数：30-45黄金期×1.2，45-55×1.0，55+×0.8
+  // 年龄乘数
   const ageMult = state.currentAge >= 30 && state.currentAge <= 45 ? 1.2
     : state.currentAge >= 46 && state.currentAge <= 55 ? 1.0
     : 0.8;
 
-  // 萧条修正：涨薪幅度减半（而不是完全冻结）
+  // 萧条修正
   const depressionMult = state.economicCycle === 2 ? 0.5 : 1.0;
 
   // 基础年涨幅
@@ -106,7 +148,7 @@ export function applySalaryRaise(state: GameState): void {
   switch (state.currentProfession) {
     case '体制内': {
       baseRaise = 0.03;
-      capMultiplier = 2.5; // v2平衡：上限2.5倍（从3.0降低，安全但不会暴富）
+      capMultiplier = 2.5;
       break;
     }
     case '红利行业': {
@@ -114,8 +156,11 @@ export function applySalaryRaise(state: GameState): void {
         baseRaise = 0.10;
         capMultiplier = 4.5;
       } else if (state.currentAge === 35) {
-        // 35岁断崖：乘0.7（v4从0.65调回0.7，避免破产率过高）
-        state.currentMonthlySalary = Math.round(state.currentMonthlySalary * 0.7);
+        // 35岁断崖：乘0.7
+        const cliffSalary = Math.round(state.currentMonthlySalary * 0.7);
+        const cliffDelta = cliffSalary - state.currentMonthlySalary;
+        breakdown.push({ source: '35岁危机', amount: cliffDelta, note: '行业优化结构，你被划入"高龄低潜"名单，薪资下调30%' });
+        state.currentMonthlySalary = cliffSalary;
         baseRaise = 0.03;
         capMultiplier = 3.5;
       } else {
@@ -125,13 +170,12 @@ export function applySalaryRaise(state: GameState): void {
       break;
     }
     case '传统私企': {
-      baseRaise = 0.05; // v2：年涨5%（从6%略降）
-      capMultiplier = 3.0; // 上限3.0倍（从3.5降低）
+      baseRaise = 0.05;
+      capMultiplier = 3.0;
       break;
     }
     case '自由职业': {
-      // v9校准：上限3.2，波动微负偏(-14%~+13%)，降低暴富概率同时保留上升空间
-      const rand = randomRange(-0.14, 0.13); // 坏年景更差，好年景略好，但整体期望微正
+      const rand = randomRange(-0.14, 0.13);
       baseRaise = 0.015 + rand;
       capMultiplier = 3.2;
       break;
@@ -142,8 +186,8 @@ export function applySalaryRaise(state: GameState): void {
       break;
     }
     case '一线蓝领': {
-      baseRaise = 0.03; // v9从2.5%提升到3%，技术工人凭手艺涨薪
-      capMultiplier = 2.5; // v9从2.3提升到2.5，高级蓝领也能有体面收入
+      baseRaise = 0.03;
+      capMultiplier = 2.5;
       break;
     }
     default:
@@ -151,12 +195,129 @@ export function applySalaryRaise(state: GameState): void {
       capMultiplier = 3.0;
   }
 
-  // 综合涨薪率（含MBTI人格×职业微调）
+  // 综合涨薪率
   const totalRaise = baseRaise * skillBonus * faithBonus * ageMult * depressionMult * mbtiGrowthMult;
-  const newSalary = state.currentMonthlySalary * (1 + totalRaise);
+  let newSalary = state.currentMonthlySalary * (1 + totalRaise);
   const cap = initialRealSalary * capMultiplier;
+  const wasCapped = newSalary > cap;
+  newSalary = Math.round(Math.min(newSalary, cap));
+  const totalDelta = newSalary - state.currentMonthlySalary;
 
-  state.currentMonthlySalary = Math.round(Math.min(newSalary, cap));
+  // 分解各因素贡献（按乘法分解为加法近似）
+  // 按顺序应用各因子，记录每个因子带来的增量
+  let runningSalary = state.currentMonthlySalary;
+  // 1. 基础普调
+  const afterBase = state.currentMonthlySalary * (1 + baseRaise);
+  const baseDelta = Math.round(afterBase - runningSalary);
+  runningSalary = afterBase;
+
+  // 2. 技能加成（在基础上额外增加）
+  const skillContribution = baseRaise * (skillBonus - 1);
+  const afterSkill = state.currentMonthlySalary * (1 + baseRaise + skillContribution);
+  const skillDelta = Math.round(afterSkill - runningSalary);
+  runningSalary = afterSkill;
+
+  // 3. 年龄乘数
+  const ageContribution = (baseRaise + skillContribution) * (ageMult - 1);
+  const afterAge = state.currentMonthlySalary * (1 + baseRaise + skillContribution + ageContribution);
+  const ageDelta = Math.round(afterAge - runningSalary);
+  runningSalary = afterAge;
+
+  // 4. 经济周期
+  const prevRaise = baseRaise + skillContribution + ageContribution;
+  const cycleContribution = prevRaise * (depressionMult - 1);
+  const afterCycle = state.currentMonthlySalary * (1 + prevRaise + cycleContribution);
+  const cycleDelta = Math.round(afterCycle - runningSalary);
+  runningSalary = afterCycle;
+
+  // 5. 信念+MBTI+随机波动（合并为"其他"小额项）
+  const otherDelta = totalDelta - baseDelta - skillDelta - ageDelta - cycleDelta;
+
+  // 生成明细条目（只记录金额绝对值>=1元的项）
+  if (Math.abs(baseDelta) >= 1) {
+    let label = '年度普调';
+    let note = '';
+    if (state.currentProfession === '体制内') {
+      note = '工资按工龄和级别正常递进';
+    } else if (state.currentProfession === '红利行业' && state.currentAge < 35) {
+      label = '行业红利';
+      note = '行业高速增长，薪资随之上调';
+    } else if (state.currentProfession === '红利行业' && state.currentAge > 35) {
+      note = '行业进入平稳期，薪资小幅调整';
+    } else if (state.currentProfession === '传统私企') {
+      note = '公司年度调薪';
+    } else if (state.currentProfession === '自由职业') {
+      if (baseRaise > 0.08) {
+        label = '接单丰收';
+        note = '今年客户多、项目顺，收入明显增长';
+      } else if (baseRaise < -0.05) {
+        label = '接单困难';
+        note = '今年客源减少，收入有所下降';
+      } else {
+        label = '自由职业';
+        note = '收入随市场波动，不上不下';
+      }
+    } else if (state.currentProfession === '实体创业') {
+      note = '店铺经营平稳，利润小幅波动';
+    } else if (state.currentProfession === '一线蓝领') {
+      note = '手艺精进，工资稳步上涨';
+    }
+    breakdown.push({ source: label, amount: baseDelta, note });
+  }
+
+  if (Math.abs(skillDelta) >= 1) {
+    breakdown.push({ source: '技能提升', amount: skillDelta, note: '专业技能提升带来的额外涨薪' });
+  }
+
+  if (Math.abs(ageDelta) >= 1) {
+    if (ageMult > 1.0) {
+      breakdown.push({ source: '黄金年龄', amount: ageDelta, note: '正值职业黄金期，经验和精力俱佳，升职加薪' });
+    } else if (ageMult < 1.0) {
+      breakdown.push({ source: '年龄瓶颈', amount: ageDelta, note: '年龄增长，职场竞争力下降，涨薪停滞' });
+    }
+  }
+
+  if (Math.abs(cycleDelta) >= 1) {
+    if (depressionMult < 1.0) {
+      breakdown.push({ source: '经济萧条', amount: cycleDelta, note: '经济下行，公司冻薪或减半涨薪幅度' });
+    }
+  }
+
+  if (Math.abs(otherDelta) >= 1) {
+    if (faithBonus > 1.0 && otherDelta > 0) {
+      breakdown.push({ source: '信念回报', amount: otherDelta, note: '对赛道的坚持和信念带来了正向回报' });
+    }
+    // MBTI微调等小额项不单独列出，避免信息噪音
+  }
+
+  if (wasCapped) {
+    const capDelta = newSalary - Math.round(state.currentMonthlySalary * (1 + totalRaise));
+    if (capDelta < 0) {
+      breakdown.push({ source: '薪资触顶', amount: capDelta, note: '已达到当前职业的薪资天花板' });
+    }
+  }
+
+  state.currentMonthlySalary = newSalary;
+  return breakdown;
+}
+
+/**
+ * 年度薪资涨幅封顶：防止事件涨薪+年度涨薪+成就涨薪叠加导致单年暴涨
+ * 在commitYear中所有薪资变化都完成后调用
+ * 打工阶段单年涨幅不超过25%（除非All In等特殊状态转换）
+ */
+export function clampAnnualSalaryGrowth(state: GameState, salaryAtStartOfYear: number): void {
+  if (state.isUnemployed || salaryAtStartOfYear <= 0) return;
+  
+  // All In当年允许大幅变动（职业转换），但之后按正常逻辑
+  // 打工阶段：单年涨幅封顶25%（真实人生中除非升职/跳槽，否则很难超过）
+  const maxGrowthRate = state.isAllInPath ? 0.5 : 0.25; // All In后允许50%（客户增长快）
+  const maxSalary = Math.round(salaryAtStartOfYear * (1 + maxGrowthRate));
+  
+  // 降薪不封顶（降职/裁员/行业危机可以大幅降薪）
+  if (state.currentMonthlySalary > maxSalary) {
+    state.currentMonthlySalary = maxSalary;
+  }
 }
 
 // 获取基础裁员率（v2平衡：体制内也有极小裁员风险，不再绝对安全）
@@ -243,6 +404,8 @@ export function calculateYearlySettlement(state: GameState): YearResult {
     if (state.pendingAftermath.type === '健康警示') actualCost *= 1.15;
     else if (state.pendingAftermath.type === '心理阴影') actualCost *= 1.10;
     else if (state.pendingAftermath.type === '情感创伤') actualCost *= 1.08;
+    else if (state.pendingAftermath.type === '认知干扰') actualCost *= 1.12;
+    else if (state.pendingAftermath.type === '医疗纠纷') actualCost *= 1.10;
   }
   
   result.livingCost = Math.round(actualCost);
@@ -283,8 +446,66 @@ export function calculateYearlySettlement(state: GameState): YearResult {
     result.livingCost = Math.round(result.livingCost * 0.96); // 较年轻：医疗支出略减4%
   }
   
+  // ========== 消费升级（lifestyle inflation）机制 ==========
+  // 真实人生中，人随着收入增长会提升消费水平：换更好的房子、更好的饮食、更好的医疗、更多社交
+  // 不应该出现"月薪涨到5万但生活费还是3千"的不真实情况
+  // 失业期间不触发消费升级（没收入还升级消费不现实）
+  if (!state.isUnemployed && state.currentMonthlySalary > 0 && state.currentAge >= 22) {
+    const annualSalary = state.currentMonthlySalary * 12;
+    // 消费升级目标：生活费占年收入的比例随收入增长而下降（高收入群体储蓄率更高）
+    let targetRatio = 0.5; // 默认50%用于生活
+    if (annualSalary > 600000) targetRatio = 0.45; // 年薪50万+：45%生活
+    if (annualSalary > 1000000) targetRatio = 0.4; // 年薪100万+：40%生活
+    if (annualSalary > 2000000) targetRatio = 0.35; // 年薪200万+：35%生活
+    if (annualSalary < 120000) targetRatio = 0.6; // 年薪10万以下：60%生活
+    if (annualSalary < 80000) targetRatio = 0.7; // 年薪不到7万：70%生活（入不敷出风险）
+    
+    // 目标生活费 = 年薪 × 目标比例
+    // 但要保证不低于已有固定开销（子女、赡养费等不能砍）
+    // 房贷/车险在后面计算，这里只考虑已确定的固定支出
+    const fixedCosts = childCost + parentSupportCost;
+    const targetLivingCost = Math.max(
+      Math.round(annualSalary * targetRatio),
+      fixedCosts + baseCost * cityConfig.costMultiplier * 0.5 // 至少保留基础生活费的一半（吃饭、交通等刚性支出）
+    );
+    
+    const currentLivingBeforeAdjust = result.livingCost;
+    if (targetLivingCost > currentLivingBeforeAdjust) {
+      // 收入增长：消费升级，每年追赶20%的差距（消费习惯改变较慢）
+      const adjustment = Math.round((targetLivingCost - currentLivingBeforeAdjust) * 0.20);
+      result.livingCost += adjustment;
+      // 把消费升级的25%固化到baseCost中（大部分升级是暂时的，小部分持久化）
+      const baseAdjustment = Math.round(adjustment / cityConfig.costMultiplier);
+      state.annualBaseCost += baseAdjustment * 0.25;
+    } else if (targetLivingCost < currentLivingBeforeAdjust * 0.85) {
+      // 收入下降：较快速下调生活水平（勒紧裤腰带快，消费升级慢）
+      const adjustment = Math.round((currentLivingBeforeAdjust - targetLivingCost) * 0.30);
+      result.livingCost = Math.max(targetLivingCost, currentLivingBeforeAdjust - adjustment);
+    }
+  }
+  
   // 通胀复利：3%（v5从2.5%提升：真实通胀+消费升级，长期理财必须跑赢通胀）
   state.annualBaseCost = state.annualBaseCost * 1.03;
+
+  // ========== 保护逻辑：All In/有公司/自雇职业的玩家不能被设为失业（自己当老板/没有固定雇主）==========
+  // 任何事件如果错误地将这些玩家设为失业，在此纠正
+  // 注意：'实体创业' 不在此列表中——它有自己的破产机制（连续两年负债20万以上可倒闭失业）
+  const isSelfEmployed = state.isAllInPath || state.hasCompany ||
+    state.currentProfession === '自由职业' || state.currentProfession === '数字游民';
+  if (isSelfEmployed && state.isUnemployed) {
+    state.isUnemployed = false;
+    // 如果薪资被清零，恢复到失业前水平或使用保底
+    if (state.currentMonthlySalary === 0 && state.preUnemployedSalary) {
+      state.currentMonthlySalary = state.preUnemployedSalary;
+    }
+  }
+
+  // ========== v12平衡：失业期间自动勒紧裤腰带，生活成本缩减25% ==========
+  // 真实情况下，人失业后会削减非必要开支（少外卖、少社交、取消订阅等）
+  // 自雇职业（已被上面的保护逻辑纠正）不会走到这里
+  if (state.isUnemployed) {
+    result.livingCost = Math.round(result.livingCost * 0.75);
+  }
 
   // ========== 连续失业年数追踪（totalUnemployedYears 在工资计算段处理）==========
   if (state.isUnemployed) {
@@ -445,32 +666,34 @@ export function calculateYearlySettlement(state: GameState): YearResult {
     const roll = Math.random();
     let chainReturnRate: number;
 
-    if (roll < 0.03) {
-      // 3% 概率：归零或接近归零（交易所跑路 / 杠杆爆仓 / 项目 rug pull）
-      // v12校准：从8%降到3%，真实归零是低概率事件，过高会让链上路径不可玩
+    if (roll < 0.05) {
+      // 5% 概率：归零或接近归零（交易所跑路 / 杠杆爆仓 / 项目 rug pull / 监管打击）
       chainReturnRate = -1.0;
-    } else if (roll < 0.21) {
-      // 18% 概率：熊市深跌 -60% ~ -25%（v12从-70%~-30%调温和）
-      chainReturnRate = -0.6 + Math.random() * 0.35;
-    } else if (roll < 0.68) {
-      // 38% 概率：常态波动 -30% ~ +60%（多数年份的真实样子）
-      chainReturnRate = -0.3 + Math.random() * 0.9;
-    } else if (roll < 0.88) {
-      // 20% 概率：牛市上涨 +60% ~ +200%（约2-3年一次的级别）
-      chainReturnRate = 0.6 + Math.random() * 1.4;
-    } else if (roll < 0.97) {
-      // 9% 概率：大牛市 +200% ~ +500%（周期顶点级别，约4年一次）
-      chainReturnRate = 2.0 + Math.random() * 3.0;
+    } else if (roll < 0.22) {
+      // 17% 概率：熊市深跌 -50% ~ -20%
+      chainReturnRate = -0.5 + Math.random() * 0.3;
+    } else if (roll < 0.62) {
+      // 40% 概率：常态波动 -25% ~ +50%（横盘或小涨小跌）
+      chainReturnRate = -0.25 + Math.random() * 0.75;
+    } else if (roll < 0.85) {
+      // 23% 概率：牛市上涨 +50% ~ +150%
+      chainReturnRate = 0.5 + Math.random() * 1.0;
+    } else if (roll < 0.96) {
+      // 11% 概率：大牛市 +150% ~ +300%（周期顶点级别）
+      chainReturnRate = 1.5 + Math.random() * 1.5;
     } else {
-      // 3% 概率：极端行情 +500% ~ +1000%（极小概率的年度神话）
-      chainReturnRate = 5.0 + Math.random() * 5.0;
+      // 4% 概率：极端行情 +300% ~ +600%（极小概率的年度神话）
+      chainReturnRate = 3.0 + Math.random() * 3.0;
     }
 
-    // 经济周期修正：繁荣年整体偏多，萧条年偏空，且提升归零概率
-    if (state.economicCycle === 0) chainReturnRate += 0.2;  // 繁荣年偏多
-    else if (state.economicCycle === 2) chainReturnRate -= 0.3; // 萧条年偏空更深
+    // 经济周期修正：繁荣年整体偏多，萧条年偏空
+    if (state.economicCycle === 0) chainReturnRate += 0.15;
+    else if (state.economicCycle === 2) {
+      chainReturnRate -= 0.2;
+      if (Math.random() < 0.03) chainReturnRate = -1.0; // 萧条期额外3%归零风险
+    }
 
-    // 下限 -100%（不能跌成负数）
+    // 下限 -100%
     chainReturnRate = Math.max(-1.0, chainReturnRate);
 
     const beforeHoldings = chainHoldings;
@@ -564,6 +787,55 @@ export function calculateYearlySettlement(state: GameState): YearResult {
     result.salaryIncome += happinessBonus;
   }
 
+  // All In后被动收入随经验自然增长（分路径复利），代表全职投入后的规模效应
+  if (state.isAllInPath && state.retirementPath) {
+    // 不同路径被动收入复利不同：依赖团队/粉丝/产品的路径复利更高
+    const growthRate: Record<string, number> = {
+      ai_symbiote: 1.08,     // AI产品：SaaS/模型复利（8%）
+      digital_nomad: 1.08,  // 远程团队：全球客户扩张（8%）
+      super_ip: 1.08,       // 内容IP：粉丝复利（8%）
+      chain_native: 1.06,   // 链上：持仓有独立波动，被动收入6%
+      silver_economy: 1.06, // 银发：月营收有独立增长，被动收入6%
+      bio_gambler: 1.06,    // 生物赌徒：投资组合有独立增长，被动收入6%
+    };
+    const rate = growthRate[state.retirementPath] || 1.06;
+    state.passiveIncome = Math.round(state.passiveIncome * rate);
+    // 生物赌徒：投资组合随研究深入和行业发展增长
+    if (state.retirementPath === 'bio_gambler') {
+      const bioPort = (state as any).bioPortfolio || 0;
+      // All In后全职研究：每年复利增长（16%，反映行业增长+个人研究优势+临床进展）
+      // All In前：8%趋势增长 + 每月工资的8%定投加仓
+      const growthMultiplier = state.isAllInPath ? 1.16 : 1.08;
+      const grown = Math.round(bioPort * growthMultiplier);
+      // All In前：每年从工资中拿8%加仓（工资定投生科股）
+      // All In后：每年至少追加1.2万新投资（来自咨询/科普的再投入）
+      let minNewInvestment = state.isAllInPath ? 12000 : 0;
+      if (!state.isAllInPath && !state.isUnemployed && state.currentMonthlySalary > 0) {
+        minNewInvestment = Math.round(state.currentMonthlySalary * 12 * 0.08);
+      }
+      (state as any).bioPortfolio = Math.max(grown, bioPort + minNewInvestment);
+    }
+    // 链上原住民：持仓随加密市场长期趋势增长（每年+4%长期趋势，短期波动已在上面计算）
+    if (state.retirementPath === 'chain_native') {
+      const holdings = (state as any).chainHoldings || 0;
+      let grown = Math.round(holdings * 1.04);
+      // All In前：每年从工资中拿5%定投加仓（工资定投，囤币）
+      if (!state.isAllInPath && !state.isUnemployed && state.currentMonthlySalary > 0) {
+        const dca = Math.round(state.currentMonthlySalary * 12 * 0.05);
+        grown += dca;
+      }
+      (state as any).chainHoldings = grown;
+    }
+    // 银发守夜人：月营收随口碑增长（每年+8%，服务业口碑复利）
+    if (state.retirementPath === 'silver_economy') {
+      const rev = (state as any).silverMonthlyRevenue || 0;
+      const newRev = Math.round(rev * 1.08);
+      (state as any).silverMonthlyRevenue = newRev;
+      const biz = (state as any).silverBusiness;
+      if (biz) biz.monthlyRevenue = newRev;
+    }
+  }
+
   // 被动收入包含商铺租金
   const totalPassiveIncome = state.passiveIncome + result.shopRentIncome;
   result.passiveIncome = totalPassiveIncome;
@@ -572,20 +844,23 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   if (state.currentProfession === '体制内' && state.currentAge >= 60) {
     result.insuranceCost = 0;
   } else {
-    result.insuranceCost = state.isInsured ? Math.round(state.insurancePremium) : 0;
+    // 保费随年龄递增（现实中重疾险保费随年龄陡增）
+    let insPremium = state.insurancePremium;
+    if (state.isInsured) {
+      if (state.currentAge >= 56) insPremium = Math.round(insPremium * 4);
+      else if (state.currentAge >= 46) insPremium = Math.round(insPremium * 2.5);
+      else if (state.currentAge >= 36) insPremium = Math.round(insPremium * 1.5);
+    }
+    result.insuranceCost = state.isInsured ? Math.round(insPremium) : 0;
     if (state.hasCommercialPension) {
       result.insuranceCost += 10000;
     }
   }
 
-  // === 副业收入（All In 前的路径副业，按月计算） ===
-  // MBTI人格机制（提前声明，供后续副业收入/压力/幸福修正使用）
+  // === 副业收入（All In 前，由剧情事件在年内累积，年终结算） ===
+  // MBTI人格机制（提前声明，供后续压力/幸福修正使用）
   const mbtiMech = getActiveMBTIMechanics(state);
-  let sideHustleIncome = getPathSideIncome(state) * 12;
-  // MBTI人格副业收入修正（ENTJ/ENFP创业天赋/INTJ技术变现等）
-  if (mbtiMech && sideHustleIncome > 0) {
-    sideHustleIncome = Math.round(sideHustleIncome * mbtiMech.sideHustleMultiplier);
-  }
+  const sideHustleIncome = state.currentYearSideHustle || 0;
   result.sideHustleIncome = sideHustleIncome;
   if (sideHustleIncome > 0) {
     state.lifetimeSideHustle += sideHustleIncome;
@@ -599,13 +874,15 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   state.currentSavings += result.netChange;
   
   // 实体创业破产判定（v2平衡：连续两年负债20万以上才触发，从10万提高）
-  if (state.currentProfession === '实体创业' && state.currentSavings < -200000) {
+  // hasCompany 的公司化运营（AI工作室/区块链公司等）同样适用破产判定
+  if ((state.currentProfession === '实体创业' || state.hasCompany === true) && state.currentSavings < -200000) {
     state.unemployedTurns += 1;
     if (state.unemployedTurns >= 2) {
       state.isUnemployed = true;
       state.preUnemployedSalary = state.currentMonthlySalary;
       state.currentMonthlySalary = 0;
       state.unemployedTurns = 0;
+      state.hasCompany = false;
       result.events.push(`第${state.currentAge}岁，你的创业梦碎了一地，员工遣散，办公室退租。你对着空荡荡的工位喝了一罐啤酒，然后删掉了那个叫"创始人"的头衔。`);
     }
   }
@@ -644,6 +921,11 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   else if (state.stress > 50) stressRecovery = 5;
 
   state.stress = Math.min(100, Math.max(0, state.stress + ageStressAdd - stressRecovery));
+
+  // 副业持续压力（维护副业的长期负担）
+  if (state.hasSideHustle && (state as any).sideHustleStress) {
+    state.stress = Math.min(100, state.stress + (state as any).sideHustleStress);
+  }
 
   // MBTI人格压力修正（NT理性者抗压/SP艺术者释压等）
   if (mbtiMech) {
@@ -732,11 +1014,11 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   }
   // 数字游牧民All In后：地理套利的副业收入变化同步到月薪
   if (state.isAllInPath && state.retirementPath === 'digital_nomad' && state.isGeoArbitrage) {
-    // 月薪基于副业收入×1.2（全职效率加成）
+    // 月薪基于副业收入×1.2（全职效率加成），v13提高系数与getPathSideIncome一致
     const nomadSideIncome = Math.round(
-      (state.pathSkills?.remoteSkill || 0) * 50 +
-      (state.pathSkills?.languageSkill || 0) * 30 +
-      (state.pathSkills?.crossCulturalSkill || 0) * 20 + 800
+      (state.pathSkills?.remoteSkill || 0) * 60 +
+      (state.pathSkills?.languageSkill || 0) * 35 +
+      (state.pathSkills?.crossCulturalSkill || 0) * 25 + 1000
     );
     state.currentMonthlySalary = Math.max(state.careerStartSalary * 0.7, Math.round(nomadSideIncome * 1.2));
   }
@@ -841,7 +1123,7 @@ export function checkEnding(state: GameState): string | null {
 
   // 年满targetAge或严重负债
   const reachedAge = state.currentAge >= state.targetAge;
-  const bankrupt = state.currentSavings < -500000; // v2平衡：负债50万以上才触发破产（从30万提高，给玩家更多缓冲）
+  const bankrupt = state.currentSavings < -300000; // 负债30万以上破产（年支出5-10万情况下，连续3-5年巨亏才会达到）
 
   // 严重负债随时触发破产结局
   if (bankrupt) return 'E8';
@@ -857,6 +1139,15 @@ export function checkEnding(state: GameState): string | null {
   }
 
   // ========== 以下是退休年龄后的自动结局判定 ==========
+
+  // 优先检查路径专属成功条件——玩家选了路径且满足path.checkSuccess
+  // 这样不会让普通结局(E1-E9)抢先截胡路径结局
+  if (state.retirementPath) {
+    const path = getPath(state.retirementPath);
+    if (path && path.checkSuccess(state)) {
+      return `path_success_${state.retirementPath}`;
+    }
+  }
 
   // E1 传奇自由人：财富达标 + 幸福>=70 + 健康>=60 + 无伴侣
   if (wealthMet && !state.isMarried && state.happiness >= 70 && state.health >= 60) return 'E1';

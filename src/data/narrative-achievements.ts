@@ -16,57 +16,52 @@ import type { NarrativeAchievement, GameState } from '../types/global.d.js';
 // 技术专家线 (tech_expert) —— 深耕技术，成为不可替代的人
 // ============================================================
 const techExpertAchievements: NarrativeAchievement[] = [
-  // 初级：技术负责人
+  // 初级：架构之手
   {
     id: 'ai_symbiote_tech_expert_1',
-    title: '技术负责人',
+    title: '架构之手',
     narrative: `你被团队推举为AI技术负责人。从写代码的人变成决定写什么代码的人。\n\n会议室里所有人都在等你开口。你清了清嗓子，在白板上画下第一根架构线的那一刻，你突然意识到——以前你是被指挥的人，现在你是那个画方向的人。`,
     pathId: 'ai_symbiote',
     branch: 'tech_expert',
     level: 1,
     skillRequirements: { aiSkill: 40 },
-    // 月薪×1.3 为乘性加薪，无法用加性的 salaryChange 表达，故在 stateEffect 中处理
     stateEffect: (state) => {
-      // 月薪×1.3（乘性加薪，在 stateEffect 中直接处理）
       state.currentMonthlySalary = Math.round(state.currentMonthlySalary * 1.3);
-      // 信念+10（pathFaith 已在 GameState 中类型化，直接赋值）
-      state.pathFaith = Math.min(100, state.pathFaith + 10);
+      state.pathFaith = Math.min(100, state.pathFaith + 5);
     },
     log: `你被推举为AI技术负责人。从今天起，你决定写什么代码。`,
   },
 
-  // 中级：提示词模板爆红
+  // 中级：范式铸币
   {
     id: 'ai_symbiote_tech_expert_2',
-    title: '提示词模板爆红',
-    narrative: `你开源的提示词模板在GitHub上获得了5000+star。猎头开始频繁联系你。\n\n那天你只是随手把用了一年的模板整理了一下传上去，没想到一周后star数像脱缰的野马。你的私信箱塞满了"求合作""求内推""求讲座"。你第一次明白：在AI时代，最好的简历是你公开的作品。`,
+    title: '范式铸币',
+    narrative: `你开源的提示词范式在开发者社区爆火。猎头开始频繁联系你。\n\n那天你只是随手把用了一年的方法论整理了一下传上去，没想到一周后引用数像脱缰的野马。你的私信箱塞满了"求合作""求内推""求讲座"。你第一次明白：在AI时代，最好的简历是你公开的作品。`,
     pathId: 'ai_symbiote',
     branch: 'tech_expert',
     level: 2,
     skillRequirements: { promptMastery: 60 },
-    passiveIncomeChange: 3000, // 咨询费，被动收入+3000/年
+    passiveIncomeChange: 3000,
     stateEffect: (state) => {
-      // 信念+5
-      state.pathFaith = Math.min(100, state.pathFaith + 5);
+      state.pathFaith = Math.min(100, state.pathFaith + 3);
     },
-    log: `你的提示词模板在GitHub爆红，5000+star。猎头开始频繁联系你。`,
+    log: `你的提示词范式在开发者社区爆火。猎头开始频繁联系你。`,
   },
 
-  // 终极：大厂挖人
+  // 终极：人机合鸣
   {
     id: 'ai_symbiote_tech_expert_3',
-    title: '大厂挖人',
-    narrative: `大厂HR亲自飞来你的城市，开价年薪80万。你看着offer上的数字，想起了22岁那个在出租屋里调提示词的自己。\n\n"我们能为您做点什么？"对面西装革履的HR问。你端起咖啡，杯壁上映出一张比22岁成熟许多的脸。你没急着回答，只是想起那个凌晨三点对着屏幕自言自语的夜晚——那时你赌的未来，正在向你兑现。`,
+    title: '人机合鸣',
+    narrative: `头部AI集团的HR亲自飞来你的城市，开出你不敢想的价码。你看着offer上的数字，想起那个在出租屋里第一次让AI跑通"Hello World"的夜晚。\n\n"我们能为您做点什么？"对面西装革履的HR问。你端起咖啡，杯壁上映出一张比年轻时成熟许多的脸。你没急着回答，只是想起那个凌晨三点对着屏幕自言自语的夜晚——那时你赌的未来，正在向你兑现。`,
     pathId: 'ai_symbiote',
     branch: 'tech_expert',
     level: 3,
     skillRequirements: { aiSkill: 70, aiTraining: 50, promptMastery: 50 },
-    savingsChange: 200000, // 签约奖金
+    savingsChange: 200000,
     stateEffect: (state) => {
-      // 月薪翻倍（乘性加薪，在 stateEffect 中直接处理）
       state.currentMonthlySalary = Math.round(state.currentMonthlySalary * 2);
     },
-    log: `大厂HR亲自飞来开价年薪80万。你签下了那份offer，签约奖金20万到账。`,
+    log: `头部AI集团邀你出山，开出天价offer。你签下了那份合约。`,
     triggersRetirementCheck: true,
   },
 ];
@@ -75,53 +70,51 @@ const techExpertAchievements: NarrativeAchievement[] = [
 // AI创业线 (ai_startup) —— All in 自己的产品
 // ============================================================
 const aiStartupAchievements: NarrativeAchievement[] = [
-  // 初级：独立产品上线
+  // 初级：冷启动
   {
     id: 'ai_symbiote_startup_1',
-    title: '独立产品上线',
+    title: '冷启动',
     narrative: `你的AI产品终于上线了。第一天只有23个用户，但你激动得睡不着觉。\n\n凌晨两点你刷新后台，数字从0跳到1，再到5、12、23。每一个新增用户都像一束微光。你躺在工位旁的折叠床上，盯着天花板想：这23个人，可能就是你撬动世界的支点。`,
     pathId: 'ai_symbiote',
     branch: 'ai_startup',
     level: 1,
     skillRequirements: { aiSkill: 30, aiTraining: 20 },
-    savingsChange: -10000, // 服务器费
+    savingsChange: -10000,
     stateEffect: (state) => {
-      // 信念+15
-      state.pathFaith = Math.min(100, state.pathFaith + 15);
+      state.pathFaith = Math.min(100, state.pathFaith + 8);
     },
     log: `你的AI产品上线了。第一天23个用户，但你激动得失眠。服务器费花掉一万。`,
   },
 
-  // 中级：融资成功
+  // 中级：资本注血
   {
     id: 'ai_symbiote_startup_2',
-    title: '融资成功',
+    title: '资本注血',
     narrative: `投资人看了你的数据后说"我投了"。你拿到了500万天使轮。你第一次坐在老板椅上，而不是工位上。\n\n会议室的灯很亮，对面那位头发花白的前辈把名片推过来："500万，占股15%。"你签字的手没抖，但出了门你在电梯里靠着墙笑了整整一分钟。这不再是你一个人的赌局了。`,
     pathId: 'ai_symbiote',
     branch: 'ai_startup',
     level: 2,
     skillRequirements: { aiTraining: 40, aiSkill: 40 },
-    savingsChange: 500000, // 融资到账
-    passiveIncomeChange: 20000, // 被动收入+20000/年
+    savingsChange: 500000,
+    passiveIncomeChange: 20000,
     stateEffect: (state) => {
-      // 信念+20
-      state.pathFaith = Math.min(100, state.pathFaith + 20);
+      state.pathFaith = Math.min(100, state.pathFaith + 10);
     },
     log: `投资人一句"我投了"，你拿到了500万天使轮。你第一次坐上老板椅。`,
   },
 
-  // 终极：产品爆火
+  // 终极：奇点降临
   {
     id: 'ai_symbiote_startup_3',
-    title: '产品爆火',
-    narrative: `你的产品在Product Hunt上拿到了当日第一。服务器差点被挤爆。你看着飙升的用户曲线，知道——你赌对了。\n\n凌晨四点，报警短信把你的手机震成一条响不停的虫。你冲进机房般地打开笔记本，看着那条近乎垂直的增长曲线，先是慌，然后笑出了声。多年前那个23个用户的夜晚，原来真的是支点。`,
+    title: '奇点降临',
+    narrative: `你的产品在开源榜单登顶。服务器差点被挤爆。你看着飙升的用户曲线，知道——你赌对了。\n\n凌晨四点，报警短信把你的手机震成一条响不停的虫。你打开笔记本，看着那条近乎垂直的增长曲线，先是慌，然后笑出了声。多年前那个23个用户的夜晚，原来真的是支点。`,
     pathId: 'ai_symbiote',
     branch: 'ai_startup',
     level: 3,
     skillRequirements: { aiSkill: 60, aiTraining: 60, promptMastery: 40 },
     savingsChange: 1000000,
-    passiveIncomeChange: 100000, // 被动收入+100000/年
-    log: `你的产品登顶Product Hunt当日第一。服务器差点被挤爆——你赌对了。`,
+    passiveIncomeChange: 100000,
+    log: `你的产品登顶开源榜单。服务器差点被挤爆——你赌对了。`,
     triggersRetirementCheck: true,
   },
 ];
@@ -130,53 +123,51 @@ const aiStartupAchievements: NarrativeAchievement[] = [
 // 布道师线 (ai_evangelist) —— 教别人用AI，比自己用AI更赚钱
 // ============================================================
 const aiEvangelistAchievements: NarrativeAchievement[] = [
-  // 初级：第一门付费课
+  // 初级：第一道音
   {
     id: 'ai_symbiote_evangelist_1',
-    title: '第一门付费课',
-    narrative: `你的AI提示词课程上线了。定价299，第一天卖了100份。你意识到——教别人用AI，比自己用AI赚钱。\n\n后台的销售额从0跳到29900，你刷新了三遍确认不是bug。你想起自己第一次写出能用的提示词时，也是这种心跳加速的感觉。原来分享本身就是一种复利。`,
+    title: '第一道音',
+    narrative: `你的AI课程上线了。定价299，第一天卖了100份。你意识到——教别人用AI，比自己用AI赚钱。\n\n后台的销售额从0跳到29900，你刷新了三遍确认不是bug。你想起自己第一次写出能用的提示词时，也是这种心跳加速的感觉。原来分享本身就是一种复利。`,
     pathId: 'ai_symbiote',
     branch: 'ai_evangelist',
     level: 1,
     skillRequirements: { promptMastery: 30, aiSkill: 20 },
-    passiveIncomeChange: 5000, // 被动收入+5000/年
+    passiveIncomeChange: 5000,
     stateEffect: (state) => {
-      // 信念+10
-      state.pathFaith = Math.min(100, state.pathFaith + 10);
+      state.pathFaith = Math.min(100, state.pathFaith + 5);
     },
-    log: `你的AI提示词课程上线，定价299，首日卖出100份。教别人用AI比自用更赚钱。`,
+    log: `你的AI课程上线，定价299，首日卖出100份。教别人用AI比自用更赚钱。`,
   },
 
-  // 中级：十万粉丝
+  // 中级：信众十万
   {
     id: 'ai_symbiote_evangelist_2',
-    title: '十万粉丝',
-    narrative: `你的自媒体账号突破了十万粉丝。评论区有人叫你"老师"，有人骂你"割韭菜"。你发现，影响力是一把双刃剑。\n\n粉丝数跳过100000的那一秒你截了图，发了个朋友圈又默默删掉。评论区最高赞是"谢谢老师改变了我"，第二高赞是"又一个割韭菜的"。你关掉手机，第一次认真地想：被看见，是有代价的。`,
+    title: '信众十万',
+    narrative: `你的频道突破了十万关注。评论区有人叫你"老师"，有人骂你"割韭菜"。你发现，影响力是一把双刃剑。\n\n关注数跳过100000的那一秒你截了图，发了个动态又默默删掉。评论区最高赞是"谢谢老师改变了我"，第二高赞是"又一个割韭菜的"。你关掉手机，第一次认真地想：被看见，是有代价的。`,
     pathId: 'ai_symbiote',
     branch: 'ai_evangelist',
     level: 2,
     skillRequirements: { promptMastery: 50, aiSkill: 40 },
-    passiveIncomeChange: 20000, // 广告+课程
+    passiveIncomeChange: 20000,
     stateEffect: (state) => {
-      // 信念+10，压力+10
-      state.pathFaith = Math.min(100, state.pathFaith + 10);
+      state.pathFaith = Math.min(100, state.pathFaith + 5);
       state.stress = Math.min(100, state.stress + 10);
     },
-    log: `你的自媒体突破十万粉丝。有人叫你老师，有人骂你割韭菜。影响力是双刃剑。`,
+    log: `你的频道突破十万关注。有人叫你老师，有人骂你割韭菜。影响力是双刃剑。`,
   },
 
-  // 终极：行业大会演讲
+  // 终极：先知登台
   {
     id: 'ai_symbiote_evangelist_3',
-    title: '行业大会演讲',
-    narrative: `你站在AI开发者大会的舞台上，台下坐着一千人。你讲完最后一个slide，掌声雷动。你突然想起22岁时那个在出租屋里对着屏幕自言自语的自己。\n\n聚光灯很烫，你握着翻页笔的手心全是汗。你说出最后一句"谢谢大家"时，掌声像潮水一样涌上来。你望向黑压压的人头，恍惚间看见那个22岁的自己坐在最后一排，冲你笑了笑。你对TA点了点头。`,
+    title: '先知登台',
+    narrative: `你站在AI前沿峰会上，台下坐着一千人。你讲完最后一页，掌声雷动。\n\n聚光灯很烫，你握着翻页笔的手心全是汗。你说出最后一句"谢谢大家"时，掌声像潮水一样涌上来。你望向黑压压的人头，恍惚间看见那个深夜里第一次被AI震撼到的年轻人，坐在最后一排冲你点头。`,
     pathId: 'ai_symbiote',
     branch: 'ai_evangelist',
     level: 3,
     skillRequirements: { promptMastery: 65, aiSkill: 55, aiTraining: 30 },
-    savingsChange: 200000, // 演讲费+赞助
-    passiveIncomeChange: 50000, // 被动收入+50000/年
-    log: `你站上AI开发者大会的舞台，千人掌声雷动。你想起了22岁的自己。`,
+    savingsChange: 200000,
+    passiveIncomeChange: 50000,
+    log: `你站上AI前沿峰会的舞台，千人掌声雷动。那一刻你知道，你不再是追随者。`,
     triggersRetirementCheck: true,
   },
 ];

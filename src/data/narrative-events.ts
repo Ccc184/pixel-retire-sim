@@ -32,6 +32,8 @@ import './narrative-data-silver.js';
 import './narrative-data-bio.js';
 import './narrative-unemployed.js';
 import './narrative-allin.js';
+import './narrative-company.js';
+import './narrative-breakthrough.js';
 import './narrative-data-mbti.js';
 import './narrative-data-philosophy.js';
 
@@ -68,21 +70,21 @@ const commonEvents: NarrativeEvent[] = [
     oncePerGame: true,
     eventType: 'normal',
     narrative:
-      '入职第三天，带你的前辈扔过来一份文档："这个让ChatGPT跑一遍，整理成周报。"\n' +
-      '你打开对话框，光标闪烁了十秒。你敲下第一行指令，AI秒回了一段比你写得更通顺的文字。你盯着屏幕，后背微微发凉——不是恐惧，是兴奋。\n' +
+      '入职第三天，带你的前辈扔过来一份文档："这个让通用大模型跑一遍，整理成周报。"\n' +
+      '你打开对话框，光标闪烁了十秒。你敲下第一行指令，AI秒回了一段比你写得更通顺的文字。你盯着屏幕，后背微微发凉——与其说是恐惧，不如说是兴奋。\n' +
       '你隐约觉得这个东西会改变一切，而你是这间办公室里最早摸到它的人之一。下班后你没走，把公司所有公开文档都喂给了AI，看它怎么理解、怎么总结、怎么"思考"。',
     options: [
       {
         id: 'dive_into_ai',
         label: '把业余时间全砸进AI工具',
         description: '买API额度、注册各种AI平台、熬夜研究，做那个"最先懂"的人',
-        hint: 'AI技能+12 · 提示词+8 · 压力+6 · 存款-2000',
+        hint: 'AI技能+12 · 提示词+8 · 压力+6 · 存款-2000 · 信念+3',
         hintColor: 'positive',
         skillGains: { aiSkill: 12, promptMastery: 8 },
         savingsChange: -2000,
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 6, 0, 100);
-          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
         log: '22岁，你把工资的三分之一花在了API和订阅上，把全部夜晚交给了对话框。同事们还在抱怨加班，你已经在用AI把加班时间砍掉了一半。',
       },
@@ -103,7 +105,7 @@ const commonEvents: NarrativeEvent[] = [
         id: 'teach_colleagues',
         label: '教同事们一起用AI',
         description: '做办公室里的"AI小老师"，用人情换影响力',
-        hint: '提示词+6 · 幸福+5 · 压力+3 · 人脉积累',
+        hint: '提示词+6 · 幸福+5 · 压力+3',
         hintColor: 'neutral',
         skillGains: { promptMastery: 6 },
         stateEffect: (s) => {
@@ -185,8 +187,8 @@ const commonEvents: NarrativeEvent[] = [
     eventType: 'normal',
     narrative:
       '你用AI写了一个自动化脚本，把部门一个耗时两天的流程压缩到了二十分钟。主管看到演示时眼睛亮了，当场说"这周给你加绩效"。\n' +
-      '但第二天，脚本出了个bug，把一批客户数据搞乱了。你花了整整一夜修复，第二天顶着黑眼圈交差，主管的脸色从"这小子有前途"变成了"还是太嫩"。\n' +
-      '你坐在空荡的工位上，窗外天快亮了。AI给了你一把快刀，但你还没学会刀法——快刀切菜快，切到手也快。',
+      '但第二天，脚本出了个bug。王姐的订单没了——就是上周在电话里感谢你帮她抢到限时折扣的那个王姐。你翻了三遍数据库，确认数据无法恢复。你花了整整一夜手动重建，第二天顶着黑眼圈交差，主管的脸色从"这小子有前途"变成了"还是太嫩"。\n' +
+      '王姐打电话来问她的订单，你看着来电显示，没接。AI给了你一把快刀，但你还没学会刀法——快刀切菜快，切到手也快。',
     options: [
       {
         id: 'audit_every_line',
@@ -231,6 +233,7 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
         log: '24岁，你花了一个月把那个脚本重构成了一个完整的自动化工具，带异常处理、日志追踪和一键回滚。主管把它推广到了全部门，你的名字第一次出现在了季度表彰名单上。',
+        blindBoxTrigger: 'ai_automate_self',
       },
     ],
   },
@@ -310,7 +313,7 @@ const branchSelectEvent: NarrativeEvent[] = [
     eventType: 'branch_select',
     conditions: (s) => !s.narrativeBranch || s.narrativeBranch === 'unassigned',
     narrative:
-      '三年了。你从那个对着ChatGPT发呆的新人，变成了公司里"最懂AI"的那个人。但"懂"是个很虚的字——你懂技术，却还没深到不可替代；你会用AI，却还没用它赚到过真正的钱；你偶尔教教同事，但还没把它变成你的标签。\n\n' +
+      '三年了。你从那个对着通用大模型发呆的新人，变成了公司里"最懂AI"的那个人。但"懂"是个很虚的字——你懂技术，却还没深到不可替代；你会用AI，却还没用它赚到过真正的钱；你偶尔教教同事，但还没把它变成你的标签。\n\n' +
       '25岁这年，你站在一个岔路口。AI的浪潮越来越大，你不能再以"什么都会一点"的姿态漂着了。你得选一条路，走到黑。\n\n' +
       '深夜你打开备忘录，写下三个词：技术、产品、影响力。你知道选了哪条路，就意味着暂时放下另外两条。窗外的城市还亮着，你的屏幕也亮着，光标一闪一闪，像在等你做一个不会反悔的决定。',
     options: [
@@ -334,7 +337,7 @@ const branchSelectEvent: NarrativeEvent[] = [
         id: 'choose_ai_startup',
         label: '用AI做产品，搏一个独角兽',
         description: '技术够用了，是时候把它变成钱。你赌的是：AI时代的产品窗口期很短，现在不上车就永远没机会了。',
-        hint: 'AI技能+8 · 模型训练+8 · 存款-20000 · 压力+10 · 信念+8',
+        hint: 'AI技能+8 · 模型训练+8 · 存款-20000 · 压力+10 · 信念+5',
         hintColor: 'danger',
         skillGains: { aiSkill: 8, aiTraining: 8 },
         savingsChange: -20000,
@@ -342,8 +345,9 @@ const branchSelectEvent: NarrativeEvent[] = [
         stateEffect: (s) => {
           ensureSkills(s);
           s.stress = clamp(s.stress + 10, 0, 100);
-          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           s.happiness = clamp(s.happiness + 3, 0, 100);
+          (s as any).startedStartup = true;
         },
         log: '25岁，你没辞职——但你在工位上偷偷跑着你的AI产品。午休时间部署服务器，下班后写代码到凌晨，周末全泡在产品迭代上。你把积蓄砸进了API账单，同事以为你在加班赶项目，其实你在给自己赶。没有退路，但目前还有退路——你清楚，这只是时间问题。',
       },
@@ -384,8 +388,8 @@ const techExpertEvents: NarrativeEvent[] = [
     weight: 8,
     oncePerGame: true,
     narrative:
-      '公司要做一个AI驱动的推荐系统，技术总监把架构设计的活派给了你。这是你第一次独立负责一个完整系统的骨架。\n' +
-      '你在白板上画了三天，擦了改、改了擦。AI模型怎么部署、数据怎么流转、推理延迟怎么压、冷启动怎么扛——每一个箭头都连着一个可能崩溃的深夜。你第一次理解了什么叫"架构师的笔，比程序员的键盘更重"。',
+      '公司要做一个AI驱动的推荐系统，技术总监把架构设计的活派给了你。你头一回独立负责一个完整系统的骨架。\n' +
+      '你在白板上画了三天，擦了改、改了擦。AI模型怎么部署、数据怎么流转、推理延迟怎么压、冷启动怎么扛——每一个箭头都连着一个可能崩溃的深夜。你这才理解了什么叫"架构师的笔，比程序员的键盘更重"。',
     options: [
       {
         id: 'study_classic_arch',
@@ -441,15 +445,15 @@ const techExpertEvents: NarrativeEvent[] = [
     weight: 7,
     oncePerGame: true,
     narrative:
-      '你在GitHub上发现了一个热门AI框架的bug，随手提了个PR。三天后maintainer合并了你的代码，还留言说"clean fix, thanks"。\n' +
-      '你盯着那条评论傻笑了五分钟。然后你开始翻这个项目的issue列表，发现有几十个open的bug没人理。你周末花了两天修了三个，又被合并了两个。你的GitHub主页上开始出现绿色方块，像夜空里慢慢亮起来的星星。\n' +
-      '你想：也许技术人的名片不是职级，是commit history。',
+      '你在开源社区上发现了一个热门AI框架的bug，随手提了个PR。三天后maintainer合并了你的代码，还留言说"clean fix, thanks"。\n' +
+      '你盯着那条评论傻笑了五分钟。然后你开始翻这个项目的issue列表，发现有几十个open的bug没人理。你周末花了两天修了三个，又被合并了两个。你的开源社区主页上开始出现绿色方块，像夜空里慢慢亮起来的星星。\n' +
+      '你想：也许技术人真正的名片是commit history，职级反倒是虚的。',
     options: [
       {
         id: 'contribute_regularly',
         label: '坚持每周贡献开源项目',
         description: '把业余时间投入开源，建立行业内的技术声誉',
-        hint: 'AI技能+12 · 压力+8 · 幸福+5 · 健康-4 · 存款-3000',
+        hint: 'AI技能+12 · 压力+8 · 幸福+5 · 健康-4 · 存款-3000 · 副业+3000',
         hintColor: 'positive',
         skillGains: { aiSkill: 12 },
         savingsChange: -3000,
@@ -458,8 +462,9 @@ const techExpertEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 5, 0, 100);
           s.health = clamp(s.health - 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.currentYearSideHustle += 3000; // 项目方发的一笔bug赏金
         },
-        log: '27岁，你的GitHub连续绿了半年。有人开始在issue里@你帮忙看代码，有人在Twitter上转你的技术博客。你第一次感觉到，技术声誉是可以脱离公司独立存在的资产。',
+        log: '27岁，你的开源社区连续绿了半年。有人开始在issue里@你帮忙看代码，有人在Twitter上转你的技术博客。一个项目方请你修了个关键bug，打来3000刀赏金。你第一次感觉到，技术声誉是可以脱离公司独立存在的资产。',
       },
       {
         id: 'fork_own_project',
@@ -474,6 +479,7 @@ const techExpertEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
         log: '27岁，你开源了一个自己写的AI代码审查工具。第一个月只有23个star，你差点放弃。第二个月某大V转发了，star冲到了800。你每天醒来第一件事是看star数，像养了一个电子宠物。',
+        blindBoxTrigger: 'ai_open_source_tool',
       },
       {
         id: 'focus_day_job',
@@ -486,7 +492,7 @@ const techExpertEvents: NarrativeEvent[] = [
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 2, 0, 100);
         },
-        log: '27岁，你关掉了GitHub通知，把全部精力投到了公司项目上。年终拿了A绩效，涨了薪。但偶尔刷到同行晒star破千的截图，你心里会闪过一丝"如果当初"。',
+        log: '27岁，你关掉了开源社区通知，把全部精力投到了公司项目上。年终拿了A绩效，涨了薪。但偶尔刷到同行晒star破千的截图，你心里会闪过一丝"如果当初"。',
       },
     ],
   },
@@ -584,15 +590,16 @@ const techExpertEvents: NarrativeEvent[] = [
         id: 'write_tech_blog',
         label: '把分享内容写成系列技术博客',
         description: '输出倒逼输入，用写作深化技术理解',
-        hint: 'AI技能+10 · 提示词+5 · 压力+4 · 被动收入+3000/年',
+        hint: 'AI技能+10 · 提示词+5 · 压力+4 · 被动收入+3000/年 · 副业+5000',
         hintColor: 'positive',
         skillGains: { aiSkill: 10, promptMastery: 5 },
         passiveIncomeChange: 3000,
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          s.currentYearSideHustle += 5000; // 一家AI公司付费请写的技术评测稿费
         },
-        log: '29岁，你的技术博客在掘金和知乎上慢慢积累了关注。有猎头通过博客找到了你，有公司请你去内部分享。你发现写出来的东西比留在脑子里的更值钱。',
+        log: '29岁，你的技术博客在掘金和问答社区上慢慢积累了关注。有猎头通过博客找到了你，有公司请你去内部分享。一家AI公司付费5000块请你写了一篇技术框架的深度评测。你发现写出来的东西比留在脑子里的更值钱。',
       },
       {
         id: 'keep_low_profile',
@@ -741,7 +748,7 @@ const techExpertEvents: NarrativeEvent[] = [
     narrative:
       '组里来了个应届生，名校硕士，简历上有两篇AI顶会论文，但工程能力约等于零。总监让他跟你的项目，你成了他的mentor。\n' +
       '他第一天就把测试环境搞崩了，第二天给你看的代码你差点心梗——变量名用拼音，没有异常处理，AI生成的代码他不审查直接提交。你深吸一口气，想起自己23岁翻车的那天晚上。\n' +
-      '你忽然理解了一件事：技术能力的尽头不是自己多强，而是能让身边的人多强。',
+      '你忽然理解了一件事：技术能力的尽头，在能让身边的人多强——自己多强，反倒其次了。',
     options: [
       {
         id: 'patient_mentor',
@@ -817,7 +824,7 @@ const techExpertEvents: NarrativeEvent[] = [
           s.health = clamp(s.health - 3, 0, 100);
           s.happiness = clamp(s.happiness + 10, 0, 100);
         },
-        log: '34岁，你成了公司最年轻的Principal架构师。工牌换了颜色，邮箱里塞满了恭喜的邮件。你站在落地窗前看着楼下的车流，想起22岁那个对着ChatGPT发呆的自己——那条路，你走到了一个别人没走到的地方。',
+        log: '34岁，你成了公司最年轻的Principal架构师。工牌换了颜色，邮箱里塞满了恭喜的邮件。你站在落地窗前看着楼下的车流，玻璃上映出一个穿西装的身影——和那个穿着拖鞋在出租屋里对着通用大模型熬夜的年轻人，是同一个人。那条路，你走到了一个别人没走到的地方。',
       },
       {
         id: 'tech_lead_path',
@@ -838,7 +845,7 @@ const techExpertEvents: NarrativeEvent[] = [
         id: 'independent_consultant',
         label: '婉拒晋升，转型独立技术顾问',
         description: '用积累的声誉接咨询，时间自由，收入更高',
-        hint: 'AI技能+8 · 被动收入+15000/年 · 幸福+8 · 压力-5 · 但失去平台',
+        hint: 'AI技能+8 · 被动收入+15000/年 · 幸福+8 · 压力-5 · 但失去平台 · 副业+20000',
         hintColor: 'neutral',
         skillGains: { aiSkill: 8 },
         passiveIncomeChange: 15000,
@@ -846,8 +853,9 @@ const techExpertEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 8, 0, 100);
           s.stress = clamp(s.stress - 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.currentYearSideHustle += 20000; // 第一笔技术咨询项目费到账
         },
-        log: '34岁，你做了一个让所有人意外的决定：不升职，离职做独立顾问。你的技术博客和开源声誉帮你接到了第一批客户。你第一次发现，没有公司的牌子，你的名字也值钱。',
+        log: '34岁，你做了一个让所有人意外的决定：不升职，离职做独立顾问。你的技术博客和开源声誉帮你接到了第一批客户，第一笔项目费20000块到账。你第一次发现，没有公司的牌子，你的名字也值钱。',
       },
     ],
   },
@@ -899,7 +907,7 @@ const techExpertEvents: NarrativeEvent[] = [
         id: 'start_consulting',
         label: '两边都不选，出来做技术咨询',
         description: '用多年积累的技术声誉，做自由的技术顾问',
-        hint: 'AI技能+10 · 被动收入+20000/年 · 幸福+8 · 压力+5 · 存款-15000',
+        hint: 'AI技能+10 · 被动收入+20000/年 · 幸福+8 · 压力+5 · 存款-15000 · 副业+15000',
         hintColor: 'neutral',
         skillGains: { aiSkill: 10 },
         passiveIncomeChange: 20000,
@@ -908,8 +916,9 @@ const techExpertEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 8, 0, 100);
           s.stress = clamp(s.stress + 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.currentYearSideHustle += 15000; // 首个咨询项目的首付款到账
         },
-        log: '36岁，你离开了大厂，注册了一家一人咨询公司。第一个客户给你开了日薪八千的价。你坐在联合办公空间里，第一次觉得：技术这件事，原来可以这么自由地做。',
+        log: '36岁，你离开了大厂，注册了一家一人咨询公司。第一个客户给你开了日薪八千的价，首个项目预付了15000块。你坐在联合办公空间里，第一次觉得：技术这件事，原来可以这么自由地做。',
       },
     ],
   },
@@ -988,7 +997,7 @@ const techExpertEvents: NarrativeEvent[] = [
     narrative:
       '38岁了。你在这个行业写了十六年代码，从最初的CRUD到现在的AI系统架构，你的名字出现在好几项专利上，你的开源项目有几千个star。\n' +
       '但深夜你看着镜子里的人，忽然问了一个从没问过自己的问题：你是在追求技术，还是在用技术逃避别的什么？你的通讯录里"朋友"那栏越来越少，"同事"那栏越来越多。你已经很久没有因为"有趣"而不是"有用"去学一个新东西了。\n' +
-      '你想起22岁那年第一次看到AI秒回答案时的兴奋。那种纯粹的兴奋，你有多久没体会过了？',
+      '第一次看到AI秒回答案时，后脖颈一阵发麻的感觉你还记得。那种纯粹的兴奋，你有多久没体会过了？',
     options: [
       {
         id: 'rekindle_passion',
@@ -1192,7 +1201,7 @@ const aiStartupEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
           s.happiness = clamp(s.happiness + 5, 0, 100);
         },
-        log: '28岁，你签了TS，银行账户多了一串零。你给团队发了第一笔正式工资，换了办公室，招了三个人。但你知道，从今天起你的每一个决定都要对投资人负责了。',
+        log: '28岁，你签了TS，银行账户多了一串零。你终于走出了那一步——从兼职做产品到全职创业，从一个人在工位上偷偷写代码到有人给你投钱让你把它做大。你给团队发了第一笔正式工资，换了办公室，招了三个人。但你知道，从今天起你的每一个决定都要对投资人负责了。',
       },
       {
         id: 'bootstrap_longer',
@@ -1206,7 +1215,7 @@ const aiStartupEvents: NarrativeEvent[] = [
           s.health = clamp(s.health - 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '28岁，你拒了500万。你在出租屋里精打细算，每一分钱掰成两半花。三个月后月流水终于超过了支出，你实现了盈亏平衡。你发了条朋友圈："自由不是免费的，但值得。"',
+        log: '28岁，你拒了500万。你在出租屋里精打细算，每一分钱掰成两半花。三个月后月流水终于超过了支出，你实现了盈亏平衡。你发了条动态圈："自由不是免费的，但值得。"',
       },
       {
         id: 'negotiate_better',
@@ -1237,7 +1246,7 @@ const aiStartupEvents: NarrativeEvent[] = [
     oncePerGame: true,
     narrative:
       '竞品像蘑菇一样冒出来，三个月内市面上出现了七个和你几乎一样的产品，有两个还背靠大厂。你的用户增长开始放缓，有几个大客户在比价。\n' +
-      '你把自己关在办公室里看了一整天的用户反馈，把300条留言贴满了墙。你发现了一个被所有人忽略的痛点——不是功能不够多，而是AI生成的内容缺少"品牌一致性"。\n' +
+      '你把自己关在办公室里看了一整天的用户反馈，把300条留言贴满了墙。你发现了一个被所有人忽略的痛点——功能早就够多了，真正缺的是AI生成内容的"品牌一致性"。\n' +
       '你像发现新大陆一样兴奋，但兴奋了三秒就冷静了：这个方向需要大量定制化训练，技术难度很高，而且没人验证过用户愿不愿意为此付费。',
     options: [
       {
@@ -1293,7 +1302,7 @@ const aiStartupEvents: NarrativeEvent[] = [
     pathId: 'ai_symbiote',
     branch: 'ai_startup',
     ageRange: [30, 30],
-    priority: 5,
+    priority: 8,
     weight: 7,
     oncePerGame: true,
     narrative:
@@ -1334,15 +1343,15 @@ const aiStartupEvents: NarrativeEvent[] = [
         id: 'viral_mechanism',
         label: '设计裂变机制，让用户帮你传播',
         description: '不花钱买量，用产品机制驱动自然增长',
-        hint: 'AI技能+8 · 提示词+10 · 压力+5 · 存款-3000 · 信念+6',
+        hint: 'AI技能+8 · 提示词+10 · 压力+5 · 存款-3000 · 信念+3',
         hintColor: 'positive',
         skillGains: { aiSkill: 8, promptMastery: 10 },
         savingsChange: -3000,
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 5, 0, 100);
-          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
-        log: '30岁，你设计了"分享生成结果解锁高级功能"的裂变机制。用户为了免费用高级模板，自发在朋友圈传播你的产品。零投放成本，月增长稳定在30%。你第一次尝到了"增长黑客"的甜头。',
+        log: '30岁，你设计了"分享生成结果解锁高级功能"的裂变机制。用户为了免费用高级模板，自发在动态圈传播你的产品。零投放成本，月增长稳定在30%。你第一次尝到了"增长黑客"的甜头。',
       },
     ],
   },
@@ -1484,7 +1493,7 @@ const aiStartupEvents: NarrativeEvent[] = [
     oncePerGame: true,
     narrative:
       '融了资、招了人、搬了办公室，公司从5人变成了30人。但成长的阵痛来了——你的联合创始人在战略方向上和你产生了严重分歧。\n' +
-      '你主张继续深耕现有产品做深护城河，他主张快速扩张品类抢占更多市场。争论从会议室延伸到下班后的微信，从微信延伸到凌晨三点的电话。\n' +
+      '你主张继续深耕现有产品做深护城河，他主张快速扩张品类抢占更多市场。争论从会议室延伸到下班后的社交软件，从社交软件延伸到凌晨三点的电话。\n' +
       '最严重的一次，他摔门而去，留下一句"你太保守了，早晚被淘汰"。你坐在空荡的办公室里，想起当初在咖啡馆选合伙人的那个下午。你选对了人吗？还是人是对的，只是路走到了分岔口？',
     options: [
       {
@@ -1658,6 +1667,261 @@ const aiStartupEvents: NarrativeEvent[] = [
       },
     ],
   },
+
+  // 37岁：生死转型
+  {
+    id: 'startup_pivot_or_die',
+    title: '生死转型',
+    pathId: 'ai_symbiote',
+    branch: 'ai_startup',
+    ageRange: [37, 37],
+    priority: 5,
+    weight: 7,
+    oncePerGame: true,
+    sceneTag: 'startup',
+    narrative:
+      '产品的增长停滞了。月活连续三个月原地踏步，投资人开始每周打一个电话"关心进度"。你看着仪表盘上那条平得像死人心电图的曲线，知道再不转型就是等死。\n' +
+      '一个投资人拉你来喝咖啡，建议你加一个企业版——"你们的技术底子不错，B2B才是能赚钱的"。你的联合创始人阿坤却红着眼说："消费级AI Agent才是未来，我们不能错过这波浪潮。"\n' +
+      '账上的钱还够撑六个月。你站在白板前，左边写"企业"，右边写"消费"，中间写"合并"。哪一个都是赌命。',
+    options: [
+      {
+        id: 'enterprise_pivot',
+        label: '转型企业级AI解决方案',
+        description: '押注B2B，用企业客户的长约换生存时间',
+        hint: 'AI技能+10 · 模型训练+8 · 存款-20000 · 压力+12 · 信念+10',
+        hintColor: 'positive',
+        skillGains: { aiSkill: 10, aiTraining: 8 },
+        savingsChange: -20000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 12, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+        },
+        log: '37岁，你把产品线劈成两半，主力All In企业版。前两个月颗粒无收，团队人心惶惶。第三个月，第一个企业客户签了。你看着合同上的数字，长出了一口气——赌对了。',
+      },
+      {
+        id: 'consumer_agents',
+        label: '做消费级AI Agent',
+        description: '追消费浪潮，做面向C端用户的AI助手',
+        hint: 'AI技能+12 · 提示词+8 · 存款-15000 · 压力+15 · 信念+8',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 12, promptMastery: 8 },
+        savingsChange: -15000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 15, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '37岁，你和阿坤一起押注消费级AI Agent。你们用两周时间做出了Demo，发在新品发布榜上，第一天就冲到了前三。阿坤激动得睡不着，你却盯着服务器账单发呆——流量来了，但变现还遥遥无期。',
+      },
+      {
+        id: 'merge_competitor',
+        label: '与竞品合并求生',
+        description: '放下身段，和最大的竞争对手合并',
+        hint: '模型训练+10 · AI技能+6 · 存款+30000 · 压力+5 · 信念-5',
+        hintColor: 'neutral',
+        skillGains: { aiTraining: 10, aiSkill: 6 },
+        savingsChange: 30000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 5, 0, 100);
+        },
+        log: '37岁，你咽下骄傲，和那个你骂了三年的竞品坐到了谈判桌前。合并协议签完那天，你没喝酒，独自在办公室坐到天亮。你告诉自己：活下来的人才有资格谈骄傲。',
+      },
+    ],
+  },
+
+  // 38岁：拐点
+  {
+    id: 'startup_breakthrough_moment',
+    title: '拐点',
+    pathId: 'ai_symbiote',
+    branch: 'ai_startup',
+    ageRange: [38, 38],
+    priority: 5,
+    weight: 7,
+    oncePerGame: true,
+    sceneTag: 'breakthrough',
+    narrative:
+      '转型之后，有什么东西开始"咬合"了。\n' +
+      '一封邮件躺在收件箱里——某行业头部企业的CIO亲自发来的，标题写着"全集团AI部署意向"。他要你在两周内拿出一个能覆盖三万人的方案。如果交付得了，这就是你的拐点；如果交付不了，这个行业里再没有人会给你第二次机会。\n' +
+      '你盯着那封邮件，心跳得厉害。这不是一个订单，这是一张生死状。',
+    options: [
+      {
+        id: 'scale_aggressively',
+        label: '全力扩张，赌一把大的',
+        description: 'All In交付，押上全部资源赌规模',
+        hint: 'AI技能+12 · 模型训练+10 · 存款-30000 · 被动收入+20000/年 · 压力+15 · 信念+12 · 幸福+8',
+        hintColor: 'positive',
+        skillGains: { aiSkill: 12, aiTraining: 10 },
+        savingsChange: -30000,
+        passiveIncomeChange: 20000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 15, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+        },
+        log: '38岁，你把全部身家押上了这个项目。团队三班倒，你睡在办公室。交付那天，客户CTO看完Demo只说了一句："这就是我们要的。"你走出大楼，阳光刺眼，你蹲在路边哭了五分钟。',
+      },
+      {
+        id: 'scale_carefully',
+        label: '稳健扩张，先证明ROI',
+        description: '先做一个部门试点，用数据说服集团推广',
+        hint: 'AI技能+8 · 模型训练+8 · 存款-10000 · 被动收入+10000/年 · 压力+5 · 信念+8',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 8, aiTraining: 8 },
+        savingsChange: -10000,
+        passiveIncomeChange: 10000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '38岁，你拒绝了"一口吃成胖子"的方案，坚持先在一个部门试点三个月。客户CIO皱了眉头，但同意了。三个月后，试点部门效率提升40%，数据会说话。集团全员推广的合同，比预期来得更快。',
+      },
+      {
+        id: 'license_technology',
+        label: '技术授权，让客户自建团队',
+        description: '把技术授权给客户的内部团队，做技术供应商',
+        hint: 'AI技能+6 · 提示词+10 · 存款+50000 · 被动收入+15000/年 · 压力-2 · 信念+5',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 6, promptMastery: 10 },
+        savingsChange: 50000,
+        passiveIncomeChange: 15000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress - 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '38岁，你做了一个"反创业"的决定——不接大单，而是把技术授权给客户的内部团队。你成了技术供应商，每年收授权费。有人说你"格局小"，但你看着稳定的现金流和不再996的团队，觉得这才是可持续的生意。',
+      },
+    ],
+  },
+
+  // 39岁：行业灯塔
+  {
+    id: 'startup_industry_recognition',
+    title: '行业灯塔',
+    pathId: 'ai_symbiote',
+    branch: 'ai_startup',
+    ageRange: [39, 39],
+    priority: 5,
+    weight: 7,
+    oncePerGame: true,
+    sceneTag: 'startup',
+    narrative:
+      '你的公司开始被当作案例研究了。\n' +
+      '行业大会的邀请函雪片般飞来，某本你能叫出名字的科技杂志想给你做一个封面专题。猎头开始挖你的核心员工——这反而是个好信号，说明你的人"值钱"了。\n' +
+      '你从那个"在咖啡馆蹭WiFi写BP的nobody"，变成了"AI创业圈的somebody"。但你心里清楚：聚光灯是双刃剑，照得你多亮，就投下多长的影子。',
+    options: [
+      {
+        id: 'embrace_thought_leader',
+        label: '拥抱思想领袖角色',
+        description: '接受专访、登台演讲，用影响力为公司背书',
+        hint: '提示词+10 · AI技能+6 · 被动收入+8000/年 · 信念+12 · 幸福+10 · 压力+5',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 10, aiSkill: 6 },
+        passiveIncomeChange: 8000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+        },
+        log: '39岁，你登上了那本杂志的封面。封面上你穿着连帽衫，背景是你们公司的Logo。标题写着"AI创业的中国答案"。你把杂志寄给了妈妈，她在电话里哭了——她终于知道你这几年到底在干什么。',
+      },
+      {
+        id: 'focus_product_only',
+        label: '拒绝聚光灯，专注产品',
+        description: '婉拒所有采访，让产品自己说话',
+        hint: 'AI技能+10 · 模型训练+8 · 存款+20000 · 信念+6 · 压力-5',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 10, aiTraining: 8 },
+        savingsChange: 20000,
+        isRestOption: true,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+        },
+        log: '39岁，你拒绝了所有采访邀请，把精力全砸在产品上。团队私下说你"不会营销自己"，但你不在乎。一年后，产品口碑成了你最好的广告——客户主动帮你传播，比你上十次杂志都管用。',
+      },
+      {
+        id: 'mentor_next_gen',
+        label: '用平台扶持下一代AI创业者',
+        description: '把经验和资源分享给年轻创业者',
+        hint: 'AI技能+4 · 提示词+8 · 信念+10 · 幸福+12',
+        hintColor: 'positive',
+        skillGains: { aiSkill: 4, promptMastery: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 12, 0, 100);
+        },
+        log: '39岁，你做了一个"反直觉"的决定：花时间带三个年轻的AI创业者。不收钱，不占股，只是每周聊一小时。有人说你"浪费精力"，但你想起了当年那个在咖啡馆写BP、没人理的自己。你不想让下一个你那么孤独。',
+      },
+    ],
+  },
+
+  // 40岁：十年
+  {
+    id: 'startup_legacy_decision',
+    title: '十年',
+    pathId: 'ai_symbiote',
+    branch: 'ai_startup',
+    ageRange: [40, 40],
+    priority: 5,
+    weight: 7,
+    oncePerGame: true,
+    sceneTag: 'breakthrough',
+    narrative:
+      '距离你开始这段旅程，快十年了。\n' +
+      '公司活下来了，稳定盈利，团队成熟，你不用再睡办公室了。但你40岁了——镜子里的发际线比30岁高了两厘米，膝盖下楼梯会响，通宵一次要缓三天。\n' +
+      '一封收购意向书躺在桌上，数字不错。一个26岁的年轻创业者约你喝咖啡，想请你去做CTO兼导师。或者，你可以继续独立经营下去，做一家"百年老店"。\n' +
+      '"成功"到底是什么？你30岁那年以为是上市敲钟，现在你不那么确定了。',
+    options: [
+      {
+        id: 'accept_acquisition',
+        label: '接受收购，实现财务自由',
+        description: '把公司卖掉，兑现十年的赌注',
+        hint: 'AI技能+4 · 存款+200000 · 被动收入+30000/年 · 信念+8 · 幸福+15 · 压力-10',
+        hintColor: 'positive',
+        skillGains: { aiSkill: 4 },
+        savingsChange: 200000,
+        passiveIncomeChange: 30000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 15, 0, 100);
+          s.stress = clamp(s.stress - 10, 0, 100);
+        },
+        log: '40岁，你在收购协议上签了字。笔尖落下的那一刻，你想起30岁那个在咖啡馆写BP的夜晚——那时候你一无所有，只有一腔孤勇。十年了，你赌赢了。账户里的数字让你余生无忧，但真正让你平静的是：你知道自己没有辜负那个夜晚的自己。',
+        triggersRetirementCheck: true,
+      },
+      {
+        id: 'keep_independent',
+        label: '保持独立，继续造物',
+        description: '不卖、不加入、继续做自己的公司',
+        hint: 'AI技能+8 · 模型训练+6 · 被动收入+10000/年 · 信念+12 · 幸福+5',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 8, aiTraining: 6 },
+        passiveIncomeChange: 10000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+        },
+        log: '40岁，你把收购意向书退了回去。投资人骂你"不识抬举"，但你知道自己不是为钱创业的。你想做一家能活二十年的公司，哪怕它永远不是独角兽。你回到工位，打开IDE，写下了新版本的第一行代码——像个十年前的年轻人。',
+      },
+      {
+        id: 'become_cto_mentor',
+        label: '加入年轻创业者，做CTO+导师',
+        description: '把火炬传给下一代，自己做技术+导师',
+        hint: 'AI技能+6 · 模型训练+10 · 提示词+6 · 存款+80000 · 被动收入+12000/年 · 信念+10 · 幸福+8 · 压力-5',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 6, aiTraining: 10, promptMastery: 6 },
+        savingsChange: 80000,
+        passiveIncomeChange: 12000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+        },
+        log: '40岁，你卖掉了公司，加入了那个26岁年轻人的团队，做CTO兼导师。第一次全员会上，年轻人介绍你："这位是我们的CTO，也是我的老师。"你看着他眼里的光，想起了十年前的阿坤，想起了十年前的自己。火炬，传下去了。',
+      },
+    ],
+  },
 ];
 
 // ============================================================
@@ -1677,27 +1941,28 @@ const aiEvangelistEvents: NarrativeEvent[] = [
     weight: 8,
     oncePerGame: true,
     narrative:
-      '你写了一篇"AI提示词入门指南"，发在公众号和知乎上。你没什么期待，只是觉得网上那些教程要么太水要么太装。\n' +
+      '你写了一篇"AI提示词入门指南"，发在公众号和问答社区上。你没什么期待，只是觉得网上那些教程要么太水要么太装。\n' +
       '第二天醒来，阅读量破了五万。第三天，十万。评论区全是"终于有人讲人话了""这是我看过最好的入门教程"。你的手机被私信挤爆，有人问你接不接付费咨询。\n' +
-      '你盯着那些数字和留言，心跳加速。你第一次意识到：你掌握的那些"常识"，对大多数人来说是"稀缺品"。信息差，就是钱。',
+      '你盯着那些数字和留言，心跳加速。你意识到：你掌握的那些"常识"，对大多数人来说是"稀缺品"。信息差，就是钱。',
     options: [
       {
         id: 'series_content',
         label: '趁热打铁，做成系列教程',
         description: '保持更新频率，把流量变成粉丝',
-        hint: '提示词+12 · AI技能+5 · 压力+6 · 被动收入+3000/年 · 信念+5',
+        hint: '提示词+12 · AI技能+5 · 压力+6 · 被动收入+3000/年 · 信念+5 · 副业+5000',
         hintColor: 'positive',
         skillGains: { promptMastery: 12, aiSkill: 5 },
         passiveIncomeChange: 3000,
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.currentYearSideHustle += 5000; // 第一个付费咨询客户私信找上门
         },
-        log: '26岁，你开始每周更新一篇AI教程，三个月攒了5万粉丝。有MCN找你签约，有出版社问你要不要出书。你第一次觉得，"写东西"这件事，也许真的能养活你。',
+        log: '26岁，你开始每周更新一篇AI教程，三个月攒了5万粉丝。有MCN找你签约，有出版社问你要不要出书。有个创业者私信付费请你做AI选型咨询，5000块落袋——你第一次觉得，"写东西"这件事，也许真的能养活你。',
       },
       {
         id: 'video_format',
-        label: '转型视频，做B站/抖音',
+        label: '转型视频，做视频平台/短视频平台',
         description: '图文流量见顶了，视频才是未来',
         hint: '提示词+8 · AI技能+3 · 压力+10 · 存款-5000 · 被动收入+2000/年',
         hintColor: 'neutral',
@@ -1802,7 +2067,7 @@ const aiEvangelistEvents: NarrativeEvent[] = [
     narrative:
       '粉丝催了你半年："出课吧，我们愿意付费。"你终于决定做一门系统的AI实战课。\n' +
       '你花了两个月写大纲、录视频、做课件。定价499，你纠结了一周——太贵了怕没人买，太便宜了怕显得不值。上架那天你刷新了二十次后台，直到看到第一个订单通知弹出，你差点从椅子上跳起来。\n' +
-      '第一个月卖了800份。你盯着那个数字——39.9万。你第一次用"知识"赚到了比你一年工资还多的钱。',
+      '第一个月卖了800份。你盯着那个数字——39.9万。你头一回用"知识"赚到了比你一年工资还多的钱。',
     options: [
       {
         id: 'scale_course',
@@ -1824,7 +2089,7 @@ const aiEvangelistEvents: NarrativeEvent[] = [
         id: 'high_ticket_coaching',
         label: '推高客单价私教服务',
         description: '不卷低价课，做1对1高净值服务',
-        hint: '提示词+8 · AI技能+8 · 压力+6 · 被动收入+12000/年 · 信念+4 · 月薪+2000',
+        hint: '提示词+8 · AI技能+8 · 压力+6 · 被动收入+12000/年 · 信念+4 · 月薪+2000 · 副业+10000',
         hintColor: 'positive',
         skillGains: { promptMastery: 8, aiSkill: 8 },
         passiveIncomeChange: 12000,
@@ -1832,8 +2097,9 @@ const aiEvangelistEvents: NarrativeEvent[] = [
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+          s.currentYearSideHustle += 10000; // 首批私教客户预付的季费集中到账
         },
-        log: '28岁，你推出了9800/人的AI私教服务，专接企业高管和创业者。第一个月只签了5个人，但收入快赶上课程的三倍。你发现：卖知识不如卖"陪跑"，高净值客户要的不是内容，是信心。',
+        log: '28岁，你推出了9800/人的AI私教服务，专接企业高管和创业者。第一个月只签了5个人，但首期预付的10000块到账时你盯着手机看了很久。你发现：卖知识不如卖"陪跑"，高净值客户要的不是内容，是信心。',
       },
       {
         id: 'free_content_first',
@@ -1987,7 +2253,7 @@ const aiEvangelistEvents: NarrativeEvent[] = [
     weight: 7,
     oncePerGame: true,
     narrative:
-      '一家AI大厂的市场部找到你，想请你做品牌大使——不是那种挂名的，是真正深度合作：你有专属频道、参与产品内测、出席发布会。\n' +
+      '一家AI大厂的市场部找到你，想请你做品牌大使——真正深度合作，而非挂名：你有专属频道、参与产品内测、出席发布会。\n' +
       '合作费每年50万，外加活动出场费。这是一个让同行眼红的offer。但你也清楚，拿了这家大厂的钱，你对它的竞品还能客观评价吗？你的"独立客观"人设，值多少钱？\n' +
       '你看着合同上的数字，又看着你粉丝群里那条"你最信任的AI博主"的置顶消息。',
     options: [
@@ -2223,6 +2489,263 @@ const aiEvangelistEvents: NarrativeEvent[] = [
       },
     ],
   },
+
+  // 37岁：一本书
+  {
+    id: 'evangelist_book_deal',
+    title: '一本书',
+    pathId: 'ai_symbiote',
+    branch: 'ai_evangelist',
+    ageRange: [37, 37],
+    priority: 5,
+    weight: 7,
+    oncePerGame: true,
+    sceneTag: 'breakthrough',
+    narrative:
+      '一家大出版社的编辑找上门来，开口就是版税预付三十万。\n' +
+      '选题已经替你想好了——《AI时代的人》，一本写给普通人的"与AI共生指南"。编辑说："你的课程已经证明你能讲清楚这件事，现在把它变成一本书，影响会大十倍。"\n' +
+      '预付款很诱人，但你盯着那个选题发呆。你的课程里该讲的都讲了，写一本书——你真的有什么新东西要说吗？还是只是把旧内容换个载体再卖一次？',
+    options: [
+      {
+        id: 'write_definitive_book',
+        label: '写一本定义时代的书',
+        description: '把十年的思考结晶成一份"时代证词"',
+        hint: '提示词+12 · AI技能+6 · 存款+30000 · 被动收入+10000/年 · 信念+12 · 压力+10',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 12, aiSkill: 6 },
+        savingsChange: 30000,
+        passiveIncomeChange: 10000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.stress = clamp(s.stress + 10, 0, 100);
+        },
+        log: '37岁，你关掉所有社交软件，用半年时间写完了那本书。交稿那天你瘦了八斤，但稿子比预想的厚一倍。编辑看完只说了一句："这不是一本课程讲义，这是一份时代证词。"上市第一周加印三次。',
+      },
+      {
+        id: 'refuse_stay_courses',
+        label: '拒绝，继续专注课程',
+        description: '不写书，把精力放在打磨课程上',
+        hint: '提示词+8 · 存款+15000 · 信念+5 · 压力-3',
+        hintColor: 'neutral',
+        skillGains: { promptMastery: 8 },
+        savingsChange: 15000,
+        isRestOption: true,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.stress = clamp(s.stress - 3, 0, 100);
+        },
+        log: '37岁，你婉拒了出版社。你说："我还没有非说不可的话。"编辑遗憾地走了。你把那笔预付款的数字从脑子里赶走，继续打磨你的课程。有人笑你"不识抬举"，但你知道：在没有想清楚之前出书，是对读者的不负责。',
+      },
+      {
+        id: 'write_practitioner_handbook',
+        label: '写一本实战手册',
+        description: '不写宣言，写一本可操作的实用手册',
+        hint: '提示词+10 · AI技能+4 · 存款+20000 · 被动收入+6000/年 · 信念+8 · 幸福+5',
+        hintColor: 'neutral',
+        skillGains: { promptMastery: 10, aiSkill: 4 },
+        savingsChange: 20000,
+        passiveIncomeChange: 6000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+        },
+        log: '37岁，你没写"时代宣言"，而是写了一本《AI实战手册》——100个场景、100个prompt模板、100个避坑清单。没有宏大叙事，全是能直接用的东西。读者反馈"这是唯一一本我看完就能上手的书"。你笑了：实用，也是一种态度。',
+      },
+    ],
+  },
+
+  // 38岁：上书房
+  {
+    id: 'evangelist_policy_advisor',
+    title: '上书房',
+    pathId: 'ai_symbiote',
+    branch: 'ai_evangelist',
+    ageRange: [38, 38],
+    priority: 5,
+    weight: 7,
+    oncePerGame: true,
+    sceneTag: 'breakthrough',
+    narrative:
+      '一封盖着红头的邀请函到了你手里——某政府智库邀请你担任AI素养政策顾问。\n' +
+      '这意味着你的建议可能影响千万人学习AI的方式。但也意味着：无休止的会议、冗长的公文、被删改得面目全非的方案、以及——你必须收起你那套"直言不讳"的风格。\n' +
+      '你想起自己最得意的一条视频标题："AI不会淘汰你，但会用AI的人会。"这种话在体制内是写不进文件的。你能忍受吗？',
+    options: [
+      {
+        id: 'join_policy_advisor',
+        label: '加入智库，推动政策',
+        description: '进入体制，用系统的方式影响更多人',
+        hint: '提示词+8 · AI技能+6 · 被动收入+8000/年 · 信念+12 · 压力+8 · 幸福+5',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 8, aiSkill: 6 },
+        passiveIncomeChange: 8000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+        },
+        log: '38岁，你成了智库最年轻的特邀顾问。第一次开会你差点和司长吵起来——你的方案被砍掉了一半。但半年后，你起草的"全民AI素养倡议"写进了文件。你看着那份红头文件，第一次觉得：改变系统，比改变一个人难一万倍，但值得。',
+      },
+      {
+        id: 'refuse_stay_independent',
+        label: '拒绝，保持独立发声',
+        description: '不进体制，继续做自由的布道者',
+        hint: '提示词+10 · AI技能+4 · 存款+20000 · 信念+8 · 压力-3',
+        hintColor: 'neutral',
+        skillGains: { promptMastery: 10, aiSkill: 4 },
+        savingsChange: 20000,
+        isRestOption: true,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress - 3, 0, 100);
+        },
+        log: '38岁，你退回了邀请函。朋友说你"错失了上岸机会"，但你知道自己是什么人——你的价值在于敢说真话，进了体制你就不是你了。你继续做你的独立内容，骂该骂的，夸该夸的。自由，是你的护城河。',
+      },
+      {
+        id: 'informal_advisor',
+        label: '做非正式外部顾问',
+        description: '不入编，以外部专家身份提供建议',
+        hint: '提示词+8 · AI技能+6 · 存款+10000 · 被动收入+4000/年 · 信念+10 · 压力+3',
+        hintColor: 'neutral',
+        skillGains: { promptMastery: 8, aiSkill: 6 },
+        savingsChange: 10000,
+        passiveIncomeChange: 4000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.stress = clamp(s.stress + 3, 0, 100);
+        },
+        log: '38岁，你和智库谈了一个"中间方案"：不挂职、不入编、不领工资，以外部专家身份参与研讨。你保留了说真话的自由，又能影响政策方向。有人笑你"既要又要"，你笑了：成年人的智慧，就是在两条路之间走出第三条。',
+      },
+    ],
+  },
+
+  // 39岁：星火
+  {
+    id: 'evangelist_movement',
+    title: '星火',
+    pathId: 'ai_symbiote',
+    branch: 'ai_evangelist',
+    ageRange: [39, 39],
+    priority: 5,
+    weight: 7,
+    oncePerGame: true,
+    sceneTag: 'breakthrough',
+    narrative:
+      '你的学员开始教别人了。\n' +
+      '你的认证体系已经毕业了五百人，他们在二十多个城市开了自己的AI工作坊。你打开地图，那些城市的小红点连成了一片——像星火燎原。\n' +
+      '但"运动"这个词让你既兴奋又警惕。运动需要结构，否则就会碎片化、变味、甚至反噬创始人。你看着那片星火，问自己：你是要做一个"教主"，还是一个"火种"？',
+    options: [
+      {
+        id: 'formalize_movement',
+        label: '正式化，成立组织',
+        description: '把运动变成一个有结构的机构',
+        hint: '提示词+10 · AI技能+4 · 被动收入+15000/年 · 信念+12 · 压力+8 · 幸福+5',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 10, aiSkill: 4 },
+        passiveIncomeChange: 15000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+        },
+        log: '39岁，你注册了一个"AI素养推广联盟"，制定了认证标准、讲师体系、课程审核流程。有人说你"把自己变成了教主"，但你知道：没有结构的运动活不过三年。一年后，联盟覆盖了五十个城市，你看着那张地图，觉得星火终于不会熄灭了。',
+      },
+      {
+        id: 'let_it_grow_organically',
+        label: '让它自然生长，只做引路人',
+        description: '不设组织，保持松散的师徒关系',
+        hint: '提示词+8 · AI技能+6 · 被动收入+8000/年 · 信念+10 · 幸福+8',
+        hintColor: 'neutral',
+        skillGains: { promptMastery: 8, aiSkill: 6 },
+        passiveIncomeChange: 8000,
+        isRestOption: true,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+        },
+        log: '39岁，你拒绝了所有"成立组织"的建议。你说："火不需要总部。"你继续做你的引路人，谁来找你你就教谁。运动松散但活跃，没有KPI，没有层级，只有一个个独立燃烧的火点。有人担心它"会散"，你觉得：散了也没关系，重要的是火曾经燃过。',
+      },
+      {
+        id: 'create_open_platform',
+        label: '做开放平台，谁都能贡献课程',
+        description: '把课程体系开源，让所有人共建',
+        hint: '提示词+12 · AI技能+4 · 被动收入+5000/年 · 信念+10 · 压力+5',
+        hintColor: 'neutral',
+        skillGains: { promptMastery: 12, aiSkill: 4 },
+        passiveIncomeChange: 5000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+        },
+        log: '39岁，你把课程体系做成了开放平台——任何人都可以贡献课程、修改内容、本地化适配。有人担心"质量失控"，但你相信：开源的力量大于封闭。三个月后，平台上有了一百多门由学员贡献的课程，覆盖了你一个人永远做不完的场景。',
+      },
+    ],
+  },
+
+  // 40岁：回响
+  {
+    id: 'evangelist_legacy',
+    title: '回响',
+    pathId: 'ai_symbiote',
+    branch: 'ai_evangelist',
+    ageRange: [40, 40],
+    priority: 5,
+    weight: 7,
+    oncePerGame: true,
+    sceneTag: 'breakthrough',
+    narrative:
+      '40岁了。你回头看。\n' +
+      '你的课程累计学员过了十万，书出到第三版，认证毕业生遍布二十个城市。你的名字在AI圈里几乎人人都听过——大家记住你，靠的是让十万个普通人"敢用AI了"，而非什么惊天动地的技术。\n' +
+      '一所大学想聘你做讲席教授，一家VC想请你做EIR（驻场企业家），或者——你可以继续做你现在做的事。问题不再是"下一步做什么"，而是"什么才是重要的"。',
+    options: [
+      {
+        id: 'accept_professorship',
+        label: '接受大学讲席教授',
+        description: '进入学术体制，做有根的布道者',
+        hint: '提示词+8 · AI技能+4 · 存款+50000 · 被动收入+15000/年 · 信念+10 · 幸福+12 · 压力-8',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 8, aiSkill: 4 },
+        savingsChange: 50000,
+        passiveIncomeChange: 15000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 12, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+        },
+        log: '40岁，你站上了大学的讲台。第一堂课，台下坐满了比你年轻十几岁的学生。你想起26岁那年写第一篇教程的自己——那时候你只是想"把网上那些水教程替掉"。十四年过去，你成了别人教程里的人。你对着学生说："欢迎来到AI时代，我是你们的引路人。"这句话，你练了十四年。',
+        triggersRetirementCheck: true,
+      },
+      {
+        id: 'keep_independent_evangelist',
+        label: '继续独立布道',
+        description: '不进体制，继续做自由的KOL',
+        hint: '提示词+10 · AI技能+6 · 被动收入+12000/年 · 信念+12 · 幸福+8',
+        hintColor: 'neutral',
+        skillGains: { promptMastery: 10, aiSkill: 6 },
+        passiveIncomeChange: 12000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+        },
+        log: '40岁，你拒绝了所有"上岸"邀请。你继续做你的独立内容，继续在各个平台发声，继续带你的学员。有人说你"到了该稳定的年纪"，但你觉得：布道者本就没有终点。你打开了一个新的文档，标题写着"下一个十年——AI时代的人2.0"。',
+      },
+      {
+        id: 'become_vc_partner',
+        label: '加入VC做EIR，投资下一代AI',
+        description: '用资本和经验扶持下一代AI创业者',
+        hint: 'AI技能+8 · 提示词+6 · 存款+100000 · 被动收入+20000/年 · 信念+8 · 幸福+5 · 压力-3',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 8, promptMastery: 6 },
+        savingsChange: 100000,
+        passiveIncomeChange: 20000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.stress = clamp(s.stress - 3, 0, 100);
+        },
+        log: '40岁，你成了VC的EIR。你看过太多BP，也看过太多创业者眼里那种"改变世界"的光。你投了三个项目，其中一个founder是你曾经的学员。他在签约时说："老师，我学你的课的时候，没想到有一天会被你投资。"你笑了：这就是回响——你种下的种子，长成了你能乘凉的树。',
+      },
+    ],
+  },
 ];
 
 // ============================================================
@@ -2279,15 +2802,16 @@ const crossBranchEvents: NarrativeEvent[] = [
         id: 'advise_instead',
         label: '不加入但做技术顾问，拿少量股份',
         description: '不上船但要船票，两头都不耽误',
-        hint: 'AI技能+8 · 提示词+5 · 被动收入+3000/年 · 压力+4 · 信念+3',
+        hint: 'AI技能+8 · 提示词+5 · 被动收入+3000/年 · 压力+4 · 信念+3 · 副业+8000',
         hintColor: 'positive',
         skillGains: { aiSkill: 8, promptMastery: 5 },
         passiveIncomeChange: 3000,
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          s.currentYearSideHustle += 8000; // 技术顾问首笔顾问费到账
         },
-        log: '28岁，你成了阿坤公司的技术顾问，每周花一个晚上帮他们看代码，换了3%的股份。你的日常工作没受影响，但晚上多了一件让人兴奋的事。',
+        log: '28岁，你成了阿坤公司的技术顾问，每周花一个晚上帮他们看代码，换了3%的股份。首笔顾问费8000块到账，你的日常工作没受影响，但晚上多了一件让人兴奋的事。',
       },
     ],
   },
@@ -2378,7 +2902,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 15, 0, 100);
           s.pathFaith = clamp(s.pathFaith - 5, 0, 100);
         },
-        log: '32岁，你签了VP的offer。第一天上班你坐在独立办公室里，窗外是城市天际线。你想起22岁时那个对着ChatGPT发呆的自己，觉得像是另一个人的人生。但你知道，你选了一条更"安全"的路。',
+        log: '32岁，你签了VP的offer。第一天上班你坐在独立办公室里，窗外是城市天际线。皮质办公椅比出租屋里那把转椅舒服太多，你却忽然想起那种穿着拖鞋改bug到凌晨的劲头——觉得像是另一个人的人生。但你知道，你选了一条更"安全"的路。',
       },
       {
         id: 'counter_offer',
@@ -2407,6 +2931,271 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.health = clamp(s.health + 3, 0, 100);
         },
         log: '32岁，你拒了200万的VP offer。猎头说你疯了。但你知道：你赌AI这条路，不是为了变成某个公司的VP。你要的是自由，不是头衔。你关掉邮件，打开了IDE——代码比offer更让你安心。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 后期收束事件（ages 41-43，弥补40+岁叙事断崖）
+// 所有分支通用，聚焦"中年回望"与"持续价值"
+// ============================================================
+
+const lateStageEvents: NarrativeEvent[] = [
+
+  // 41岁：身体发出的信号
+  {
+    id: 'late_body_signal',
+    title: '那根白头发',
+    pathId: 'ai_symbiote',
+    ageRange: [41, 41],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    eventType: 'normal',
+    sceneTag: 'illness',
+    narrative:
+      '早晨洗漱时你在镜子里发现了一根白头发。\n' +
+      '你拔了下来，放在白色瓷砖上看了一会儿。这不算什么——你同事三十出头就白了。但你最近确实感觉到了一些变化：连续加班两天后第三天脑子是木的，以前熬通宵第二天还能正常开会；看屏幕久了眼睛干得像进了沙子；体检报告上"建议复查"的项目从一项变成了三项。\n' +
+      '你把那根白发冲进了下水道。手机亮了，是团队群里有人@你——线上出了个bug。你看了眼时间，早上六点四十。',
+    options: [
+      {
+        id: 'push_through',
+        label: '先扛着，bug不等人',
+        description: '身体的事以后再说，眼下的事最急',
+        hint: 'AI技能+6 · 压力+10 · 健康-6 · 月薪+1000 · 信念+3',
+        hintColor: 'danger',
+        skillGains: { aiSkill: 6 },
+        salaryChange: 1000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.health = clamp(s.health - 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+        },
+        log: '41岁，你修完bug已经快九点。你泡了杯浓茶，继续处理白天积压的需求。体检报告还压在键盘底下，你假装没看见。',
+      },
+      {
+        id: 'slow_down',
+        label: '调整节奏，开始认真对待身体',
+        description: '买人体工学椅、设屏幕时间限制、每周跑两次步',
+        hint: 'AI技能+3 · 压力-8 · 健康+8 · 幸福+5 · 存款-5000 · 信念+2',
+        hintColor: 'positive',
+        skillGains: { aiSkill: 3 },
+        savingsChange: -5000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress - 8, 0, 100);
+          s.health = clamp(s.health + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+        },
+        log: '41岁，你下单了一把两千多的人体工学椅，在手机里设了每两小时起来走动的闹钟。第一周跑步你只跑了八百米就喘得不行，但第二周好了一些。体检报告你打开看了，复查项目约了下个月的号。',
+      },
+      {
+        id: 'delegate_more',
+        label: '把手上的活分出去，做减法',
+        description: '培养年轻人顶上，自己退到架构和判断层面',
+        hint: '提示词+8 · AI技能+4 · 压力-5 · 健康+3 · 被动收入+5000/年 · 信念+5',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 8, aiSkill: 4 },
+        passiveIncomeChange: 5000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress - 5, 0, 100);
+          s.health = clamp(s.health + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '41岁，你把两个核心模块交给了团队里最靠谱的年轻人。第一次review时他犯了三个你三年前也犯过的错，你忍住没插手，只在关键节点提了一句。两周后他独立上线了一个功能，你看了眼代码——比你想的要好。',
+      },
+    ],
+  },
+
+  // 42岁：被取代的焦虑
+  {
+    id: 'late_replacement_anxiety',
+    title: '那个23岁的人',
+    pathId: 'ai_symbiote',
+    ageRange: [42, 42],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    eventType: 'normal',
+    narrative:
+      '新来的实习生叫林野，23岁，硕士刚毕业。\n' +
+      '他用的工具栈你只认识一半，另一半是你没听过名字的开源项目。他搭一个AI Agent pipeline只用了两天——你当年做类似的事花了两周。不是他不认真，是工具确实进化了。\n' +
+      '更让你说不清滋味的是：林野在站会上提出的一个架构方案，和你心里想的几乎一样，但他的版本更新、更轻。你看着投影上那张图，有一瞬间分不清自己是在欣赏还是在嫉妒。\n' +
+      '散会后林野跑来找你："前辈，我那个方案是不是有问题？您帮我看看。"他眼睛里没有挑衅，是真的在请教。你接过他的电脑，屏幕上代码很干净。',
+    options: [
+      {
+        id: 'mentor_openly',
+        label: '认真带他，把经验倾囊相授',
+        description: '被取代是迟早的事，不如主动培养接班人',
+        hint: '提示词+10 · AI技能+5 · 幸福+8 · 压力-5 · 被动收入+6000/年 · 信念+6',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 10, aiSkill: 5 },
+        passiveIncomeChange: 6000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '42岁，你花了一下午帮林野理清了架构里的三个坑。他走的时候说"前辈你讲得比我导师清楚多了"。你笑了笑，想起自己23岁时也有个前辈这样带过你。',
+      },
+      {
+        id: 'compete_head_on',
+        label: '不服气，证明自己不可替代',
+        description: '学新工具、做更难的项目、把年轻人比下去',
+        hint: 'AI技能+12 · 压力+12 · 健康-5 · 月薪+2000 · 信念+4',
+        hintColor: 'danger',
+        skillGains: { aiSkill: 12 },
+        salaryChange: 2000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 12, 0, 100);
+          s.health = clamp(s.health - 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
+        },
+        log: '42岁，你用了三个周末学会了林野用的那套工具链。你在下一个项目里用新工具+老经验做出了一个比他更稳的方案。领导在周会上表扬了你，你看着林野低头记笔记的样子，心里没有赢的快感。',
+      },
+      {
+        id: 'pivot_upward',
+        label: '不再比手速，转向战略和人脉层面',
+        description: '年轻人拼执行，你拼判断和资源整合',
+        hint: 'AI技能+4 · 提示词+6 · 被动收入+10000/年 · 压力+3 · 信念+8 · 存款-8000',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 4, promptMastery: 6 },
+        savingsChange: -8000,
+        passiveIncomeChange: 10000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '42岁，你开始把时间花在以前觉得"虚"的事上——见客户、谈合作、做行业判断。林野在写代码，你在决定代码为谁而写。你不确定这算不算进步，但你知道：和23岁的人比手速，你赢不了太久。',
+      },
+    ],
+  },
+
+  // 43岁：行业的转折
+  {
+    id: 'late_industry_shift',
+    title: '潮水的方向',
+    pathId: 'ai_symbiote',
+    ageRange: [43, 43],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    eventType: 'normal',
+    sceneTag: 'crisis',
+    narrative:
+      '你入行二十年了。\n' +
+      '这一年行业出了两件大事：一是某大模型厂商把API价格砍到了原来的十分之一，靠API套壳的创业公司死了一片；二是监管出了新规，好几个你认识的同行被迫转型。\n' +
+      '你认识的老张——以前做AI培训的——转行去卖保险了。你认识的老李——做AI绘画工具的——公司关了，他在动态圈发了条"感谢大家支持"就再没更新过。\n' +
+      '你坐在书房里，看着窗外。二十年前你入行时大家说"AI是未来"，现在AI确实是未来了，但"未来"和"你的未来"之间隔着一道你不确定的沟。',
+    options: [
+      {
+        id: 'double_down_ai',
+        label: 'All in更深层的AI——做基础设施',
+        description: '应用层会死，但基础设施不会。往深处走',
+        hint: 'AI技能+10 · 模型训练+8 · 压力+10 · 健康-4 · 信念+10 · 存款-20000',
+        hintColor: 'danger',
+        skillGains: { aiSkill: 10, aiTraining: 8 },
+        savingsChange: -20000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.health = clamp(s.health - 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+        },
+        log: '43岁，你投了一笔钱和一个做AI推理加速的朋友合伙。应用层今天火明天凉，但只要有人用AI，就需要更快更便宜的推理。你赌的是水管，不是水龙头。',
+      },
+      {
+        id: 'diversify',
+        label: '分散押注，不只靠AI吃饭',
+        description: '把鸡蛋分到几个篮子里——AI、投资、教学',
+        hint: '提示词+6 · AI技能+4 · 被动收入+15000/年 · 压力-3 · 信念+5 · 存款-15000',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 6, aiSkill: 4 },
+        savingsChange: -15000,
+        passiveIncomeChange: 15000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress - 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '43岁，你花了些时间整理自己的收入结构——AI项目占一半，课程和咨询占三成，投资理财占两成。老张卖保险的消息让你想了很多：单一赛道的人，潮水一变就搁浅。你不想搁浅。',
+      },
+      {
+        id: 'step_back_observe',
+        label: '退一步，花半年看清方向再动',
+        description: '不急着做决定，先看清潮水到底往哪流',
+        hint: 'AI技能+3 · 提示词+5 · 压力-8 · 幸福+6 · 健康+4 · 信念+3',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 3, promptMastery: 5 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress - 8, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.health = clamp(s.health + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+        },
+        log: '43岁，你给自己放了一个"观察假"。你减少了接单，花了三个月走访了十几家AI公司，和一些你佩服的人聊了聊。半年后你看清了一些事：不是AI不行了，是"用AI讲故事骗钱"不行了。你重新打开了笔记本。',
+      },
+    ],
+  },
+
+  // 45岁：徒弟超过了你
+  {
+    id: 'ai_midlife_apprentice_surpass',
+    title: '后浪',
+    pathId: 'ai_symbiote',
+    ageRange: [45, 45],
+    priority: 7,
+    weight: 9,
+    oncePerGame: true,
+    eventType: 'normal',
+    sceneTag: 'startup',
+    narrative:
+      '你带了三年的徒弟林野独立带队做了一个项目，上线两周用户破了百万。行业媒体在写他，投资人在找他，朋友圈有人转发他的采访——标题是"AI时代的新物种"。\n' +
+      '你点开那个视频。镜头里的林野侃侃而谈，讲的东西你懂，但你说不出那种锐气。他提到你的时候说"感谢我的导师"，你盯着那四个字，心里五味杂陈。\n' +
+      '你想起自己25岁的时候，也是这样眼睛发亮。那时候你觉得自己能改变世界。现在你45岁，世界确实变了——但改变它的人里，有你带出来的徒弟。这算成功还是失败？你说不清楚。',
+    options: [
+      {
+        id: 'embrace_mentor_role',
+        label: '坦然接受——成为他背后的人',
+        description: '徒弟超越师傅，是师傅最大的成功',
+        hint: '提示词+10 · 幸福+10 · 信念+8 · 压力-8 · 被动收入+8000/年',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 10 },
+        passiveIncomeChange: 8000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+        },
+        log: '45岁，你给林野发了条消息："干得好。"他秒回："师傅，晚上一起吃饭？"饭桌上他跟你聊新的方向，你听着，偶尔插一句。你发现自己不再嫉妒了——你曾经想成为最亮的那颗星，但现在你知道，点亮更多的星，比自己亮更久。',
+      },
+      {
+        id: 'compete_with_protege',
+        label: '不服——你也要做出一个现象级产品',
+        description: '徒弟能做到的，你也能，而且做得更好',
+        hint: 'AI技能+10 · 压力+12 · 信念+6 · 健康-5 · 存款-15000',
+        hintColor: 'danger',
+        skillGains: { aiSkill: 10 },
+        savingsChange: -15000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 12, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.health = clamp(s.health - 5, 0, 100);
+        },
+        log: '45岁，你默默启动了一个新项目。你熬了三个月的夜，用最新的工具链做出了一个Demo。Demo确实不错，但上线后反响平平。你看着林野的产品用户数继续飙升，第一次承认：有些东西不是经验能补的，比如对新时代的直觉。但你没后悔——至少你试过。',
+      },
+      {
+        id: 'step_back_reflect',
+        label: '停下来想一想——你真正想要什么',
+        description: '中年不是终点，是重新选择的起点',
+        hint: '幸福+8 · 压力-10 · 健康+5 · 信念+5',
+        hintColor: 'neutral',
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 10, 0, 100);
+          s.health = clamp(s.health + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+        },
+        log: '45岁，你休了两周假。你没去什么地方，就在家附近的公园坐着，看老人下棋、看小孩跑。你想了很多：22岁入行时你想要什么？30岁All In时你赌什么？现在你还剩什么？假期结束你回到工位，没做任何重大决定，但心里那块堵了很久的石头，轻了一些。',
       },
     ],
   },
@@ -2448,18 +3237,19 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
         log: '29岁，你把自己锁在房间里三个月，卸载了所有社交APP。你重新掌握了新技术栈，在公司做了一次惊艳的技术分享。但体检报告上多了三个箭头，你已经两个月没和人面对面吃过饭了。你赢了这一局，但你不知道还能赢几局。',
+        blindBoxTrigger: 'ai_prompt_dojo',
       },
       {
         id: 'pivot_to_system_thinking',
         label: '转向系统思维，不拼技术拼判断力',
         description: '技术会贬值，但架构思维和业务理解不会',
-        hint: 'AI技能+8 · 提示词+10 · 压力+8 · 信念+6 · 月薪+1000',
+        hint: 'AI技能+8 · 提示词+10 · 压力+8 · 信念+4 · 月薪+1000',
         hintColor: 'positive',
         skillGains: { aiSkill: 8, promptMastery: 10 },
         salaryChange: 1000,
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 8, 0, 100);
-          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           s.happiness = clamp(s.happiness + 3, 0, 100);
         },
         log: '29岁，你没有去追最新的模型，而是花了三个月重新审视自己的能力树。你发现：具体的技巧会过时，但"知道AI能做什么、不能做什么、应该用在哪里"的判断力不会。你开始转型做AI架构和策略，那些比你年轻的人技术比你新，但他们听你的。',
@@ -2468,7 +3258,7 @@ const crisisEvents: NarrativeEvent[] = [
         id: 'accept_devaluation',
         label: '接受贬值，降低预期躺平',
         description: '不追了，用AI辅助做基础工作，接受平庸',
-        hint: 'AI技能+3 · 压力-15 · 幸福+8 · 健康+5 · 信念-15 · 月薪-2000',
+        hint: 'AI技能+3 · 压力-15 · 幸福+8 · 健康+5 · 信念-8 · 月薪-2000',
         hintColor: 'negative',
         skillGains: { aiSkill: 3 },
         salaryChange: -2000,
@@ -2476,9 +3266,9 @@ const crisisEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 15, 0, 100);
           s.happiness = clamp(s.happiness + 8, 0, 100);
           s.health = clamp(s.health + 5, 0, 100);
-          s.pathFaith = clamp(s.pathFaith - 15, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
         },
-        log: '29岁，你不再追新模型了。每天上班用AI完成任务，到点下班，回家做饭看剧。工资降了但你第一次发现晚上的时间可以这么长。同事们讨论最新论文时你插不上话，但也不焦虑了——直到月底看到工资条，心还是揪了一下。',
+        log: '29岁，你不再追新模型了。每天上班用AI完成任务，到点下班，回家做饭看剧。工资降了但你第一次发现晚上的时间可以这么长。同事们讨论最新论文时你插不上话，但也不焦虑了——虽然月底看到工资条，心还是揪了一下。',
       },
     ],
   },
@@ -2496,7 +3286,7 @@ const crisisEvents: NarrativeEvent[] = [
     conditions: (s) => s.stress >= 50 || s.health <= 60,
     narrative:
       '你在工位上突然眼前一黑，醒来时已经躺在医院走廊的临时床上。医生说你长期高压、睡眠不足、颈椎严重劳损，再这样下去"不是猝死就是中风"。\n' +
-      '你盯着天花板上的日光灯，想起昨晚又熬到了凌晨三点。你的手机在口袋里震动——是工作群的消息。你第一次没有立刻去摸手机。\n' +
+      '你盯着天花板上的日光灯，想起昨晚又熬到了凌晨三点。你的手机在口袋里震动——是工作群的消息。这一次，你没有立刻去摸手机。\n' +
       '护士推着药车走过，轮子在地面上发出吱呀声。你忽然觉得这个声音比任何键盘声都真实。你28岁的同事上周刚体检出甲状腺结节，你30岁的前同事去年心梗进了ICU。你今年31，下一个会不会是你？',
     options: [
       {
@@ -2515,6 +3305,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
         log: '31岁，你请了三个月病假。前两周你焦虑得睡不着——不工作比工作更让你不安。但慢慢地你开始每天散步、按时吃饭、十一点睡觉。三个月后复查，指标好了一半。你重新理解了一个词：留得青山在。',
+        blindBoxTrigger: 'ai_health_warning',
       },
       {
         id: 'balance_work_health',
@@ -2530,6 +3321,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
         log: '31岁，你在日历上锁死了每天的运动时间和睡眠时间，任何人不能侵占。同事们觉得你"佛系了"，但你的体检指标在好转。你发现：每天少工作两小时，产出并没有少多少——以前那两小时你只是在低效地焦虑。',
+        blindBoxTrigger: 'ai_health_warning',
       },
       {
         id: 'push_through',
@@ -2546,6 +3338,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
         log: '31岁，你开了点药就回公司了。你跟自己说"年轻扛得住"。但半年后你又进了一次医院，这次是在会议室晕倒的。醒来后你看着床边哭泣的伴侣，第一次认真想：也许有些东西比代码更重要。',
+        blindBoxTrigger: 'ai_health_warning',
       },
     ],
   },
@@ -2562,9 +3355,9 @@ const crisisEvents: NarrativeEvent[] = [
     eventType: 'crisis',
     conditions: (s) => s.pathFaith <= 60,
     narrative:
-      '朋友圈刷到一条消息：大学室友考上公务员了，晒出了录取通知和工牌。底下全是恭喜的评论，"上岸了""铁饭碗""从此安稳"。\n' +
-      '你看着那条朋友圈，手指停在点赞按钮上，最终没点。你想起大三时你们一起翘课打游戏的日子——他现在上岸了，你还在浪里扑腾。\n' +
-      '你打开自己的银行账户看了看，又打开了他的朋友圈看了看。他的生活看起来平淡但稳定：朝九晚五、五险一金、食堂三餐、下班钓鱼。你的生活看起来精彩但飘摇：高薪但不稳定、自由但焦虑、走在前面但不知道前面是陆地还是悬崖。\n' +
+      '动态圈刷到一条消息：大学室友考上公务员了，晒出了录取通知和工牌。底下全是恭喜的评论，"上岸了""铁饭碗""从此安稳"。\n' +
+      '你看着那条动态圈，手指停在点赞按钮上，最终没点。你想起大三时你们一起翘课打游戏的日子——他现在上岸了，你还在浪里扑腾。\n' +
+      '你打开自己的银行账户看了看，又打开了他的动态圈看了看。他的生活看起来平淡但稳定：朝九晚五、五险一金、食堂三餐、下班钓鱼。你的生活看起来精彩但飘摇：高薪但不稳定、自由但焦虑、走在前面但不知道前面是陆地还是悬崖。\n' +
       '深夜你问自己：你赌的那条路，真的是对的吗？',
     options: [
       {
@@ -2579,7 +3372,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 5, 0, 100);
           s.stress = clamp(s.stress - 5, 0, 100);
         },
-        log: '33岁，你关掉了朋友圈，在备忘录里写了一句话："岸上的人看海里的人是冒险，海里的人看岸上的人是平庸。你选了海，就要接受浪。"写完你笑了——也许这就是信念的样子：不是不怀疑，是怀疑完了还继续走。',
+        log: '33岁，你关掉了动态圈，在备忘录里写了一句话："岸上的人看海里的人是冒险，海里的人看岸上的人是平庸。你选了海，就要接受浪。"写完你笑了——也许这就是信念的样子：不是不怀疑，是怀疑完了还继续走。',
       },
       {
         id: 'hedged_bet',
@@ -2600,11 +3393,11 @@ const crisisEvents: NarrativeEvent[] = [
         id: 'consider_civil_service',
         label: '认真考虑考公/进体制',
         description: '也许安稳才是最终的答案',
-        hint: '信念-15 · 幸福+8 · 压力-10 · 健康+5 · 月薪-3000 · 可能退出路径',
+        hint: '信念-10 · 幸福+8 · 压力-10 · 健康+5 · 月薪-3000 · 可能退出路径',
         hintColor: 'negative',
         salaryChange: -3000,
         stateEffect: (s) => {
-          s.pathFaith = clamp(s.pathFaith - 15, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 10, 0, 100);
           s.happiness = clamp(s.happiness + 8, 0, 100);
           s.stress = clamp(s.stress - 10, 0, 100);
           s.health = clamp(s.health + 5, 0, 100);
@@ -2613,6 +3406,159 @@ const crisisEvents: NarrativeEvent[] = [
       },
     ],
   },
+];
+
+// ============================================================
+// 失败预警事件（isAllInPath=true 且 pathFaith<40 或存款告急时触发）
+// ============================================================
+
+const aiWarningEvents: NarrativeEvent[] = [
+
+  // 预警1：产品上线没人用，日活只有自己和测试号
+  {
+    id: 'ai_warning_product_fail',
+    title: '零日活',
+    sceneTag: 'home',
+    pathId: 'ai_symbiote',
+    ageRange: [28, 50],
+    priority: 15,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'crisis',
+    conditions: (s) => s.isAllInPath === true && (s.pathFaith < 40 || s.currentSavings < 50000),
+    narrative:
+      '产品上线第七天，后台数据面板上的DAU停在"2"。\n\n' +
+      '你和你的测试号。\n\n' +
+      '你刷新了三次，数字没变。你翻了用户注册列表——除了你自己用三个邮箱注册的账号，只有一个真实用户。你查了那个人的使用记录：注册后停留了47秒，再也没有回来。你甚至想给他发邮件问"你为什么走了"，但忍住了。\n\n' +
+      '你做了六个月的产品。辞职后的每一天都在写代码、调prompt、改UI、部署、测bug。你推掉了所有社交，停掉了所有爱好，连头发都是自己对着镜子剪的。你告诉自己"build it and they will come"。但他们没有来。新品发布榜上了首页尾端，获得了12个赞。黑客新闻上发了帖子，零评论。你发的推文被自己的小号转了一次。\n\n' +
+      '服务器还在跑，每个月烧掉你八百块。你的存款数字从六位数变成了五位数，再变成四位数。你打开招聘软件，发现你上次更新简历已经是一年前的事了。AI领域每天都有新东西出来——你埋头做产品的这半年，GPT又迭代了两个版本，你的技术栈可能已经过时了。\n\n' +
+      '凌晨两点，你对着那个"2"发呆。你开始怀疑：是我做的东西没人需要，还是我根本就不是做产品的料？',
+    options: [
+      {
+        id: 'pivot_and_interview',
+        label: '用户访谈，找到PMF再重来',
+        description: '不放弃，但先停下来找一百个用户聊，搞清楚到底谁需要这个',
+        hint: 'AI技术+8 · 提示词+8 · 存款-10000 · 信念+5 · 压力+10 · 幸福-3',
+        hintColor: 'neutral',
+        skillGains: { aiSkill: 8, promptMastery: 8 },
+        savingsChange: -10000,
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.happiness = clamp(s.happiness - 3, 0, 100);
+        },
+        log: '你停掉了广告投放，开始在各个社群里找人聊。你跟四十多个人通了电话，每次聊一个小时以上。你发现你做的东西确实解决了一个问题——但不是你以为的那个问题，解决的人群也不是你以为的人群。你砍掉了70%的功能，围绕一个核心场景重新做了一个版本。新版本上线第三天，DAU破了一百。你对着那个"100"哭了——不是因为数字小，是因为你终于知道自己在为谁做东西了。',
+      },
+      {
+        id: 'open_source_give_up',
+        label: '开源放手，承认这个产品做不起来',
+        description: '把代码开源，然后去找工作，先活下来再谈理想',
+        hint: 'AI技术+12 · 信念-20 · 压力-5 · 健康+5 · 幸福+5 · 存款-5000',
+        hintColor: 'negative',
+        skillGains: { aiSkill: 12 },
+        savingsChange: -5000,
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.pathFaith = clamp(s.pathFaith - 20, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+          s.health = clamp(s.health + 5, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+        },
+        log: '你在开源社区上开源了全部代码，写了一篇很长的README，讲述你为什么做这个产品、为什么它失败了、你学到了什么。帖子意外地火了——在黑客新闻上拿到了三百个赞，有人fork了你的仓库去做自己的版本，甚至有两家公司因为这篇帖子给你发了offer。你接了其中一个，回去上班了。工资不如你辞职前高，但每个月有钱进账的感觉让你踏实了很多。你没有放弃AI——你只是学会了：不是每艘船都要自己当船长。',
+        isRestOption: true,
+      },
+      {
+        id: 'market_harder',
+        label: '加大营销投入，花钱买用户',
+        description: '投广告、做SEO、找KOL推广，不信东西好没人用',
+        hint: '模型训练+5 · 存款-50000 · 信念-8 · 压力+20 · 健康-10 · 幸福-8',
+        hintColor: 'danger',
+        skillGains: { aiTraining: 5 },
+        savingsChange: -50000,
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
+          s.stress = clamp(s.stress + 20, 0, 100);
+          s.health = clamp(s.health - 10, 0, 100);
+          s.happiness = clamp(s.happiness - 8, 0, 100);
+        },
+        log: '你把最后的五万块全砸进了广告投放。Google Ads、Twitter推广、找了两个小KOL做测评。DAU确实涨了——最高到过三百，但留存率不到5%。钱烧完的那天，DAU回落到了23。你坐在电脑前看着账单，第一次承认了一个事实：你在用营销掩盖产品的问题。就像给一道不好吃的菜加更多的盐——咸是咸了，但还是不好吃。你关了广告账户，决定先把产品做好，再谈增长。',
+      },
+    ],
+  },
+
+  // 预警2：技术迭代太快，每天都在追，追不动了
+  {
+    id: 'ai_warning_burnout_tech',
+    title: '追不上',
+    sceneTag: 'home',
+    pathId: 'ai_symbiote',
+    ageRange: [28, 50],
+    priority: 14,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'crisis',
+    conditions: (s) => s.isAllInPath === true && (s.pathFaith < 40 || s.currentSavings < 50000),
+    narrative:
+      '你打开Twitter，又看到了一个新模型发布。\n\n' +
+      '这是这周第三个了。周一OpenAI发布了新版本，上下文窗口翻了一倍；周二Google出了一个新的多模态模型，视频理解能力碾压所有竞品；今天是周三，一家你没听过名字的创业公司开源了一个模型，参数只有GPT的十分之一但性能追平——而且免费。\n\n' +
+      '你收藏了那条推文，告诉自己"周末看"。但你的收藏夹里已经有两百多条"周末看"的内容了。你订阅的AI新闻通讯有十七封未读。你开源社区上star的项目有三百多个，一半你连README都没看完。你的Notion里有一个叫"学"的页面，里面列了六十多个你想学但还没学的技术——RAG、微调、Agent框架、向量数据库、MoE架构、RLHF、diffusion模型……\n\n' +
+      '你深吸一口气，打开了一个新出的AI编程工具的文档。看了三页你就关掉了。不是看不懂，是太累了。你的大脑像一个跑满了进程的CPU，内存占用99%，每个新信息进来都要kill掉一个旧进程。你上周学的框架，这周已经被宣布"不再维护，推荐使用新的XXX"。你上个月精心优化的prompt，在新模型下表现更差了。你花了三个月做的技术方案，一个模型更新就变成了一个API调用。\n\n' +
+      '你关掉所有窗口，桌面壁纸是你三年前设的一张山景照片。你已经很久没有看过真的山了。你突然想：如果我停下来一周不看任何AI新闻，我会被淘汰吗？如果我不追每一个新模型，我就会落后吗？如果落后了，我还能做什么？',
+    options: [
+      {
+        id: 'focus_deep_ignore_fomo',
+        label: '关掉信息流，专注做自己的事',
+        description: '退订所有新闻通讯，Twitter取关AI话题，按自己的节奏走',
+        hint: '提示词+15 · 幸福+12 · 压力-18 · 健康+8 · 信念+8 · AI技术-5',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 15 },
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.happiness = clamp(s.happiness + 12, 0, 100);
+          s.stress = clamp(s.stress - 18, 0, 100);
+          s.health = clamp(s.health + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '你退订了所有通讯，Twitter取关了五十个AI大V，把收藏夹里两百条"待读"全删了。第一天你焦虑得每隔十分钟就想刷Twitter。第三天你习惯了。第二周你发现你在做的项目其实不需要最新的模型——GPT-4的能力已经足够了。你把省下来的时间用来深度思考架构、打磨prompt、和用户聊天。一个月后你的产品反而进步得更快了。你明白了一个道理：在信息海啸里，最重要的能力不是"追"，是"停"——知道什么该忽略，比知道什么该学更重要。',
+        isRestOption: true,
+      },
+      {
+        id: 'double_down_learning',
+        label: '拼了，熬夜也要跟上',
+        description: '每天少睡两小时，把新出的技术全学一遍，不能被淘汰',
+        hint: 'AI技术+15 · 模型训练+10 · 压力+22 · 健康-18 · 信念+3 · 幸福-12',
+        hintColor: 'danger',
+        skillGains: { aiSkill: 15, aiTraining: 10 },
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.stress = clamp(s.stress + 22, 0, 100);
+          s.health = clamp(s.health - 18, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          s.happiness = clamp(s.happiness - 12, 0, 100);
+        },
+        log: '你把作息调到了极致：早上五点起来看论文，通勤听AI播客，午休看技术博客，晚上学到十二点。你确实跟上了——你知道每个新模型的参数和基准测试成绩，你在社群里第一个回答别人的技术问题。但你开始偏头疼，右眼经常跳，有一次洗澡的时候发现头上有一块硬币大小的斑秃。你老婆说你"像一台永远在散热的电脑"。你心里清楚这种状态不可持续，但你不敢停——在AI这个赛道上，停下来就意味着被碾过去。',
+      },
+      {
+        id: 'niche_down_focus',
+        label: '放弃追全栈，在一个细分领域做深',
+        description: '不追新技术，专注一个垂直场景做到最好',
+        hint: '提示词+10 · AI技术+5 · 信念+10 · 压力-5 · 幸福+5 · 存款+15000',
+        hintColor: 'positive',
+        skillGains: { promptMastery: 10, aiSkill: 5 },
+        savingsChange: 15000,
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+        },
+        log: '你决定不再追每一个新模型了。你选了一个很窄的方向——用AI帮助中小律所做合同审查。这个方向不需要多模态、不需要Agent、不需要最前沿的模型，只需要把RAG和prompt工程做到极致。你花了两个月把合同审查的准确率做到了95%以上，签下了三家律所的年框合同。钱不多，但稳定。你发现：在AI淘金热里，卖铲子的人不一定赚得最多，但一定是睡得最好的。技术会过时，但对具体问题的理解不会。',
+      },
+    ],
+  },
+
 ];
 
 // ============================================================
@@ -2626,6 +3572,8 @@ export const AI_NARRATIVE_EVENTS: NarrativeEvent[] = [
   ...aiStartupEvents,
   ...aiEvangelistEvents,
   ...crossBranchEvents,
+  ...aiWarningEvents,
+  ...lateStageEvents,
   ...crisisEvents,
 ];
 
@@ -2734,12 +3682,25 @@ export function selectNarrativeEvent(
     if (branchSelect) return branchSelect;
   }
 
-  // 2. 高优先级事件优先（crisis / milestone 等打断正常流程）
+  // 2. 精确年龄事件（ageRange上下限相等，即"今年必须触发"的剧情）
+  //    这类事件是编剧安排的关键剧情节拍，必须在对应年龄触发
+  const exactAge = available.filter((e) => e.ageRange[0] === e.ageRange[1]);
+  if (exactAge.length > 0) {
+    return weightedPick(exactAge);
+  }
+
+  // 3. 高优先级事件优先（crisis / milestone / 关键剧情等）
   const highPriority = available.filter((e) => e.priority >= 8);
   if (highPriority.length > 0) {
     return weightedPick(highPriority);
   }
 
-  // 3. 普通加权随机
+  // 4. 中优先级（路径核心剧情事件 priority=6-7）
+  const midPriority = available.filter((e) => e.priority >= 6);
+  if (midPriority.length > 0) {
+    return weightedPick(midPriority);
+  }
+
+  // 5. 低优先级filler事件（日常精进等）——最后才选
   return weightedPick(available);
 }

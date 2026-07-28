@@ -836,7 +836,7 @@ const MBTI_NARRATIVE_EVENTS: NarrativeEvent[] = [
       },
       {
         id: 'enfj_giver_c',
-        label: '发条朋友圈"最近有点累"，等人来问',
+        label: '发条动态圈"最近有点累"，等人来问',
         description: '还是被动一点安全。让别人主动发现你累了，比你自己开口要轻松得多。',
         hint: '信念-5，压力+4，幸福-3',
         hintColor: 'negative',
@@ -845,7 +845,7 @@ const MBTI_NARRATIVE_EVENTS: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 5, 0, 100);
           s.happiness = clamp(s.happiness - 3, 0, 100);
         },
-        log: '朋友圈收到一堆点赞和"加油"，没有一条问"你怎么了"。你删除了那条动态，告诉自己下次别这么矫情。',
+        log: '动态圈收到一堆点赞和"加油"，没有一条问"你怎么了"。你删除了那条动态，告诉自己下次别这么矫情。',
       },
     ],
   },
@@ -1450,7 +1450,7 @@ const MBTI_NARRATIVE_EVENTS: NarrativeEvent[] = [
       },
       {
         id: 'esfj_center_c',
-        label: '把难过发成朋友圈，等点赞安慰',
+        label: '把难过发成动态圈，等点赞安慰',
         description: '"被关注就够了。"让人看见你的难过，但不必真的让人走进来。',
         hint: '信念-5，压力+5，幸福-3',
         hintColor: 'negative',
@@ -1459,7 +1459,7 @@ const MBTI_NARRATIVE_EVENTS: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 5, 0, 100);
           s.happiness = clamp(s.happiness - 3, 0, 100);
         },
-        log: '朋友圈收到 99 个赞和一堆拥抱表情。你笑着删掉了那条动态——热闹是真的，没一个走进你心里，也是真的。',
+        log: '动态圈收到 99 个赞和一堆拥抱表情。你笑着删掉了那条动态——热闹是真的，没一个走进你心里，也是真的。',
       },
     ],
   },

@@ -49,7 +49,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_model_halo',
-    text: '你用AI生成了一张图发朋友圈，底下全是"大神""太强了"。没人问你调了多少轮prompt、改了多少版参数——但你知道，那些赞叹一半属于模型，一半属于凌晨三点的你。',
+    text: '你用AI生成了一张图发动态圈，底下全是"大神""太强了"。没人问你调了多少轮prompt、改了多少版参数——但你知道，那些赞叹一半属于模型，一半属于凌晨三点的你。',
     label: 'AI出圈',
     ageRange: [24, 38],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -360,7 +360,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_gas_war',
-    text: '链上拥堵gas费飙到离谱，你一笔普通转账花了八十美元手续费。交易确认后你骂骂咧咧地关了钱包——在以太坊上，连转个账都要竞价。',
+    text: '链上拥堵gas费飙到离谱，你一笔普通转账花了八十元手续费。交易确认后你骂骂咧咧地关了钱包——在以太坊上，连转个账都要竞价。',
     label: 'Gas战争',
     ageRange: [23, 42],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -446,7 +446,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_backpack_pain',
-    text: '背着二十公斤的背包找民宿，在石板路上走了四十分钟。肩膀勒出红印子，你坐在路边喘气——朋友圈里的碧海蓝天没人看得到这些淤青。',
+    text: '背着二十公斤的背包找民宿，在石板路上走了四十分钟。肩膀勒出红印子，你坐在路边喘气——动态圈里的碧海蓝天没人看得到这些淤青。',
     label: '背包疼痛',
     ageRange: [22, 38],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -561,6 +561,33 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
     priority: 5,
     effects: { happiness: 2, stress: -1 },
   },
+  {
+    id: 'nomad_ai_tool_upgrade',
+    text: '你常用的AI工具又更新了，新版本能直接从需求文档生成完整的前端页面。你试了一下，以前要熬一通宵的活，现在半小时就出了初稿。你盯着屏幕看了很久，不知道该高兴还是该慌。',
+    label: 'AI又升级了',
+    ageRange: [24, 40],
+    conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
+    priority: 6,
+    effects: { stress: 2, happiness: 1 },
+  },
+  {
+    id: 'nomad_client_ai_pressure',
+    text: '客户发来消息说"我们试了用AI自己做，效果还行，以后简单的活儿就不外包了"。你盯着那条消息心里一紧——但转念一想，复杂的活儿他们还是得找你。你回了个"没问题"，然后打开AI编程器开始研究怎么用新工具做更高级的东西。',
+    label: '客户被AI抢走',
+    ageRange: [30, 45],
+    conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
+    priority: 6,
+    effects: { stress: 4, happiness: -2 },
+  },
+  {
+    id: 'nomad_cowork_ai_debate',
+    text: '共居空间里又在争论"AI会不会取代远程工作者"。有人说"五年内初级开发全完"，有人说"AI只是工具，关键是用人"。你听了半天没插嘴——你两边都同意，这才是最让人焦虑的地方。',
+    label: 'AI替代论战',
+    ageRange: [25, 42],
+    conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
+    priority: 5,
+    effects: { stress: 2, happiness: -1 },
+  },
 
   // ============================================================
   // 超级IP (super_ip) — 20条
@@ -640,7 +667,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_family_find_out',
-    text: '你妈打电话说"我在抖音上刷到你了"，你大脑一片空白。她接着说"拍得挺好的，就是太瘦了多吃点"——你松了口气，她没问你为什么不找个正经工作。',
+    text: '你妈打电话说"我在短视频平台上刷到你了"，你大脑一片空白。她接着说"拍得挺好的，就是太瘦了多吃点"——你松了口气，她没问你为什么不找个正经工作。',
     label: '老妈刷到',
     ageRange: [23, 40],
     conditions: (state: GameState) => state.retirementPath === 'super_ip' && state.parents.isAlive,
@@ -748,7 +775,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
 
   // ============================================================
-  // 银发收割者 (silver_economy) — 20条
+  // 银发守夜人 (silver_economy) — 20条
   // ============================================================
 
   {
@@ -930,6 +957,51 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
     priority: 7,
     effects: { happiness: 3, stress: -1 },
+  },
+  {
+    id: 'silver_vr_reunion',
+    text: '养老院新到了一批VR团圆设备，远在国外的子女可以"全息投影"回来陪老人吃饭。张奶奶戴着眼镜笑出了眼泪，但摘下来之后她说了句"摸不到"，就再也不肯用了。',
+    label: 'VR团圆',
+    ageRange: [28, 55],
+    conditions: (state: GameState) => state.retirementPath === 'silver_economy',
+    priority: 6,
+    effects: { stress: 2, happiness: -1 },
+  },
+  {
+    id: 'silver_carebot_conflict',
+    text: '机构引进了AI护理机器人，能翻身、喂饭、量血压，24小时不休息。秀兰抱怨"它不会哄人"，但你算过账——一个机器人顶三个护工，而且不会累。问题是，它也不会在老人哭的时候握住他们的手。',
+    label: '机器人vs人',
+    ageRange: [30, 55],
+    conditions: (state: GameState) => state.retirementPath === 'silver_economy',
+    priority: 6,
+    effects: { stress: 3, savings: 200, happiness: -2 },
+  },
+  {
+    id: 'silver_neural_clinic',
+    text: '一位帕金森老人的子女想送他去做神经接口治疗——据说能恢复80%的运动能力，但术后有人性情大变。老人拉着你的手问"小X，我做完还是我吗？"你答不上来。',
+    label: '神经接口',
+    ageRange: [33, 55],
+    conditions: (state: GameState) => state.retirementPath === 'silver_economy',
+    priority: 6,
+    effects: { stress: 3, happiness: -1 },
+  },
+  {
+    id: 'silver_digital_will',
+    text: '你帮一位独居老人联系了数字遗产服务——帮他注销二十多个社交账号、整理云盘照片、录一段数字遗嘱留给孙子。老人说"我死了之后，网上那个我也该跟着走"，你忽然想起自己有多少账号从来没想过怎么处理。',
+    label: '数字遗产',
+    ageRange: [30, 55],
+    conditions: (state: GameState) => state.retirementPath === 'silver_economy',
+    priority: 5,
+    effects: { happiness: 1, savings: 150, stress: 1 },
+  },
+  {
+    id: 'silver_longevity_gap',
+    text: '新闻说某富豪花五百万打了针干细胞疗法，生物年龄逆转了十岁。同一天你接到通知，公办养老院床位费又涨了三百。你看着活动室里那些连普通养老院都住不起的老人，第一次觉得"长寿"这两个字很刺眼。',
+    label: '长寿鸿沟',
+    ageRange: [35, 55],
+    conditions: (state: GameState) => state.retirementPath === 'silver_economy',
+    priority: 6,
+    effects: { stress: 4, happiness: -3 },
   },
 
   // ============================================================
@@ -1220,7 +1292,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_bump_acquaintance',
-    text: '你在地铁站碰到了一个十年没见的高中同学，两个人都愣了三秒才认出来。交换微信时你发现他发际线和你一样高了——原来大家都在老，不是你一个人。',
+    text: '你在地铁站碰到了一个十年没见的高中同学，两个人都愣了三秒才认出来。交换社交软件时你发现他发际线和你一样高了——原来大家都在老，不是你一个人。',
     label: '偶遇旧识',
     ageRange: [28, 55],
     priority: 3,
@@ -1300,7 +1372,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_plant_die',
-    text: '你养了大半年的多肉还是死了，这已经是第三盆。你对着空花盆沉默了一会儿，打开淘宝下单了第四盆——屡败屡战是你对生活最基本的态度。',
+    text: '你养了大半年的多肉还是死了，这已经是第三盆。你对着空花盆沉默了一会儿，打开电商平台下单了第四盆——屡败屡战是你对生活最基本的态度。',
     label: '多肉又死了',
     ageRange: [22, 55],
     priority: 2,

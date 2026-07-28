@@ -37,7 +37,7 @@ const PERSONALITY_TRAITS: Record<PartnerPersonality, {
     traits: ['会弹吉他', '每年记得所有纪念日', '手机里全是你的照片', '写诗', '喜欢在雨天散步'],
     meetWays: ['音乐节', '画展', '旅行途中', '书店', '朋友的婚礼'],
     dateEvents: ['在天台上布置了星星灯和投影，放你们的合照', '突然出现在你公司楼下接你下班，手里拿着一束花', '写了一首歌在你生日那天弹唱给你听'],
-    fightEvents: ['摔门而去，两小时后拎着你爱吃的小龙虾回来', '在朋友圈发了一段伤感文案，等你去哄'],
+    fightEvents: ['摔门而去，两小时后拎着你爱吃的小龙虾回来', '在动态圈发了一段伤感文案，等你去哄'],
     sweetEvents: ['在你最丧的那天，ta什么都没说，只是紧紧抱着你', '每个月14号都有小惊喜，从不重样'],
     proposalReactions: ['尖叫着说"我愿意！！！"，然后抱着你哭了', '掏出一个小盒子说"其实我也准备了，我先问的！"'],
   },
@@ -55,7 +55,7 @@ const PERSONALITY_TRAITS: Record<PartnerPersonality, {
     dateEvents: ['拉你去蹦极/跳伞/潜水', '带你去了一个你从没听过的地下乐队演出', '凌晨两点叫你起来看流星雨'],
     fightEvents: ['直接说"我需要冷静一下"，然后去跑了十公里', '不冷战，直接摊开讲清楚，讲完就翻篇'],
     sweetEvents: ['你以为ta不在乎，结果你提过一次的小众电影ta记了半年', '在你最脆弱的时候说"我在"，不多话但一直在'],
-    proposalReactions: ['愣了三秒说"你确定？我可是很难搞的"，然后笑了', '说"行啊，反正跟你待着挺舒服的"，然后偷偷发了个朋友圈'],
+    proposalReactions: ['愣了三秒说"你确定？我可是很难搞的"，然后笑了', '说"行啊，反正跟你待着挺舒服的"，然后偷偷发了个动态圈'],
   },
 };
 
@@ -67,7 +67,7 @@ const MEET_CUTES: Array<{
   minAge: number;
   maxAge: number;
 }> = [
-  { text: (n) => `朋友聚会上，你认识了${n}。散场的时候ta说"加个微信吧"，你心跳漏了一拍。`, emoji: '💫', from: 'friend', minAge: 23, maxAge: 32 },
+  { text: (n) => `朋友聚会上，你认识了${n}。散场的时候ta说"加个社交软件吧"，你心跳漏了一拍。`, emoji: '💫', from: 'friend', minAge: 23, maxAge: 32 },
   { text: (n) => `公司新来了个同事叫${n}。开会的时候你们对视了一眼，两个人同时移开了目光。`, emoji: '👀', from: 'work', minAge: 23, maxAge: 35 },
   { text: (n) => `你被老妈逼着去相亲，本来想应付一下就走，结果对面坐的是${n}——完全不是你想象中的样子。`, emoji: '😳', from: 'blind_date', minAge: 25, maxAge: 38 },
   { text: (n) => `刷交友软件滑到了${n}，本来以为又是一个无聊的人，结果聊了一整晚，天亮的时候你发现自己在笑。`, emoji: '📱', from: 'app', minAge: 22, maxAge: 35 },
@@ -78,9 +78,9 @@ const MEET_CUTES: Array<{
 
 // 暧昧期事件（crush → dating）
 const CRUSH_EVENTS: Array<{ text: (n: string) => string; affection: number }> = [
-  { text: (n: string) => `你和${n}的微信聊天记录翻到了最上面，你才发现你们已经聊了三个月了。今天ta发了一条朋友圈，你第一个点赞。`, affection: 5 },
+  { text: (n: string) => `你和${n}的社交软件聊天记录翻到了最上面，你才发现你们已经聊了三个月了。今天ta发了一条动态圈，你第一个点赞。`, affection: 5 },
   { text: (n: string) => `${n}约你周末去看电影。你翻遍衣柜试了二十件衣服，最后还是穿了第一天见ta时穿的那件。`, affection: 8 },
-  { text: (n: string) => `你发现自己开始不自觉地看手机，怕错过${n}的消息。ta发条朋友圈你要反复看好几遍。`, affection: 3 },
+  { text: (n: string) => `你发现自己开始不自觉地看手机，怕错过${n}的消息。ta发条动态圈你要反复看好几遍。`, affection: 3 },
   { text: (n: string) => `同事开玩笑说你和${n}是不是在一起了，你嘴上否认，耳朵却红了。`, affection: 4 },
 ];
 
@@ -237,7 +237,7 @@ function temptationEvent(state: GameState): RomanceResult | null {
   if (!state.partner) return null;
   const n = state.partner.name;
   const events = [
-    { text: `公司新来的同事对你示好，你心动了一下。但回到家看到${n}给你留的灯，你删掉了对方的微信。`, affection: 3, trust: 5 },
+    { text: `公司新来的同事对你示好，你心动了一下。但回到家看到${n}给你留的灯，你删掉了对方的社交软件。`, affection: 3, trust: 5 },
     { text: `前任突然联系你，说"还是想你"。你看着身边熟睡的${n}，拉黑了前任。`, affection: 2, trust: 8 },
     { text: `出差时有人搭讪，你礼貌地说"我有对象了"。说这句话的时候你想到了${n}，笑了。`, affection: 5, trust: 3 },
   ];

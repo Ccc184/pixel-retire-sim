@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import { CITY_CONFIGS } from '../../utils/math-engine.js'
 import { MBTI_TRAITS, MBTI_GROUPS, getMBTIProfessionModifier } from '../../data/mbti-system.js'
+import { fmtNum } from '../../utils/format.js'
 import type { CityType, Profession, MBTIType } from '../../types/global.d.js'
 
 const store = useGameStore()
@@ -57,9 +58,8 @@ const professionOptions: ProfessionOption[] = [
 const selectedCity = ref<CityType>('中坚大后方')
 const selectedProfession = ref<Profession>('传统私企')
 const selectedMBTI = ref<MBTIType | null>(null)
-const expandedGroup = ref<string | null>(null)
+const expandedGroup = ref<string | null>('NT') // 默认展开理性者组
 const initSalary = ref<number>(10000)
-const targetAge = ref<number>(60)
 const targetWealth = ref<number>(3000000)
 
 // 城市推荐目标金额
@@ -82,13 +82,16 @@ function selectCity(city: CityType) {
 
 const canStart = computed(() => {
   return (
-    selectedMBTI.value !== null &&
     initSalary.value > 0 &&
     initSalary.value <= 1000000 &&
-    targetAge.value > 22 &&
-    targetAge.value <= 80 &&
     targetWealth.value > 0
   )
+})
+
+const startBlockReason = computed(() => {
+  if (initSalary.value <= 0 || initSalary.value > 1000000) return '请设置有效的初始月薪'
+  if (targetWealth.value <= 0) return '请设置退休目标资产'
+  return ''
 })
 
 const effectiveStartSalary = computed(() => {
@@ -119,20 +122,15 @@ function toggleGroup(temp: string) {
   expandedGroup.value = expandedGroup.value === temp ? null : temp
 }
 
-function formatWan(num: number): string {
-  if (num >= 10000) {
-    return (num / 10000).toFixed(1).replace(/\.0$/, '') + '万'
-  }
-  return num.toString()
-}
+// 金额格式化（纯数字，自动万/元）
+const formatWan = fmtNum
 
 function startGame(): void {
-  if (!canStart.value || !selectedMBTI.value) return
+  if (!canStart.value) return
   store.setupGame(
     selectedCity.value,
     selectedProfession.value,
     initSalary.value,
-    targetAge.value,
     targetWealth.value,
     selectedMBTI.value,
   )
@@ -216,13 +214,14 @@ function startGame(): void {
         </div>
       </section>
 
-      <!-- MBTI人格选择 -->
+      <!-- MBTI人格选择（可选彩蛋） -->
       <section class="setup-section">
         <h3 class="section-title">
           <span class="section-num neon-green-num">03</span>
-          <span class="section-title-text">选择你的人格底色</span>
+          <span class="section-title-text">人格底色</span>
+          <span class="section-optional-tag">可选</span>
         </h3>
-        <p class="mbti-intro">不是性格测试，而是存在主义问卷——你选择的不是四个字母，而是用哪种哲学视角体验这段人生。</p>
+        <p class="mbti-intro">一个人格底色，会给你的叙事语气和恢复节奏带来微妙的差异。不选也完全不影响游戏体验。</p>
         <div class="mbti-groups">
           <div
             v-for="group in MBTI_GROUPS"
@@ -314,19 +313,6 @@ function startGame(): void {
           </div>
 
           <div class="input-group">
-            <label for="t-age">目标退休年龄</label>
-            <input
-              id="t-age"
-              v-model.number="targetAge"
-              type="number"
-              min="30"
-              max="80"
-              step="1"
-            />
-            <div class="input-hint">默认60岁</div>
-          </div>
-
-          <div class="input-group">
             <label for="t-wealth">目标退休资产（元）</label>
             <input
               id="t-wealth"
@@ -339,15 +325,16 @@ function startGame(): void {
             <div class="input-hint">{{ selectedCity }}推荐{{ formatWan(recommendedTargets[selectedCity]) }}元</div>
           </div>
         </div>
+        <p class="setup-tip">// 退休年龄由你选择的路径决定，每条路有不同的时间窗口 //</p>
       </section>
 
       <!-- 开始按钮 -->
       <div class="setup-footer">
-        <button class="btn-start neon-start-btn" :disabled="!canStart" @click="startGame">
+        <button class="btn-start neon-start-btn" :disabled="!canStart" @click="startGame" :title="startBlockReason">
           <span class="btn-scan" />
           <span class="btn-arrows">▶</span>
-          开始像素人生
-          <span class="btn-arrows">▶</span>
+          {{ canStart ? '开始像素人生' : startBlockReason }}
+          <span v-if="canStart" class="btn-arrows">▶</span>
         </button>
       </div>
     </div>
@@ -494,6 +481,17 @@ function startGame(): void {
 
 .section-title-text {
   text-shadow: 0 0 4px rgba(255,255,255,0.2);
+}
+
+.section-optional-tag {
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #7a9bb5;
+  border: 1px solid #3a4a6a;
+  border-radius: 3px;
+  background: rgba(58, 74, 106, 0.15);
 }
 
 /* 城市/职业 霓虹卡片 */
@@ -774,6 +772,17 @@ function startGame(): void {
 .hint-green {
   color: #00ff88;
   text-shadow: 0 0 4px #00ff88;
+}
+
+.setup-tip {
+  font-size: 11px;
+  color: #c900ff;
+  letter-spacing: 1px;
+  text-shadow: 0 0 4px #c900ff;
+  opacity: 0.7;
+  margin: 4px 0 0;
+  text-align: center;
+  font-style: italic;
 }
 
 /* 底部 */

@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import type { Ending } from '../../types/global.d.js'
 import LifeTimeBill from './LifeTimeBill.vue'
+import { fmt } from '../../utils/format.js'
 
 const store = useGameStore()
 
@@ -51,11 +52,98 @@ const gradeConfig: Record<Grade, { color: string; glow1: string; glow2: string; 
 
 const finalSavings = computed<number>(() => store.state.currentSavings)
 const finalAssets = computed<number>(() => store.totalWealth)
-const yearsWorked = computed<number>(() => store.state.totalYearsWorked)
-const yearsUnemployed = computed<number>(() => store.state.totalUnemployedYears)
+// 工作年限：优先使用累计值，若为0/falsy则用年龄-22估算（覆盖直接跳结局等边界情况）
+const yearsWorked = computed<number>(() => {
+  return store.state.totalYearsWorked || Math.max(0, store.state.currentAge - 22)
+})
+const yearsUnemployed = computed<number>(() => store.state.totalUnemployedYears || 0)
 const finalHealth = computed<number>(() => Math.round(store.state.health))
 const finalStress = computed<number>(() => Math.round(store.state.stress))
 const finalHappiness = computed<number>(() => Math.round(store.state.happiness))
+
+// ================================================================
+//  退休第一天微型场景 + 路径专属统计
+// ================================================================
+type PathKey = 'ai_symbiote' | 'chain_native' | 'digital_nomad' | 'super_ip' | 'silver_economy' | 'bio_gambler' | 'default'
+
+// 当前结局所属路径（path_success/path_failure 取路径id，E1-E9 普通结局走 default）
+const currentPathKey = computed<PathKey>(() => {
+  const eid = store.state.currentEndingId || ''
+  if (eid.startsWith('path_success_') || eid.startsWith('path_failure_')) {
+    return eid.replace(/^path_(success|failure)_/, '') as PathKey
+  }
+  return 'default'
+})
+
+// 是否为路径成功结局（bio_gambler 成功=45岁，失败=65岁）
+const isPathSuccess = computed<boolean>(() => {
+  const eid = store.state.currentEndingId || ''
+  return eid.startsWith('path_success_')
+})
+
+// 退休第一天微型场景文本
+const firstDayScene = computed<string>(() => {
+  switch (currentPathKey.value) {
+    case 'ai_symbiote':
+      return '你关掉了闹钟，却在6点准时醒来。窗外是晨曦，你端着咖啡坐回屏幕前——但今天，没有需求文档，没有deadline。你打开那个拖了三年没写完的开源项目，笑了。'
+    case 'chain_native':
+      return '你删掉了行情APP，注销了交易所账号。手机静得像一块砖。你走到阳台，第一次注意到楼下那棵银杏已经长到了三楼。'
+    case 'digital_nomad':
+      return '你在一个海边小城醒来，楼下是渔船的汽笛声。你打开电脑——没有会议邀请，只有一封编辑的催稿邮件，你笑着点了"稍后提醒"。'
+    case 'super_ip':
+      return '你推掉了所有商业合作，只保留了一个播客。听众问你为什么，你说："以前我想被听见，现在我想慢慢说。"'
+    case 'silver_economy':
+      return '你坐在花园里翻着老照片，秀兰的笑声从厨房飘来。保温杯里的茶还冒着热气，你想，这就是最好的抗衰药。'
+    case 'bio_gambler':
+      return isPathSuccess.value
+        ? '你的生物年龄定格在了45岁。你站在镜子前看了很久，然后给22岁的自己写了一封永远寄不出的信——信上只有四个字：我赌赢了。'
+        : '你的生物年龄停在了65岁。那些回输的细胞、注射的NAD+终究没能跑赢时间。你坐在藤椅上晒着太阳，心想：赌输了也没什么，至少我赌过。'
+    default:
+      return '闹钟响了，你按掉它。又是普通的一天。你煮了碗面，打开手机看新闻，日子就这样过着。'
+  }
+})
+
+// 基于一次性随机数的路径统计值（computed 依赖 endingInfo，结局触发后稳定不重算）
+const _randomCache = computed<{ bullBear: number; cities: number; elders: number }>(() => {
+  // 依赖 endingInfo 确保结局触发后才生成，且后续不再变化
+  void endingInfo.value
+  return {
+    bullBear: 2 + Math.floor(Math.random() * 4),   // 2-5
+    cities: 3 + Math.floor(Math.random() * 6),     // 3-8
+    elders: 30 + Math.floor(Math.random() * 91),   // 30-120
+  }
+})
+
+// 路径专属统计项
+interface PathStat { label: string; value: string }
+const pathStat = computed<PathStat | null>(() => {
+  const pi = store.state.passiveIncome || 0
+  switch (currentPathKey.value) {
+    case 'ai_symbiote':
+      return { label: 'AI协作年限', value: `${Math.max(0, yearsWorked.value - 3)}年` }
+    case 'chain_native':
+      return { label: '经历牛熊周期', value: `${_randomCache.value.bullBear}轮` }
+    case 'digital_nomad':
+      return { label: '旅居城市数', value: `${_randomCache.value.cities}座` }
+    case 'super_ip': {
+      // 根据年被动收入估算粉丝数：约每万粉丝带来 5000-10000 元年收入
+      let fans: string
+      if (pi >= 5000000) fans = '1000w+'
+      else if (pi >= 1000000) fans = '500w+'
+      else if (pi >= 500000) fans = '200w+'
+      else if (pi >= 200000) fans = '100w+'
+      else if (pi >= 50000) fans = '20w+'
+      else fans = '5w+'
+      return { label: '全网粉丝数', value: fans }
+    }
+    case 'silver_economy':
+      return { label: '陪伴过的老人', value: `${_randomCache.value.elders}位` }
+    case 'bio_gambler':
+      return { label: '生物年龄', value: isPathSuccess.value ? '45岁' : '65岁' }
+    default:
+      return null
+  }
+})
 
 function stateColor(val: number, type: 'health' | 'stress' | 'happiness'): string {
   if (type === 'health') {
@@ -73,16 +161,8 @@ function stateColor(val: number, type: 'health' | 'stress' | 'happiness'): strin
   return '#ff2d95'
 }
 
-function formatMoney(n: number): string {
-  const abs = Math.abs(n)
-  if (abs >= 100000000) {
-    return (n / 100000000).toFixed(2).replace(/\.?0+$/, '') + '亿'
-  }
-  if (abs >= 10000) {
-    return (n / 10000).toFixed(1).replace(/\.0$/, '') + '万'
-  }
-  return Math.round(n).toLocaleString()
-}
+// 金额格式化（使用公共工具，带¥符号，自动万/亿）
+const formatMoney = fmt
 
 function handleRestart(): void {
   store.resetGame()
@@ -149,10 +229,18 @@ function handleViewRetire(): void {
         <pre class="ending-text">{{ endingText }}</pre>
       </div>
 
+      <!-- 退休第一天微型场景 -->
+      <div class="first-day-scene">
+        <div class="scene-header">
+          <span class="scene-tag">◇ RETIREMENT DAY ONE ◇</span>
+        </div>
+        <p class="scene-text">{{ firstDayScene }}</p>
+      </div>
+
       <!-- 人生总账单（移到独立弹窗，不再嵌在主弹窗里） -->
 
       <!-- 统计数据 -->
-      <div class="ending-stats">
+      <div class="ending-stats" :class="{ 'has-path-stat': pathStat }">
         <div class="stat-item">
           <div class="stat-num num-blue">{{ yearsWorked }}</div>
           <div class="stat-label">工作年限</div>
@@ -168,6 +256,11 @@ function handleViewRetire(): void {
         <div class="stat-item">
           <div class="stat-num num-pink">{{ formatMoney(finalAssets) }}</div>
           <div class="stat-label">最终资产</div>
+        </div>
+        <!-- 路径专属统计项 -->
+        <div v-if="pathStat" class="stat-item stat-item-path">
+          <div class="stat-num num-yellow">{{ pathStat.value }}</div>
+          <div class="stat-label">{{ pathStat.label }}</div>
         </div>
       </div>
 
@@ -617,6 +710,40 @@ function handleViewRetire(): void {
   text-shadow: 0 0 2px rgba(255, 204, 170, 0.3);
 }
 
+/* 退休第一天微型场景 */
+.first-day-scene {
+  position: relative;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  box-shadow: inset 0 0 12px rgba(0, 212, 255, 0.08), 0 0 8px rgba(0, 212, 255, 0.15);
+  padding: 0;
+}
+
+.scene-header {
+  padding: 6px 12px;
+  background: rgba(0, 212, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.scene-tag {
+  font-size: 10px;
+  color: #00d4ff;
+  letter-spacing: 2px;
+  text-shadow: 0 0 4px #00d4ff;
+}
+
+.scene-text {
+  font-family: 'DotGothic16', monospace;
+  font-size: 13px;
+  line-height: 1.9;
+  color: #b8e6ff;
+  margin: 0;
+  padding: 12px 16px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 3px rgba(0, 212, 255, 0.3);
+  font-style: italic;
+}
+
 /* 人生总账单独立弹窗 */
 .bill-overlay {
   position: fixed;
@@ -695,6 +822,24 @@ function handleViewRetire(): void {
   gap: 10px;
 }
 
+/* 有路径专属统计项时，前4项2x2，第5项横跨整行 */
+.ending-stats.has-path-stat {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.ending-stats.has-path-stat .stat-item-path {
+  grid-column: 1 / -1;
+  background: rgba(255, 236, 39, 0.06);
+  border-color: rgba(255, 236, 39, 0.35);
+  box-shadow: inset 0 0 10px rgba(255, 236, 39, 0.08), 0 0 10px rgba(255, 236, 39, 0.15);
+  animation: pathStatPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes pathStatPulse {
+  0%, 100% { box-shadow: inset 0 0 10px rgba(255, 236, 39, 0.08), 0 0 10px rgba(255, 236, 39, 0.15); }
+  50% { box-shadow: inset 0 0 14px rgba(255, 236, 39, 0.12), 0 0 18px rgba(255, 236, 39, 0.25); }
+}
+
 @media (max-width: 520px) {
   .ending-stats {
     grid-template-columns: repeat(2, 1fr);
@@ -725,6 +870,7 @@ function handleViewRetire(): void {
 .num-red { color: #ff2d95; text-shadow: 0 0 6px #ff2d95; }
 .num-green { color: #00ff88; text-shadow: 0 0 6px #00ff88; }
 .num-pink { color: #ff2d95; text-shadow: 0 0 6px #c900ff; }
+.num-yellow { color: #ffec27; text-shadow: 0 0 6px #ffec27, 0 0 14px rgba(255, 236, 39, 0.5); }
 
 .stat-label {
   font-size: 11px;

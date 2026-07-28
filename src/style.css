@@ -399,17 +399,6 @@ input[type="text"]:focus {
   text-shadow: 0 0 6px var(--neon-orange);
 }
 
-.pixel-card.selected {
-  background: rgba(255, 136, 0, 0.25);
-  color: var(--pico-white);
-  border-color: var(--neon-orange);
-  box-shadow:
-    0 0 12px var(--neon-orange),
-    0 0 28px rgba(255, 136, 0, 0.55),
-    inset 0 0 12px rgba(255, 236, 39, 0.15);
-  text-shadow: 0 0 6px var(--neon-orange);
-}
-
 /* 像素风霓虹标题 */
 .pixel-title {
   font-size: 32px;

@@ -75,7 +75,7 @@ function simulatePath(pathId: typeof PATHS[number]): SimResult {
 
   // 开局
   store.startNewGame()
-  store.setupGame('中坚大后方', '传统私企', 8000, 60, 5000000, 'INTJ')
+  store.setupGame('中坚大后方', '传统私企', 8000, 5000000, 'INTJ')
   store.selectRetirementPath(pathId)
 
   const result: SimResult = {

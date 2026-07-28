@@ -1,5 +1,7 @@
 // 职业类型
-export type Profession = '体制内' | '红利行业' | '传统私企' | '自由职业' | '实体创业' | '一线蓝领' | '数字游民' | '自由个体';
+export type Profession = '体制内' | '红利行业' | '传统私企' | '自由职业' | '实体创业' | '一线蓝领' | '数字游民' | '自由个体'
+  // All In 后开公司专属职业（hasCompany === true 时持有）
+  | 'AI工作室创始人' | '区块链公司CEO' | '远程公司创始人' | 'MCN创始人' | '长寿科技公司CEO';
 
 // 退休路径ID
 export type RetirementPathId = 'ai_symbiote' | 'chain_native' | 'digital_nomad' | 'super_ip' | 'silver_economy' | 'bio_gambler';
@@ -17,7 +19,7 @@ export type NarrativeBranch =
   | 'nomad_freelancer' | 'nomad_entrepreneur' | 'nomad_consultant'
   // 超级IP
   | 'ip_educator' | 'ip_entertainer' | 'ip_thought_leader'
-  // 银发收割者
+  // 银发守夜人
   | 'silver_caregiver' | 'silver_tech' | 'silver_community'
   // 生物赌徒
   | 'bio_investor' | 'bio_experimenter' | 'bio_researcher'
@@ -30,7 +32,7 @@ export type CityType = '资本修罗场' | '中坚大后方' | '避风低洼地'
 export type EconomicCycle = 0 | 1 | 2; // 0=繁荣, 1=平稳, 2=萧条
 
 // 后遗症类型
-export type AftermathType = '心理阴影' | '情感创伤' | '健康警示' | null;
+export type AftermathType = '心理阴影' | '情感创伤' | '健康警示' | '认知干扰' | '医疗纠纷' | null;
 
 // 后遗症状态
 export interface PendingAftermath {
@@ -203,6 +205,7 @@ export interface GameState {
   pathCrisisTriggered: boolean;             // 中期危机是否已触发
   pathEndgameTriggered: boolean;            // 终局判定是否已触发
   isAllInPath: boolean;                     // 是否已All In（辞职全力投入路径副业）
+  hasCompany: boolean;                      // All In 后是否已注册公司（公司化运营深化线）
   canRetire: boolean;                       // 是否已满足退休条件（玩家可选择何时退休）
   recentShownCards: string[];               // 最近2-3年展示过的卡ID（防重复）
   yearOpeningMonologue: string;             // 今年的心境开场白
@@ -215,6 +218,18 @@ export interface GameState {
   pathSkills: Record<string, number>;       // 技能值（如 { aiSkill: 30, promptMastery: 20 }）
   narrativeEventFired: Record<string, number>; // 已触发的叙事事件ID → 触发时的年龄
   triggeredAchievements: string[];          // 已触发的成就事件ID列表
+
+  // === 路径专属动态状态（各路径初始化，非全局必填） ===
+  chainHoldings?: number;                   // 链上原住民：持仓市值（现金等价）
+  hasAbandonedCrypto?: boolean;             // 链上原住民：是否已放弃链上（阻止后续持仓操作）
+  bioPortfolio?: number;                    // 生物赌徒：生科投资组合市值
+  biologicalAge?: number;                   // 生物赌徒：生物年龄偏移（负数=更年轻）
+  supplementRegime?: boolean;               // 生物赌徒：是否正在执行补剂方案
+  silverBusiness?: { clients: number; reputation: number; monthlyRevenue: number }; // 银发守夜人：生意状态
+  ipFollowers?: number;                     // 超级IP：粉丝数
+  ipReputation?: number;                    // 超级IP：声誉值（0-100）
+  aiSkillLevel?: number;                    // AI共生者：卡牌系统积累的AI技能（与pathSkills.aiSkill合并使用）
+  nomadClients?: number;                    // 数字游牧民：固定客户数量
   
   // 游戏阶段
   gamePhase: 'intro' | 'quiz' | 'setup' | 'path_select' | 'playing' | 'ending';
@@ -230,12 +245,13 @@ export interface GameState {
   pendingCardEchoes?: { cardId: string; triggerAge: number; delayYears: number }[];
 
   // 盲盒待揭晓队列
-  pendingBlindBoxes?: { outcomeId: string; triggerAge: number }[];
+  pendingBlindBoxes?: { outcomeId: string; triggerAge: number; triggerCardId?: string; delayYears?: number }[];
 
   // 人生总账单累计追踪
   lifetimeSalary: number;        // 总工资收入
   lifetimeInvestmentGain: number; // 总理财收益
   lifetimeSideHustle: number;    // 总副业收入
+  currentYearSideHustle: number; // 本年剧情事件累积的副业收入（年终结算后重置）
   lifetimeLivingCost: number;    // 总生活开销
   lifetimeMortgage: number;      // 总房贷
   lifetimeChildCost: number;     // 总养娃支出
@@ -253,6 +269,13 @@ export interface WellbeingChangeEntry {
   happiness: number;
   health: number;
   savings: number;
+}
+
+// 薪资变动明细条目
+export interface SalaryChangeEntry {
+  source: string;        // 来源标签：普调/技能加成/年龄黄金期/35岁断崖/经济周期/事件涨薪/事件降薪/跳槽/裁员等
+  amount: number;        // 变动金额（正数涨薪，负数降薪）
+  note?: string;         // 可选的一句话解释（用于工作小结叙事）
 }
 
 // 年度结算结果
@@ -308,6 +331,12 @@ export interface YearResult {
   propertyChange: number;
   // 实际存款变化（包含所有因素，用于显示"存款变化"准确值）
   actualSavingsChange?: number;
+  // 年度月薪变化（涨薪/降薪/事件导致的薪资变化）
+  salaryChange?: number;
+  // 薪资变动明细（按来源拆解）
+  salaryBreakdown?: SalaryChangeEntry[];
+  // 年度工作小结（一句话叙事，解释今年工作/收入的主要变化）
+  workSummary?: string;
 }
 
 // 父母状态
@@ -373,7 +402,7 @@ export interface FriendState {
 export interface DailyEvent {
   id: string;
   text: string;                // 事件叙述文本
-  label: string;               // 简称标签（用于收支明细/变化来源面板，如"重感冒"、"朋友圈焦虑"）
+  label: string;               // 简称标签（用于收支明细/变化来源面板，如"重感冒"、"动态圈焦虑"）
   ageRange: [number, number]; // 适用年龄范围
   conditions?: (state: GameState) => boolean;  // 触发条件
   effects?: {                  // 可选效果
@@ -441,6 +470,10 @@ export interface NarrativeOption {
   log: string;
   // 是否标记为"休养生息"选项
   isRestOption?: boolean;
+  // 是否触发退休判定（终极事件选项）
+  triggersRetirementCheck?: boolean;
+  // 盲盒触发标记：选了这个选项后，注册对应triggerCardId的延迟盲盒
+  blindBoxTrigger?: string;
 }
 
 // 叙事事件（每年的情境选择，替代三卡）

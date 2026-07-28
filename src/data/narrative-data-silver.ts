@@ -1,5 +1,5 @@
 /**
- * 银发收割者路径 · 完整叙事事件库
+ * 银发守夜人路径 · 完整叙事事件库
  *
  * 三条分支：
  *   silver_caregiver  — 护理服务线，亲手照顾老人，用服务质量建立品牌，重运营
@@ -91,14 +91,14 @@ const commonEvents: NarrativeEvent[] = [
     eventType: 'normal',
     narrative:
       '你在老家的街道办有一份体面的工作，每天朝九晚五。但每个周末你都骑着电动车穿街走巷，去给独居老人量血压、陪他们聊天。同事以为你在"看望长辈"，其实你在试一个未来。\n' +
-      '张奶奶是你接手的第一个正式客户。她八十一岁，股骨颈骨折后卧床半年，女儿在深圳打工回不来，托人找一个"信得过的人"每周推她去医院换药复查。女儿每月给你转800块——不多，但这是你第一次靠"伺候人"赚到钱。\n' +
-      '你第一次推着轮椅走在老家的街上，张奶奶枯瘦的手攥着你的胳膊，指甲嵌进你的皮肤。她忽然抬头说："小伙子，你比我亲儿子还贴心。"你鼻子一酸，没接话——你怕一开口就哭出来。',
+      '张奶奶是你接手的第一个正式客户。她八十一岁，股骨颈骨折后卧床半年，女儿在深圳打工回不来，托人找一个"信得过的人"每周推她去医院换药复查。女儿每月给你转800块——不多，但靠"伺候人"挣到钱，这是头一遭。\n' +
+      '推着轮椅走在老家的街上，张奶奶枯瘦的手攥着你的胳膊，指甲嵌进你的皮肤。她忽然抬头说："小伙子，你比我亲儿子还贴心。"你鼻子一酸，没接话——你怕一开口就哭出来。',
     options: [
       {
         id: 'all_in_care',
         label: '把张奶奶当亲人一样照顾',
         description: '周末全程陪护，换药、擦身、陪聊、记录每天的药量和饮食',
-        hint: '护理+12 · 压力+8 · 幸福+5 · 声誉+10 · 客户+1 · 信念+5',
+        hint: '护理+12 · 压力+8 · 幸福+5 · 声誉+10 · 客户+1 · 信念+5 · 副业+3000(照护费)',
         hintColor: 'positive',
         skillGains: { careSkill: 12 },
         stateEffect: (s) => {
@@ -107,8 +107,10 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           adjustSilverClients(s, 1);
           adjustSilverReputation(s, 10);
+          s.currentYearSideHustle += 3000; // 张奶奶女儿按月转的照护费，本季度到账
         },
-        log: '22岁，你把张奶奶当成了自己的奶奶。每周六日准时上门，换药、翻身、记药量。一个月后张奶奶的女儿寄来一面锦旗，那是你人生收到的第一面锦旗。你把它藏在衣柜里——不敢让同事看到，怕他们问你周末在干什么。',
+        log: '22岁，你把张奶奶当成了自己的奶奶。每周六日准时上门，换药、翻身、记药量。张奶奶的女儿按月转来照护费，本季度到账3000元。一个月后张奶奶的女儿寄来一面锦旗，那是你人生收到的第一面锦旗。你把它藏在衣柜里——不敢让同事看到，怕他们问你周末在干什么。',
+        blindBoxTrigger: 'silver_first_death',
       },
       {
         id: 'professional_distance',
@@ -164,7 +166,7 @@ const commonEvents: NarrativeEvent[] = [
         id: 'prove_with_money',
         label: '憋着这口气，用收入证明自己',
         description: '你说不出大道理，那就让钱包替你说话',
-        hint: '管理+10 · 压力+12 · 幸福-5 · 信念+6 · 月薪+500',
+        hint: '管理+10 · 压力+12 · 幸福-5 · 信念+6 · 月薪+500 · 副业+5000(加单收入)',
         hintColor: 'positive',
         skillGains: { managementSkill: 10 },
         salaryChange: 500,
@@ -172,8 +174,9 @@ const commonEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 12, 0, 100);
           s.happiness = clamp(s.happiness - 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.currentYearSideHustle += 5000; // 拼命接单后新增三四个客户的照护费
         },
-        log: '23岁，三姨那句话像根刺扎在你心里。你开始拼命接单、算账、压成本，三个月后月收入翻了一倍。过年你给妈塞了一个厚红包，她数了数眼圈又红了，什么都没说。',
+        log: '23岁，三姨那句话像根刺扎在你心里。你开始拼命接单、算账、压成本，三个月后又接了三四个客户，副业月收入翻了一倍，到账5000元。过年你给妈塞了一个厚红包，她数了数眼圈又红了，什么都没说。',
       },
       {
         id: 'explain_vision',
@@ -187,11 +190,12 @@ const commonEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 3, 0, 100);
         },
         log: '23岁，你跟爸妈在客厅聊到凌晨一点。你翻开手机里查到的数据：中国60岁以上人口将突破4亿，养老护理员缺口上千万。你妈听完沉默很久，最后说："妈不懂大道理，但你要是想好了，就去做。别丢了良心就行。"',
+        blindBoxTrigger: 'silver_family_doubt',
       },
       {
         id: 'waver_secretly',
         label: '表面坚持，偷偷看公务员招考',
-        description: '不是没骨气，是看不到头的日子太难熬了',
+        description: '看不到头的日子，把人的骨气一点点磨没了',
         hint: '管理+3 · 压力+5 · 信念-8 · 幸福-3',
         hintColor: 'negative',
         skillGains: { managementSkill: 3 },
@@ -240,15 +244,16 @@ const commonEvents: NarrativeEvent[] = [
         id: 'professional_reframe',
         label: '用专业的话开导他，帮他找到价值感',
         description: '教他做力所能及的康复训练，让他觉得自己还在进步',
-        hint: '护理+12 · 管理+4 · 压力+8 · 信念+3 · 声誉+5',
+        hint: '护理+12 · 管理+4 · 压力+8 · 信念+3 · 声誉+5 · 副业+4000(康复指导)',
         hintColor: 'neutral',
         skillGains: { careSkill: 12, managementSkill: 4 },
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
           adjustSilverReputation(s, 5);
+          s.currentYearSideHustle += 4000; // 李爷爷女儿额外付的康复训练指导费
         },
-        log: '23岁，你给李爷爷设计了一套床上康复操，每天做十分钟。一个月后他的左手能自己端碗了，他举着碗给你看的时候像个孩子。你说"李爷爷你在进步"，他咧着歪掉的嘴笑了。你第一次觉得专业知识是有温度的。',
+        log: '23岁，你给李爷爷设计了一套床上康复操，每天做十分钟。一个月后他的左手能自己端碗了，他举着碗给你看的时候像个孩子。他女儿听说你懂康复训练，额外塞了4000元请你每周指导两次。你说"李爷爷你在进步"，他咧着歪掉的嘴笑了。那一刻你忽然觉得，专业知识原来是有温度的。',
       },
       {
         id: 'set_boundary',
@@ -281,13 +286,13 @@ const commonEvents: NarrativeEvent[] = [
     narrative:
       '客户涨到了五个，你一个人快扛不住了。周一到周五在街道办上班，周六日从早上六点跑到晚上九点，五个老人换药、翻身、量血压，电动车跑得快没电了你还没跑完。\n' +
       '你已经在办公室打过三次瞌睡被领导看见了。科长把你叫去谈话："年轻人是不是晚上熬夜玩手机？注意形象。"你点头说改，心里清楚：你根本没有晚上，下班就直接变成另一个身份。\n' +
-      '有客户介绍来第六个老人，你接不接？接了就要想办法分身，不接就等于把口碑往外推。你在午休时偷偷发了一条朋友圈找周末帮工，来了几个人问，大多是好奇的，真愿意干的只有一个叫秀兰的嫂子——四十出头，手粗得像砂纸，说"我妈瘫了三年是我伺候走的，这活我干得了"。',
+      '有客户介绍来第六个老人，你接不接？接了就要想办法分身，不接就等于把口碑往外推。你在午休时偷偷发了一条动态圈找周末帮工，来了几个人问，大多是好奇的，真愿意干的只有一个叫秀兰的嫂子——四十出头，手粗得像砂纸，说"我妈瘫了三年是我伺候走的，这活我干得了"。',
     options: [
       {
         id: 'hire_xiulan_weekend',
         label: '周末雇秀兰帮忙，自己接第六个客户',
         description: '用副业收入付工资，先跑通"两个人"的模式',
-        hint: '管理+10 · 护理+5 · 存款-4000 · 压力-5 · 信念+4 · 客户+2 · 月营收+800',
+        hint: '管理+10 · 护理+5 · 存款-4000 · 压力-5 · 信念+4 · 客户+2 · 月营收+800 · 副业+8000(照护费)',
         hintColor: 'positive',
         skillGains: { managementSkill: 10, careSkill: 5 },
         savingsChange: -4000,
@@ -296,14 +301,15 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           adjustSilverClients(s, 2);
           adjustSilverRevenue(s, 800);
+          s.currentYearSideHustle += 8000; // 六个客户的周末照护费，扣除秀兰日薪后净到账
         },
-        log: '24岁，你用周末副业的收入给秀兰开了日薪。她第一次给老人翻身时轻得像托着一片叶子，你心里一块石头落了地。有了她，周六日终于能喘口气，但你清楚：你现在的身份还是"街道办上班族"，秀兰只知道你周末干这个，不知道你脑子里已经在想更大的事了。',
+        log: '24岁，你用周末副业的收入给秀兰开了日薪。她第一次给老人翻身时轻得像托着一片叶子，你心里一块石头落了地。六个客户本季度的照护费到账8000元，扣掉秀兰的工资还剩大半。有了她，周六日终于能喘口气，但你清楚：你现在的身份还是"街道办上班族"，秀兰只知道你周末干这个，不知道你脑子里已经在想更大的事了。',
       },
       {
         id: 'train_xiulan_expand',
         label: '手把手教秀兰，让她能独立上门',
         description: '花两个月培训她，把部分客户交出去，自己腾出手跑新客户',
-        hint: '管理+12 · 护理+8 · 压力+10 · 健康-3 · 信念+5 · 客户+3 · 月营收+1200',
+        hint: '管理+12 · 护理+8 · 压力+10 · 健康-3 · 信念+5 · 客户+3 · 月营收+1200 · 副业+12000(照护费)',
         hintColor: 'positive',
         skillGains: { managementSkill: 12, careSkill: 8 },
         stateEffect: (s) => {
@@ -312,8 +318,9 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           adjustSilverClients(s, 3);
           adjustSilverRevenue(s, 1200);
+          s.currentYearSideHustle += 12000; // 八个客户的照护费，秀兰分担后净到账
         },
-        log: '24岁，你花了两个月把翻身、鼻饲、压疮护理一项项教给秀兰。工作日晚上写培训笔记，周末现场带教。累得嗓子哑了半个月，但两个月后秀兰能独立上门了。你第一次觉得这事能成——不只是你自己能干，而是能复制。白天在办公室你嘴角带着笑，同事以为你谈恋爱了。',
+        log: '24岁，你花了两个月把翻身、鼻饲、压疮护理一项项教给秀兰。工作日晚上写培训笔记，周末现场带教。累得嗓子哑了半个月，但两个月后秀兰能独立上门了。客户涨到八个，本季度照护费到账12000元。这事能成——你自己能干，现在还能复制。白天在办公室你嘴角带着笑，同事以为你谈恋爱了。',
       },
       {
         id: 'solo_grind',
@@ -328,7 +335,7 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
           adjustSilverClients(s, 1);
         },
-        log: '24岁，你没雇人，咬着牙又扛了一年。周一到周五上班，周六日从早跑到晚，每天只睡四五个小时。有次在办公室打瞌睡被领导拍了桌子，有次给老人翻身时眼前一黑差点摔倒。秀兰发微信问你还需不需要人，你回了句"再等等"——心里知道她是对的，但你还没准备好当"老板"。',
+        log: '24岁，你没雇人，咬着牙又扛了一年。周一到周五上班，周六日从早跑到晚，每天只睡四五个小时。有次在办公室打瞌睡被领导拍了桌子，有次给老人翻身时眼前一黑差点摔倒。秀兰发社交软件问你还需不需要人，你回了句"再等等"——心里知道她是对的，但你还没准备好当"老板"。',
       },
     ],
   },
@@ -428,11 +435,11 @@ const caregiverEvents: NarrativeEvent[] = [
     priority: 5,
     weight: 8,
     oncePerGame: true,
-    conditions: (s) => s.isAllInPath === true,
+    conditions: (s) => s.narrativeBranch === 'silver_caregiver',
     narrative:
       '你发现秀兰和另外两个护理员各干各的：秀兰翻身时先左侧再右侧，老刘翻身时先右侧再左侧；有人喂饭前量血压，有人喂完才量。同一个老人被三个人用三种方式照顾，出了问题根本说不清是谁的环节。\n' +
       '你花了整整一个月，把两年来的护理经验写成了一本手册——《居家养老护理操作规范》。从洗手七步法到翻身扣背的节律，从鼻饲温度到压疮分期，四十七页，每一条都配了你自己画的简图。\n' +
-      '你把手册发给护理员时，秀兰翻了两页说："你是要我们照着这个干？"你说："不是要你们照着干，是让每个老人不管谁来照顾，都享同样的好。"',
+      '你把手册发给护理员时，秀兰翻了两页说："你是要我们照着这个干？"你说："让每个老人不管谁来照顾，都享同样的好——这就是手册的意思。"',
     options: [
       {
         id: 'enforce_strictly',
@@ -483,7 +490,7 @@ const caregiverEvents: NarrativeEvent[] = [
     narrative:
       '新接的一个客户是周奶奶，八十四岁，阿尔茨海默症晚期加吞咽功能障碍，插着胃管。她儿子说之前请的护理员不会弄胃管，营养液推快了老人家呕吐，推慢了又堵管。\n' +
       '你之前没操作过胃管。你花了三天去县医院的护理科旁听，学会了胃管冲管、营养液温度控制、回抽检查胃残余量。第一次给周奶奶推营养液时你的手在抖——你怕弄疼她，更怕出错。\n' +
-      '推完之后周奶奶的嘴里溢出一丝笑意，虽然她可能已经不认识你是谁了。你忽然明白：所谓专业，就是让一个连话都说不出来的人，也能感到舒服。',
+      '推完之后周奶奶的嘴里溢出一丝笑意，虽然她可能已经不认识你是谁了。你把营养液的流速又调慢了一格，在床边多坐了一会儿。她的笑意还没散。',
     options: [
       {
         id: 'master_medical_care',
@@ -550,7 +557,8 @@ const caregiverEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           adjustSilverReputation(s, 10);
         },
-        log: '30岁，你把所有护理员送去考了红十字急救证，你自己也考了。刘爷爷出院后他儿子送来一封感谢信，你把它裱起来挂在墙上——那不是锦旗，是一封写着"谢谢你救了我爸的命"的普通信，但你觉得它比什么都重。',
+        log: '30岁，你把所有护理员送去考了红十字急救证，你自己也考了。刘爷爷出院后他儿子送来一封感谢信，你把它裱起来挂在墙上——只是一封普通信，但上面写着"谢谢你救了我爸的命"，你觉得它比什么都重。',
+        blindBoxTrigger: 'silver_accident',
       },
       {
         id: 'buy_aed_equipment',
@@ -583,9 +591,8 @@ const caregiverEvents: NarrativeEvent[] = [
     oncePerGame: true,
     conditions: (s) => s.isAllInPath === true,
     narrative:
-      '张奶奶走了。你照顾了她整整九年。\n' +
-      '最后那一个月她已经认不出人了，但每次你去她都会咧嘴笑。走的那天是凌晨，她女儿打电话来时声音很平静："妈走的时候没受罪，谢谢你这些年。"你挂了电话，坐在床边发了很久的呆。\n' +
-      '你去参加了葬礼。你站在人群最后面，看着遗照上那个你推了九年轮椅的老人。九年前她攥着你的胳膊说"你比我儿子还贴心"，九年后她安静地躺在那里，像是睡着了。你第一次真切地感受到：做这行，你陪伴的不只是老人的晚年，也是他们的终点。',
+      '张奶奶走了。凌晨四点，她女儿打来电话，声音平静得像在说一件别人的事："妈走的时候没受罪，谢谢你。"你说了句"节哀"，挂了电话，坐在床边，发现窗外的天还没亮。\n' +
+      '葬礼那天你站在人群最后面。她女儿没认出你——你们只在社交软件上说过话。遗照上的张奶奶比你记忆中年轻，笑着，像是别人。你想推轮椅，但轮椅不在了。你口袋里还揣着她最后一次给你的硬糖，揣了一个月了，糖纸都粘在口袋里。你没扔。',
     options: [
       {
         id: 'attend_funeral_process_grief',
@@ -616,6 +623,74 @@ const caregiverEvents: NarrativeEvent[] = [
           adjustSilverReputation(s, 8);
         },
         log: '31岁，张奶奶的走让你开始读临终关怀的书。你学到"尊严死"的概念——让老人在生命的最后阶段不被过度抢救、不被插满管子、不被孤零零地丢在ICU。你开始跟家属谈"如果到了那一天"，虽然每次开口都很难。',
+      },
+    ],
+  },
+
+  // 32岁：秀兰发脾气
+  {
+    id: 'silver_care_xiulan_breaks',
+    title: '那一下',
+    sceneTag: 'community_care',
+    pathId: 'silver_economy',
+    branch: 'silver_caregiver',
+    ageRange: [32, 32],
+    priority: 5,
+    weight: 8,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '秀兰跪在你面前哭。\n' +
+      '她三天没睡了——孩子发烧39度5，老公在工地不接电话，她白天还要给六个老人翻身喂饭。昨天下午，李大爷——那个失智后总把排泄物抹在墙上的李大爷——第五次把饭碗扣在地上。秀兰推了他一把。\n' +
+      '李大爷没受伤。但被来看望的儿媳妇看到了。\n' +
+      '"你们这是虐待老人！"儿媳妇拍了视频，说要发到网上。秀兰当场就跪下了，说"对不起对不起，我不是故意的，我就是太累了"。\n' +
+      '你看着秀兰——她跟了你四年，从没出过差错。你看着视频——推那一把确实不对。你看着李大爷——他坐在床上，茫然地看着所有人，根本不知道发生了什么。\n' +
+      '你该怎么办？',
+    options: [
+      {
+        id: 'fire_xiulan',
+        label: '开除秀兰，给家属交代',
+        description: '标准就是标准，没有例外',
+        hint: '管理+10 · 声誉+5 · 压力+12 · 信念-8 · 客户-10%',
+        hintColor: 'danger',
+        skillGains: { managementSkill: 10 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 12, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
+          adjustSilverReputation(s, 5);
+          adjustSilverClients(s, -Math.max(1, Math.floor(getSilverBusiness(s).clients * 0.1)));
+        },
+        log: '32岁，你开了秀兰。她走的时候没说话，只是把围裙叠好放在桌上。你看着她的背影，知道她孩子的烧还没退。李大爷的儿媳妇删了视频，但你在行业内的口碑已经裂了一道缝。你对剩下的护工说"以后再累也不许碰老人"，她们点头，但眼神里多了一层东西——你说不清是恐惧还是失望。',
+      },
+      {
+        id: 'protect_xiulan',
+        label: '保秀兰，私下安抚家属',
+        description: '她三天没睡，你不能再逼她',
+        hint: '管理+5 · 声誉-8 · 压力+8 · 信念+3 · 存款-20000(赔偿)',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 5 },
+        savingsChange: -20000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          adjustSilverReputation(s, -8);
+        },
+        log: '32岁，你私下赔了李大爷家属两万块，求他们删视频。他们收了钱，但从此换了别家。秀兰留下来了，但你给她排了强制轮休。她第一天休息就带孩子去了医院。你看着排班表，想：如果每个护工都需要轮休，你的人手就不够了。但不开轮休，下一个"推一把"只是时间问题。',
+      },
+      {
+        id: 'systemic_fix',
+        label: '不开也不保，建轮休制度+装监控',
+        description: '治标治本，花钱买规矩',
+        hint: '管理+12 · 政策+8 · 声誉+3 · 存款-40000 · 压力+6 · 信念+5',
+        hintColor: 'positive',
+        skillGains: { managementSkill: 12, policySkill: 8 },
+        savingsChange: -40000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          adjustSilverReputation(s, 3);
+        },
+        log: '32岁，你没开除秀兰，也没假装没看见。你花四万装了全覆盖监控，同时推行强制轮休制——每个护工连续上岗不得超过五天。秀兰写了检讨，李大爷家属拿到了监控录像和赔偿。行业里有人说"这小子规矩做得好"，也有人说"装监控是不信任员工"。你不知道哪个对。但秀兰轮休那天，她终于带孩子去了医院。',
       },
     ],
   },
@@ -684,7 +759,7 @@ const caregiverEvents: NarrativeEvent[] = [
     oncePerGame: true,
     conditions: (s) => s.isAllInPath === true,
     narrative:
-      '你站在地图前，把整个县城划成了十二个网格。每个网格设一个服务小组，覆盖方圆两公里的居家老人。这是你第一次尝试"复制"——把一个服务站变成十二个。\n' +
+      '你站在地图前，把整个县城划成了十二个网格。每个网格设一个服务小组，覆盖方圆两公里的居家老人。如今你要尝试一件没干过的事——"复制"，把一个服务站变成十二个。\n' +
       '但复制不是复印。新招的三十多个护理员良莠不齐，有人给老人喂饭不抬头、有人记不清药量、有人上班刷手机被家属投诉。你一天跑四个网格，嗓子喊哑了，晚上回到办公室看到投诉表，想把地图撕了。\n' +
       '秀兰说："你一个人盯十二个点，不现实。"你知道她说得对。但你不知道怎么放手——你怕一松手，那些老人就照顾不好了。护理这行的质量，太依赖"人"了。',
     options: [
@@ -717,7 +792,7 @@ const caregiverEvents: NarrativeEvent[] = [
           adjustSilverReputation(s, 5);
           adjustSilverClients(s, 2);
         },
-        log: '35岁，你把扩张计划砍了一半，只做六个网格。别人笑你"小富即安"，你心想：我这行不是靠规模赢的，是靠每一个老人都被照顾好赢的。你每周还是会亲自上门，那些早期的老客户只认你。',
+        log: '35岁，你把扩张计划砍了一半，只做六个网格。别人笑你"小富即安"，你心想：我这行赢的从来不是规模，是每一个老人都被照顾好。你每周还是会亲自上门，那些早期的老客户只认你。',
       },
     ],
   },
@@ -787,7 +862,7 @@ const caregiverEvents: NarrativeEvent[] = [
     narrative:
       '十八年了。你从一间小门面、一块手写牌子，做到了覆盖半个县的专业护理品牌。你有了六十多个护理员、两百多个固定客户，墙上挂满了锦旗和感谢信。\n' +
       '民政局的人来考察时说"你们是全省做得最扎实的居家护理品牌"。电视台来采访你，记者问你"是什么让你坚持了十八年"，你想了很久，说："因为每一个老人都值得被好好对待。"\n' +
-      '采访播出后，隔壁两个县的人也来找你。你站在新建的培训中心门口，看着新一批护理员在练习翻身操作，忽然想起22岁那个擦护理床擦到能照见人影的下午。那时候你什么都没有，只有一块手写的牌子和一颗不服气的心。',
+      '采访播出后，隔壁两个县的人也来找你。你站在新建的培训中心门口，看着新一批护理员在练习翻身操作。第一块手写牌子的墨迹仿佛还在眼前——那时候你什么都没有，只有一盆消毒水、一块抹布和一颗不服气的心。',
     options: [
       {
         id: 'franchise_model',
@@ -842,7 +917,7 @@ const techEvents: NarrativeEvent[] = [
     priority: 5,
     weight: 8,
     oncePerGame: true,
-    conditions: (s) => s.isAllInPath === true,
+    conditions: (s) => s.narrativeBranch === 'silver_tech',
     narrative:
       '你花了一个月的工资进了二十台跌倒检测手环，给二十个独居老人戴上。手环连着你的手机APP，老人一摔倒，你的手机就响。\n' +
       '第一个月手环响了六次，其中四次是误报——老人弯腰捡东西、拍被子、手环没戴紧。你被半夜叫醒四次，跑到老人家里发现人家睡得好好的。你开始怀疑这东西到底靠不靠谱。\n' +
@@ -965,7 +1040,7 @@ const techEvents: NarrativeEvent[] = [
           adjustSilverClients(s, 5);
           adjustSilverRevenue(s, 3000);
         },
-        log: '30岁，你重新设计了服务模型：设备做"眼睛"，护理员做"手和心"。系统发现异常自动派单给最近的护理员上门，每个老人每周至少有一次面对面的探访。成本上去了，但孙奶奶的孙子再没投诉过。你明白了一件事：技术是放大器，但放大的是人的温度，不是替代它。',
+        log: '30岁，你重新设计了服务模型：设备做"眼睛"，护理员做"手和心"。系统发现异常自动派单给最近的护理员上门，每个老人每周至少有一次面对面的探访。成本上去了，但孙奶奶的孙子再没投诉过。你把系统后台打开，看了一眼今天的派单——十二个老人的上门探访，每一个后面都跟着一个护理员的名字。',
       },
       {
         id: 'pure_tech_scale',
@@ -1087,10 +1162,10 @@ const techEvents: NarrativeEvent[] = [
     ],
   },
 
-  // 36岁：与巨头正面竞争
+  // 36岁：数据隐私丑闻（与34岁巨头免费价格战区分，聚焦数据主权议题）
   {
     id: 'silver_tech_giant_battle',
-    title: '他们不要钱',
+    title: '数据黑市',
     sceneTag: 'community_care',
     pathId: 'silver_economy',
     branch: 'silver_tech',
@@ -1100,51 +1175,47 @@ const techEvents: NarrativeEvent[] = [
     oncePerGame: true,
     conditions: (s) => s.isAllInPath === true,
     narrative:
-      '一家互联网巨头宣布进军智慧养老，推出"免费送设备+免费APP"计划，铺天盖地的广告。你最大的三个社区客户在同一天通知你"我们换成巨头的了"。\n' +
-      '你打开他们的产品看了一眼——界面比你漂亮十倍，功能比你多三倍，而且真的不要钱。你的运营总监说"我们拿什么跟免费打？"你沉默了很久。\n' +
-      '但第二天你接到了一个电话，是之前被巨头接手的社区护理员打来的："他们的设备是免费，但出了事打客服永远排队，APP更新把老人药提醒给删了，老人三天没吃药没人管。你能不能……再回来？"',
+      '巨头被曝光了——他们把免费设备收集的老人健康数据卖给了保险公司和保健品商。你一位客户的儿子发现，父亲因"心率异常记录"被保险公司拒保重疾险。消息在社区炸了锅。\n' +
+      '客户们恐慌地来找你："你的系统会不会也卖我们的数据？"运营总监说这是机会——"巨头自毁了，客户会回来"。但你看着那些愤怒又无助的家属，觉得这不是抢客户的时候。\n' +
+      '你面临的问题不在"怎么赢"，而在"怎么证明你和他们不一样"。',
     options: [
       {
-        id: 'compete_on_service',
-        label: '打"有人管"的牌，做巨头做不到的重服务',
-        description: '免费的不值钱，值钱的是出了事有人管',
-        hint: '管理+12 · 护理+10 · 政策+8 · 存款-30000 · 压力+15 · 信念+10 · 声誉+12',
-        hintColor: 'danger',
-        skillGains: { managementSkill: 12, careSkill: 10, policySkill: 8 },
-        savingsChange: -30000,
-        stateEffect: (s) => {
-          s.stress = clamp(s.stress + 15, 0, 100);
-          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
-          adjustSilverReputation(s, 12);
-          // 三个B端社区客户被抢走，约流失30%客户；靠服务赢回部分，净流失约15%
-          const biz = getSilverBusiness(s);
-          const lostClients = Math.round(biz.clients * 0.3);
-          const recoveredClients = Math.round(lostClients * 0.5);
-          adjustSilverClients(s, -lostClients + recoveredClients);
-          // 营收先降后升，净下降约20%（重服务成本高）
-          adjustSilverRevenue(s, -Math.round(biz.monthlyRevenue * 0.2));
-        },
-        log: '36岁，你把slogan改成了"设备免费不难，难的是出了事有人管"。你自掏腰包组建了快速响应团队，接巨头丢下的烂摊子——那些设备报了警没人响应的老人、APP不会用被遗忘的老人。半年后，三个社区又回来了，还带来了两个新的。你明白了一个道理：巨头卖的是设备，你卖的是"放心"。但这一仗打光了你不少积蓄。',
-      },
-      {
-        id: 'pivot_to_b2b',
-        label: '转型做to B，给机构卖系统而不是to C',
-        description: 'C端打不过免费的，做B端系统供应商',
-        hint: '管理+12 · 存款-30000 · 压力+10 · 信念+3 · 声誉+5',
-        hintColor: 'neutral',
-        skillGains: { managementSkill: 12 },
-        savingsChange: -30000,
+        id: 'data_sovereignty',
+        label: '建立数据主权体系，数据本地加密、用户自主授权',
+        description: '把"你的数据归你"做成核心卖点',
+        hint: '政策+12 · 管理+10 · 存款-25000 · 压力+10 · 信念+12 · 声誉+10',
+        hintColor: 'positive',
+        skillGains: { policySkill: 12, managementSkill: 10 },
+        savingsChange: -25000,
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 10, 0, 100);
-          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
-          adjustSilverReputation(s, 5);
-          // 三个社区客户丢失，约流失30%客户；转型B端获得新客户但数量有限，净流失约20%
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          adjustSilverReputation(s, 10);
+          // 巨头丑闻后部分客户回流，但数据系统投入大，营收净降约10%
           const biz = getSilverBusiness(s);
-          adjustSilverClients(s, -Math.round(biz.clients * 0.25));
-          // B端客单价高但数量少，营收净下降约10%
+          adjustSilverClients(s, Math.round(biz.clients * 0.1));
           adjustSilverRevenue(s, -Math.round(biz.monthlyRevenue * 0.1));
         },
-        log: '36岁，你不再跟巨头抢C端老人，而是把你的系统卖给了那些被巨头设备坑过的养老机构。转型花了不少钱做产品适配和商务拓展，但你成了"养老机构的IT部"。C端客户丢了不少，但B端利润上来了。你离老人远了——你开始怀念那些手把手教老人戴手环的日子。',
+        log: '36岁，你没有趁火打劫抢客户，而是花了一个季度建了一套数据主权体系——所有健康数据本地加密，老人或家属授权才能查看，每次访问都有日志。你把"你的数据归你"印在了每一台设备上。半年后，那些从巨头逃回来的客户，回来是因为你说到做到了——跟便宜没关系。',
+      },
+      {
+        id: 'open_source_audit',
+        label: '开源数据处理流程，邀请第三方审计',
+        description: '用彻底的透明换取信任',
+        hint: '政策+10 · 管理+8 · 存款-15000 · 压力+8 · 信念+8 · 声誉+8',
+        hintColor: 'neutral',
+        skillGains: { policySkill: 10, managementSkill: 8 },
+        savingsChange: -15000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          adjustSilverReputation(s, 8);
+          // 开源赢得信任但客户增长有限，营收净降约5%
+          const biz = getSilverBusiness(s);
+          adjustSilverClients(s, Math.round(biz.clients * 0.05));
+          adjustSilverRevenue(s, -Math.round(biz.monthlyRevenue * 0.05));
+        },
+        log: '36岁，你做了一个同行觉得疯了的决定——把数据处理流程全部开源，请了一家第三方安全公司做审计，报告全文公开。有人说你"把底裤都给别人看了"，但那些被巨头出卖过的老人家属看完审计报告后说："就冲你这份坦诚，我信你。"透明换来的信任，比营销费贵，但比营销费真。',
       },
     ],
   },
@@ -1273,10 +1344,10 @@ const communityEvents: NarrativeEvent[] = [
     priority: 5,
     weight: 8,
     oncePerGame: true,
-    conditions: (s) => s.isAllInPath === true,
+    conditions: (s) => s.narrativeBranch === 'silver_community',
     narrative:
       '你把社区门口一间废弃的棋牌室改成了日间照料中心。刷了墙，铺了防滑地胶，买了五张躺椅、两张麻将桌、一台血压计。门口挂了一块新牌子："社区老年日间照料中心"。\n' +
-      '开业第一天来了三个老人，第二天五个，第三天八个。她们不是来"被照顾"的，她们是来找人说话的。张阿姨说"在家一个人对着电视发呆，来这好歹有人聊天"。王大爷说"我闺女在外地，知道我白天有地方去，她放心"。\n' +
+      '开业第一天来了三个老人，第二天五个，第三天八个。与其说来"被照顾"，不如说她们是来找人说话的。张阿姨说"在家一个人对着电视发呆，来这好歹有人聊天"。王大爷说"我闺女在外地，知道我白天有地方去，她放心"。\n' +
       '你站在门口看着老人们打牌、量血压、晒太阳，忽然觉得：养老不一定意味着"卧床"和"失能"。更多老人的需求其实很简单——白天有个去处，有人说话，晚上回家睡觉。你给她们亮了一盏白天的灯。',
     options: [
       {
@@ -1298,7 +1369,7 @@ const communityEvents: NarrativeEvent[] = [
       {
         id: 'focus_meals_service',
         label: '先把老年食堂做起来，解决吃饭问题',
-        description: '很多独居老人最大的困难不是没人陪，是吃不上热饭',
+        description: '很多独居老人最大的困难，是吃不上热饭——陪伴反而是其次',
         hint: '管理+10 · 政策+8 · 压力+4 · 信念+6 · 声誉+8 · 客户+4 · 月营收+1500',
         hintColor: 'neutral',
         skillGains: { managementSkill: 10, policySkill: 8 },
@@ -1498,7 +1569,8 @@ const communityEvents: NarrativeEvent[] = [
           adjustSilverClients(s, 5);
           adjustSilverRevenue(s, 3000);
         },
-        log: '34岁，你从一个小镇创业者变成了省里养老政策座谈会的常客。你提的"降低社区养老补贴门槛""建立护理员分级认证""将精神慰藉纳入服务标准"三条建议，有两条写进了新条例。你把那份条例复印了一份贴在办公室——那不是你的荣誉，是那些你照顾过的老人们给你的底气。',
+        log: '34岁，你从一个小镇创业者变成了省里养老政策座谈会的常客。你提的"降低社区养老补贴门槛""建立护理员分级认证""将精神慰藉纳入服务标准"三条建议，有两条写进了新条例。你把那份条例复印了一份贴在办公室——这份底气，是那些你照顾过的老人们给你的。',
+        blindBoxTrigger: 'silver_policy_win',
       },
       {
         id: 'stay_grassroots',
@@ -1532,8 +1604,8 @@ const communityEvents: NarrativeEvent[] = [
     conditions: (s) => s.isAllInPath === true,
     narrative:
       '你的社区养老模式已经在三个镇跑通了，现在周边两个镇的镇长主动来找你，说"我们也想搞，你能不能来开？"\n' +
-      '这是你第一次跨区域扩张。以前你在一个镇上，谁都认识你，老人叫你"小X"。现在要管五个镇，你分身乏术。你招了三个"站长"，每镇一个，把你的手册和制度复制过去。\n' +
-      '但复制的不只是制度，还有"味道"。第一个新站开业那天你去视察，站长很努力但总差了点什么——老人们的笑不如老站的开心，志愿者没有老站那种自发的热情。你忽然明白：社区养老的灵魂不是流程，是人和人之间日积月累的信任。这个东西，没法速成。',
+      '跨出这一步，意味着跨区域扩张。以前你在一个镇上，谁都认识你，老人叫你"小X"。现在要管五个镇，你分身乏术。你招了三个"站长"，每镇一个，把你的手册和制度复制过去。\n' +
+      '但复制的不只是制度，还有"味道"。第一个新站开业那天你去视察，站长很努力但总差了点什么——老人们的笑不如老站的开心，志愿者没有老站那种自发的热情。你想起老站门口那棵老槐树——树下的老人们一坐就是一下午，谁也不用招呼谁。这种自在，这里还没有。',
     options: [
       {
         id: 'patient_replication',
@@ -1550,6 +1622,7 @@ const communityEvents: NarrativeEvent[] = [
           adjustSilverRevenue(s, 4000);
         },
         log: '37岁，你定了一条规矩：新站开业第一年，你每月至少去待一周，亲自带站长融入社区。五个站花了三年才全部养"熟"。有人说你太慢，你说"社区养老不是开店，是种树——根扎不深，风一吹就倒"。',
+        blindBoxTrigger: 'silver_expand',
       },
       {
         id: 'rapid_franchise',
@@ -1635,13 +1708,13 @@ const communityEvents: NarrativeEvent[] = [
     oncePerGame: true,
     conditions: (s) => s.isAllInPath === true,
     narrative:
-      '二十年了。你终于建成了一个真正的"养老社区"——不是养老院，是一个让老人可以继续"生活"而不是"被照顾"的地方。有花园、有菜地、有活动室、有食堂、有医务室，老人们住自己的小屋，白天在社区里活动，需要帮助时按一下铃就有人来。\n' +
+      '二十年了。你终于建成了一个真正的"养老社区"——与其说是养老院，不如说是一个让老人可以继续"生活"的地方。有花园、有菜地、有活动室、有食堂、有医务室，老人们住自己的小屋，白天在社区里活动，需要帮助时按一下铃就有人来。\n' +
       '开业那天你站在花园里，看着老人们下棋、种菜、跳广场舞。张奶奶的女儿带着孩子来看她，三代人在花园里拍了张合照。你想起了二十年前你推着第一个张奶奶的轮椅走在街上，她攥着你的胳膊说"你比我儿子还贴心"。\n' +
       '二十年，你从一块手写牌子变成了一个社区。你妈站在你旁边，看着花园里的老人们，忽然说了一句："当年我说你回来伺候人是没出息。现在我觉得，你做的这事，比考上公务员有出息多了。"你没说话，但眼眶热了。',
     options: [
       {
         id: 'continue_mission',
-        label: '继续做下去，这不是终点是起点',
+        label: '继续做下去，终点也是新的起点',
         description: '你还有想做的事——让每个乡镇都有一个这样的社区',
         hint: '政策+12 · 管理+10 · 信念+12 · 声誉+10 · 客户+5 · 月营收+3000',
         hintColor: 'positive',
@@ -1741,6 +1814,54 @@ const crossBranchEvents: NarrativeEvent[] = [
     ],
   },
 
+  // 31岁：张奶奶走了（跨分支版本——非护理线也能经历这个情感节点）
+  {
+    id: 'silver_cross_first_death',
+    title: '九年',
+    sceneTag: 'funeral',
+    pathId: 'silver_economy',
+    ageRange: [31, 31],
+    priority: 7,
+    weight: 9,
+    oncePerGame: true,
+    conditions: (s) => s.narrativeBranch !== 'silver_caregiver' && s.isAllInPath === true,
+    narrative:
+      '张奶奶走了。你认识她九年了。\n' +
+      '从22岁那年你推着轮椅走进老人家的门，到现在你的养老站/智慧平台/社区中心已经服务了几百个老人——张奶奶始终是那个最开始的人。她女儿打电话来的时候声音很平静："妈走的时候没受罪。这些年谢谢你。"你挂了电话，在办公室坐了很久。\n' +
+      '九年前她攥着你的手说"你比我儿子还贴心"的时候，你以为自己只是接了一单副业。现在你明白了：你不是在做生意，你是在陪一群人走最后一段路。张奶奶走了，但她推轮椅时指过的那棵桂花树还在院子里。',
+    options: [
+      {
+        id: 'attend_funeral_grieve',
+        label: '去送她最后一程',
+        description: '不管你现在做的是平台还是社区，她是你的起点',
+        hint: '护理+10 · 幸福-8 · 压力+10 · 信念+8',
+        hintColor: 'neutral',
+        skillGains: { careSkill: 10 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness - 8, 0, 100);
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '31岁，你去参加了张奶奶的葬礼。你站在人群后面，看着遗照上那个笑了九年的老人。你想起第一天上门时她塞给你的橘子，想起她推轮椅时指过的桂花树。你没有哭，但回家的路上你绕路去看了那棵树——它还在，秋天了，满树桂花。',
+      },
+      {
+        id: 'establish_memorial',
+        label: '以她的名字设一个纪念项目',
+        description: '让更多老人像她一样被好好对待',
+        hint: '管理+8 · 护理+8 · 存款-8000 · 压力+6 · 信念+12 · 声誉+10',
+        hintColor: 'positive',
+        skillGains: { careSkill: 8, managementSkill: 8 },
+        savingsChange: -8000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          adjustSilverReputation(s, 10);
+        },
+        log: '31岁，你以张奶奶的名字设立了一个"桂花基金"，专门补贴独居失能老人的照护费用。你在启动仪式上说："张奶奶让我知道，养老不是生意，是陪伴。"基金的第一笔钱是你自己掏的。你妈说"你疯了"，但你知道张奶奶在天上会笑。',
+      },
+    ],
+  },
+
   // 33岁：行业大会
   {
     id: 'silver_cross_conference',
@@ -1752,7 +1873,7 @@ const crossBranchEvents: NarrativeEvent[] = [
     weight: 6,
     oncePerGame: true,
     narrative:
-      '你第一次被邀请参加全国养老行业发展大会，在省城的大酒店里。你穿着你最好的衣服走进会场，发现满眼都是西装革履的人，PPT上写满了"银发经济""万亿市场""蓝海赛道"。\n' +
+      '你受邀参加全国养老行业发展大会，在省城的大酒店里。你穿着你最好的衣服走进会场，发现满眼都是西装革履的人，PPT上写满了"银发经济""万亿市场""蓝海赛道"。\n' +
       '一个投资人在台上说"养老是下一个房地产"。一个创业者说"我们用AI颠覆传统养老"。一个地产商说"康养地产是未来十年最大的红利"。你坐在角落里，觉得他们说的养老和你做的养老好像不是同一个东西。\n' +
       '茶歇时一个老教授认出了你——他看过你的社区养老报道。他拉着你的手说："满会场都在谈\u2018银发经济\u2019，但没几个人谈\u2018银发的人\u2019。你是少数在谈人的。"你愣了一下，忽然觉得自己没那么孤单了。',
     options: [
@@ -1775,7 +1896,7 @@ const crossBranchEvents: NarrativeEvent[] = [
         id: 'network_investors',
         label: '低调混圈子，积累人脉和资源',
         description: '会上的关系可能比真话更值钱',
-        hint: '政策+10 · 管理+8 · 压力+3 · 信念+3 · 声誉+5 · 客户+2 · 月营收+2000',
+        hint: '政策+10 · 管理+8 · 压力+3 · 信念+3 · 声誉+5 · 客户+2 · 月营收+2000 · 副业+15000(新客户预付)',
         hintColor: 'neutral',
         skillGains: { policySkill: 10, managementSkill: 8 },
         stateEffect: (s) => {
@@ -1784,8 +1905,9 @@ const crossBranchEvents: NarrativeEvent[] = [
           adjustSilverReputation(s, 5);
           adjustSilverClients(s, 2);
           adjustSilverRevenue(s, 2000);
+          s.currentYearSideHustle += 15000; // 会上对接的异地客户预付的一季度照护费
         },
-        log: '33岁，你在茶歇时加了三十个微信——投资人、地产商、政府官员。你学会了说场面话，学会了"合作共赢"。回程的火车上你翻着那些名片，心想：这些人能帮你把事业做大，但他们不会理解你为什么做这件事。你把手机收起来，看着窗外发呆。',
+        log: '33岁，你在茶歇时加了三十个社交软件——投资人、地产商、政府官员。你学会了说场面话，学会了"合作共赢"。有两个外地的民政干部介绍了当地的独居老人家庭给你，预付了一季度的照护费15000元。回程的火车上你翻着那些名片，心想：这些人能帮你把事业做大，但他们不会理解你为什么做这件事。你把手机收起来，看着窗外发呆。',
       },
     ],
   },
@@ -1809,7 +1931,7 @@ const crossBranchEvents: NarrativeEvent[] = [
         id: 'compete_on_quality',
         label: '不打价格战，用质量和服务说话',
         description: '低价抢市场是死路，养老不是卖白菜',
-        hint: '管理+10 · 护理+8 · 存款-10000 · 压力+10 · 信念+8 · 声誉+10',
+        hint: '管理+10 · 护理+8 · 存款-10000 · 压力+10 · 信念+8 · 声誉+10 · 副业+18000(回流客户付费)',
         hintColor: 'positive',
         skillGains: { managementSkill: 10, careSkill: 8 },
         savingsChange: -10000,
@@ -1824,8 +1946,9 @@ const crossBranchEvents: NarrativeEvent[] = [
           adjustSilverClients(s, -lostClients + recoveredClients);
           // 营收短期下降约15%（为留住客户做增值服务，成本增加）
           adjustSilverRevenue(s, -Math.round(biz.monthlyRevenue * 0.15));
+          s.currentYearSideHustle += 18000; // 流失客户回流后补交的照护费，口碑带来新客户付费
         },
-        log: '35岁，你没降价。你把精力花在提升服务质量上——增加上门回访、建立家属微信群每日汇报、给每个老人建健康档案。这半年你自掏腰包加服务，收入掉了一截。但口碑回来了，回来的客户还带了新客户。老李的店撑了一年关了——低价换来的客户留不住，劣质服务出了事谁也担不起。你叹了口气：又多了一批被伤害过的老人。',
+        log: '35岁，你没降价。你把精力花在提升服务质量上——增加上门回访、建立家属社交软件群每日汇报、给每个老人建健康档案。这半年你自掏腰包加服务，收入掉了一截。但口碑回来了，回来的客户还带了新客户，补交和预付的照护费到账18000元。老李的店撑了一年关了——低价换来的客户留不住，劣质服务出了事谁也担不起。你叹了口气：又多了一批被伤害过的老人。',
       },
       {
         id: 'collaborate_with_competitor',
@@ -1864,13 +1987,13 @@ const crossBranchEvents: NarrativeEvent[] = [
     narrative:
       '省台的记者来了，说要给你拍一个专题片。摄像机架在你的服务站里，记者举着话筒问你："是什么让你坚持了十六年？"\n' +
       '你对着镜头说了很多——老龄化趋势、社区养老的价值、护理专业化的重要性。记者频频点头。但你心里知道，镜头前的你和真实的你之间隔着一段距离。真实的你凌晨三点给老人换尿垫、蹲在葬礼上哭、被家属指着鼻子骂"你们怎么照顾的"。\n' +
-      '专题片播出后，你"火"了。微信里涌入几百条消息，有人要合作、有人要投资、有人要入职。但也有以前的同学发来消息："你现在是名人了啊，还记得我们吗？"你不知道怎么回。你最怕的不是被看见，而是被看见之后，再也回不到那个安安静静推轮椅的下午了。',
+      '专题片播出后，你"火"了。社交软件里涌入几百条消息，有人要合作、有人要投资、有人要入职。但也有以前的同学发来消息："你现在是名人了啊，还记得我们吗？"你不知道怎么回。你最怕的，是被看见之后，再也回不到那个安安静静推轮椅的下午。',
     options: [
       {
         id: 'use_platform_for_good',
         label: '借势发声，为整个行业争取关注',
         description: '既然被看见了，就让更多人看到养老的真问题',
-        hint: '政策+12 · 管理+8 · 压力+8 · 信念+10 · 声誉+12 · 客户+8 · 月营收+3000',
+        hint: '政策+12 · 管理+8 · 压力+8 · 信念+10 · 声誉+12 · 客户+8 · 月营收+3000 · 副业+20000(新客户付费)',
         hintColor: 'positive',
         skillGains: { policySkill: 12, managementSkill: 8 },
         stateEffect: (s) => {
@@ -1879,8 +2002,9 @@ const crossBranchEvents: NarrativeEvent[] = [
           adjustSilverReputation(s, 12);
           adjustSilverClients(s, 8);
           adjustSilverRevenue(s, 3000);
+          s.currentYearSideHustle += 20000; // 专题片播出后涌入的新客户预付照护费
         },
-        log: '38岁，你开始接受更多采访，但每次都不说"我多伟大"，而是说"护理员工资太低了""失智老人家庭需要更多支持""农村养老是被遗忘的角落"。你的声音被更多人听到了，省里的领导开始关注你提的问题。你知道聚光灯不会永远亮，但趁亮的时候，能照亮多少是多少。',
+        log: '38岁，你开始接受更多采访，但每次都不说"我多伟大"，而是说"护理员工资太低了""失智老人家庭需要更多支持""农村养老是被遗忘的角落"。专题片播出后找你的家庭暴增，新客户预付了20000元照护费。你的声音被更多人听到了，省里的领导开始关注你提的问题。你知道聚光灯不会永远亮，但趁亮的时候，能照亮多少是多少。',
       },
       {
         id: 'decline_spotlight',
@@ -1895,7 +2019,130 @@ const crossBranchEvents: NarrativeEvent[] = [
           adjustSilverReputation(s, 8);
           adjustSilverClients(s, 3);
         },
-        log: '38岁，你拒绝了第二批采访请求。记者不理解，你说"上电视改变不了老人吃药的问题，我得回去干活了"。你回到服务站，秀兰说你"傻，出名了不好吗"，你笑了笑。你知道你要的不是出名，是每一个老人都被好好对待。',
+        log: '38岁，你拒绝了第二批采访请求。记者不理解，你说"上电视改变不了老人吃药的问题，我得回去干活了"。你回到服务站，秀兰说你"傻，出名了不好吗"，你笑了笑。你知道自己要的，从来都是每一个老人都被好好对待——出名算什么。',
+      },
+    ],
+  },
+
+  // 日常缝隙：台阶上的盒饭
+  {
+    id: 'silver_cross_doorstep_lunch',
+    title: '台阶上的盒饭',
+    sceneTag: 'home',
+    pathId: 'silver_economy',
+    ageRange: [27, 27],
+    priority: 3,
+    weight: 5,
+    oncePerGame: true,
+    eventType: 'normal',
+    narrative:
+      '周六下午四点，你刚给陈爷爷换完药，下一家还有半小时。你没走远，就坐在他家门口的台阶上，扒一份八块钱的盒饭。\n' +
+      '夕阳把整条巷子染成橘红色，隔壁家的老太婆在阳台上浇花，水滴下来，打在晾衣杆上叮叮当当。巷子里有个小孩骑着一辆太小的自行车歪歪扭扭地过，差点撞上电线杆，你笑了一下。\n' +
+      '陈爷爷在屋里咳了两声，你竖起耳朵听了一会儿——没事，是清嗓子。你把最后一口饭扒完，把饭盒折好，靠在门框上看了一会儿天。这种什么都不用想的一刻，难得。',
+    options: [
+      {
+        id: 'sit_a_bit_longer',
+        label: '多坐一会儿，看夕阳落下去',
+        description: '难得发一次呆',
+        hint: '压力-6 · 健康+3 · 幸福+3',
+        hintColor: 'positive',
+        skillGains: {},
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress - 6, 0, 100);
+          s.health = clamp(s.health + 3, 0, 100);
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+        },
+        log: '27岁，你在台阶上多坐了十分钟。夕阳从橘红变成暗红，巷子里的灯一盏盏亮起来。你什么都没想，就看着天色变暗。站起来的时候腿有点麻，但心里轻了不少。',
+      },
+      {
+        id: 'chat_with_grandpa',
+        label: '回屋陪陈爷爷说说话',
+        description: '他一个人住，话都没人说',
+        hint: '护理+4 · 声誉+2 · 幸福+2 · 信念+2',
+        hintColor: 'positive',
+        skillGains: { careSkill: 4 },
+        stateEffect: (s) => {
+          adjustSilverReputation(s, 2);
+          s.happiness = clamp(s.happiness + 2, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
+        },
+        log: '27岁，你回去陪陈爷爷聊了会儿。他讲他年轻时在工厂当钳工的事，讲他老伴怎么追的他。你听了一半就听出他说过——但他说得高兴，你就当第一次听。临走时他说"小X，下次来多坐会儿"。你答应了。',
+      },
+      {
+        id: 'plan_next_steps',
+        label: '边吃边盘算下一步',
+        description: '难得有空，想想以后',
+        hint: '管理+3 · 信念+3',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 3 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+        },
+        log: '27岁，你在台阶上把下一步想了想：客户再涨两个就该招人了，秀兰一个人忙不过来。你在手机备忘录里敲了几个字，太阳已经落到房顶下面去了。你站起来，拍拍裤子上的灰，往下一家走去。',
+      },
+    ],
+  },
+
+  // 36岁：AI护理机器人进院——温度vs效率
+  {
+    id: 'silver_cross_carebot',
+    title: '铁手',
+    sceneTag: 'community_care',
+    pathId: 'silver_economy',
+    ageRange: [36, 36],
+    priority: 6,
+    weight: 8,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '区里拨了一笔"智慧养老"专项款，给你的服务站配了两台AI护理机器人。白色外壳、温柔女声、能精准翻身、喂饭、量血压，24小时不休息，还不会闹情绪。\n' +
+      '秀兰第一天就跟它杠上了。机器人给李爷爷翻身时动作标准得像教科书，但李爷爷皱着眉头不说话。秀兰走过去，把手垫在李爷爷腰下面说"还是我来吧"——她翻的时候李爷爷没出声，但手放松了。\n' +
+      '厂商代表跟你算了一笔账：一台机器人顶三个护工，两年回本。你看着机器人给老人喂饭的样子——勺子精准递到嘴边，不会洒、不会烫，但老人的目光是空的。你忽然明白：体力活它能做，但它不会在老人哭的时候握住他们的手，不会记得谁不吃香菜，也不会在凌晨三点陪一个怕黑的奶奶说话。',
+    options: [
+      {
+        id: 'adopt_robot_human_hybrid',
+        label: '机器人做体力活，人做温度活',
+        description: '用机器人分担重体力，让护工专注陪伴和情感',
+        hint: '管理+12 · 护理+8 · 存款-20000 · 压力+6 · 信念+8 · 声誉+8 · 月营收+5000',
+        hintColor: 'positive',
+        skillGains: { managementSkill: 12, careSkill: 8 },
+        savingsChange: -20000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          adjustSilverReputation(s, 8);
+          adjustSilverRevenue(s, 5000);
+        },
+        log: '36岁，你重新分配了工作：机器人负责翻身、搬运、夜间巡房等重体力活，护工负责陪聊、喂饭（老人愿意的话）、临终陪伴。秀兰一开始不乐意，但一个月后她承认"腰不疼了"。老人们慢慢习惯了——机器人推轮椅，秀兰牵着手。你想：也许未来不是机器取代人，是机器托举人。',
+      },
+      {
+        id: 'reject_robot_preserve_human',
+        label: '退掉机器人，坚持全人工',
+        description: '养老这行，温度比效率重要',
+        hint: '护理+10 · 信念+10 · 压力+8 · 声誉+10 · 但月营收-2000',
+        hintColor: 'neutral',
+        skillGains: { careSkill: 10 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          adjustSilverReputation(s, 10);
+          adjustSilverRevenue(s, -2000);
+        },
+        log: '36岁，你把机器人退回了区里。你写了一份报告："护理工作中30%是体力，70%是情感。体力可替代，情感不可替代。"有人说你保守，有人说你有人情味。秀兰没说什么，但那天晚饭她多给你盛了一碗汤。你知道这个决定会让你更累、更慢、更难扩张——但有些东西，慢才对。',
+      },
+      {
+        id: 'pilot_robot_evaluate',
+        label: '先试点三个月，用数据说话',
+        description: '不急于决定，让老人和数据告诉你答案',
+        hint: '管理+10 · 政策+5 · 压力+5 · 信念+5 · 声誉+5',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 10, policySkill: 5 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          adjustSilverReputation(s, 5);
+        },
+        log: '36岁，你留了一台机器人做三个月试点。你设计了一套评估表：老人满意度、护工腰椎损伤率、夜间响应速度、意外发生率。三个月后数据显示：老人满意度降了15%，护工工伤率降了60%，夜间响应速度提升了三倍。你把报告发给区里——没有结论，只有数据。结论他们自己得出：人和机器，各有位置。',
       },
     ],
   },
@@ -1985,9 +2232,9 @@ const crisisEvents: NarrativeEvent[] = [
     oncePerGame: true,
     eventType: 'crisis',
     narrative:
-      '一家估值百亿的互联网公司宣布"进军养老"，模式是"设备免费+服务免费+APP免费"，靠卖老人健康数据和精准广告赚钱。铺天盖地的广告，社区里到处是他们的地推人员，免费鸡蛋、免费体检、免费旅游——老人们被一车一车拉去"推介会"。\n' +
-      '你的客户一夜之间走了大半。有家属直接说"人家不要钱，你凭什么收？"你算了一笔账：如果客户继续流失，三个月后你的现金流就断了。你坐在空了一半的服务站里，看着墙上那些锦旗，第一次真真切切地感到恐惧——你不是在跟另一家养老院竞争，你是在跟百亿资本打一场不对称的战争。\n' +
-      '你打开他们的APP看了一眼——界面很漂亮，功能很全，但客服是机器人的，紧急呼叫要排队，健康数据直接卖给保险公司和保健品商。你知道他们的"免费"是有代价的，但老人不知道，家属也不知道。你怎么跟"免费"竞争？',
+      '一家估值百亿的互联网公司宣布"进军养老"，模式是"设备免费+服务免费+APP免费"，靠卖老人健康数据和精准广告赚钱。社区里到处是地推人员，免费鸡蛋、免费体检——老人们被一车车拉去"推介会"。\n' +
+      '你的客户一夜之间走了大半。有家属直接说"人家不要钱，你凭什么收？"你算了一笔账：客户继续流失，三个月后现金流就断了。你坐在空了一半的服务站里，第一次感到恐惧——你这哪是在跟另一家养老院竞争，你是在跟百亿资本打一场不对称的战争。\n' +
+      '你打开他们的APP——界面漂亮，功能齐全，但客服是机器人，紧急呼叫要排队，健康数据直接卖给保险公司。他们的"免费"是有代价的，但老人不知道。你怎么跟"免费"竞争？',
     options: [
       {
         id: 'differentiate_service',
@@ -2068,10 +2315,10 @@ const crisisEvents: NarrativeEvent[] = [
     oncePerGame: true,
     eventType: 'crisis',
     narrative:
-      '你合作了三年的供应商——那个给你供护理耗材、医疗器械、食堂食材的老板——跑路了。\n' +
-      '你上个月刚打了二十万的货款过去，约定这个月送货。电话打不通，微信拉黑，你跑到他的仓库一看——门锁换了，里面空了。门口还聚集了七八个跟你一样来要货要钱的小老板，一打听才知道，他欠了高利贷，把所有人的预付款卷走了。\n' +
-      '你坐在仓库门口的台阶上，脑子一片空白。那二十万里有你刚收的下个季度的预付费、有员工工资预备金、有准备给老人换冬季被褥的钱。你不仅要重新找供应商花高价紧急补货，还面临老人物资断供的风险——胃管、尿管、消毒用品，这些东西断一天就是人命关天的事。\n' +
-      '秀兰打电话来问"这个月工资还能发吗"，你握着手机说"能"，但你不确定。你第一次意识到：在这条产业链上，你也是弱者。',
+      '你合作了三年的供应商——供护理耗材、医疗器械、食堂食材的老板——跑路了。\n' +
+      '你上个月刚打了二十万货款，约定这个月送货。电话打不通，社交软件拉黑，跑到仓库一看——门锁换了，里面空了。门口聚集着七八个来要钱的小老板，他欠了高利贷，把所有人的预付款卷走了。\n' +
+      '你坐在仓库门口，脑子一片空白。那二十万里有下季度预付费、员工工资、老人换季被褥的钱。你不仅要花高价紧急补货，还面临物资断供的风险——胃管、尿管、消毒用品，断一天就是人命关天。\n' +
+      '秀兰打电话问"工资还能发吗"，你说"能"，但不确定。你这才意识到：在这条产业链上，你也是弱者。',
     options: [
       {
         id: 'emergency_procure_debt',
@@ -2117,7 +2364,7 @@ const crisisEvents: NarrativeEvent[] = [
             s.currentSavings += Math.round(s.currentSavings * 0.15);
           }
         },
-        log: '37岁，你报了警，联合了七八个受害者一起请律师起诉。律师费花了两万，官司打了半年。期间你东拼西凑勉强维持着物资供应，但还是有几个老人因为换了便宜替代品而出了小问题，家属颇有微词。最终那个人被抓了，但钱已经被他挥霍得差不多了，你只追回了一小部分。你明白了一个道理：在小地方做生意，选错一个合作方，就能让你赔掉好几年的积蓄。',
+        log: '37岁，你报了警，联合了七八个受害者一起请律师起诉。律师费花了两万，官司打了半年。期间你东拼西凑勉强维持着物资供应，但还是有几个老人因为换了便宜替代品而出了小问题，家属颇有微词。最终那个人被抓了，但钱已经被他挥霍得差不多了，你只追回了一小部分。你把追回来的钱数了数，还不够填那半年的窟窿。你把合作方的合同从头到尾又看了一遍，这次一个字都没放过。',
       },
       {
         id: 'cut_costs_survive',
@@ -2164,10 +2411,10 @@ const crisisEvents: NarrativeEvent[] = [
         id: 'comply_full',
         label: '全力合规，该花的钱花该裁的人裁',
         description: '合规是底线，不合规连牌都保不住',
-        hint: '管理+12 · 政策+12 · 存款-50000 · 压力+18 · 健康-3 · 信念+5 · 声誉+5',
+        hint: '管理+12 · 政策+12 · 存款-100000 · 压力+18 · 健康-3 · 信念+5 · 声誉+5',
         hintColor: 'danger',
         skillGains: { managementSkill: 12, policySkill: 12 },
-        savingsChange: -50000,
+        savingsChange: -100000,
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 18, 0, 100);
           s.health = clamp(s.health - 3, 0, 100);
@@ -2224,6 +2471,532 @@ const crisisEvents: NarrativeEvent[] = [
 ];
 
 // ============================================================
+// 失败预警事件（isAllInPath=true 且 pathFaith<40 或存款告急时触发）
+// ============================================================
+
+const silverWarningEvents: NarrativeEvent[] = [
+
+  // 预警1：护工/员工接连辞职，招人招不到
+  {
+    id: 'silver_warning_staff_quit',
+    title: '人都走了',
+    sceneTag: 'community_care',
+    pathId: 'silver_economy',
+    ageRange: [28, 50],
+    priority: 15,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'crisis',
+    conditions: (s) => s.isAllInPath === true && (s.pathFaith < 40 || s.currentSavings < 50000),
+    narrative:
+      '小周走了。那个跟了你两年、最会哄张奶奶吃饭的护工，昨天晚上发了一条社交软件说"不好意思，我不做了"，今天就没来。\n\n' +
+      '这是这个月第三个走的了。第一个是小李，说太累了要去工厂做流水线，至少不用熬夜。第二个是王姐，被对面那家新开的养老机构挖走了，工资比你给的高两千。现在是小周。你翻遍了招聘软件，发了十六条招聘信息，只收到三份简历——一个没有任何经验，一个开口就要八千，第三个面试完了说"我再考虑考虑"然后再也没消息。\n\n' +
+      '你自己顶了三天班。帮老人翻身、喂饭、换尿布、洗澡，一天下来腰快断了。有个失智的老爷爷半夜三点起来要找妈妈，你陪他坐了两个小时，他一直拉着你的手叫"闺女"。你看着他的白发，突然想到自己的爸妈——你已经三个月没回去看他们了。\n\n' +
+      '晚上十一点，你终于把最后一个老人安顿睡下，坐在前台想喝口水，发现饮水机的水桶空了。你没有力气换水，就那么坐着，听着走廊里老人的鼾声和呼叫铃偶尔的响声。你想：如果明天又有人走，你还能撑多久？',
+    options: [
+      {
+        id: 'raise_wages_recruit',
+        label: '涨工资，哪怕自己少赚也要留住人',
+        description: '把护工工资提高30%，改善排班，用诚意留人',
+        hint: '运营管理+10 · 存款-40000 · 信念-5 · 压力+10 · 声誉+10 · 幸福+3',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 10 },
+        savingsChange: -40000,
+        stateEffect: (s) => {
+          adjustSilverReputation(s, 10);
+          s.pathFaith = clamp(s.pathFaith - 5, 0, 100);
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+        },
+        log: '你咬牙把护工工资涨了30%，还排了一个做一休一的班表。钱少赚了，成本上去了，但走了的人有两个回来了。新招来的护工听说你这里待遇好，也愿意来。你发现：养老这个行业，人不是成本——人就是一切。你对人好，人就会对老人好。这个道理你以前知道，现在是用真金白银验证了。',
+      },
+      {
+        id: 'do_it_all_yourself',
+        label: '先自己顶着，省人工费',
+        description: '不招人了，自己和家人顶上，熬过这段再说',
+        hint: '护理能力+15 · 信念-8 · 压力+22 · 健康-15 · 幸福-12 · 存款+0',
+        hintColor: 'danger',
+        skillGains: { careSkill: 15 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
+          s.stress = clamp(s.stress + 22, 0, 100);
+          s.health = clamp(s.health - 15, 0, 100);
+          s.happiness = clamp(s.happiness - 12, 0, 100);
+        },
+        log: '你一个人顶了两个月。白天做护理，晚上做行政，半夜还要起来巡房。你瘦了十二斤，眼圈黑得像被打了一拳。有一次你帮老人洗澡的时候差点晕倒在浴室里，是老人按了呼叫铃把你"救"了。你妈从老家赶过来帮忙做饭，看到你的样子当场就哭了。你知道这不是长久之计——但眼下，你没有别的选择。',
+      },
+      {
+        id: 'automate_and_simplify',
+        label: '引入智能设备，减少人力依赖',
+        description: '买智能床垫、监控设备、自动喂药机，用科技替代部分人工',
+        hint: '管理能力+8 · 政策资源+5 · 存款-60000 · 信念+3 · 压力+5 · 声誉-5',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 8, policySkill: 5 },
+        savingsChange: -60000,
+        stateEffect: (s) => {
+          adjustSilverReputation(s, -5);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+        },
+        log: '你贷款买了一批智能养老设备——智能床垫能监测心率和翻身，自动喂药机到点提醒，走廊装了防跌倒雷达。设备到位后，夜间巡房从四次减到一次，一个护工能管的老人从六个增加到十个。但有个奶奶说"那个垫子睡着不舒服"，有个爷爷拒绝用自动喂药机说"我要活人给我递药"。你意识到：科技能解决效率问题，但解决不了温度问题——养老最终还是人和人的事。',
+      },
+    ],
+  },
+
+  // 预警2：亲戚说你"赚老人钱"，回家吃饭被冷遇
+  {
+    id: 'silver_warning_family_accusation',
+    title: '饭桌上的沉默',
+    sceneTag: 'social',
+    pathId: 'silver_economy',
+    ageRange: [28, 50],
+    priority: 14,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'crisis',
+    conditions: (s) => s.isAllInPath === true && (s.pathFaith < 40 || s.currentSavings < 50000),
+    narrative:
+      '中秋节，你回了趟老家。\n\n' +
+      '一桌子菜，都是你爱吃的。但饭桌上的气氛不对。你二舅喝了两杯白酒之后开始说话了："听说你现在做养老生意？赚不少吧？"你笑着说"还行还行"。他放下筷子："我跟你说啊，赚什么钱别赚老人的钱。老人的钱好赚，但那钱烫手。"\n\n' +
+      '你想解释，说你做的是正经的照护服务，说你站里的老人都是子女实在没时间照顾才送过来的，说你给张奶奶喂饭的时候她拉着你的手说"你比我亲闺女还亲"。但你话还没出口，你大姨接了一句："隔壁老王家的老头，被养老院骗了十万块买保健品。你们那个行业啊……"她摇了摇头，没往下说，但那个眼神你看懂了。\n\n' +
+      '你妈没说话，一直给你夹菜。你爸低头喝酒。你表弟在旁边玩手机，故意大声说"现在的养老机构都是吸血的"。你放下筷子，没胃口了。你想起上周你给一个去世的老人擦身、换寿衣、推到太平间，他的子女在国外赶不回来，是你送他最后一程。你想起你手机里存着二十多个老人的生日和吃药时间。你想起你已经连续三个春节没有回家过年了，因为站里的老人没人陪。\n\n' +
+      '这些你都没法在饭桌上说。说了他们也不会信。在他们眼里，你就是一个"赚老人钱的"。',
+    options: [
+      {
+        id: 'bring_family_to_visit',
+        label: '带他们来站里看看，亲眼所见',
+        description: '邀请亲戚来你的养老站参观，让他们看到真实的情况',
+        hint: '共情能力+10 · 声誉+15 · 信念+10 · 压力-10 · 幸福+12 · 存款-5000',
+        hintColor: 'positive',
+        skillGains: { careSkill: 10 },
+        savingsChange: -5000,
+        stateEffect: (s) => {
+          adjustSilverReputation(s, 15);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.stress = clamp(s.stress - 10, 0, 100);
+          s.happiness = clamp(s.happiness + 12, 0, 100);
+        },
+        log: '国庆节你邀请了所有亲戚来站里吃饭。你二舅看到你给失能老人翻身的手法不说话了。你大姨看到墙上贴满了老人的手工和家属的感谢信，红了眼眶。你表弟帮一个爷爷调了一下午手机，临走的时候说"姐，你这儿真不容易"。你妈那天笑得最开心，到处跟人说"这是我女儿开的"。你明白了：误解的根源不是恶意，是不了解。让人看见，比解释一万句都有用。',
+      },
+      {
+        id: 'shut_down_and_career_on',
+        label: '不解释，用结果说话',
+        description: '他们不理解就算了，把事情做好比什么都重要',
+        hint: '运营管理+8 · 信念+5 · 压力+12 · 幸福-10 · 健康-3',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.stress = clamp(s.stress + 12, 0, 100);
+          s.happiness = clamp(s.happiness - 10, 0, 100);
+          s.health = clamp(s.health - 3, 0, 100);
+        },
+        log: '你没有解释。吃完饭你提前走了，开车回站里的路上哭了一场。但从那以后你更加拼命——你把站里的服务做到了区里最好，你评上了示范单位，你上了本地电视台的新闻。你二舅后来看到了那个新闻，在家族群里发了一个大拇指。你没有回复，但你截了图。有些认可不需要嘴上说，有些理解不需要当面讲。你做的事，时间会替你说话。',
+      },
+      {
+        id: 'quit_and_question',
+        label: '他们说得对，我是不是真的在赚黑心钱？',
+        description: '自我怀疑，开始反思这个行业和自己的选择',
+        hint: '信念-20 · 压力+8 · 幸福-15 · 护理能力+5 · 健康-5',
+        hintColor: 'negative',
+        skillGains: { careSkill: 5 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith - 20, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.happiness = clamp(s.happiness - 15, 0, 100);
+          s.health = clamp(s.health - 5, 0, 100);
+        },
+        log: '那天晚上你失眠了。你开始翻来覆去地想：我是不是真的在利用老人？我的定价是不是太高了？我是不是在别人最脆弱的时候赚钱？你查了三个月的账目，甚至去问了三个老人的家属"你觉得我们收费合理吗"。一个家属说"如果不是你们，我早就辞职了"。另一个说"我妈在这儿比在家开心"。第三个说"贵是贵，但值得"。你没有完全释怀，但你知道了一件事：这个世界上有人需要你做的事，而你在尽力做好它。这就够了。',
+      },
+    ],
+  },
+
+];
+
+// ============================================================
+// All In 后早期事件（ages 28-36）
+// ============================================================
+
+const postAllInEvents: NarrativeEvent[] = [
+
+  // 28-36岁：辞职后第一天开门
+  {
+    id: 'silver_post_allin_daily',
+    title: '开门第一天',
+    sceneTag: 'community_care',
+    pathId: 'silver_economy',
+    ageRange: [28, 36],
+    priority: 8,
+    weight: 9,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '辞职后的第一个周一，你起得比上班时还早。六点半你就站在了那间小门面门口，钥匙插进锁孔的时候手有点抖——从今天起，这里就是你的全部了。\n' +
+      '你拉开卷闸门，清晨的空气涌进来，带着老家街道特有的潮湿和早点摊的油烟味。你本来以为第一天不会有人来，结果一抬头——门口站着五个老人。张奶奶拄着拐杖，李爷爷被女儿扶着，还有两个你叫不出名字的阿婆，都是以前周末你上门服务过的老人。\n' +
+      '张奶奶笑着说："听说你不上班了？那以后天天能见到你了？"你鼻子一酸，赶紧低头搬椅子。李爷爷的女儿说："我爸听说你回来全职做了，非要第一个来报到。"你把老人们一个个扶进屋，倒水、量血压、问昨晚睡得好不好。秀兰七点半到的时候，看到一屋子老人，愣了一下，然后卷起袖子就开始干活。\n' +
+      '中午你给老人们煮了一锅面，大家围坐在那张掉漆的方桌旁吸溜吸溜地吃。张奶奶把自己碗里的鸡蛋夹给你："小X，你以后就是给自己打工了，多吃点。"你接过鸡蛋，咬了一口，觉得这是你这辈子吃过的最好吃的鸡蛋。',
+    options: [
+      {
+        id: 'embrace_first_day',
+        label: '记住今天的感觉，这就是你回来的理由',
+        description: '老人们在等你，你不能让他们失望',
+        hint: '护理+8 · 信念+10 · 幸福+8 · 压力-5 · 声誉+8 · 客户+3',
+        hintColor: 'positive',
+        skillGains: { careSkill: 8 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          adjustSilverReputation(s, 8);
+          adjustSilverClients(s, 3);
+        },
+        log: '辞职第一天，你打开门，老人们已经在等你了。你煮了一锅面，张奶奶给你夹了鸡蛋。你在日记里写："今天我明白了，我回来不是为了创业，是为了这些人。"秀兰说你第一天就红了三次眼眶，你说"沙子进眼了"。',
+      },
+      {
+        id: 'get_to_work_immediately',
+        label: '别感动了，今天还有一堆活要干',
+        description: '情怀不能当饭吃，先把制度和流程建起来',
+        hint: '管理+10 · 护理+5 · 压力+3 · 信念+5 · 声誉+5 · 月营收+1000',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 10, careSkill: 5 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          adjustSilverReputation(s, 5);
+          adjustSilverRevenue(s, 1000);
+        },
+        log: '第一天你没让自己沉浸在感动里。老人们吃完面，你就拉着秀兰列了一张清单：排班表、收费标准、服务项目、应急流程。你说"从今天起我们不是副业了，是正经生意"。秀兰看着你认真的样子，偷偷笑了。',
+      },
+    ],
+  },
+
+  // 28-36岁：账上的数字——营收与成本
+  {
+    id: 'silver_post_allin_doubt',
+    title: '账上的数字',
+    sceneTag: 'office',
+    pathId: 'silver_economy',
+    ageRange: [28, 36],
+    priority: 8,
+    weight: 9,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '晚上十点，老人们都走了，秀兰也下班了。你一个人坐在那张掉漆的办公桌前，翻开账本。\n' +
+      '台灯昏黄的光打在一页页数字上。这个月收入：护理费、日间照料费、送餐费，加起来两万三。支出：秀兰的工资、房租、水电、耗材、食材、给护理员的意外险，加起来两万七。你算了三遍——亏四千。\n' +
+      '你靠在椅背上，盯着天花板。上班的时候每个月工资按时到账，你从来不用算这些。现在每一分钱都是你自己的：少一个客户就少一份收入，多一个老人生病就要多跑一趟医院，耗材涨价了利润直接缩水。你忽然理解了为什么以前觉得"老板抠门"——原来抠门不是因为坏，是因为账上的数字不允许你大方。\n' +
+      '银行卡里的余额是你全部的积蓄——十二万。如果每个月亏四千，你能撑两年半。两年半之后呢？你不敢想。你打开手机，看到张奶奶女儿白天发来的社交软件："我妈今天说你比以前更爱笑了，谢谢你。"你看了很久，然后关掉手机，翻开账本重新算。',
+    options: [
+      {
+        id: 'optimize_costs_carefully',
+        label: '仔细算每一笔账，抠成本但不抠服务质量',
+        description: '省能省的，但老人的东西一分钱不能少',
+        hint: '管理+12 · 压力+8 · 信念+6 · 声誉+5 · 月营收+2000',
+        hintColor: 'positive',
+        skillGains: { managementSkill: 12 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          adjustSilverReputation(s, 5);
+          adjustSilverRevenue(s, 2000);
+        },
+        log: '你花了整整一个晚上重做了预算：换更便宜的耗材供应商但护理用品绝不降级，调整排班减少空窗期，砍掉不必要的办公用品但老人的伙食标准不降反升。第二个月你算账——亏一千五。第三个月，赚了八百。你把那八百块存起来，在账本上画了个笑脸。这是你赚的第一笔"正经钱"。',
+      },
+      {
+        id: 'raise_price_slightly',
+        label: '适度涨价，把服务品质做上去',
+        description: '便宜没好货，好货不便宜，让客户理解你的价值',
+        hint: '管理+8 · 政策+5 · 压力+10 · 信念+3 · 声誉-3 · 客户-2 · 月营收+3000',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 8, policySkill: 5 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
+          adjustSilverReputation(s, -3);
+          adjustSilverClients(s, -2);
+          adjustSilverRevenue(s, 3000);
+        },
+        log: '你把服务费涨了15%。两个客户走了，说"别家更便宜"。你没挽留，因为你知道你提供的东西值这个价——24小时开机、随叫随到、每个老人的用药禁忌你倒背如流。留下来的客户没一个有意见，因为他们亲眼看到你是怎么照顾他们爸妈的。账上的数字慢慢好看了，但你知道，这是拿命换的。',
+      },
+    ],
+  },
+
+  // 28-36岁：第一个正式员工
+  {
+    id: 'silver_post_allin_first_team',
+    title: '第一个员工',
+    sceneTag: 'community_care',
+    pathId: 'silver_economy',
+    ageRange: [28, 36],
+    priority: 8,
+    weight: 9,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '秀兰一个人快扛不住了。你和她两个人要管十几个老人，白天你跑外勤、对接政府、采购耗材，她在服务站里照顾老人、做饭、打扫。她已经连续三周没休息过了，有天你看到她偷偷在厨房揉腰，看到你来赶紧直起身假装没事。\n' +
+      '你贴了招聘启事，来了三个面试的。两个是刚毕业的小姑娘，问了工资和社保后礼貌地走了。第三个是个叫小梅的姑娘，二十五岁，卫校毕业，在县医院急诊科干过两年，说"我奶奶是摔了没人发现走的，我想做这行"。你看着她的眼睛——里面有你二十二岁时的那种东西。\n' +
+      '第一天上班你带她上手。教她怎么给卧床老人翻身、怎么插胃管、怎么分辨正常咳嗽和吸入性肺炎的咳嗽。她学得很快，但第一次给老人换成人纸尿裤时手在抖。你站在旁边看着，想起了自己第一次给张奶奶换尿垫时的样子——你也抖过。\n' +
+      '一周后，你让小梅独立给周爷爷做晨间护理。你站在走廊里，透过门缝看到她熟练地翻身、量血压、喂药，周爷爷拉着她的手说"闺女你手轻"。你忽然有一种奇怪的感觉：你不是在雇一个人，你是在把你的一部分责任交给另一个人。这比你想象的难。',
+    options: [
+      {
+        id: 'train_mentor_patiently',
+        label: '耐心带教，把你的本事全部教给她',
+        description: '她是你的第一个"复制体"，她好你才能好',
+        hint: '管理+12 · 护理+8 · 压力+5 · 信念+8 · 声誉+8 · 客户+2 · 月营收+1500',
+        hintColor: 'positive',
+        skillGains: { managementSkill: 12, careSkill: 8 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          adjustSilverReputation(s, 8);
+          adjustSilverClients(s, 2);
+          adjustSilverRevenue(s, 1500);
+        },
+        log: '你花了一个月手把手带小梅。她很争气，三个月后就能独立上门了。有次你听到周爷爷跟别的老人说"小梅姑娘跟小X一样细心"，你偷偷笑了。秀兰终于能休周日了，她第一天休息就带孩子去了游乐园，给你发了张孩子坐旋转木马的照片。你第一次觉得：你不是一个人在扛了。',
+      },
+      {
+        id: 'trust_but_verify',
+        label: '信任但要验证，建立监督和考核机制',
+        description: '感情归感情，制度归制度，老人的事不能赌',
+        hint: '管理+12 · 政策+5 · 存款-3000 · 压力+8 · 信念+5 · 声誉+5',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 12, policySkill: 5 },
+        savingsChange: -3000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          adjustSilverReputation(s, 5);
+        },
+        log: '你给小梅做了一张考核表：每天的护理记录必须签字、家属每周回访一次、你随机抽查。小梅一开始觉得你不信任她，有点委屈。你说"不是不信任你，是老人的命经不起试错"。一个月后她理解了——她亲眼看到隔壁镇一家养老站因为护理员操作不当出了事。她开始主动写护理日志，比你要求的还详细。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 晚年事件（ages 42-55）
+// ============================================================
+
+const lateGameEvents: NarrativeEvent[] = [
+
+  // 45岁：送走你全职后第一位老人——生死和职业意义
+  {
+    id: 'silver_midlife_first_death_allin',
+    title: '第一个',
+    sceneTag: 'funeral',
+    pathId: 'silver_economy',
+    ageRange: [45, 45],
+    priority: 8,
+    weight: 10,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '周爷爷走了。他是你辞职全职做养老之后接手的第一个老人。\n' +
+      '你记得他第一天来的时候，拎着一个旧布包，里面装着一套换洗衣物和一个搪瓷缸。他说"我儿子在深圳，半年回来一次"，你说"以后我陪你"。这一陪就是十八年。\n' +
+      '十八年里你给他过了十八个生日，替他接了三十多通他儿子"忙，回不来"的电话，在他心梗那次陪他在急诊室坐了一整夜。他走的时候你在旁边，他最后一句话是"小X，谢谢你"。\n' +
+      '葬礼上他儿子赶回来了，跪在灵前哭。你站在后面，没有哭。你已经送过太多老人了，你以为自己会习惯。但回到站里，你看到他常坐的那个位置空着，搪瓷缸还在桌上——你终于绷不住了。你做这行二十三年了，第一次认真问自己：你做的一切，到底有什么意义？',
+    options: [
+      {
+        id: 'meaning_in_companionship',
+        label: '意义就是——他走的时候不是一个人',
+        description: '你陪他走完了最后一段路，这就是意义',
+        hint: '护理+10 · 信念+12 · 幸福+5 · 压力-8 · 声誉+10',
+        hintColor: 'positive',
+        skillGains: { careSkill: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+          adjustSilverReputation(s, 10);
+        },
+        log: '45岁，你擦干眼泪把周爷爷的搪瓷缸收进了纪念柜——那里面已经摆了七八个老人们留下的小东西：一个放大镜、一副老花镜、一个布偶。你终于懂了：你做的这一切，不是为了"战胜死亡"——没有人能战胜死亡。你做的是让他们走的时候不害怕、不孤单、有人握着他们的手。十八年的陪伴不是一场空，它是一个人晚年里最长的温暖。你跟秀兰说："我们继续干。"',
+      },
+      {
+        id: 'meaning_in_system',
+        label: '把悲伤变成动力——建立临终关怀标准',
+        description: '一个人陪不够，要让每个老人都走得有尊严',
+        hint: '管理+12 · 护理+8 · 政策+5 · 信念+8 · 压力+5 · 月营收+3000 · 存款-20000',
+        hintColor: 'positive',
+        skillGains: { managementSkill: 12, careSkill: 8, policySkill: 5 },
+        savingsChange: -20000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+          adjustSilverReputation(s, 8);
+          adjustSilverRevenue(s, 3000);
+        },
+        log: '45岁，你花了半年制定了一套临终关怀标准流程：最后72小时必须有人全程陪伴、必须帮老人完成最后的心愿、必须让家属在老人走之前赶到（如果赶不到就视频）。你自费培训了所有护理员。有人说你"花这个钱不值"，你说"这不是钱的事"。周爷爷走后的第三个月，这套流程第一次完整执行——走的是张奶奶。她走的时候女儿在视频里叫"妈"，你握着她的手。她走得很安静。',
+      },
+      {
+        id: 'emotional_burnout',
+        label: '承认自己累了——你需要休息',
+        description: '送了太多人，你需要喘口气',
+        hint: '幸福-5 · 信念-5 · 压力-12 · 健康+5',
+        hintColor: 'neutral',
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness - 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 5, 0, 100);
+          s.stress = clamp(s.stress - 12, 0, 100);
+          s.health = clamp(s.health + 5, 0, 100);
+        },
+        log: '45岁，你给自己放了一周假，把站里的事交给秀兰和小陈，一个人去了海边。你在沙滩上坐了一整天，什么都没想。回来之后你没有辞职，但你开始强制自己每周休一天——以前你从来不肯休息。你明白了一件事：你不是铁打的，送走每一个老人都会在你心里留一道痕。你必须允许自己疼，否则迟早有一天你会麻木，而麻木的人做不好这行。',
+      },
+    ],
+  },
+
+  // 42-55岁：镜子——发现自己也在变老
+  {
+    id: 'silver_late_mirror',
+    title: '镜子',
+    sceneTag: 'home',
+    pathId: 'silver_economy',
+    ageRange: [42, 55],
+    priority: 7,
+    weight: 8,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '那天你帮陈爷爷剪完头发，顺手拿起他桌上的镜子照了一下——想看看自己脸上是不是沾了碎头发。\n' +
+      '镜子里的人让你愣了几秒。鬓角白了一片，眼角的皱纹深得像刀刻的，额头上不知什么时候多了一道抬头纹。你算了算——你今年四十五了。做养老做了二十三年。\n' +
+      '你忽然想起自己二十多岁时，觉得"老"是别人的事。张奶奶八十一岁、李爷爷七十八岁、王奶奶六十七岁——他们是"老人"，你是"照顾老人的人"。你从来没想过，有一天你也会老。\n' +
+      '陈爷爷看你对着镜子发呆，笑了："小X，白头发不少了吧？我像你这岁数的时候，也不觉得自己会老。"你放下镜子，发现自己的膝盖在蹲久了之后会咯吱响，腰在阴天会隐隐作痛，眼睛在看小字的时候要拿远一点。\n' +
+      '你照顾了半辈子别人的晚年，忽然意识到：你自己的晚年，也在一步步走来。',
+    options: [
+      {
+        id: 'face_aging_gracefully',
+        label: '正视自己的衰老，照顾老人的同时也照顾自己',
+        description: '你不倒，才能照顾更多人',
+        hint: '护理+10 · 信念+10 · 幸福+5 · 健康+8 · 压力-8 · 声誉+5',
+        hintColor: 'positive',
+        skillGains: { careSkill: 10 },
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          adjustSilverReputation(s, 5);
+        },
+        log: '你第一次给自己挂了个号——体检。医生说你腰椎有轻度突出、血压偏高、睡眠不足。你开始每周抽时间游泳，强迫自己十二点前睡觉。秀兰笑你"终于知道惜命了"，你说"我要是倒了，这些老人谁管？"你开始在员工培训里加了一节："护理员先照顾好自己，才能照顾好别人。"',
+      },
+      {
+        id: 'keep_pushing_ignore_signs',
+        label: '不管它，还有那么多老人等着你，没时间老',
+        description: '老就老吧，活干完了再说',
+        hint: '信念+8 · 压力+10 · 健康-8 · 幸福-3',
+        hintColor: 'negative',
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.health = clamp(s.health - 8, 0, 100);
+          s.happiness = clamp(s.happiness - 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '你没把白头发和腰疼当回事。你照样每天第一个到最后一个走，照样给老人翻身、背老人下楼、熬夜写方案。有次你在给老人量血压时眼前一黑，扶着墙站了半分钟才缓过来。秀兰急了，说"你要是倒下了我们怎么办"，你说"没事，老毛病了"。但你晚上偷偷在手机上搜了"腰椎间盘突出自我调理"。',
+      },
+    ],
+  },
+
+  // 42-55岁：交班——培养接班人
+  {
+    id: 'silver_late_handover',
+    title: '交班',
+    sceneTag: 'community_care',
+    pathId: 'silver_economy',
+    ageRange: [42, 55],
+    priority: 7,
+    weight: 8,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '站里来了个年轻人，叫小陈，二十八岁，医科大学护理系毕业，在三甲医院干了三年，说"想做一点不一样的事"。\n' +
+      '你看着他——年轻、有专业背景、说话有条理，跟二十多年前的自己完全不一样。你是野路子出身，从推轮椅开始学；他是科班毕业，拿着护师证来的。你带他巡站，他问的问题你答不上来——"你们的护理评估量表用的是哪个版本？""失智症的BPSD干预有没有标准化流程？"你忽然觉得自己老了。\n' +
+      '晚上你跟秀兰聊起这事。秀兰说："你二十三岁的时候连鼻饲都不会，现在不什么都会了？他比你当年强，但你有他没有的东西。"你问是什么，秀兰说："你记得每个老人的生日、记得谁不吃香菜、记得谁的女儿在深圳多久打一次电话。这些东西书上没有。"\n' +
+      '你看着小陈在活动室里陪老人下棋——他蹲在轮椅旁边，耐心地听一个耳背的爷爷讲了三遍同一个故事。你忽然觉得：也许是时候把接力棒交出去了。不是现在，但该开始准备了。',
+    options: [
+      {
+        id: 'mentor_successor',
+        label: '把他当接班人培养，倾囊相授',
+        description: '你总有一天要退，这把椅子得有人坐',
+        hint: '管理+12 · 护理+8 · 政策+5 · 压力+3 · 信念+12 · 声誉+10 · 月营收+3000',
+        hintColor: 'positive',
+        skillGains: { managementSkill: 12, careSkill: 8, policySkill: 5 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          adjustSilverReputation(s, 10);
+          adjustSilverRevenue(s, 3000);
+        },
+        log: '你开始系统地带小陈。从怎么跟街道办打交道到怎么给临终老人擦身，从哪些家属好沟通到哪些老人的子女有矛盾——你把二十多年的经验一点一点倒给他。他学得很快，半年后就能独立带一个站了。有次你听到他跟新员工说"老人不吃香菜是因为小时候穷，吃伤了，不是挑嘴"——他已经在记那些"书上没有的东西"了。你知道，这根接力棒，传得下去。',
+      },
+      {
+        id: 'stay_in_control',
+        label: '先观察，关键决策还是自己说了算',
+        description: '年轻人有冲劲但没阅历，不能急着交权',
+        hint: '管理+8 · 压力+8 · 信念+5 · 声誉+5',
+        hintColor: 'neutral',
+        skillGains: { managementSkill: 8 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          adjustSilverReputation(s, 5);
+        },
+        log: '你让小陈先做站长助理，大事还是你拍板。他有些想法很激进——想做连锁加盟、想引入资本、想三年开到十个站。你没否决，但也没点头。你见过太多"做大了就变味"的例子。你跟他说"养老不是互联网，慢就是快"，他嘴上说好，眼神里却有不甘。你知道这是必经的过程——你年轻时也急过。',
+      },
+    ],
+  },
+
+  // 42-55岁：又送走一个——熟悉的离别
+  {
+    id: 'silver_late_goodbye',
+    title: '又送走一个',
+    sceneTag: 'funeral',
+    pathId: 'silver_economy',
+    ageRange: [42, 55],
+    priority: 7,
+    weight: 8,
+    oncePerGame: true,
+    conditions: (s) => s.isAllInPath === true,
+    narrative:
+      '李爷爷走了。八十四岁，走的时候很安静——睡梦中走的，没受罪。\n' +
+      '你站在葬礼上，这是你送过的第几个老人了？你数不清了。张奶奶、周爷爷、王奶奶、陈爷爷……每一个你都记得：记得他们爱吃什么、记得他们讲过的故事、记得他们临走前握着你的手说过的话。\n' +
+      '李爷爷的儿子给你鞠了一躬，说"谢谢你照顾我爸最后五年"。你说了句"节哀"，声音很平静——你已经说过太多次这两个字了。秀兰站在你旁边，眼圈红红的。她跟着你这么多年，送走的老人不比你少，但她每次都哭。你羡慕她还能哭。\n' +
+      '葬礼结束后你一个人去了老站门口那棵槐树下坐了一会儿。这棵树是你第一年回来的时候种的，现在已经枝繁叶茂了，夏天老人们在树下下棋、打麻将、聊天。李爷爷以前总坐在那个朝北的位置，说那里风大凉快。\n' +
+      '你以为自己已经习惯了离别，但风吹过来的时候，你还是红了眼眶。',
+    options: [
+      {
+        id: 'grieve_openly',
+        label: '允许自己难过，这不是脆弱是真实',
+        description: '每一个走掉的老人都值得被好好告别',
+        hint: '护理+8 · 幸福-5 · 压力+8 · 健康-3 · 信念+10 · 声誉+8',
+        hintColor: 'neutral',
+        skillGains: { careSkill: 8 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness - 5, 0, 100);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.health = clamp(s.health - 3, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          adjustSilverReputation(s, 8);
+        },
+        log: '你在槐树下坐了很久，哭了。不是嚎啕大哭，是眼泪无声地流。二十年了，你以为自己已经刀枪不入了，但每一次告别还是像第一次那样疼。你给秀兰发了条社交软件："明天李爷爷常坐的那个位置，留着吧。"秀兰回了一个"好"字。第二天你去站里，那个位置放了一杯茶——李爷爷最爱喝的大叶茶。',
+      },
+      {
+        id: 'channel_into_mission',
+        label: '把悲伤化为继续走下去的力量',
+        description: '他们走了，但还有更多老人在等你',
+        hint: '护理+10 · 管理+8 · 压力+5 · 信念+12 · 声誉+10',
+        hintColor: 'positive',
+        skillGains: { careSkill: 10, managementSkill: 8 },
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          adjustSilverReputation(s, 10);
+        },
+        log: '你擦干眼泪，回到站里。有新的老人在等你评估，有护理员在等你培训，有家属在等你回电话。李爷爷走了，但活着的人还需要你。你把李爷爷的名字写在那本已经很厚的纪念册里——每一个你送走的老人，你都记下了他们的名字和故事。你跟小陈说："将来我走了，你接着记。这本册子不能断。"',
+      },
+    ],
+  },
+];
+
+// ============================================================
 // 合并所有事件
 // ============================================================
 
@@ -2235,10 +3008,13 @@ export const SILVER_NARRATIVE_EVENTS: NarrativeEvent[] = [
   ...communityEvents,
   ...crossBranchEvents,
   ...crisisEvents,
+  ...silverWarningEvents,
+  ...postAllInEvents,
+  ...lateGameEvents,
 ];
 
 // ============================================================
-// 银发收割者路径 - 叙事成就触发系统
+// 银发守夜人路径 - 叙事成就触发系统
 //
 // 3条分支 × 3个等级 = 9个成就。
 // 技能达标后自动触发，给玩家里程碑式的成就感。
@@ -2258,7 +3034,7 @@ const caregiverAchievements: NarrativeAchievement[] = [
   {
     id: 'silver_economy_caregiver_1',
     title: '专业护理师',
-    narrative: `你拿到了高级养老护理员职业资格证书。从"凭良心干"到"凭专业干"，你用了四年。\n\n证书发下来那天你摩挲了很久。你想起了22岁那个连胃管都不会推、手抖得像筛糠的自己。现在你能闭着眼睛完成鼻饲操作、能一眼分辨压疮的分期、能在三分钟内完成心肺复苏。你不再只是一个"伺候人的人"，你是一个专业护理师。秀兰说"你变了"，你说"不是我变了，是我终于配得上这份工了"。`,
+    narrative: `你拿到了高级养老护理员职业资格证书。从"凭良心干"到"凭专业干"，你用了四年。\n\n证书发下来那天你摩挲了很久。你想起了22岁那个连胃管都不会推、手抖得像筛糠的自己。现在你能闭着眼睛完成鼻饲操作、能一眼分辨压疮的分期、能在三分钟内完成心肺复苏。你不再只是一个"伺候人的人"，你是一个专业护理师。秀兰说"你变了"，你说"我哪是变了——我只是终于配得上这份工了"。`,
     pathId: 'silver_economy',
     branch: 'silver_caregiver',
     level: 1,
@@ -2320,7 +3096,7 @@ const techAchievements: NarrativeAchievement[] = [
   {
     id: 'silver_economy_tech_1',
     title: '智慧养老产品落地',
-    narrative: `你的智慧养老系统接入了第一个完整社区——三百位独居老人全部佩戴了你的设备，后台数据跑通了。\n\n你坐在服务站里盯着大屏，看着那三百个绿点此起彼伏地闪烁，像一个城市的心跳。每一个绿点背后都是一个活生生的人——有人在下棋，有人在睡觉，有人在散步。你知道这些绿点偶尔会变红，而每一次变红都可能是一条命。你第一次感到技术的重量：它不只是代码和传感器，它是三百个家庭的"放心"。`,
+    narrative: `你的智慧养老系统接入了第一个完整社区——三百位独居老人全部佩戴了你的设备，后台数据跑通了。\n\n你坐在服务站里盯着大屏，看着那三百个绿点此起彼伏地闪烁，像一个城市的心跳。每一个绿点背后都是一个活生生的人——有人在下棋，有人在睡觉，有人在散步。你知道这些绿点偶尔会变红，而每一次变红都可能是一条命。你忽然感到技术的重量：它不只是代码和传感器，它是三百个家庭的"放心"。`,
     pathId: 'silver_economy',
     branch: 'silver_tech',
     level: 1,
@@ -2339,7 +3115,7 @@ const techAchievements: NarrativeAchievement[] = [
   {
     id: 'silver_economy_tech_2',
     title: '平台规模化',
-    narrative: `你的平台接入了五家养老机构，覆盖超过两千位老人。你的AI预警系统提前发现了十七例健康风险，其中三例是心梗前期。\n\n投资人说"你们是养老行业的SaaS"。你不太懂SaaS，但你知道那十七个被提前发现的老人，有三个因为及时送医而活了下来。你把那三个老人的名字写在一张便签纸上，贴在电脑旁边。每次有人问你"你的产品价值是什么"，你就指着那张便签——价值不是估值，是那三个还活着的人。`,
+    narrative: `你的平台接入了五家养老机构，覆盖超过两千位老人。你的AI预警系统提前发现了十七例健康风险，其中三例是心梗前期。\n\n投资人说"你们是养老行业的SaaS"。你不太懂SaaS，但你知道那十七个被提前发现的老人，有三个因为及时送医而活了下来。你把那三个老人的名字写在一张便签纸上，贴在电脑旁边。每次有人问你"你的产品价值是什么"，你就指着那张便签——价值，就是那三个还活着的人。估值算什么。`,
     pathId: 'silver_economy',
     branch: 'silver_tech',
     level: 2,
@@ -2383,7 +3159,7 @@ const communityAchievements: NarrativeAchievement[] = [
   {
     id: 'silver_economy_community_1',
     title: '社区养老模式跑通',
-    narrative: `你的第一家日间照料中心稳定运营了一年，每月服务老人超过六十人，老年食堂成了社区最热闹的地方。\n\n民政局的科长来验收时翻了翻你的签到本，六十多个名字整整齐齐。他说"你这模式可以复制"。你笑了——你不是在做"模式"，你是在给那些白天没处去的老人一个"家"。但你也知道，如果能让更多老人有这个"家"，"模式"这个词也不是坏事。`,
+    narrative: `你的第一家日间照料中心稳定运营了一年，每月服务老人超过六十人，老年食堂成了社区最热闹的地方。\n\n民政局的科长来验收时翻了翻你的签到本，六十多个名字整整齐齐。他说"你这模式可以复制"。你笑了——你做的哪是什么"模式"，你是在给那些白天没处去的老人一个"家"。但你也知道，如果能让更多老人有这个"家"，"模式"这个词也算好事。`,
     pathId: 'silver_economy',
     branch: 'silver_community',
     level: 1,
@@ -2419,7 +3195,7 @@ const communityAchievements: NarrativeAchievement[] = [
   {
     id: 'silver_economy_community_3',
     title: '养老生态构建者',
-    narrative: `你的养老社区开业了。不是养老院——是一个让老人可以继续"生活"的地方。有花园、有菜地、有活动室、有食堂、有医务室。老人们住自己的小屋，白天在社区里活动，需要帮助时按一下铃就有人来。\n\n开业那天你站在花园里，看着老人们下棋、种菜、跳广场舞。你妈站在你旁边说"当年我说你回来伺候人是没出息，现在我觉得你做的这事比考上公务员有出息多了"。\n\n你没说话，但眼眶热了。二十年了，从一块手写牌子到一个社区，你赌的不是"银发经济"——你赌的是：每个人都会老，而每个人都值得在老去的时候，还有一个像"家"的地方。你做到了。你想：也许有一天你自己也会住进这样的社区，被你培养的年轻人照顾着，安心地变老。这就是你留给自己的，也是留给所有人的答案。`,
+    narrative: `你的养老社区开业了。不是养老院——是一个让老人可以继续"生活"的地方。有花园、有菜地、有活动室、有食堂、有医务室。老人们住自己的小屋，白天在社区里活动，需要帮助时按一下铃就有人来。\n\n开业那天你站在花园里，看着老人们下棋、种菜、跳广场舞。你妈站在你旁边说"当年我说你回来伺候人是没出息，现在我觉得你做的这事比考上公务员有出息多了"。\n\n你没说话，但眼眶热了。二十年了，从一块手写牌子到一个社区，你赌的，从来都是一件事：每个人都会老，而每个人都值得在老去的时候，还有一个像"家"的地方。你做到了。你想：也许有一天你自己也会住进这样的社区，被你培养的年轻人照顾着，安心地变老。这就是你留给自己的，也是留给所有人的答案。`,
     pathId: 'silver_economy',
     branch: 'silver_community',
     level: 3,
@@ -2438,7 +3214,7 @@ const communityAchievements: NarrativeAchievement[] = [
 ];
 
 // ============================================================
-// 汇总：银发收割者全部成就（按 分支 → 等级 排序）
+// 汇总：银发守夜人全部成就（按 分支 → 等级 排序）
 // ============================================================
 export const SILVER_ACHIEVEMENTS: NarrativeAchievement[] = [
   ...caregiverAchievements,

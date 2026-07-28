@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, watch, ref } from 'vue';
 import { useGameStore } from '../../store/game.store.js';
-import { getPath, getPathSideIncome } from '../../data/retirement-paths.js';
+import { getPath } from '../../data/retirement-paths.js';
+import { fmt, fmtExact, fmtWan, fmtSigned, fmtNum } from '../../utils/format.js';
 
 const store = useGameStore();
 const s = store.state;
@@ -15,10 +16,10 @@ const currentPath = computed(() => s.retirementPath ? getPath(s.retirementPath) 
 const faithLevel = computed(() => s.pathFaith ?? 0);
 
 function faithEmoji(val: number): string {
-  if (val >= 70) return '🔥';
-  if (val >= 50) return '✨';
-  if (val >= 30) return '💭';
-  return '💔';
+  if (val >= 70) return '▲';
+  if (val >= 50) return '◆';
+  if (val >= 30) return '◇';
+  return '○';
 }
 
 function faithColor(val: number): string {
@@ -47,18 +48,10 @@ watch(
   },
 );
 
-// 数字格式化：¥xxx,xxx
-function formatMoney(n: number): string {
-  const v = Math.round(n);
-  if (v < 0) return '-¥' + Math.abs(v).toLocaleString('en-US');
-  return '¥' + v.toLocaleString('en-US');
-}
-
-function formatMoneyWan(n: number): string {
-  const v = Math.round(n / 10000);
-  if (v < 0) return '-¥' + Math.abs(v) + '万';
-  return '¥' + v + '万';
-}
+// 数字格式化（使用公共 utils/format.ts）
+const formatMoney = fmt;       // 自动万/亿，带¥
+const formatMoneyWan = fmtWan; // 强制万为单位
+const formatExact = fmtExact;  // 精确到元，带¥（用于月薪）
 
 // ================================================================
 //  核心指标
@@ -66,18 +59,33 @@ function formatMoneyWan(n: number): string {
 const isBankrupt = computed(() => s.currentSavings < 0);
 
 const yearsToRetire = computed(() => Math.max(0, s.targetAge - s.currentAge));
+const retireAgeLabel = computed(() => `${s.targetAge}岁封顶`);
+const canRetireNow = computed(() => s.canRetire);
 
 const annualIncome = computed(() => {
-  const sideIncome = getPathSideIncome(s) * 12;
-  if (s.isUnemployed) return s.passiveIncome + sideIncome;
-  return s.currentMonthlySalary * 12 + s.passiveIncome + sideIncome;
+  // 副业收入不稳定，不纳入年收入预估，单独展示上年副业
+  if (s.isUnemployed) return s.passiveIncome;
+  return s.currentMonthlySalary * 12 + s.passiveIncome;
 });
 
-const monthlySideIncome = computed(() => getPathSideIncome(s));
+// 上年副业收入（从年终结算结果取，副业由剧情事件驱动、不稳定）
+const lastYearSideHustle = computed(() => (store as any).lastYearResult?.sideHustleIncome || 0);
 
-const annualExpense = computed(() =>
-  s.annualBaseCost + s.currentMortgageCost + s.insurancePremium,
-);
+// 月被动收入（年被动收入/12）
+const monthlyPassiveIncome = computed(() => Math.round((s.passiveIncome || 0) / 12));
+
+// 年支出估算：基础生活费+房贷+保险+车辆+子女（尽量与年度结算实际支出对齐）
+const annualExpense = computed(() => {
+  let total = s.annualBaseCost + s.currentMortgageCost + s.insurancePremium;
+  // 车辆年开销
+  if (s.hasCar) total += s.annualCarCost || 0;
+  // 子女月开销×12
+  const children = (s as any).children || [];
+  for (const child of children) {
+    if (child.monthlyExpense) total += child.monthlyExpense * 12;
+  }
+  return total;
+});
 
 // ================================================================
 //  身心状态
@@ -87,22 +95,22 @@ const happinessLevel = computed(() => s.happiness ?? 60);
 const healthLevel = computed(() => s.health ?? 80);
 
 function healthEmoji(val: number): string {
-  if (val >= 70) return '🟢';
-  if (val >= 50) return '🟡';
-  if (val >= 30) return '🟠';
-  return '🔴';
+  if (val >= 70) return '●';
+  if (val >= 50) return '●';
+  if (val >= 30) return '●';
+  return '●';
 }
 
 function stressEmoji(val: number): string {
-  if (val >= 70) return '🔴';
-  if (val >= 40) return '🟡';
-  return '🟢';
+  if (val >= 70) return '●';
+  if (val >= 40) return '●';
+  return '●';
 }
 
 function happinessEmoji(val: number): string {
-  if (val >= 70) return '😊';
-  if (val >= 40) return '😐';
-  return '😔';
+  if (val >= 70) return '◆';
+  if (val >= 40) return '◇';
+  return '○';
 }
 
 function barColor(val: number, type: 'health' | 'stress' | 'happiness'): string {
@@ -139,17 +147,17 @@ const friends = computed(() => s.friends ?? []);
 const romanceStatus = computed(() => {
   const p = partner.value;
   if (!p || p.datingStage === 'single') {
-    return { emoji: '🖤', label: '单身' };
+    return { emoji: '◇', label: '单身' };
   }
   if (p.datingStage === 'divorced' || p.hasDivorced) {
-    return { emoji: '💔', label: '离异' };
+    return { emoji: '○', label: '离异' };
   }
   switch (p.datingStage) {
-    case 'crush': return { emoji: '😳', label: '暧昧中' };
-    case 'dating': return { emoji: '💕', label: '约会中' };
-    case 'serious': return { emoji: '💑', label: '恋爱中' };
-    case 'married': return { emoji: '💍', label: '已婚' };
-    default: return { emoji: '❤️', label: '有对象' };
+    case 'crush': return { emoji: '◈', label: '暧昧中' };
+    case 'dating': return { emoji: '◆', label: '约会中' };
+    case 'serious': return { emoji: '◉', label: '恋爱中' };
+    case 'married': return { emoji: '◇', label: '已婚' };
+    default: return { emoji: '◆', label: '有对象' };
   }
 });
 
@@ -207,7 +215,7 @@ const depositChannels = computed<FinanceChannel[]>(() => {
   // 总流动资产 = 现金存款 + 独立持仓（链上/生科）
   const totalLiquid = v.currentSavings + chainHoldings + bioPortfolio
   if (totalLiquid <= 0) {
-    return [{ icon: '🏦', name: '余额宝', pct: 100, color: '#00d4ff', rate: '1.5%', active: true }]
+    return [{ icon: '◈', name: '余额宝', pct: 100, color: '#00d4ff', rate: '1.5%', active: true }]
   }
 
   // 各现金渠道的实际金额（基于 currentSavings 的百分比）
@@ -219,25 +227,25 @@ const depositChannels = computed<FinanceChannel[]>(() => {
   const channels: FinanceChannel[] = []
 
   // 现金渠道：显示占总流动资产的比例
-  if (bankValue > 0) channels.push({ icon: '🏦', name: '余额宝', pct: Math.round((bankValue / totalLiquid) * 100), color: '#00d4ff', rate: '1.5%', active: true })
-  if (fixedValue > 0) channels.push({ icon: '📋', name: '定期', pct: Math.round((fixedValue / totalLiquid) * 100), color: '#00ff88', rate: '3.0%', active: true })
-  if (fundValue > 0) channels.push({ icon: '📊', name: '基金', pct: Math.round((fundValue / totalLiquid) * 100), color: '#ffec27', rate: '波动', active: true })
+  if (bankValue > 0) channels.push({ icon: '◈', name: '余额宝', pct: Math.round((bankValue / totalLiquid) * 100), color: '#00d4ff', rate: '1.5%', active: true })
+  if (fixedValue > 0) channels.push({ icon: '▣', name: '定期', pct: Math.round((fixedValue / totalLiquid) * 100), color: '#00ff88', rate: '3.0%', active: true })
+  if (fundValue > 0) channels.push({ icon: '◆', name: '基金', pct: Math.round((fundValue / totalLiquid) * 100), color: '#ffec27', rate: '波动', active: true })
 
   if (v.retirementPath === 'chain_native') {
     // 链上持仓是独立资产，直接按实际值占总流动资产比例显示
-    if (chainHoldings > 0) channels.push({ icon: '⛓️', name: '链上持仓', pct: Math.round((chainHoldings / totalLiquid) * 100), color: '#ff8800', rate: '极端波动', active: true })
+    if (chainHoldings > 0) channels.push({ icon: '◇', name: '链上持仓', pct: Math.round((chainHoldings / totalLiquid) * 100), color: '#ff8800', rate: '极端波动', active: true })
   } else if (v.retirementPath === 'bio_gambler') {
     // 生科投资是独立资产，直接按实际值占总流动资产比例显示
-    if (bioPortfolio > 0) channels.push({ icon: '🧬', name: '生科投资', pct: Math.round((bioPortfolio / totalLiquid) * 100), color: '#ff2d95', rate: '高风险', active: true })
+    if (bioPortfolio > 0) channels.push({ icon: '◊', name: '生科投资', pct: Math.round((bioPortfolio / totalLiquid) * 100), color: '#ff2d95', rate: '高风险', active: true })
   } else {
     // 其他路径：股票和比特币在 currentSavings 中
     const stockValue = v.currentSavings * ((v as any).stockPct || 0) / 100
     const cryptoValue = v.currentSavings * (v.speculationPct / 100)
-    if (stockValue > 0) channels.push({ icon: '📈', name: '股票', pct: Math.round((stockValue / totalLiquid) * 100), color: '#ff2d95', rate: '极高', active: true })
+    if (stockValue > 0) channels.push({ icon: '▲', name: '股票', pct: Math.round((stockValue / totalLiquid) * 100), color: '#ff2d95', rate: '极高', active: true })
     if (cryptoValue > 0) channels.push({ icon: '₿', name: '比特币', pct: Math.round((cryptoValue / totalLiquid) * 100), color: '#ff8800', rate: '疯狂', active: true })
   }
 
-  if (goldValue > 0) channels.push({ icon: '🥇', name: '黄金', pct: Math.round((goldValue / totalLiquid) * 100), color: '#ffd700', rate: '避险', active: true })
+  if (goldValue > 0) channels.push({ icon: '★', name: '黄金', pct: Math.round((goldValue / totalLiquid) * 100), color: '#ffd700', rate: '避险', active: true })
 
   // 修正 rounding 导致总和不为 100%
   const sum = channels.reduce((acc, c) => acc + c.pct, 0)
@@ -255,30 +263,30 @@ const assetItems = computed<{ icon: string; name: string; value: number; active:
 
   // 金融资产（流动）
   if (v.currentSavings > 0 || v.currentSavings < 0) {
-    items.push({ icon: '💵', name: '现金存款', value: v.currentSavings, active: true })
+    items.push({ icon: '¥', name: '现金存款', value: v.currentSavings, active: true })
   }
   const chainHoldings = (v as any).chainHoldings || 0
   if (chainHoldings > 0) {
-    items.push({ icon: '⛓️', name: '链上持仓', value: chainHoldings, active: true })
+    items.push({ icon: '◇', name: '链上持仓', value: chainHoldings, active: true })
   }
   const bioPortfolio = (v as any).bioPortfolio || 0
   if (bioPortfolio > 0) {
-    items.push({ icon: '🧬', name: '生科投资', value: bioPortfolio, active: true })
+    items.push({ icon: '◊', name: '生科投资', value: bioPortfolio, active: true })
   }
 
   // 不动产
   if (v.hasProperty && v.propertyValue > 0) {
-    items.push({ icon: '🏠', name: '自住房产', value: v.propertyValue, active: true })
+    items.push({ icon: '▣', name: '自住房产', value: v.propertyValue, active: true })
   }
   const shopValue = (v as any).shopValue || 0
   if (shopValue > 0) {
-    items.push({ icon: '🏪', name: '商铺产权', value: shopValue, active: true })
+    items.push({ icon: '◆', name: '商铺产权', value: shopValue, active: true })
   }
 
   // 车辆（使用实际carValue字段）
   const carValue = (v as any).carValue || 0
   if (v.hasCar && carValue > 0) {
-    items.push({ icon: '🚗', name: '车辆市值', value: carValue, active: true })
+    items.push({ icon: '◎', name: '车辆市值', value: carValue, active: true })
   }
 
   // 路径专属经营资产
@@ -287,7 +295,7 @@ const assetItems = computed<{ icon: string; name: string; value: number; active:
     const sb = (v as any).silverBusiness
     if (sb && sb.monthlyRevenue > 0) {
       const businessValue = Math.round(sb.monthlyRevenue * 12 * 2)
-      items.push({ icon: '👴', name: '银发生意估值', value: businessValue, active: true })
+      items.push({ icon: '★', name: '银发生意估值', value: businessValue, active: true })
     }
   }
   // 超级IP：无形资产估值 = 粉丝数 × 单粉价值（按粉丝阶段）
@@ -301,7 +309,7 @@ const assetItems = computed<{ icon: string; name: string; value: number; active:
       else if (followers > 100000) perFanValue = 5
       const ipValue = Math.round(followers * perFanValue * (reputation / 100))
       if (ipValue > 0) {
-        items.push({ icon: '⭐', name: 'IP无形资产', value: ipValue, active: true })
+        items.push({ icon: '☆', name: 'IP无形资产', value: ipValue, active: true })
       }
     }
   }
@@ -314,11 +322,8 @@ const totalNetWorth = computed(() => {
   return assetItems.value.reduce((sum, a) => sum + a.value, 0)
 })
 
-function formatWan(n: number): string {
-  const v = Math.round(n)
-  if (v >= 10000) return (v / 10000).toFixed(1).replace(/\.0$/, '') + '万'
-  return v.toLocaleString('en-US')
-}
+// 资产明细数字格式（无¥，自动万/元）
+const formatWan = fmtNum;
 
 // ================================================================
 //  身心变化来源提示（悬停显示）
@@ -394,7 +399,7 @@ const relOpen = ref(false);
           <span class="wb-value" :style="{ color: barColor(healthLevel, 'health') }">
             {{ Math.round(healthLevel) }}
           </span>
-          <span class="wb-emoji">{{ healthEmoji(healthLevel) }}</span>
+          <span class="wb-emoji" :style="{ color: barColor(healthLevel, 'health'), textShadow: '0 0 4px ' + barColor(healthLevel, 'health') }">{{ healthEmoji(healthLevel) }}</span>
           <Transition name="wb-tip">
             <div v-if="wbHover === 'health' && wellbeingSources.health.length > 0" class="wb-tooltip">
               <div class="wb-tip-title">上年健康变化来源</div>
@@ -424,7 +429,7 @@ const relOpen = ref(false);
           <span class="wb-value" :style="{ color: barColor(stressLevel, 'stress') }">
             {{ Math.round(stressLevel) }}
           </span>
-          <span class="wb-emoji">{{ stressEmoji(stressLevel) }}</span>
+          <span class="wb-emoji" :style="{ color: barColor(stressLevel, 'stress'), textShadow: '0 0 4px ' + barColor(stressLevel, 'stress') }">{{ stressEmoji(stressLevel) }}</span>
           <Transition name="wb-tip">
             <div v-if="wbHover === 'stress' && wellbeingSources.stress.length > 0" class="wb-tooltip">
               <div class="wb-tip-title">上年压力变化来源</div>
@@ -454,7 +459,7 @@ const relOpen = ref(false);
           <span class="wb-value" :style="{ color: barColor(happinessLevel, 'happiness') }">
             {{ Math.round(happinessLevel) }}
           </span>
-          <span class="wb-emoji">{{ happinessEmoji(happinessLevel) }}</span>
+          <span class="wb-emoji" :style="{ color: barColor(happinessLevel, 'happiness'), textShadow: '0 0 4px ' + barColor(happinessLevel, 'happiness') }">{{ happinessEmoji(happinessLevel) }}</span>
           <Transition name="wb-tip">
             <div v-if="wbHover === 'happiness' && wellbeingSources.happiness.length > 0" class="wb-tooltip">
               <div class="wb-tip-title">上年幸福变化来源</div>
@@ -474,7 +479,7 @@ const relOpen = ref(false);
       <div class="finance-list">
         <div class="finance-row savings-row" :class="{ bankrupt: isBankrupt }">
           <span class="finance-label">存款</span>
-          <span class="finance-value" :class="isBankrupt ? 'text-red' : 'text-green'">
+          <span class="finance-value savings-value" :class="isBankrupt ? 'text-red' : 'text-green'">
             {{ formatMoney(s.currentSavings) }}
           </span>
           <span
@@ -482,7 +487,7 @@ const relOpen = ref(false);
             class="delta-badge"
             :class="savingsDelta > 0 ? 'delta-up' : 'delta-down'"
           >
-            {{ savingsDelta > 0 ? '+' : '' }}{{ formatMoney(savingsDelta) }}
+            {{ fmtSigned(savingsDelta) }}
           </span>
         </div>
 
@@ -494,25 +499,39 @@ const relOpen = ref(false);
           </span>
         </div>
 
+        <!-- 月薪：精确到元，最直观 -->
         <div class="finance-row">
-          <span class="finance-label">年收入</span>
-          <span class="finance-value text-blue">{{ formatMoney(annualIncome) }}</span>
+          <span class="finance-label">月薪</span>
+          <span class="finance-value text-blue">
+            {{ s.isUnemployed ? '失业中' : formatExact(s.currentMonthlySalary) }}
+          </span>
         </div>
 
-        <div v-if="monthlySideIncome > 0" class="finance-row">
-          <span class="finance-label">副业/月</span>
-          <span class="finance-value text-green">{{ formatMoney(monthlySideIncome) }}</span>
+        <!-- 被动收入/月：退休核心指标 -->
+        <div class="finance-row">
+          <span class="finance-label">被动收入</span>
+          <span class="finance-value" :class="monthlyPassiveIncome > 0 ? 'text-green' : ''">
+            {{ monthlyPassiveIncome > 0 ? formatExact(monthlyPassiveIncome) : '¥0' }}
+            <span style="font-size:0.75em;color:#888;font-weight:normal;">/月</span>
+          </span>
+        </div>
+
+        <div v-if="lastYearSideHustle > 0" class="finance-row">
+          <span class="finance-label">上年副业</span>
+          <span class="finance-value text-green">{{ formatMoney(lastYearSideHustle) }}</span>
         </div>
 
         <div class="finance-row">
-          <span class="finance-label">年支出</span>
+          <span class="finance-label">年支出(估)</span>
           <span class="finance-value text-orange">{{ formatMoney(annualExpense) }}</span>
         </div>
       </div>
 
       <div class="target-section">
         <div class="target-info">
-          <span>距退休 {{ yearsToRetire }}年</span>
+          <span :class="{ 'can-retire-hint': canRetireNow }">
+            {{ canRetireNow ? '◆ 可退休' : retireAgeLabel }} · 剩{{ yearsToRetire }}年
+          </span>
           <span>目标 {{ formatMoneyWan(s.targetWealth) }}</span>
         </div>
         <div class="target-bar">
@@ -554,7 +573,7 @@ const relOpen = ref(false);
         @click="financeOpen = !financeOpen"
       >
         <span class="collapse-arrow" :class="{ rotated: financeOpen }">▼</span>
-        <span class="collapse-title">全部资产 ¥{{ formatWan(totalNetWorth) }}</span>
+        <span class="collapse-title">全部资产明细</span>
       </button>
       <div v-if="financeOpen && assetItems.length > 0" class="collapse-body asset-body open">
         <div v-for="(a, ai) in assetItems" :key="'asset-' + ai" class="asset-row">
@@ -575,7 +594,7 @@ const relOpen = ref(false);
       <div class="path-desc">{{ currentPath.description }}</div>
       <div class="skill-chips">
         <span class="skill-chip">{{ currentPath.subtitle }}</span>
-        <span class="skill-chip">🎯 {{ currentPath.targetRetireAge }}岁退休</span>
+        <span class="skill-chip">◎ {{ currentPath.targetRetireAge }}岁退休</span>
       </div>
       <div class="faith-row">
         <span class="faith-label">信念</span>
@@ -591,7 +610,7 @@ const relOpen = ref(false);
         <span class="faith-value" :style="{ color: faithColor(faithLevel) }">
           {{ Math.round(faithLevel) }}
         </span>
-        <span class="faith-emoji">{{ faithEmoji(faithLevel) }}</span>
+        <span class="faith-emoji" :style="{ color: faithColor(faithLevel), textShadow: '0 0 4px ' + faithColor(faithLevel) }">{{ faithEmoji(faithLevel) }}</span>
         <span class="faith-tag" :style="{ color: faithColor(faithLevel) }">{{ faithLabel(faithLevel) }}</span>
       </div>
     </div>
@@ -610,7 +629,7 @@ const relOpen = ref(false);
       <div class="collapse-body rel-body" :class="{ open: relOpen }">
         <!-- 父母 -->
         <div class="rel-group">
-          <div class="rel-group-label">👴 父母</div>
+          <div class="rel-group-label">◆ 父母</div>
           <div v-if="parents && parentsAlive" class="rel-detail">
             <div class="rel-detail-row">
               <span class="rel-key">健康</span>
@@ -642,7 +661,7 @@ const relOpen = ref(false);
             </div>
           </div>
           <div v-else-if="parents" class="rel-deceased">
-            ✝ 已故 · 享年{{ parents.age || '??' }}岁
+            † 已故 · 享年{{ parents.age || '??' }}岁
           </div>
           <div v-else class="rel-na">— 暂无数据 —</div>
         </div>
@@ -697,7 +716,7 @@ const relOpen = ref(false);
           </div>
           <!-- 离异 -->
           <div v-else-if="isDivorced || partner?.datingStage === 'divorced'" class="rel-deceased divorced">
-            💔 {{ partner?.exName ? '与' + partner.exName + '分开了' : '已离异' }}
+            ○ {{ partner?.exName ? '与' + partner.exName + '分开了' : '已离异' }}
           </div>
           <!-- 单身 -->
           <div v-else class="rel-na">— 单身中 —</div>
@@ -705,7 +724,7 @@ const relOpen = ref(false);
 
         <!-- 子女 -->
         <div v-if="children.length > 0" class="rel-group">
-          <div class="rel-group-label">👶 子女</div>
+          <div class="rel-group-label">◇ 子女</div>
           <div v-for="(child, idx) in children" :key="'child-' + idx" class="rel-child-block">
             <div class="rel-child-header">
               {{ child.gender === '男' ? '男' : '女' }} · {{ s.currentAge - child.birthYear }}岁 · {{ child.growthStage }}
@@ -723,14 +742,14 @@ const relOpen = ref(false);
             </div>
             <div class="rel-detail-row">
               <span class="rel-key">月开销</span>
-              <span class="rel-cost">¥{{ (child.monthlyExpense ?? 0).toLocaleString('en-US') }}</span>
+              <span class="rel-cost">{{ fmtExact(child.monthlyExpense ?? 0) }}/月</span>
             </div>
           </div>
         </div>
 
         <!-- 朋友 -->
         <div v-if="friends.length > 0" class="rel-group">
-          <div class="rel-group-label">👥 朋友</div>
+          <div class="rel-group-label">◈ 朋友</div>
           <div v-for="(friend, idx) in friends" :key="'friend-' + idx" class="rel-friend-row">
             <span class="rel-friend-name">{{ friend.name }}({{ friend.type }})</span>
             <div class="rel-bar-track rel-bar-sm">
@@ -772,8 +791,8 @@ const relOpen = ref(false);
 }
 
 .panel-title {
-  font-size: 9px;
-  color: #6a6a8a;
+  font-size: 11px;
+  color: #8a8aaa;
   letter-spacing: 2px;
   text-transform: uppercase;
   font-family: 'DotGothic16', monospace;
@@ -867,6 +886,7 @@ const relOpen = ref(false);
   width: 16px;
   text-align: center;
   flex-shrink: 0;
+  text-shadow: inherit;
 }
 
 /* wellbeing tooltip */
@@ -974,7 +994,7 @@ const relOpen = ref(false);
 
 .finance-label {
   color: #94b0c2;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 1px;
   flex-shrink: 0;
 }
@@ -983,7 +1003,13 @@ const relOpen = ref(false);
   margin-left: auto;
   text-align: right;
   font-weight: bold;
-  font-size: 11px;
+  font-size: 13px;
+}
+
+/* 存款数字特别突出 */
+.savings-value {
+  font-size: 16px;
+  text-shadow: 0 0 8px currentColor;
 }
 
 .text-green {
@@ -1059,6 +1085,17 @@ const relOpen = ref(false);
   color: #6a6a8a;
   letter-spacing: 0.5px;
   margin-bottom: 3px;
+}
+
+.can-retire-hint {
+  color: #00ff88;
+  text-shadow: 0 0 4px rgba(0, 255, 136, 0.6);
+  animation: retire-pulse 2s ease-in-out infinite;
+}
+
+@keyframes retire-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 .target-bar {
@@ -1319,6 +1356,7 @@ const relOpen = ref(false);
   width: 14px;
   text-align: center;
   flex-shrink: 0;
+  text-shadow: inherit;
 }
 
 .faith-tag {

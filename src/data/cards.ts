@@ -1,6 +1,7 @@
 ﻿import type { DecisionCard, GameState, PartnerPersonality } from '../types/global.d.js';
 import { getRandomName } from './romance.js';
 import { PATH_CARDS } from './path-cards.js';
+import { CITY_CONFIGS } from '../utils/math-engine.js';
 
 // 城市房产参数（按级别）
 interface HouseLevel {
@@ -176,15 +177,18 @@ export const DECISION_CARDS: DecisionCard[] = [
   {
     id: 'minimalism',
     title: '奉行断舍离极简主义生活观',
-    description: '你把家里一半的东西挂上了闲鱼。落灰的跑步机、买来没穿过的衣服、堆了三年的快递盒。卖掉时有点心疼，但看着空了一半的客厅，你突然觉得轻了不少。',
+    description: '你把家里一半的东西挂上了二手平台。落灰的跑步机、买来没穿过的衣服、堆了三年的快递盒。卖掉时有点心疼，但看着空了一半的客厅，你突然觉得轻了不少。',
     storyDescription: '你丢掉了大半杂物，房间通透，心也简单了。',
-    hint: '年支出永久-30% · 幸福+5',
+    hint: '年支出永久-20% · 幸福+5 · 社交权重降低',
     cost: 0,
     prerequisites: (state: GameState) => !state.usedMinimalism,
     effect: (state: GameState) => {
       state.usedMinimalism = true;
-      state.annualBaseCost = state.annualBaseCost * 0.6;
-      const log = `第${state.currentAge}岁，你清空了半个家，丢掉了所有'总有一天会用上'的废物。房间空了，存折的数字却好像更结实了。`;
+      state.annualBaseCost = Math.round(state.annualBaseCost * 0.8);
+      state.happiness = Math.min(100, state.happiness + 5);
+      // 长期代价：社交关系权重降低（朋友变少、社交机会减少）
+      (state as any).minimalismSocialPenalty = true;
+      const log = `第${state.currentAge}岁，你清空了半个家，丢掉了所有'总有一天会用上'的废物。房间空了，存折的数字却好像更结实了。但朋友约你聚会时，你开始觉得麻烦。`;
       return { log, cost: 0 };
     },
     logTemplate: '第{年龄}岁，你清空半个家，生活从此轻装上阵。',
@@ -197,15 +201,18 @@ export const DECISION_CARDS: DecisionCard[] = [
     title: '布局自动化变现副业脚本',
     description: '你开始在下班后接私活。白天打卡摸鱼，晚上熬夜敲代码，周末也在干。第一个月赚了三千块，你觉得值——直到有一天你在工位上睡着了，口水流在了键盘上。',
     storyDescription: '你在深夜敲下最后一行代码，服务器开始稳定运行，数据流如脉搏般跳动。',
-    hint: '月入+¥3,000-8,000 · 压力+8',
-    cost: 15000,
+    hint: '月入+¥2,000-6,000 · 压力+10 · 持续压力+2/年',
+    cost: 25000,
     prerequisites: (state: GameState) => !state.hasSideHustle && !state.isUnemployed,
     effect: (state: GameState) => {
       const isFreelance = state.currentProfession === '自由职业';
-      const cost = isFreelance ? 10500 : 15000; // 自由职业减少30%
+      const cost = isFreelance ? 17500 : 25000; // 自由职业减少30%
       state.hasSideHustle = true;
-      state.passiveIncome += isFreelance ? 36000 : 24000; // 自由职业+50%
-      const log = `第${state.currentAge}岁，你在凌晨三点完成了最后的部署测试，屏幕上的绿色数据流开始稳定涌动，那是一台属于你的印钞机。`;
+      state.passiveIncome += isFreelance ? 28000 : 20000; // 年被动收入（回本期约1.25年）
+      state.stress = Math.min(100, state.stress + 10); // 初始压力
+      // 持续代价：每年压力+2（维护副业的负担）
+      (state as any).sideHustleStress = 2;
+      const log = `第${state.currentAge}岁，你在凌晨三点完成了最后的部署测试，屏幕上的绿色数据流开始稳定涌动，那是一台属于你的印钞机。但代价是你的睡眠。`;
       return { log, cost };
     },
     logTemplate: '第{年龄}岁，你搭建好副业脚本，被动收入开始到账。',
@@ -468,7 +475,7 @@ export const DECISION_CARDS: DecisionCard[] = [
       if (state.friends.length > 0) {
         state.friends.forEach(f => { f.relation = Math.min(100, f.relation + 5); });
       }
-      const log = `第${state.currentAge}岁，你花了${actualCost.toLocaleString()}元提了那辆梦寐以求的车。启动引擎的瞬间，你觉得自己这些年吃的苦值了。朋友圈发出去，点赞比过年还多。但你心里清楚，每月的车贷和保险会是一笔不小的数字。`;
+      const log = `第${state.currentAge}岁，你花了${actualCost.toLocaleString()}元提了那辆梦寐以求的车。启动引擎的瞬间，你觉得自己这些年吃的苦值了。动态圈发出去，点赞比过年还多。但你心里清楚，每月的车贷和保险会是一笔不小的数字。`;
       return { log, cost: actualCost };
     },
     logTemplate: '第{年龄}岁，你买了豪车，人生的排面拉满了。',
@@ -684,7 +691,7 @@ export const DECISION_CARDS: DecisionCard[] = [
   {
     id: 'volunteer',
     title: '周末去做义工/社区服务',
-    description: '你周末去流浪动物救助站做了一天义工。回来的路上发了条朋友圈，收获三十二个赞。有只橘猫在你腿上趴了一下午，你觉得这比花钱买的快乐实在多了。',
+    description: '你周末去流浪动物救助站做了一天义工。回来的路上发了条动态圈，收获三十二个赞。有只橘猫在你腿上趴了一下午，你觉得这比花钱买的快乐实在多了。',
     hint: '幸福+8 · 压力-5 · 免费',
     cost: 0,
     category: '生活消费',
@@ -785,7 +792,7 @@ export const DECISION_CARDS: DecisionCard[] = [
   {
     id: 'socialize',
     title: '🎉 拓展社交圈',
-    description: '你决定不再宅着了。去参加了朋友的剧本杀局，拼了一桌陌生人。全程你只说对了两句台词，但加到了三个人的微信。至少比在家刷手机强。',
+    description: '你决定不再宅着了。去参加了朋友的剧本杀局，拼了一桌陌生人。全程你只说对了两句台词，但加到了三个人的社交软件。至少比在家刷手机强。',
     hint: '提高遇见TA的概率 · 幸福+5 · 花费¥2,000',
     cost: 2000,
     category: '💝 感情',
@@ -804,9 +811,9 @@ export const DECISION_CARDS: DecisionCard[] = [
       (s as any).socialActiveThisYear = true;
       const activities = ['朋友的生日派对', '行业交流会', '桌游局', '徒步俱乐部', '读书会', '音乐节'];
       const act = activities[Math.floor(Math.random() * activities.length)];
-      return { log: `第${s.currentAge}岁，你去参加了${act}。认识了一些有趣的人，加了几个微信。虽然不知道能不能发展，但至少今天很开心。`, cost };
+      return { log: `第${s.currentAge}岁，你去参加了${act}。认识了一些有趣的人，加了几个社交软件。虽然不知道能不能发展，但至少今天很开心。`, cost };
     },
-    logTemplate: '第{年龄}岁，你出门社交了，加了几个新微信。',
+    logTemplate: '第{年龄}岁，你出门社交了，加了几个新社交软件。',
   },
 
   // ========== B. 投资理财类（5张） ==========
@@ -875,7 +882,7 @@ export const DECISION_CARDS: DecisionCard[] = [
   {
     id: 'save_challenge',
     title: '挑战一个月只花1000元',
-    description: '你挑战一个月只花一千块。方便面吃到第十五天时你打开外卖App看了八十七遍。月底省下来的钱发了个朋友圈，配图是空荡荡的冰箱——评论区一片心疼。',
+    description: '你挑战一个月只花一千块。方便面吃到第十五天时你打开外卖App看了八十七遍。月底省下来的钱发了个动态圈，配图是空荡荡的冰箱——评论区一片心疼。',
     hint: '节省月生活费50% · 幸福-8 · 压力+5',
     cost: 0,
     category: '生活消费',
@@ -1072,7 +1079,7 @@ export const DECISION_CARDS: DecisionCard[] = [
   {
     id: 'windfall_gamble',
     title: '🚀 梭哈风口项目',
-    description: '朋友圈所有人都在说一个"千载难逢的机会"——AI、新能源、或者是某个你看不懂的区块链项目。有人翻倍了，有人被套了。你看着账户里的存款，心跳加速。',
+    description: '动态圈所有人都在说一个"千载难逢的机会"——AI、新能源、或者是某个你看不懂的区块链项目。有人翻倍了，有人被套了。你看着账户里的存款，心跳加速。',
     hint: '投入存款30% · 极低概率翻倍 · 极高概率亏损',
     cost: 0,
     category: '投资理财',
@@ -1103,7 +1110,7 @@ export const DECISION_CARDS: DecisionCard[] = [
         s.currentSavings -= investAmount;
         s.stress = Math.min(100, s.stress + 15);
         s.happiness = Math.max(0, s.happiness - 10);
-        return { log: `第${s.currentAge}岁，你All-in了${investAmount.toLocaleString()}元。三个月后项目被曝是骗局，创始人跑路了。你看着归零的账户，想起当初朋友圈那些"已上车"的截图——原来大家都是韭菜，只是收割的时间不同。`, cost: 0 };
+        return { log: `第${s.currentAge}岁，你All-in了${investAmount.toLocaleString()}元。三个月后项目被曝是骗局，创始人跑路了。你看着归零的账户，想起当初动态圈那些"已上车"的截图——原来大家都是韭菜，只是收割的时间不同。`, cost: 0 };
       }
     },
     logTemplate: '第{年龄}岁，你跟了风口，命运齿轮开始转动。',
@@ -1114,7 +1121,7 @@ export const DECISION_CARDS: DecisionCard[] = [
   {
     id: 'health_food',
     title: '开始健康饮食/自己做饭',
-    description: '你开始学做饭。第一顿糊了第三顿咸了第五顿终于像样了。外卖App从手机里消失，取而代之的是下厨房里收藏了两百个菜谱。你发了条朋友圈"自己做饭真香"，配图P了很久。',
+    description: '你开始学做饭。第一顿糊了第三顿咸了第五顿终于像样了。外卖App从手机里消失，取而代之的是下厨房里收藏了两百个菜谱。你发了条动态圈"自己做饭真香"，配图P了很久。',
     hint: '健康+5 · 幸福+3 · 年省¥3,000-6,000',
     cost: 0,
     category: '健康养生',
@@ -1169,26 +1176,37 @@ export const DECISION_CARDS: DecisionCard[] = [
     },
     logTemplate: '第{年龄}岁，你开始在职读研，头发和简历一起在变。',
   },
-  // 卡34：投资二套房
+  // 卡34：投资二套房（重做：租售比合理、房贷计入、城市差异）
   {
     id: 'buy_second_house',
     title: '投资二套房',
-    description: '你咬咬牙买了第二套房，朋友说你是房奴中的战斗机。看着两条房贷月供短信同时弹出来，你觉得确实在战斗——而且是跟自己的钱包。但想着以后收租的日子，你又笑了。',
-    hint: '首付¥30-80万 · 月租¥2,000-5,000',
-    cost: 400000,
+    description: '你咬咬牙买了第二套房，算过租售比后觉得能覆盖月供。但两条房贷短信同时弹出的那一刻，你还是深呼吸了一口。',
+    hint: '首付30-60万 · 二套房贷月供叠加 · 租金年入3.6-6万',
+    cost: 450000,
     category: '阶段解锁',
     repeatable: false,
-    ageRange: [38, 55],
-    prerequisites: (s: GameState) => s.hasProperty && s.currentSavings > 500000,
+    ageRange: [35, 55],
+    prerequisites: (s: GameState) => s.hasProperty && s.currentSavings > 600000 && !(s as any).hasSecondProperty,
     effect: (s: GameState) => {
-      const down = 300000 + Math.floor(Math.random() * 500000);
-      if (Math.random() < 0.6) {
-        s.passiveIncome += 36000;
-        return { log: `第${s.currentAge}岁，你咬了咬牙买了第二套房。首付${down}元，每月租金3000元。你看着租房合同，觉得自己又多了一条退路。`, cost: down };
+      const cityMult = (CITY_CONFIGS[s.currentCity]?.costMultiplier || 1.0);
+      // 首付：45万±15万随机
+      const down = 300000 + Math.floor(Math.random() * 300000);
+      // 二套房贷年供（二套房利率更高，约为房价50%贷款20年年供）
+      const secondMortgageAnnual = Math.round(60000 * cityMult);
+      // 租金年收入（随城市系数变化，年租金回报率约3-4%）
+      const rentAnnual = Math.round(48000 * cityMult * (0.8 + Math.random() * 0.4));
+      // 净被动收入 = 租金 - 二套房贷年供（可能为负，即负现金流）
+      const netRentIncome = rentAnnual - secondMortgageAnnual;
+      s.passiveIncome += netRentIncome;
+      s.currentMortgageCost = (s.currentMortgageCost || 0) + secondMortgageAnnual;
+      s.propertyValue = (s.propertyValue || 0) + Math.round(down / 0.4);
+      (s as any).hasSecondProperty = true;
+      s.happiness = Math.min(100, s.happiness + 3);
+      s.stress = Math.min(100, s.stress + 5);
+      if (netRentIncome >= 0) {
+        return { log: `第${s.currentAge}岁，你咬了咬牙买了第二套房。首付${down}元，年租金${rentAnnual}元，扣除房贷年供${secondMortgageAnnual}元后净入${netRentIncome}元。你看着房产证，觉得自己又多了一条退路。`, cost: down };
       } else {
-        s.passiveIncome += 24000;
-        const extraCost = 50000;
-        return { log: `第${s.currentAge}岁，你买了第二套房，首付${down}元。但空置了好几个月没租出去，你还花了5万装修。投资回报没想象中那么美好。`, cost: down + extraCost };
+        return { log: `第${s.currentAge}岁，你买了第二套房，首付${down}元。但年租金${rentAnnual}元还不够覆盖${secondMortgageAnnual}元年供，每年还得倒贴${-netRentIncome}元。你安慰自己长期看涨。`, cost: down };
       }
     },
     logTemplate: '第{年龄}岁，你买了二套房，两条房贷短信同时到达。',
@@ -1497,7 +1515,7 @@ export function drawRandomCards(state: GameState, count: number = 3, categoryWei
     const networkingCard: DecisionCard = {
       id: 'job_networking',
       title: '【盘活人脉·托朋友内推】',
-      description: '你翻了翻微信通讯录，给几个久未联系的老同事发了消息。有人没回，有人说"帮你问问"，有人直接给你推了个HR微信。人脉这东西，平时不显山露水，失业时才知道谁真的靠谱。',
+      description: '你翻了翻社交软件通讯录，给几个久未联系的老同事发了消息。有人没回，有人说"帮你问问"，有人直接给你推了个HR社交软件。人脉这东西，平时不显山露水，失业时才知道谁真的靠谱。',
       cost: 3000, // 请客吃饭/送礼
       prerequisites: () => true,
       effect: (s: GameState) => {
