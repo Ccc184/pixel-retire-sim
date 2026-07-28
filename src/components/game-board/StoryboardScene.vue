@@ -162,6 +162,7 @@ const gridCells = Array.from({ length: gridCols * gridRows }, (_, i) => i)
   position: absolute;
   inset: 0;
   display: flex;
+  gap: 2px;
   width: 100%;
   height: 100%;
   background: #050608;

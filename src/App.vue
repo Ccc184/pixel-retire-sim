@@ -878,10 +878,10 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 /* ============================================================
-   CRT 电视舞台（极简）—— 占满中间栏，无左右留白
+   CRT 电视舞台 —— 三个正方形窗口并列
    ============================================================ */
 .crt-stage {
-  flex-shrink: 1;
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -889,13 +889,30 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   width: 100%;
   margin: 0 auto;
   min-height: 0;
-  overflow: hidden;
 }
 
-/* 保障叙事面板有足够高度显示卡片 */
+/* 叙事面板占满剩余空间，卡片选择区域获得最大高度 */
 .col-center :deep(.narrative-panel) {
-  min-height: 45%;
-  flex-shrink: 0;
+  flex: 1;
+  min-height: 0;
+  padding: 12px 16px;
+  gap: 10px;
+}
+
+/* 选项卡片更舒适的高度 */
+.col-center :deep(.option-card) {
+  padding: 12px 14px;
+  gap: 6px;
+}
+.col-center :deep(.option-label) {
+  font-size: 13px;
+}
+.col-center :deep(.option-desc) {
+  font-size: 11px;
+  line-height: 1.5;
+}
+.col-center :deep(.options-grid) {
+  gap: 8px;
 }
 
 /* 覆盖 CRTBezel 内部样式，保持极简 */
@@ -912,44 +929,48 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
     0 4px 20px rgba(0, 0, 0, 0.6);
 }
 
+/* 三个正方形窗口并列：宽高比 3:1，每个窗口恰好是正方形 */
 .crt-stage :deep(.crt-screen) {
-  aspect-ratio: 21 / 9;
-  max-height: 55vh;
-}
-
-/* 大屏下 CRT 屏幕用更宽的比例填满空间 */
-@media (min-width: 1600px) {
-  .crt-stage :deep(.crt-screen) {
-    aspect-ratio: 24 / 9;
-    max-height: 50vh;
-  }
+  aspect-ratio: 3 / 1;
+  max-height: 26vh;
 }
 
 /* ============================================================
-   响应式布局 — 大屏使用 zoom 等比放大（简洁高效，无遗漏）
+   响应式布局 — 大屏使用 zoom 等比放大
+   - 高度补偿：height = 100dvh / zoom，基本精确适配
+   - overflow-y:auto 作为兜底：防止浏览器取整误差截断内容
+   - 不加滚动条（只要补偿足够精确就不会触发）
    ============================================================ */
 
-/* 大屏（≥1400px，27寸1080p等）：整体放大1.1倍 */
+/* 大屏（≥1400px，27寸1080p等）：放大1.1倍 */
 @media (min-width: 1400px) {
   .app-root {
-    height: calc(100dvh / 1.1);
     zoom: 1.1;
+    height: calc(100dvh / 1.1 + 4px);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
+  .crt-stage :deep(.crt-screen) { max-height: 24vh; }
 }
 
-/* 超大屏（≥1900px，27寸2K等）：整体放大1.25倍 */
+/* 超大屏（≥1900px，27寸2K等）：放大1.2倍 */
 @media (min-width: 1900px) {
   .app-root {
-    height: calc(100dvh / 1.25);
-    zoom: 1.25;
+    zoom: 1.2;
+    height: calc(100dvh / 1.2 + 4px);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
+  .crt-stage :deep(.crt-screen) { max-height: 22vh; }
 }
 
-/* 4K（≥2400px）：整体放大1.5倍 */
+/* 4K（≥2400px）：放大1.35倍 */
 @media (min-width: 2400px) {
   .app-root {
-    height: calc(100dvh / 1.5);
-    zoom: 1.5;
+    zoom: 1.35;
+    height: calc(100dvh / 1.35 + 6px);
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 }
 
