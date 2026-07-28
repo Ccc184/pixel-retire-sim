@@ -392,12 +392,13 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 <style scoped>
 .app-root {
   width: 100%;
-  height: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
   position: relative;
   display: flex;
   flex-direction: column;
   color: var(--pico-white);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* ============================================================
@@ -561,7 +562,8 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   justify-content: center;
   padding: 40px 20px;
   min-height: 100vh;
-  overflow: hidden;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 .intro-particles {
@@ -852,6 +854,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   gap: 6px;
   overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
 }
 
 .col-center {
@@ -861,6 +864,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   flex-direction: column;
   gap: 6px;
   overflow: hidden;
+  min-height: 0;
 }
 
 .col-right {
@@ -869,6 +873,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 /* ============================================================
@@ -906,40 +911,142 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 /* ============================================================
    响应式布局
    ============================================================ */
-/* 超窄屏提示：最小支持宽度900px */
-@media (max-width: 899px) {
-  .app-root::before {
-    content: '屏幕宽度不足 · 建议在PC端或横屏体验';
-    position: fixed;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.95);
-    color: #ff2d95;
-    font-size: 14px;
-    letter-spacing: 2px;
-    text-shadow: 0 0 8px #ff2d95;
-    font-family: 'DotGothic16', monospace;
-    z-index: 99999;
-    text-align: center;
-    padding: 20px;
-  }
-}
 
+/* 平板：收窄侧栏 */
 @media (max-width: 1100px) {
   .col-left { width: 200px; }
   .col-right { width: 220px; }
   .crt-stage { max-width: 460px; }
 }
 
+/* 平板竖屏 / 小桌面：切换为纵向堆叠 */
 @media (max-width: 900px) {
-  .game-main { flex-direction: column; }
+  .game-main {
+    flex-direction: column;
+    overflow-y: auto;
+    padding: 6px;
+  }
   .col-left, .col-right {
     width: 100%;
-    max-height: 180px;
+    max-height: none;
+    flex-shrink: 0;
   }
-  .crt-stage { max-width: 400px; }
+  .col-left {
+    order: 1;
+  }
+  .col-center {
+    order: 0;
+  }
+  .col-right {
+    order: 2;
+  }
+  .crt-stage { max-width: 100%; }
+}
+
+/* 手机：进一步紧凑化 */
+@media (max-width: 600px) {
+  .top-bar {
+    flex-wrap: wrap;
+    padding: 4px 8px;
+    gap: 4px;
+  }
+  .top-left {
+    gap: 6px;
+  }
+  .top-title {
+    font-size: 13px;
+    letter-spacing: 1px;
+  }
+  .btn-restart {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+  .top-center {
+    order: 3;
+    width: 100%;
+    gap: 3px;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+  }
+  .top-center::-webkit-scrollbar {
+    display: none;
+  }
+  .stat-badge {
+    padding: 2px 6px;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .stat-badge .label { font-size: 8px; }
+  .stat-badge .value { font-size: 10px; }
+  .stat-badge .icon { font-size: 10px; }
+  .top-right {
+    gap: 4px;
+  }
+  .faith-meter {
+    padding: 2px 6px;
+    gap: 3px;
+  }
+  .faith-label { font-size: 8px; }
+  .faith-value { font-size: 11px; }
+  .faith-bar { width: 36px; }
+
+  /* 欢迎界面 */
+  .intro-screen {
+    padding: 20px 10px;
+  }
+  .intro-inner {
+    padding: 24px 16px;
+    gap: 16px;
+  }
+  .intro-title {
+    font-size: 32px;
+    letter-spacing: 3px;
+  }
+  .intro-tagline {
+    font-size: 12px;
+    letter-spacing: 3px;
+  }
+  .intro-desc {
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    line-height: 1.8;
+  }
+  .btn-start-big {
+    font-size: 16px;
+    padding: 12px 32px;
+    letter-spacing: 2px;
+  }
+  .btn-cursor { font-size: 18px; }
+
+  /* 游戏主界面紧凑化 */
+  .game-main {
+    padding: 4px;
+    gap: 6px;
+  }
+  .col-left, .col-right {
+    gap: 4px;
+  }
+}
+
+/* 超小屏（≤380px） */
+@media (max-width: 380px) {
+  .intro-title {
+    font-size: 26px;
+    letter-spacing: 2px;
+  }
+  .intro-inner {
+    padding: 16px 10px;
+    gap: 12px;
+  }
+  .intro-desc {
+    font-size: 12px;
+  }
+  .btn-start-big {
+    font-size: 14px;
+    padding: 10px 20px;
+  }
 }
 
 /* ============================================================
