@@ -36,6 +36,7 @@ import './narrative-company.js';
 import './narrative-breakthrough.js';
 import './narrative-data-mbti.js';
 import './narrative-data-philosophy.js';
+import './narrative-recurring.js';
 
 // ============================================================
 // 辅助函数
@@ -3656,15 +3657,39 @@ function weightedPick(events: NarrativeEvent[]): NarrativeEvent | null {
   return events[events.length - 1];
 }
 
+/** 可重复事件冷却年数：触发后N年内不再被选中 */
+const RECURRING_COOLDOWN = 3;
+
+/**
+ * 过滤可重复事件的冷却期
+ * 对于 oncePerGame !== true 的事件，如果最近N年内触发过，则暂时排除。
+ * 如果所有可重复事件都在冷却期，返回空数组（调用方需回退到原始列表）。
+ */
+function filterRecurringCooldown(
+  events: NarrativeEvent[],
+  firedMap: Record<string, number>,
+  currentAge: number,
+): NarrativeEvent[] {
+  const cooled = events.filter((e) => {
+    if (e.oncePerGame) return true; // 一次性事件不受冷却期影响
+    const lastFired = firedMap[e.id];
+    if (lastFired === undefined) return true; // 从未触发过
+    return currentAge - lastFired >= RECURRING_COOLDOWN;
+  });
+  return cooled;
+}
+
 /**
  * 随机选择一个叙事事件（考虑优先级和权重）
  *
  * 选择逻辑：
  * 1. 获取所有可用事件
  * 2. 若分支未选择且存在 branch_select 事件，强制返回该事件
- * 3. 若存在高优先级事件（priority >= 8），优先从中加权选择
- * 4. 否则从所有可用事件中加权随机选择
- * 5. 若无可用事件，返回 null（store 处理为"平静的一年"）
+ * 3. 若存在精确年龄事件（今年必须触发），优先选择
+ * 4. 若存在高优先级事件（priority >= 8），优先从中加权选择
+ * 5. 若存在中优先级事件（priority >= 6），从中加权选择
+ * 6. 从低优先级filler事件中加权选择（可重复事件应用冷却期去重）
+ * 7. 若无可用事件，返回 null（store 处理为"休养生息"）
  */
 export function selectNarrativeEvent(
   state: GameState,
@@ -3701,6 +3726,10 @@ export function selectNarrativeEvent(
     return weightedPick(midPriority);
   }
 
-  // 5. 低优先级filler事件（日常精进等）——最后才选
-  return weightedPick(available);
+  // 5. 低优先级filler事件（日常精进、可重复通用事件等）
+  //    对可重复事件应用冷却期过滤，避免短期内重复触发同一事件
+  const cooled = filterRecurringCooldown(available, firedMap, state.currentAge);
+  // 如果冷却后还有事件，从冷却后的列表选；否则回退到原始列表（避免休养生息）
+  const pool = cooled.length > 0 ? cooled : available;
+  return weightedPick(pool);
 }
