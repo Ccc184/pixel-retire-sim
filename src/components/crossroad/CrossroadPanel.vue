@@ -194,6 +194,7 @@ function handleSelect(optionId: string, option: any): void {
   width: min(700px, 100%);
   max-height: 90vh;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -334,6 +335,7 @@ function handleSelect(optionId: string, option: any): void {
   gap: 12px;
   max-height: 200px;
   overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 4px;
 }
 
@@ -346,10 +348,13 @@ function handleSelect(optionId: string, option: any): void {
 }
 
 .narrative-text {
+  flex: 1;
+  min-width: 0;
   font-size: 14px;
   line-height: 1.8;
   color: #ffffff;
   text-shadow: 0 0 3px rgba(255, 255, 255, 0.25);
+  word-break: break-word;
 }
 
 .narrative-text p {
@@ -512,6 +517,7 @@ function handleSelect(optionId: string, option: any): void {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
 .option-letter {
@@ -534,6 +540,9 @@ function handleSelect(optionId: string, option: any): void {
   font-weight: bold;
   letter-spacing: 1px;
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
 }
 
 /* 描述 */

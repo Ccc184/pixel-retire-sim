@@ -1,18 +1,26 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
-import { CITY_CONFIGS } from '../../utils/math-engine.js'
-import { MBTI_TRAITS, MBTI_GROUPS, getMBTIProfessionModifier } from '../../data/mbti-system.js'
+import { MBTI_GROUPS, getMBTIProfessionModifier } from '../../data/mbti-system.js'
+import { RETIREMENT_DREAMS } from '../../data/retirement-dreams.js'
 import { fmtNum } from '../../utils/format.js'
-import type { CityType, Profession, MBTIType } from '../../types/global.d.js'
+import type { CityType, Profession, MBTIType, RetirementDream } from '../../types/global.d.js'
+
+// 简化版：只选4种气质，自动取每组代表类型
+const TEMPERAMENT_CARDS = MBTI_GROUPS.map(g => ({
+  temp: g.temperament,
+  label: g.label,
+  theme: g.theme,
+  repType: g.types[0],
+}))
 
 const store = useGameStore()
 
 interface CityOption {
   id: CityType
   label: string
-  costMultiplier: number
-  salaryMultiplier: number
+  costLevel: string     // 生活成本等级文字
+  jobMarket: string    // 就业市场描述
   tagline: string
 }
 
@@ -22,27 +30,28 @@ interface ProfessionOption {
   blurb: string
 }
 
+// 城市描述：不再展示x乘数，改为玩家能直观理解的文字
 const cityOptions: CityOption[] = [
   {
     id: '资本修罗场',
     label: '资本修罗场',
-    costMultiplier: CITY_CONFIGS['资本修罗场'].costMultiplier,
-    salaryMultiplier: CITY_CONFIGS['资本修罗场'].salaryMultiplier,
+    costLevel: '生活成本高',
+    jobMarket: '机会多·压力大',
     tagline: '高风险·高回报·裁员率+5%',
   },
   {
     id: '中坚大后方',
     label: '中坚大后方',
-    costMultiplier: CITY_CONFIGS['中坚大后方'].costMultiplier,
-    salaryMultiplier: CITY_CONFIGS['中坚大后方'].salaryMultiplier,
+    costLevel: '生活成本适中',
+    jobMarket: '稳中有进',
     tagline: '基准线·稳中求进',
   },
   {
     id: '避风低洼地',
     label: '避风低洼地',
-    costMultiplier: CITY_CONFIGS['避风低洼地'].costMultiplier,
-    salaryMultiplier: CITY_CONFIGS['避风低洼地'].salaryMultiplier,
-    tagline: '低成本·低薪资·裁员率-50%',
+    costLevel: '生活成本低',
+    jobMarket: '薪资低·稳定',
+    tagline: '低成本·低压力·裁员率-50%',
   },
 ]
 
@@ -58,7 +67,7 @@ const professionOptions: ProfessionOption[] = [
 const selectedCity = ref<CityType>('中坚大后方')
 const selectedProfession = ref<Profession>('传统私企')
 const selectedMBTI = ref<MBTIType | null>(null)
-const expandedGroup = ref<string | null>('NT') // 默认展开理性者组
+const selectedDream = ref<RetirementDream | null>(null)
 const initSalary = ref<number>(10000)
 const targetWealth = ref<number>(3000000)
 
@@ -84,42 +93,42 @@ const canStart = computed(() => {
   return (
     initSalary.value > 0 &&
     initSalary.value <= 1000000 &&
-    targetWealth.value > 0
+    targetWealth.value > 0 &&
+    selectedDream.value !== null
   )
 })
 
 const startBlockReason = computed(() => {
+  if (!selectedDream.value) return '选个退休梦想吧'
   if (initSalary.value <= 0 || initSalary.value > 1000000) return '请设置有效的初始月薪'
   if (targetWealth.value <= 0) return '请设置退休目标资产'
   return ''
 })
 
+// 实际起薪：输入值就是实际月薪。仅MBTI人格（可选）有微弱修正，城市不再在开局乘系数。
 const effectiveStartSalary = computed(() => {
-  const mult = CITY_CONFIGS[selectedCity.value].salaryMultiplier
-  let salary = initSalary.value * mult
+  let salary = initSalary.value
   if (selectedMBTI.value) {
     const mbtiMod = getMBTIProfessionModifier(selectedMBTI.value, selectedProfession.value)
-    salary *= mbtiMod.startingSalaryMultiplier
+    salary = Math.round(salary * mbtiMod.startingSalaryMultiplier)
   }
-  return Math.round(salary)
-})
-
-const selectedTrait = computed(() => {
-  if (!selectedMBTI.value) return null
-  return MBTI_TRAITS[selectedMBTI.value]
-})
-
-const mbtiFitDesc = computed(() => {
-  if (!selectedMBTI.value) return ''
-  return getMBTIProfessionModifier(selectedMBTI.value, selectedProfession.value).fitDescription
+  return salary
 })
 
 function selectMBTI(type: MBTIType) {
   selectedMBTI.value = type
 }
 
-function toggleGroup(temp: string) {
-  expandedGroup.value = expandedGroup.value === temp ? null : temp
+function selectDream(dreamId: RetirementDream) {
+  selectedDream.value = dreamId
+  const dream = RETIREMENT_DREAMS.find(d => d.id === dreamId)
+  if (dream) {
+    // 如果当前目标是默认值，自动同步为梦想所需资产
+    const isDefault = Object.values(recommendedTargets).includes(targetWealth.value) || targetWealth.value === 3000000
+    if (isDefault) {
+      targetWealth.value = dream.targetWealth
+    }
+  }
 }
 
 // 金额格式化（纯数字，自动万/元）
@@ -133,6 +142,7 @@ function startGame(): void {
     initSalary.value,
     targetWealth.value,
     selectedMBTI.value,
+    selectedDream.value,
   )
 }
 </script>
@@ -169,12 +179,10 @@ function startGame(): void {
             <div class="city-name">{{ city.label }}</div>
             <div class="city-stats">
               <span class="stat">
-                <span class="stat-label">成本</span>
-                <span class="stat-value stat-orange">x{{ city.costMultiplier }}</span>
+                <span class="stat-value stat-orange">{{ city.costLevel }}</span>
               </span>
               <span class="stat">
-                <span class="stat-label">薪资</span>
-                <span class="stat-value stat-green">x{{ city.salaryMultiplier }}</span>
+                <span class="stat-value stat-cyan">{{ city.jobMarket }}</span>
               </span>
             </div>
             <div class="city-tagline">{{ city.tagline }}</div>
@@ -221,69 +229,50 @@ function startGame(): void {
           <span class="section-title-text">人格底色</span>
           <span class="section-optional-tag">可选</span>
         </h3>
-        <p class="mbti-intro">一个人格底色，会给你的叙事语气和恢复节奏带来微妙的差异。不选也完全不影响游戏体验。</p>
-        <div class="mbti-groups">
+        <p class="mbti-intro">选个人格底色，给叙事语气加点料。不选也完全不影响。</p>
+        <div class="temp-grid">
           <div
-            v-for="group in MBTI_GROUPS"
-            :key="group.temperament"
-            class="mbti-group"
-            :class="{ expanded: expandedGroup === group.temperament }"
+            v-for="card in TEMPERAMENT_CARDS"
+            :key="card.temp"
+            class="neon-card temp-card"
+            :class="{ selected: selectedMBTI === card.repType }"
+            @click="selectMBTI(card.repType)"
           >
-            <div class="mbti-group-header" @click="toggleGroup(group.temperament)">
-              <span class="mbti-group-temp" :class="'temp-' + group.temperament.toLowerCase()">{{ group.temperament }}</span>
-              <span class="mbti-group-label">{{ group.label }}</span>
-              <span class="mbti-group-theme">{{ group.theme }}</span>
-              <span class="mbti-group-arrow">{{ expandedGroup === group.temperament ? '▼' : '▶' }}</span>
-            </div>
-            <div v-if="expandedGroup === group.temperament" class="mbti-types-grid">
-              <div
-                v-for="type in group.types"
-                :key="type"
-                class="neon-card mbti-type-card"
-                :class="{ selected: selectedMBTI === type }"
-                @click="selectMBTI(type)"
-              >
-                <div class="card-scanlines" />
-                <div class="mbti-code">{{ type }}</div>
-                <div class="mbti-name">{{ MBTI_TRAITS[type].name }}</div>
-                <div class="mbti-theme">{{ MBTI_TRAITS[type].philosophicalTheme }}</div>
-                <div v-if="selectedMBTI === type" class="selected-indicator">
-                  <span class="indicator-dot" />
-                </div>
-              </div>
+            <div class="card-scanlines" />
+            <div class="temp-badge" :class="'temp-' + card.temp.toLowerCase()">{{ card.temp }}</div>
+            <div class="temp-label">{{ card.label }}</div>
+            <div class="temp-theme">{{ card.theme }}</div>
+            <div v-if="selectedMBTI === card.repType" class="selected-indicator">
+              <span class="indicator-dot" />
             </div>
           </div>
         </div>
-        <!-- 选中人格的哲学展示 -->
-        <div v-if="selectedTrait" class="mbti-detail-panel">
-          <div class="mbti-detail-header">
-            <span class="mbti-detail-code">{{ selectedTrait.code }}</span>
-            <span class="mbti-detail-name">{{ selectedTrait.name }}</span>
-            <span class="mbti-detail-temp" :class="'temp-' + selectedTrait.temperament.toLowerCase()">{{ selectedTrait.temperament }}</span>
-          </div>
-          <div class="mbti-detail-row">
-            <span class="detail-label">哲学主题</span>
-            <span class="detail-value">{{ selectedTrait.philosophicalTheme }}</span>
-          </div>
-          <div class="mbti-detail-row">
-            <span class="detail-label">存在之问</span>
-            <span class="detail-value detail-question">{{ selectedTrait.existentialQuestion }}</span>
-          </div>
-          <div class="mbti-detail-row">
-            <span class="detail-label">核心困境</span>
-            <span class="detail-value">{{ selectedTrait.coreDilemma }}</span>
-          </div>
-          <div class="mbti-detail-row">
-            <span class="detail-label">优势</span>
-            <span class="detail-value detail-strength">{{ selectedTrait.strength }}</span>
-          </div>
-          <div class="mbti-detail-row">
-            <span class="detail-label">阴影</span>
-            <span class="detail-value detail-shadow">{{ selectedTrait.shadow }}</span>
-          </div>
-          <div v-if="mbtiFitDesc" class="mbti-detail-row">
-            <span class="detail-label">职业适配</span>
-            <span class="detail-value detail-fit">{{ mbtiFitDesc }}</span>
+      </section>
+
+      <!-- 退休梦想选择 -->
+      <section class="setup-section">
+        <h3 class="section-title">
+          <span class="section-num neon-yellow-num">04</span>
+          <span class="section-title-text">你的退休梦想</span>
+          <span class="section-required-tag">必选</span>
+        </h3>
+        <p class="dream-intro">退休后想过啥日子？选个梦想，结局时我们算算你这辈子能不能实现。</p>
+        <div class="dream-grid">
+          <div
+            v-for="dream in RETIREMENT_DREAMS"
+            :key="dream.id"
+            class="neon-card dream-card"
+            :class="{ selected: selectedDream === dream.id, ['dream-' + dream.id]: true }"
+            :style="{ '--dream-color': dream.color, '--dream-glow': dream.bgGlow }"
+            @click="selectDream(dream.id)"
+          >
+            <div class="card-scanlines" />
+            <div class="dream-emoji">{{ dream.emoji }}</div>
+            <div class="dream-name" :style="{ color: dream.color, textShadow: '0 0 6px ' + dream.color }">{{ dream.name }}</div>
+            <div class="dream-tagline">{{ dream.tagline }}</div>
+            <div v-if="selectedDream === dream.id" class="selected-indicator">
+              <span class="indicator-dot" />
+            </div>
           </div>
         </div>
       </section>
@@ -291,7 +280,7 @@ function startGame(): void {
       <!-- 数值输入 -->
       <section class="setup-section">
         <h3 class="section-title">
-          <span class="section-num neon-green-num">04</span>
+          <span class="section-num neon-green-num">05</span>
           <span class="section-title-text">设定初始与目标</span>
         </h3>
         <div class="input-grid">
@@ -306,9 +295,9 @@ function startGame(): void {
               step="1000"
             />
             <div class="input-hint">
-              在{{ selectedCity }}实际起薪约
+              你在{{ selectedCity }}的首份工作月薪
               <strong class="hint-green">{{ effectiveStartSalary.toLocaleString() }}元</strong>
-              （x{{ CITY_CONFIGS[selectedCity].salaryMultiplier }}）
+              <span v-if="selectedMBTI">（人格微调）</span>
             </div>
           </div>
 
@@ -595,15 +584,10 @@ function startGame(): void {
   gap: 2px;
 }
 
-.stat .stat-label {
-  font-size: 11px;
-  color: #94b0c2;
-  letter-spacing: 1px;
-}
-
 .stat-value {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: bold;
+  letter-spacing: 0.5px;
 }
 
 .stat-orange {
@@ -614,6 +598,11 @@ function startGame(): void {
 .stat-green {
   color: #00ff88;
   text-shadow: 0 0 6px #00ff88;
+}
+
+.stat-cyan {
+  color: #00d4ff;
+  text-shadow: 0 0 6px #00d4ff;
 }
 
 .city-tagline {
@@ -876,7 +865,7 @@ function startGame(): void {
   opacity: 0.5;
 }
 
-/* === MBTI 选择 UI === */
+/* === MBTI 简化版：4气质卡片 === */
 .mbti-intro {
   font-size: 12px;
   color: #c2c3c7;
@@ -887,197 +876,164 @@ function startGame(): void {
   font-style: italic;
 }
 
-.mbti-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mbti-group {
-  border: 1px solid rgba(0, 212, 255, 0.2);
-  background: rgba(10, 5, 30, 0.4);
-  overflow: hidden;
-}
-
-.mbti-group.expanded {
-  border-color: rgba(255, 45, 149, 0.4);
-}
-
-.mbti-group-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.mbti-group-header:hover {
-  background: rgba(255, 136, 0, 0.06);
-}
-
-.mbti-group-temp {
-  font-size: 12px;
-  font-weight: bold;
-  font-family: 'DotGothic16', monospace;
-  padding: 2px 8px;
-  border: 1px solid;
-  letter-spacing: 1px;
-}
-
-.temp-nt { color: #00d4ff; border-color: #00d4ff; text-shadow: 0 0 4px #00d4ff; }
-.temp-nf { color: #ff2d95; border-color: #ff2d95; text-shadow: 0 0 4px #ff2d95; }
-.temp-sj { color: #00ff88; border-color: #00ff88; text-shadow: 0 0 4px #00ff88; }
-.temp-sp { color: #ff8800; border-color: #ff8800; text-shadow: 0 0 4px #ff8800; }
-
-.mbti-group-label {
-  font-size: 14px;
-  color: #f4f4f4;
-  font-weight: bold;
-  font-family: 'DotGothic16', monospace;
-}
-
-.mbti-group-theme {
-  font-size: 11px;
-  color: #94b0c2;
-  flex: 1;
-}
-
-.mbti-group-arrow {
-  font-size: 10px;
-  color: #c900ff;
-}
-
-.mbti-types-grid {
+.temp-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  padding: 10px;
+  gap: 10px;
 }
 
 @media (max-width: 640px) {
-  .mbti-types-grid {
+  .temp-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
 
-.mbti-type-card {
-  padding: 12px 8px !important;
-  text-align: center;
+.temp-card {
+  padding: 16px 10px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-}
-
-.mbti-code {
-  font-size: 16px;
-  font-weight: bold;
-  color: #00d4ff;
-  letter-spacing: 2px;
-  font-family: 'DotGothic16', monospace;
-  text-shadow: 0 0 4px #00d4ff;
-  position: relative;
-  z-index: 1;
-}
-
-.mbti-type-card.selected .mbti-code {
-  color: #fff;
-  text-shadow: 0 0 8px #ff2d95;
-}
-
-.mbti-name {
-  font-size: 12px;
-  color: #c2c3c7;
-  position: relative;
-  z-index: 1;
-}
-
-.mbti-theme {
-  font-size: 10px;
-  color: #94b0c2;
-  line-height: 1.3;
-  position: relative;
-  z-index: 1;
-}
-
-/* 选中人格详情面板 */
-.mbti-detail-panel {
-  margin-top: 12px;
-  padding: 16px;
-  background: rgba(10, 5, 30, 0.7);
-  border: 1px solid rgba(201, 0, 255, 0.3);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.mbti-detail-header {
-  display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 4px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  gap: 6px;
+  text-align: center;
 }
 
-.mbti-detail-code {
-  font-size: 20px;
+.temp-badge {
+  font-size: 18px;
   font-weight: bold;
-  color: #ff2d95;
-  letter-spacing: 3px;
   font-family: 'DotGothic16', monospace;
-  text-shadow: 0 0 8px #ff2d95;
+  padding: 4px 12px;
+  border: 2px solid;
+  letter-spacing: 2px;
+  position: relative;
+  z-index: 1;
 }
 
-.mbti-detail-name {
-  font-size: 14px;
+.temp-nt { color: #00d4ff; border-color: #00d4ff; text-shadow: 0 0 6px #00d4ff; }
+.temp-nf { color: #ff2d95; border-color: #ff2d95; text-shadow: 0 0 6px #ff2d95; }
+.temp-sj { color: #00ff88; border-color: #00ff88; text-shadow: 0 0 6px #00ff88; }
+.temp-sp { color: #ff8800; border-color: #ff8800; text-shadow: 0 0 6px #ff8800; }
+
+.temp-label {
+  font-size: 15px;
   color: #f4f4f4;
+  font-weight: bold;
   font-family: 'DotGothic16', monospace;
+  letter-spacing: 1px;
+  position: relative;
+  z-index: 1;
 }
 
-.mbti-detail-temp {
-  font-size: 10px;
-  padding: 1px 6px;
-  border: 1px solid;
-  margin-left: auto;
-}
-
-.mbti-detail-row {
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
-}
-
-.detail-label {
+.temp-theme {
   font-size: 11px;
   color: #94b0c2;
-  min-width: 60px;
-  flex-shrink: 0;
-  padding-top: 1px;
   letter-spacing: 0.5px;
+  position: relative;
+  z-index: 1;
 }
 
-.detail-value {
+/* === 退休梦想选择 === */
+.neon-yellow-num {
+  color: #ffec27;
+  border-color: #ffec27;
+  background: rgba(255, 236, 39, 0.1);
+  text-shadow: 0 0 6px #ffec27;
+  box-shadow: 0 0 8px #ffec2740, inset 0 0 6px #ffec2720;
+}
+
+.section-required-tag {
+  margin-left: 8px;
+  padding: 1px 8px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: #ff2d95;
+  border: 1px solid #ff2d95;
+  border-radius: 3px;
+  background: rgba(255, 45, 149, 0.15);
+  text-shadow: 0 0 4px #ff2d95;
+}
+
+.dream-intro {
   font-size: 12px;
-  color: #d4d4d8;
+  color: #c2c3c7;
+  margin: 0;
+  letter-spacing: 0.5px;
   line-height: 1.6;
-  flex: 1;
-}
-
-.detail-question {
-  color: #c900ff;
+  text-align: center;
   font-style: italic;
 }
 
-.detail-strength {
-  color: #00ff88;
+.dream-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
 }
 
-.detail-shadow {
-  color: #ff8800;
+@media (max-width: 640px) {
+  .dream-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.detail-fit {
-  color: #00d4ff;
+.dream-card {
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  transition: all 0.2s ease;
+}
+
+.dream-card:hover {
+  transform: translateY(-3px);
+  border-color: var(--dream-color, #ff8800) !important;
+  background: var(--dream-glow, rgba(255,136,0,0.08));
+  box-shadow: 0 0 12px var(--dream-color, #ff8800), 0 0 24px color-mix(in srgb, var(--dream-color, #ff8800) 30%, transparent), inset 0 0 12px color-mix(in srgb, var(--dream-color, #ff8800) 15%, transparent) !important;
+}
+
+.dream-card.selected {
+  border-color: var(--dream-color, #ff2d95) !important;
+  background: var(--dream-glow, rgba(255,45,149,0.12));
+  box-shadow: 0 0 14px var(--dream-color, #ff2d95), 0 0 28px color-mix(in srgb, var(--dream-color, #ff2d95) 40%, transparent), 0 0 50px color-mix(in srgb, var(--dream-color, #ff2d95) 20%, transparent), inset 0 0 16px color-mix(in srgb, var(--dream-color, #ff2d95) 20%, transparent) !important;
+  transform: translateY(-2px);
+}
+
+.dream-emoji {
+  font-size: 32px;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.2));
+}
+
+.dream-card.selected .dream-emoji {
+  filter: drop-shadow(0 0 10px var(--dream-color, #ff2d95));
+  animation: dreamEmojiBounce 1s ease-in-out infinite;
+}
+
+@keyframes dreamEmojiBounce {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+.dream-name {
+  font-size: 15px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  font-family: 'DotGothic16', monospace;
+  position: relative;
+  z-index: 1;
+}
+
+.dream-tagline {
+  font-size: 10px;
+  color: #94b0c2;
+  line-height: 1.4;
+  position: relative;
+  z-index: 1;
+}
+
+.dream-card.selected .dream-tagline {
+  color: #ffccdd;
 }
 </style>

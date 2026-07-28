@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { shallowRef } from 'vue';
-import type { GameState, Profession, CityType, OriginChoices, YearResult, CrossroadEvent, NarrativeEvent, MBTIType, SalaryChangeEntry } from '../types/global.d.js';
+import type { GameState, Profession, CityType, OriginChoices, YearResult, CrossroadEvent, NarrativeEvent, MBTIType, SalaryChangeEntry, RetirementDream } from '../types/global.d.js';
 import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth } from '../utils/math-engine.js';
 import { rollRandomEvents } from '../data/events.js';
 import { rollDailyEvents, applyDailyEventEffects } from '../data/daily-events.js';
@@ -17,6 +17,7 @@ import { getPath } from '../data/retirement-paths.js';
 import { selectNarrativeEvent } from '../data/narrative-events.js';
 import { checkAchievements as checkNarrativeAchievements } from '../data/narrative-achievements.js';
 import { getMBTIProfessionModifier, getActiveMBTIMechanics, getActiveMBTITrait } from '../data/mbti-system.js';
+import { RETIREMENT_DREAMS } from '../data/retirement-dreams.js';
 import type { RetirementPathId } from '../types/global.d.js';
 
 // 创建初始状态
@@ -115,6 +116,7 @@ function createInitialState(): GameState {
     yearOpeningMonologue: '',
     // === 叙事分支与技能系统 ===
     mbtiType: null,
+    retirementDream: null,
     narrativeBranch: 'unassigned',
     pathSkills: {},
     narrativeEventFired: {},
@@ -198,6 +200,33 @@ export const useGameStore = defineStore('game', () => {
     cardTransitionType.value = type;
   }
 
+  // ========== 三分镜队列 ==========
+  // 当年触发的剧情事件，次年对应窗口展示分镜动画
+  const pendingStoryboards = ref<{ family: string[]; life: string[]; career: string[] }>({
+    family: [],
+    life: [],
+    career: [],
+  });
+
+  /** 将本年度日志分类到三分镜队列 */
+  function classifyStoryboards(logs: string[]) {
+    const family: string[] = [];
+    const life: string[] = [];
+    const career: string[] = [];
+
+    const familyKw = ['结婚', '婚礼', '离婚', '分手', '宝宝', '出生', '为人父', '为人母', '父母', '离世', '去世', '孩子', '见家长', '求婚', '约会', '恋爱'];
+    const lifeKw = ['旅行', '体检', '健身', '重病', '住院', '手术', '买房', '购房', '入住', '搬家', '移居', '车', '日常', '生活'];
+    const careerKw = ['裁员', '失业', '被裁', '涨薪', '降薪', '跳槽', '升职', '创业', '注册公司', '成立', 'All In', '辞职', '全力', '黑天鹅', '爆仓', '破产', '信念', '里程碑'];
+
+    for (const log of logs) {
+      if (familyKw.some(kw => log.includes(kw))) family.push(log);
+      if (lifeKw.some(kw => log.includes(kw))) life.push(log);
+      if (careerKw.some(kw => log.includes(kw))) career.push(log);
+    }
+
+    pendingStoryboards.value = { family, life, career };
+  }
+
   // ========== 叙事事件系统（替代三卡） ==========
   const currentNarrativeEvent = shallowRef<NarrativeEvent | null>(null);
   const selectedNarrativeOptionId = ref<string | null>(null);
@@ -273,28 +302,54 @@ export const useGameStore = defineStore('game', () => {
     crossroadFiredTags.value = new Map();
     assetAcquired.value = null;
     cardTransitionType.value = null;
+    pendingStoryboards.value = { family: [], life: [], career: [] };
     clearSave();
   }
   
-  function setupGame(city: CityType, profession: Profession, initSalary: number, targetWealth: number, mbtiType: MBTIType | null) {
-    const cityConfig = CITY_CONFIGS[city];
+  function setupGame(city: CityType, profession: Profession, initSalary: number, targetWealth: number, mbtiType: MBTIType | null, retirementDream: RetirementDream | null) {
     state.value.currentCity = city;
     state.value.currentProfession = profession;
     state.value.initMonthlySalary = initSalary;
     state.value.targetAge = 60; // 统一硬上限：60岁强制结算，退休时机由玩家自主决定
     state.value.targetWealth = targetWealth;
     state.value.mbtiType = mbtiType;
+    state.value.retirementDream = retirementDream;
 
     // 应用MBTI×职业微调：初始薪资微调（可选，未选MBTI时不修正）
-    const adjustedInitSalary = mbtiType
+    // 注意：城市薪资系数不在开局乘——玩家输入的initSalary就是所选城市的实际月薪。
+    // 城市差异体现在生活成本(costMultiplier)上；搬家时才按系数比例折算薪资。
+    const actualStartSalary = mbtiType
       ? Math.round(initSalary * getMBTIProfessionModifier(mbtiType, profession).startingSalaryMultiplier)
       : initSalary;
 
-    state.value.careerStartSalary = Math.round(adjustedInitSalary * cityConfig.salaryMultiplier);
-    state.value.currentMonthlySalary = state.value.careerStartSalary;
+    state.value.careerStartSalary = actualStartSalary;
+    state.value.currentMonthlySalary = actualStartSalary;
     state.value.currentAge = 22;
-    state.value.currentSavings = Math.round(adjustedInitSalary * 6); // v2平衡：初始6个月工资作为缓冲
-    state.value.gamePhase = 'path_select'; // 进入退休路径选择
+    state.value.currentSavings = Math.round(actualStartSalary * 6); // 初始6个月工资作为缓冲
+
+    // 根据起薪和城市合理设定年基础生活费（annualBaseCost）
+    // 不同城市有不同的"基础消费占收入比"，保证开局储蓄率合理：
+    //   资本修罗场≈55%支出/45%储蓄（高消费城市，存得少但涨薪快）
+    //   中坚大后方≈45%支出/55%储蓄（平衡）
+    //   避风低洼地≈30%支出/70%储蓄（地理套利，存得多）
+    //   海外低成本≈25%支出/75%储蓄（远程+低成本，最优储蓄率）
+    // annualBaseCost 是"真实消费基准"，乘以 costMultiplier 才是该城市的名义支出
+    const cityConfig = CITY_CONFIGS[city];
+    const spendingRatioByCity: Record<CityType, number> = {
+      '资本修罗场': 0.55,
+      '中坚大后方': 0.45,
+      '避风低洼地': 0.30,
+      '海外低成本': 0.25,
+    };
+    const targetSpendingRatio = spendingRatioByCity[city] ?? 0.45;
+    const annualSalary = actualStartSalary * 12;
+    state.value.annualBaseCost = Math.round((annualSalary * targetSpendingRatio) / cityConfig.costMultiplier);
+
+    // 地理套利判定
+    state.value.isGeoArbitrage = city === '避风低洼地' || city === '海外低成本';
+
+    // 进入路径选择阶段
+    state.value.gamePhase = 'path_select';
     state.value.lifeLog = [];
     state.value.crossroadFired = {};
     state.value.retirementPath = null;
@@ -311,7 +366,7 @@ export const useGameStore = defineStore('game', () => {
     state.value.triggeredAchievements = [];
     crossroadFiredTags.value = new Map();
 
-    addLog(`第22岁，你在${city}开始了${profession}的职业生涯，初始月薪${state.value.currentMonthlySalary}元。像素人生，正式开局。`);
+    addLog(`第22岁，你在${city}开始了${profession}的职业生涯，初始月薪${actualStartSalary}元。像素人生，正式开局。`);
 
     // 路径选择阶段不抽事件，等玩家选完路径再抽
     currentNarrativeEvent.value = null;
@@ -1454,7 +1509,11 @@ export const useGameStore = defineStore('game', () => {
     const mood = detectYearMood(allLogs, result);
     yearMood.value = mood;
 
-    // 11. 显示年度结算弹窗
+    // === 分镜分类：将本年度日志分到 家庭/生活/事业 三个窗口 ===
+    classifyStoryboards(allLogs);
+
+    // 11. 显示年度结算弹窗（立刻清除转场动画，不再等待动画播完）
+    cardTransitionType.value = null;
     showYearEnd.value = true;
 
     // 12. 抽取新一年的叙事事件
@@ -1686,9 +1745,15 @@ export const useGameStore = defineStore('game', () => {
     fresh.currentAge = 60;
     fresh.targetAge = 60;
     fresh.gamePhase = 'playing';
-    // 模拟一辈子的积累
-    fresh.currentSavings = 2870000 + Math.floor(Math.random() * 500000);
-    fresh.propertyValue = 4000000;
+    // 随机选一个退休梦想，让测试也能看到梦想换算效果
+    const dream = RETIREMENT_DREAMS[Math.floor(Math.random() * RETIREMENT_DREAMS.length)];
+    fresh.retirementDream = dream.id;
+    fresh.targetWealth = dream.targetWealth;
+    // 模拟一辈子的积累（资产围绕梦想目标波动，让进度条有看头）
+    const progress = 0.45 + Math.random() * 0.7; // 45%~115% 达成度
+    const totalAssets = Math.floor(dream.targetWealth * progress);
+    fresh.currentSavings = Math.max(0, totalAssets - 4000000);
+    fresh.propertyValue = Math.min(4000000, totalAssets);
     fresh.health = 60 + Math.floor(Math.random() * 20);
     fresh.stress = 40 + Math.floor(Math.random() * 20);
     fresh.happiness = 55 + Math.floor(Math.random() * 20);
@@ -1739,6 +1804,8 @@ export const useGameStore = defineStore('game', () => {
     // 卡片转场动画
     cardTransitionType,
     setCardTransition,
+    // 三分镜队列
+    pendingStoryboards,
     // 叙事事件系统
     currentNarrativeEvent,
     selectedNarrativeOptionId,

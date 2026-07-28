@@ -249,6 +249,9 @@ export const MBTI_MECHANICS: Record<MBTIType, MBTIMechanics> = {
 // ============================================================
 
 export function getMBTIProfessionModifier(mbti: MBTIType, profession: Profession): MBTIProfessionModifier {
+  if (!mbti) {
+    return { salaryGrowthMultiplier: 1.0, startingSalaryMultiplier: 1.0, fitDescription: '' };
+  }
   const temperament = MBTI_TRAITS[mbti].temperament;
 
   // NT 理性者：技术/分析类职业优势

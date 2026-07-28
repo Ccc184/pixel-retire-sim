@@ -62,12 +62,6 @@ const yearsToRetire = computed(() => Math.max(0, s.targetAge - s.currentAge));
 const retireAgeLabel = computed(() => `${s.targetAge}岁封顶`);
 const canRetireNow = computed(() => s.canRetire);
 
-const annualIncome = computed(() => {
-  // 副业收入不稳定，不纳入年收入预估，单独展示上年副业
-  if (s.isUnemployed) return s.passiveIncome;
-  return s.currentMonthlySalary * 12 + s.passiveIncome;
-});
-
 // 上年副业收入（从年终结算结果取，副业由剧情事件驱动、不稳定）
 const lastYearSideHustle = computed(() => (store as any).lastYearResult?.sideHustleIncome || 0);
 

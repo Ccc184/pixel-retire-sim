@@ -10,7 +10,7 @@ import PathSelect from './components/narrative/PathSelect.vue'
 import EndingScreen from './components/narrative/EndingScreen.vue'
 
 import CRTBezel from './components/game-board/CRTBezel.vue'
-import CSSScene from './components/game-board/CSSScene.vue'
+import StoryboardScene from './components/game-board/StoryboardScene.vue'
 import CardTransition from './components/game-board/CardTransition.vue'
 import StatsPanel from './components/dashboard/StatsPanel.vue'
 import NarrativeEventPanel from './components/narrative/NarrativeEventPanel.vue'
@@ -321,7 +321,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
         <!-- 极简CRT电视舞台 -->
         <div class="crt-stage">
           <CRTBezel>
-            <CSSScene />
+            <StoryboardScene />
             <CardTransition
               :type="store.cardTransitionType"
               @complete="store.setCardTransition(null)"
@@ -348,7 +348,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
         <div class="modal-neon-corner modal-corner-br" />
 
         <h3 class="cs-title">◈ 选择要前往的城市 ◈</h3>
-        <p class="cs-sub">搬家安置费 ¥20,000，薪资将按比例折算。</p>
+        <p class="cs-sub">搬家安置费 ¥20,000，薪资和生活成本将按城市水平调整。</p>
         <div class="cs-grid">
           <div
             v-for="city in cityList"
@@ -358,8 +358,12 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
           >
             <div class="cs-name">{{ city }}</div>
             <div class="cs-stats">
-              <span class="cs-stat-item">成本 ×{{ CITY_CONFIGS[city].costMultiplier }}</span>
-              <span class="cs-stat-item">薪资 ×{{ CITY_CONFIGS[city].salaryMultiplier }}</span>
+              <span class="cs-stat-item" v-if="CITY_CONFIGS[city].costMultiplier >= 1.5">生活成本高</span>
+              <span class="cs-stat-item" v-else-if="CITY_CONFIGS[city].costMultiplier <= 0.5">生活成本低</span>
+              <span class="cs-stat-item" v-else>成本适中</span>
+              <span class="cs-stat-item" v-if="CITY_CONFIGS[city].salaryMultiplier >= 1.2">薪资水平高</span>
+              <span class="cs-stat-item" v-else-if="CITY_CONFIGS[city].salaryMultiplier <= 0.6">薪资水平低</span>
+              <span class="cs-stat-item" v-else>薪资适中</span>
             </div>
             <div class="cs-enter-hint">► 进入</div>
           </div>
@@ -392,13 +396,13 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 <style scoped>
 .app-root {
   width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
   position: relative;
   display: flex;
   flex-direction: column;
   color: var(--pico-white);
-  overflow-x: hidden;
+  overflow: hidden;
 }
 
 /* ============================================================
@@ -811,7 +815,6 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 .btn-test-skip {
-  display: none; /* 测试按钮默认隐藏，开发时可通过 devtools 启用 */
   margin: 12px auto 0;
   padding: 6px 16px;
   background: transparent;
@@ -877,7 +880,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 /* ============================================================
-   CRT 电视舞台（极简）
+   CRT 电视舞台（极简）—— 占满中间栏，无左右留白
    ============================================================ */
 .crt-stage {
   flex-shrink: 0;
@@ -886,7 +889,6 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   align-items: center;
   position: relative;
   width: 100%;
-  max-width: 560px;
   margin: 0 auto;
 }
 
@@ -905,7 +907,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 .crt-stage :deep(.crt-screen) {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 21 / 9;
 }
 
 /* ============================================================
@@ -916,31 +918,41 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 @media (max-width: 1100px) {
   .col-left { width: 200px; }
   .col-right { width: 220px; }
-  .crt-stage { max-width: 460px; }
 }
 
 /* 平板竖屏 / 小桌面：切换为纵向堆叠 */
 @media (max-width: 900px) {
+  .app-root {
+    height: auto;
+    min-height: 100dvh;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
   .game-main {
     flex-direction: column;
-    overflow-y: auto;
+    overflow: visible;
     padding: 6px;
   }
   .col-left, .col-right {
     width: 100%;
-    max-height: none;
     flex-shrink: 0;
   }
   .col-left {
     order: 1;
+    max-height: none;
   }
   .col-center {
     order: 0;
   }
+  /* 日志面板在移动端限制高度，内部滚动，避免无限拉长页面 */
   .col-right {
     order: 2;
+    max-height: 400px;
   }
   .crt-stage { max-width: 100%; }
+  .crt-stage :deep(.crt-screen) {
+    aspect-ratio: 16 / 9;
+  }
 }
 
 /* 手机：进一步紧凑化 */
@@ -1027,6 +1039,10 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   }
   .col-left, .col-right {
     gap: 4px;
+  }
+  /* 手机端日志面板再缩短 */
+  .col-right {
+    max-height: 300px;
   }
 }
 

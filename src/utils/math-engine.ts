@@ -1031,18 +1031,21 @@ export function switchCity(state: GameState, newCity: CityType): void {
   const oldConfig = CITY_CONFIGS[state.currentCity];
   const newConfig = CITY_CONFIGS[newCity];
   
-  // 按薪资比例折算
+  // 按城市薪资水平比例折算月薪：搬家意味着你进入了新城市的就业市场
+  const salaryRatio = newConfig.salaryMultiplier / oldConfig.salaryMultiplier;
   if (state.currentMonthlySalary > 0) {
-    state.currentMonthlySalary = Math.round(
-      state.currentMonthlySalary * (newConfig.salaryMultiplier / oldConfig.salaryMultiplier)
-    );
+    state.currentMonthlySalary = Math.round(state.currentMonthlySalary * salaryRatio);
+  }
+  // careerStartSalary（薪资上限的计算基准）也按同比例调整，
+  // 保证搬家后薪资天花板随市场水平移动，不会出现"搬去大城市立刻碰顶"或"搬去小城市永远涨不上去"
+  if (state.careerStartSalary > 0) {
+    state.careerStartSalary = Math.round(state.careerStartSalary * salaryRatio);
   }
   
   state.currentCity = newCity;
   
-  if (newCity === '避风低洼地') {
-    state.isGeoArbitrage = true;
-  }
+  // 地理套利判定：低成本城市自动启用
+  state.isGeoArbitrage = (newCity === '避风低洼地' || newCity === '海外低成本');
 }
 
 // 判定结局（纳入身心状态综合评定）

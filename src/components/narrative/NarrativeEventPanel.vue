@@ -221,12 +221,25 @@ const skillLabels: Record<string, string> = {
 
     <!-- 操作栏 -->
     <div class="commit-area">
-      <div v-if="!selectedOptionId && currentEvent" class="action-hint">
-        ▸ 选择一个选项来度过这一年
+      <!-- 左侧：状态提示（不重复按钮文字） -->
+      <div class="action-hint">
+        <template v-if="currentEvent && !selectedOptionId">▸ 请先选择一个选项</template>
+        <template v-else-if="currentEvent && selectedOptionId">▸ 已选择，可以推进</template>
+        <template v-else>▸ 平静的一年</template>
       </div>
-      <div v-else-if="!currentEvent" class="action-hint">
-        ▸ 点击按钮休养生息
-      </div>
+
+      <!-- 右侧：退休按钮（次要，左） -->
+      <button
+        v-if="store.canRetireNow"
+        class="btn-retire"
+        @click="handleRetire"
+      >
+        <span class="btn-arrow">★</span>
+        退休
+        <span class="btn-arrow">★</span>
+      </button>
+
+      <!-- 右侧：主操作按钮（最右） -->
       <button
         class="btn-advance"
         :class="{
@@ -236,17 +249,8 @@ const skillLabels: Record<string, string> = {
         @click="handleCommit"
       >
         <span class="btn-arrow">▶</span>
-        {{ selectedOptionId ? '度过这一年' : '休养生息' }}
+        {{ currentEvent ? '度过这一年' : '休养生息' }}
         <span class="btn-arrow">▶</span>
-      </button>
-      <button
-        v-if="store.canRetireNow"
-        class="btn-retire"
-        @click="handleRetire"
-      >
-        <span class="btn-arrow">★</span>
-        退休
-        <span class="btn-arrow">★</span>
       </button>
     </div>
   </div>
@@ -406,6 +410,7 @@ const skillLabels: Record<string, string> = {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
   padding-bottom: 6px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -447,9 +452,9 @@ const skillLabels: Record<string, string> = {
   margin: 0;
   letter-spacing: 1px;
   text-shadow: 0 0 6px rgba(255, 255, 255, 0.2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  word-break: break-word;
 }
 
 .event-narrative {

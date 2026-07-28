@@ -1046,10 +1046,11 @@ export function applyAllIn(state: GameState): void {
     }
     case 'digital_nomad': {
       state.currentProfession = '自由职业';
-      // 迁到海外低成本城市：使用 switchCity 正确调整薪资系数
-      state.currentMonthlySalary = Math.max(Math.round(sideIncome * 1.5), minGuarantee, 3000);
+      // 数字游民：远程接单赚发达地区的收入，住在低成本地区——
+      // 不通过switchCity降薪（远程收入不受当地薪资水平影响），只切换城市和成本系数
+      state.currentMonthlySalary = Math.max(Math.round(sideIncome * 1.5), minGuarantee, 5000);
       state.careerStartSalary = state.currentMonthlySalary;
-      switchCity(state, '海外低成本');
+      state.currentCity = '海外低成本';
       state.isGeoArbitrage = true;
       // All In被动收入跃升：全职接远程客户，retainer合同增加
       state.passiveIncome = (state.passiveIncome || 0) + 10000;

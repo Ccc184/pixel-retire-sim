@@ -6,6 +6,9 @@ export type Profession = '体制内' | '红利行业' | '传统私企' | '自由
 // 退休路径ID
 export type RetirementPathId = 'ai_symbiote' | 'chain_native' | 'digital_nomad' | 'super_ip' | 'silver_economy' | 'bio_gambler';
 
+// 退休梦想ID（开局选择，决定最终退休报告的换算维度）
+export type RetirementDream = 'world_traveler' | 'farm_hermit' | 'lifelong_scholar' | 'ultimate_otaku' | 'square_dance_king' | 'silver_volunteer';
+
 // MBTI人格类型
 export type MBTIType = 'INTJ' | 'INTP' | 'ENTJ' | 'ENTP' | 'INFJ' | 'INFP' | 'ENFJ' | 'ENFP' | 'ISTJ' | 'ISFJ' | 'ESTJ' | 'ESFJ' | 'ISTP' | 'ISFP' | 'ESTP' | 'ESFP';
 
@@ -212,6 +215,9 @@ export interface GameState {
   
   // === MBTI人格系统 ===
   mbtiType: MBTIType | null;                // 玩家的MBTI人格类型（开局选择，影响独白语气/专属事件/职业微调）
+  
+  // === 退休梦想系统 ===
+  retirementDream: RetirementDream | null;  // 开局选择的退休梦想，决定最终报告换算维度
   
   // === 叙事事件系统（替代三卡） ===
   narrativeBranch: NarrativeBranch;         // 当前分支（路径内的故事线）

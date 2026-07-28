@@ -52,6 +52,10 @@ export function loadSave(): GameState | null {
     if (!state.parents || !state.friends || state.stress === undefined || !state.usedCardHistory) {
       return null;
     }
+    // retirementPath 缺失或无效的存档视为无效（防止路径专属事件全部被过滤导致休养生息）
+    if (!state.retirementPath) {
+      return null;
+    }
     // 兼容旧存档：canRetire 字段可能不存在
     if (state.canRetire === undefined) state.canRetire = false;
 

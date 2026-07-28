@@ -759,14 +759,14 @@ function handleViewRetire(): void {
 
 .bill-modal {
   position: relative;
-  width: min(520px, 95%);
-  max-height: 90vh;
+  width: min(760px, 95%);
+  max-height: 92vh;
   overflow-y: auto;
   background: #0a0a0a;
-  border: 1px solid rgba(0, 212, 255, 0.4);
-  box-shadow: 0 0 30px rgba(0, 212, 255, 0.15);
+  border: 2px solid rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 40px rgba(0, 212, 255, 0.2);
   border-radius: 4px;
-  padding: 20px;
+  padding: 24px;
 }
 
 .bill-close {
@@ -803,16 +803,18 @@ function handleViewRetire(): void {
 }
 
 .bill-section-header {
-  padding: 6px 12px;
+  padding: 10px 16px;
   background: rgba(0, 212, 255, 0.1);
   border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+  margin-bottom: 12px;
 }
 
 .bill-tag {
-  font-size: 10px;
+  font-size: 14px;
   color: #00d4ff;
-  letter-spacing: 2px;
-  text-shadow: 0 0 4px #00d4ff;
+  letter-spacing: 3px;
+  text-shadow: 0 0 6px #00d4ff;
+  font-weight: bold;
 }
 
 /* 统计数据 */

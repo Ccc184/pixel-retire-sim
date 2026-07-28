@@ -3,7 +3,8 @@ import { ref, computed, watch } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import type { GameState, YearResult } from '../../types/global.d.js'
 import { playTurn, playDing, playBuzz, playBigGain, playBigLoss } from '../../utils/audio.js'
-import { fmt, fmtExact, fmtSigned, fmtSalaryDelta, fmtWan } from '../../utils/format.js'
+import { fmt, fmtExact, fmtSigned, fmtSalaryDelta } from '../../utils/format.js'
+import { generateMilestoneSummary, isMilestoneAge } from '../../data/milestone-summaries.js'
 
 const store = useGameStore()
 
@@ -63,11 +64,10 @@ watch(() => store.showYearEnd, (newVal) => {
 const showFinanceDetail = ref<boolean>(false)
 const showWellbeingDetail = ref<boolean>(false)
 
-// 是否是里程碑年（25/30/35/40/45/50/55）
-// 注意：用 result.value.age（当年结算时的年龄，未递增）而不是 state.value.currentAge（已递增）
+// 是否是里程碑年（30/40/50岁，60岁属退休结局）
 const isMilestone = computed(() => {
   const age = result.value?.age || state.value.currentAge
-  return [25, 30, 35, 40, 45, 50, 55].includes(age)
+  return isMilestoneAge(age)
 })
 
 // ================================================================
@@ -470,78 +470,14 @@ const wellbeingDetailRows = computed<WellbeingRow[]>(() => {
 })
 
 // ================================================================
-//  里程碑叙事（每5年一次回顾）
+//  里程碑叙事（30/40/50岁人生小结）
 // ================================================================
 const milestoneLines = computed<string[]>(() => {
   if (!isMilestone.value || !result.value) return []
-  // 用当年结算时的年龄（未递增），避免里程碑偏移一年
   const age = result.value.age
-  const lines: string[] = []
-
-  lines.push(`--- 第${age}岁 - 人生小结 ---`)
-  lines.push('')
-
-  // 财务回顾
-  if (state.value.currentSavings > 500000) {
-    lines.push(`这些年你攒下了${Math.round(state.value.currentSavings / 10000)}万。虽然跟动态圈那些"年入百万"的大佬没法比，但至少你不用看银行余额脸色过日子了。`)
-  } else if (state.value.currentSavings > 100000) {
-    lines.push(`存款${Math.round(state.value.currentSavings / 10000)}万左右，说多不多说少不少。你在余额和花呗之间走钢丝——还走得挺稳。`)
-  } else if (state.value.currentSavings < 0) {
-    lines.push('银行账户是负数。你开始理解什么叫"隐形贫困人口"——不是看不见钱，是钱看不见你。')
-  } else {
-    lines.push('存款不多，但至少还是正数。你在心里默默给自己打气："加油，距离财务自由只差……算了先不想了。"')
-  }
-
-  // 关系回顾
-  const p = state.value.partner
-  if (p && !p.hasDivorced && p.datingStage !== 'single' && p.datingStage !== 'divorced') {
-    if (p.datingStage === 'married') {
-      const years = age - p.marriedYear
-      lines.push(`你和${p.name}结婚${years}年了。${p.affection > 60 ? '虽然有过无数次想摔门而去的冲动，但你们还在彼此身边。这大概就是传说中的"磨合"吧——磨到现在都快包浆了。' : '你不确定这段关系还能撑多久，但此刻的温暖是真实的。你们之间有一种默契：吵架归吵架，外卖还是会给对方带一份。'}`)
-    } else if (p.datingStage === 'serious') {
-      lines.push(`你和${p.name}在一起了。身边的朋友都在问"什么时候结婚"，你嘴上说"不急"，其实心里也在想这个问题。`)
-    } else if (p.datingStage === 'dating') {
-      lines.push(`你正在和${p.name}约会。${p.affection > 50 ? '一切都刚刚好，像春天的风。' : '你还在确定自己的心意，但每次看到ta的消息还是会笑。'}`)
-    } else if (p.datingStage === 'crush') {
-      lines.push(`你对${p.name}有好感。你反复翻看ta的动态圈，研究每一条动态的含义，但从来不敢主动发消息。`)
-    }
-  } else if (p?.datingStage === 'divorced' || p?.hasDivorced) {
-    lines.push(`${age}岁了，经历过一段婚姻。你不再急着找下一个人，一个人吃饭旅行到处走走停停，也觉得挺好。`)
-  } else if (age > 30) {
-    lines.push(`${age}岁了，还是一个人。${age > 35 ? '你早就不再被"什么时候结婚"这个问题困扰了。或者说，你已经学会了在被问到时微笑着说"随缘"——然后把翻白眼的动作留到转身之后。' : '偶尔也会想，如果当初勇敢一点会不会不一样。但你打开交友软件看了看——算了，还是打游戏吧。'}`)
-  }
-
-  // 子女回顾
-  if (state.value.hasChild && state.value.children.length > 0) {
-    const eldest = state.value.children[0]
-    const childAge = age - eldest.birthYear
-    if (childAge > 18) {
-      lines.push(`孩子已经${childAge}岁了，有了自己的世界。你看着ta的背影恍惚间好像看到了曾经的自己——然后ta转过头说"爸/妈你能不能别偷看我手机了"。`)
-    } else if (childAge > 6) {
-      lines.push(`孩子${childAge}岁了，${eldest.academicPerformance > 60 ? '成绩还算争气，是家长群里少数能抬起头来的那种——虽然你知道ta的课外班比你当年上的补习班还多。' : '成绩不太理想，但你还不想给ta太多压力。毕竟你自己当年也是"快乐教育"的产物——虽然现在回想起来那更像是"放养教育"。'}`)
-    } else {
-      lines.push(`孩子还小，${eldest.gender === '男' ? '他' : '她'}的哭声是家里最动听的背景音——虽然每天凌晨三点听到的时候你并不这么觉得。`)
-    }
-  }
-
-  // 父母
-  if (state.value.parents.isAlive) {
-    lines.push(`父母${state.value.parents.age}岁了。${state.value.parents.health < 50 ? '你开始注意到他们的步子慢了，说话声调低了，保温杯用得更频繁了。你每次回家都会多看他们几眼——假装在看电视，其实在确认他们还好。' : '虽然他们嘴上不说，但你看得出来他们老了一些。你开始害怕接不到他们的电话——所以你给他们设了一个每日提醒："给爸妈打电话"。大部分时候你确实打了。'}`)
-  } else {
-    lines.push('父母不在了。有些夜晚你会梦到小时候的厨房、炒菜的声音、窗台的阳光。醒来后枕头上有一小块湿。你打开手机想发条消息给他们——然后才想起来。')
-  }
-
-  // 身心状态回顾
-  if (state.value.health < 50) {
-    lines.push('身体发出了警告信号。你告诉自己该注意了，但"该注意了"这四个字你已经对镜自语了五年了。保温杯里的枸杞已经从装饰品变成了必需品。')
-  } else if (state.value.stress > 60) {
-    lines.push(`你肩上的担子越来越重。半夜醒来盯着天花板发呆的时候，你打开手机算了算——还有${60 - age}年才能退休。你翻了个身，决定再睡${age}年。`)
-  } else if (state.value.happiness > 60) {
-    lines.push('总体来说你觉得还行。虽然离"理想生活"还有段距离——但谁规定一定要到达终点呢？你在沿途的风景里找到了属于自己的小确幸。虽然小，但确实幸。')
-  }
-
-  lines.push('')
-  return lines
+  const lines = generateMilestoneSummary(state.value, age)
+  if (lines.length === 0) return []
+  return [`── 第${age}岁 · 人生小结 ──`, ...lines]
 })
 
 // ================================================================
@@ -623,7 +559,7 @@ function handleContinue(): void {
 
       <!-- 标题区 -->
       <div class="yearend-header">
-        <div v-if="isMilestone" class="milestone-tag">MILESTONE</div>
+        <div v-if="isMilestone" class="milestone-tag">人生小结</div>
         <p class="yearend-age">◆ 第{{ result.age }}岁 ◆</p>
       </div>
 
@@ -1205,21 +1141,42 @@ function handleContinue(): void {
 .milestone-section {
   position: relative;
   z-index: 2;
-  padding: 10px 12px;
-  background: rgba(255, 236, 39, 0.04);
-  border: 1px dashed rgba(255, 236, 39, 0.2);
+  padding: 12px 14px;
+  background: linear-gradient(135deg, rgba(201, 0, 255, 0.06), rgba(0, 212, 255, 0.04));
+  border: 1px solid rgba(201, 0, 255, 0.2);
+  border-radius: 4px;
 }
 
 .milestone-line {
-  margin: 0 0 6px 0;
+  margin: 0 0 8px 0;
   font-size: 13px;
-  line-height: 1.9;
-  color: #ffec27;
-  text-shadow: 0 0 4px rgba(255, 236, 39, 0.3);
+  line-height: 1.85;
+  color: #e0d4f0;
+  text-shadow: 0 0 3px rgba(201, 0, 255, 0.2);
+  word-break: break-word;
 }
 
+/* 第一行（标题行）特殊样式 */
+.milestone-line:first-child {
+  font-size: 14px;
+  color: #ffec27;
+  text-shadow: 0 0 6px rgba(255, 236, 39, 0.4);
+  text-align: center;
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 236, 39, 0.15);
+}
+
+/* 最后一行（收尾感慨）特殊样式 */
 .milestone-line:last-child {
   margin-bottom: 0;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(201, 0, 255, 0.15);
+  color: #c0e0ff;
+  font-style: italic;
+  text-align: center;
 }
 
 /* ============================================================
