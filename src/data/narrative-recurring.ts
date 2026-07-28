@@ -483,16 +483,24 @@ const recurringEvents: NarrativeEvent[] = [
       {
         id: 'seek_help',
         label: '找个心理咨询聊聊',
-        description: '专业的事交给专业的人',
-        hint: '存款-1500 · 压力-8 · 幸福+5 · 健康+3',
+        description: '专业的事交给专业的人，这是一个长期的过程',
+        hint: '存款-1500 · 首次压力-2，效果需要持续积累',
         hintColor: 'positive',
         savingsChange: -1500,
         stateEffect: (s: GameState) => {
-          s.stress = clamp(s.stress - 8, 0, 100);
-          s.happiness = clamp(s.happiness + 5, 0, 100);
-          s.health = clamp(s.health + 3, 0, 100);
+          // 心理咨询是持续过程：首次效果小，多次咨询有累积但边际递减
+          const sessions = (s as any)._therapySessions || 0;
+          (s as any)._therapySessions = sessions + 1;
+          // 第1次：压力-2；第2-3次：压力-2 幸福+1；第4-5次：压力-1 幸福+1；之后每次仅压力-1
+          let stressReduction = 2;
+          let happinessGain = 0;
+          if (sessions >= 1 && sessions <= 2) { stressReduction = 2; happinessGain = 1; }
+          if (sessions >= 3) { stressReduction = 1; happinessGain = 1; }
+          if (sessions >= 6) { stressReduction = 1; happinessGain = 0; } // 长期维持，边际递减至很低
+          s.stress = clamp(s.stress - stressReduction, 0, 100);
+          if (happinessGain > 0) s.happiness = clamp(s.happiness + happinessGain, 0, 100);
         },
-        log: '咨询师很平静地听你说完，然后问了一个让你愣住的问题："你上一次觉得开心是什么时候？"你张了张嘴，发现自己想不起来。五十分钟的咨询结束了，你走出来，觉得胸口轻了一点。',
+        log: '五十分钟的咨询，你说了很多话。咨询师没有给你答案，只是问了几个问题。走出咨询室的时候，你并没有觉得豁然开朗——但有些东西开始松动了。',
       },
       {
         id: 'self_care',

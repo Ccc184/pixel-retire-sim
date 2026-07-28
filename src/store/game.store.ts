@@ -5,7 +5,7 @@ import type { GameState, Profession, CityType, OriginChoices, YearResult, Crossr
 import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth } from '../utils/math-engine.js';
 import { rollRandomEvents } from '../data/events.js';
 import { rollDailyEvents, applyDailyEventEffects } from '../data/daily-events.js';
-import { ENDINGS, buildEndingText, CITY_REASON_QUOTES, CAREER_MOTIVATION_QUOTES, RISK_ATTITUDE_QUOTES } from '../utils/narrative.js';
+import { ENDINGS, buildEndingText } from '../utils/narrative.js';
 import { initParents, initFriends, processRelationships, resetMarriedFriendSet } from '../utils/relationships.js';
 import { scheduleSave, loadSave, clearSave } from './persist.js';
 import { detectCrossroad } from '../data/crossroads.js';
@@ -1673,11 +1673,19 @@ export const useGameStore = defineStore('game', () => {
       if (path) {
         const title = isSuccess ? path.successTitle : path.failureTitle;
         const body = isSuccess ? path.successEnding(state.value) : path.failureEnding(state.value);
-        // 搭配起源回响
-        const cityQuote = (CITY_REASON_QUOTES as any)[state.value.originChoices.cityReason] || '';
-        const careerQuote = (CAREER_MOTIVATION_QUOTES as any)[state.value.originChoices.careerMotivation] || '';
-        const riskQuote = (RISK_ATTITUDE_QUOTES as any)[state.value.originChoices.riskAttitude] || '';
-        return `【${title}】\n\n${body}\n\n${cityQuote}\n\n${careerQuote}\n\n${riskQuote}`;
+        // 一句简洁的起源回响
+        const echoes = [
+          ['那年义无反顾踏上的列车，终究带你到了一个你不曾预想的站台。', '你并非为野心而来，却在这座城市里长出了自己的根。', '你循着一个人来，最后发现能让自己站稳的，从来不是别人的脚步。'],
+          ['你算计着、忍耐着，每一步都算数。', '你死死抱住的那根浮木，最终真的托住了你。', '饿着肚子也要把灵魂喂饱的人，往往真的能找到饭吃。'],
+          ['你从未在牌桌下蜷缩过，这就够了。', '你走在不偏不倚的窄路上，身后是刚刚好的月光。', '活着本身需要最多的勇气，你做到了。'],
+        ];
+        const cr = state.value.originChoices.cityReason;
+        const cm = state.value.originChoices.careerMotivation;
+        const ra = state.value.originChoices.riskAttitude;
+        const seed = (cr * 7 + cm * 13 + ra * 3) % 3;
+        const echoList = [echoes[0][cr], echoes[1][cm], echoes[2][ra]];
+        const echo = echoList[seed];
+        return `【${title}】\n\n${body}\n\n${echo}`;
       }
     }
     return buildEndingText(state.value.currentEndingId, state.value.originChoices);

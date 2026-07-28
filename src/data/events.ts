@@ -44,7 +44,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
     eventName: '大模型误诊事故',
     description: 'AI诊断系统误判了你的检查报告，等发现时病情已经延误——算法的置信度是99%，而你是那1%。',
     probability: () => 0.02,
-    condition: (state: GameState) => state.isInsured || state.health < 70,
+    condition: (state: GameState) => state.currentAge >= 30,
     effect: (state: GameState) => {
       state.health = Math.max(0, state.health - 10);
       state.happiness = Math.max(0, state.happiness - 5);
@@ -173,7 +173,7 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
     eventName: '神经黑客攻击',
     description: '你的脑机接口被黑客入侵，记忆被窃取、广告被强行植入——数字时代的入侵不再止于屏幕。',
     probability: () => 0.02,
-    condition: (state: GameState) => state.retirementPath === 'ai_symbiote' && state.pathFaith >= 50 || state.currentAge >= 35,
+    condition: (state: GameState) => state.retirementPath === 'ai_symbiote' && state.pathFaith >= 40,
     effect: (state: GameState) => {
       state.stress = Math.min(100, state.stress + 20);
       state.happiness = Math.max(0, state.happiness - 10);

@@ -1,14 +1,12 @@
 /**
  * 人生里程碑小结生成器
  *
- * 设计理念：以小说家的笔触，在30/40/50岁三个节点为玩家书写人生回顾。
- * 每段小结短小精炼（5-6句），力求心生感慨。
- * 60岁不再生成小结——那属于退休结局的舞台。
- *
  * 三个节点的情感弧线：
- *   30岁 —— 回望与确认：第一个十年过去了，你成了谁？
- *   40岁 —— 承重与和解：中年的重量压下来，你还好吗？
- *   50岁 —— 放下与期待：最后一段路，你准备好了吗？
+ *   30岁 —— 回望与承认：第一个十年过去了，你成为了什么样的人，承认自己可能不会成为想象中的人
+ *   40岁 —— 承重与失去：父母老去、身体走下坡、朋友变少、梦想褪色，但有具体的东西在支撑你
+ *   50岁 —— 放下与平静：不是认命，是看清什么重要什么不重要
+ *
+ * 60岁不再生成小结——那属于退休结局的舞台。
  */
 
 import type { GameState, RetirementPathId } from '../types/global.d.js';
@@ -34,41 +32,102 @@ function fmtWan(n: number): string {
   return n.toString();
 }
 
-/** 从 lifeLog 中提取重大事件关键词 */
-function extractKeyEvents(state: GameState, sinceAge: number): string[] {
-  const events: string[] = [];
+/** 十年间发生的重大事件 */
+interface DecadeEvents {
+  married: boolean;
+  divorced: boolean;
+  hadChild: boolean;
+  boughtHouse: boolean;
+  unemployed: boolean;
+  seriousIllness: boolean;
+  fatherDied: boolean;
+  motherDied: boolean;
+  parentDiedGeneric: boolean; // "永远失去了至亲" 等不区分父母的表述
+  parentHospitalized: boolean;
+  bankrupt: boolean;
+  allInQuit: boolean;
+  startedBusiness: boolean;
+  moved: boolean;
+  businessFailed: boolean;
+}
+
+/** 从 lifeLog 中提取十年间的重大事件 */
+function extractKeyEvents(state: GameState, sinceAge: number): DecadeEvents {
+  const ev: DecadeEvents = {
+    married: false,
+    divorced: false,
+    hadChild: false,
+    boughtHouse: false,
+    unemployed: false,
+    seriousIllness: false,
+    fatherDied: false,
+    motherDied: false,
+    parentDiedGeneric: false,
+    parentHospitalized: false,
+    bankrupt: false,
+    allInQuit: false,
+    startedBusiness: false,
+    moved: false,
+    businessFailed: false,
+  };
+
   for (const log of state.lifeLog) {
     const match = log.match(/^第(\d+)岁/);
     if (!match) continue;
     const age = parseInt(match[1]);
     if (age < sinceAge) continue;
 
-    // 提取重大事件
-    if (/结婚|婚礼/.test(log)) events.push('结婚');
-    if (/离婚/.test(log)) events.push('离婚');
-    if (/宝宝|出生|为人父|为人母/.test(log)) events.push('为人父母');
-    if (/买房|购房|入住/.test(log)) events.push('买房');
-    if (/裁员|失业|被裁/.test(log)) events.push('失业');
-    if (/重病|住院|手术/.test(log)) events.push('重病');
-    if (/黑天鹅|爆仓|破产/.test(log)) events.push('黑天鹅');
-    if (/All In|辞职|全力/.test(log)) events.push('All In辞职');
-    if (/创业|注册公司|成立/.test(log)) events.push('创业');
-    if (/搬家|移居|迁/.test(log)) events.push('搬家');
-    if (/父母.*离世|父亲.*去世|母亲.*去世/.test(log)) events.push('亲人离世');
+    if (/结婚|婚礼/.test(log)) ev.married = true;
+    if (/离婚|离婚证/.test(log)) ev.divorced = true;
+    if (/宝宝|出生|为人父|为人母|孩子出生/.test(log)) ev.hadChild = true;
+    if (/买房|购房|入住新房/.test(log)) ev.boughtHouse = true;
+    if (/裁员|失业|被裁|解雇|辞退/.test(log)) ev.unemployed = true;
+
+    // 重病/住院：区分自己与父母
+    if (/重病|大病|住院|手术|癌症|肿瘤|确诊|急性阑尾/.test(log)) {
+      const mentionsFather = /父亲|爸爸/.test(log);
+      const mentionsMother = /母亲|妈妈/.test(log);
+      const mentionsParent = mentionsFather || mentionsMother || /父母|爸妈/.test(log);
+      if (mentionsParent) {
+        ev.parentHospitalized = true;
+        // 如果同时出现了"走了/不在了/去世"等死亡词，标记为离世
+        if (/(走了|不在了|去世|离世|过世|病逝|没了|永别|没能留住)/.test(log)) {
+          if (mentionsFather && !mentionsMother) ev.fatherDied = true;
+          else if (mentionsMother && !mentionsFather) ev.motherDied = true;
+          else ev.parentDiedGeneric = true;
+        }
+      } else {
+        ev.seriousIllness = true;
+      }
+    }
+
+    // 亲情离世：父亲/爸爸/母亲/妈妈/爸妈/父母 + 走了/不在了/去世/离世/过世/病逝/没了/永别
+    if (/(父亲|爸爸).{0,4}(走了|不在了|去世|离世|过世|病逝|没了|永别|咽气)/.test(log)) ev.fatherDied = true;
+    if (/(母亲|妈妈).{0,4}(走了|不在了|去世|离世|过世|病逝|没了|永别|咽气)/.test(log)) ev.motherDied = true;
+    if (/(爸妈|父母).{0,4}(走了|不在了|去世|离世|过世|病逝|没了|永别|咽气)/.test(log)) ev.parentDiedGeneric = true;
+    if (/永远失去了.{0,6}至亲|子欲养而亲不待|没能留住他|没能留住她/.test(log)) ev.parentDiedGeneric = true;
+
+    if (/黑天鹅|爆仓|破产|存款归零/.test(log)) ev.bankrupt = true;
+    if (/解散了团队|创业失败|公司倒闭|关掉公司/.test(log)) ev.businessFailed = true;
+    if (/All In|辞职全力/.test(log)) ev.allInQuit = true;
+    if (/创业|注册公司|成立公司/.test(log)) ev.startedBusiness = true;
+    if (/搬家|移居|迁居|搬去/.test(log)) ev.moved = true;
   }
-  // 去重，最多保留5个
-  return [...new Set(events)].slice(0, 5);
+  return ev;
 }
 
-/** 重大事件串成短语 */
-function keyEventsPhrase(events: string[]): string | null {
-  if (events.length === 0) return null;
-  if (events.length <= 3) return events.join('、');
-  return events.slice(0, 3).join('、') + '……';
+/** 父母离世的叙述短语 */
+function parentDeathPhrase(ev: DecadeEvents): string | null {
+  if (ev.fatherDied && ev.motherDied) return '父母都走了';
+  if (ev.fatherDied) return '父亲走了';
+  if (ev.motherDied) return '母亲不在了';
+  if (ev.parentDiedGeneric) return '至亲走了';
+  return null;
 }
 
 // ============================================================
-// 30岁小结：回望与确认
+// 30岁小结：回望与承认
+// 第一个十年过去了，你成为了什么样的人，承认自己可能不会成为想象中的人
 // ============================================================
 function summaryAt30(state: GameState): string[] {
   const lines: string[] = [];
@@ -76,182 +135,310 @@ function summaryAt30(state: GameState): string[] {
   const salary = state.currentMonthlySalary;
   const startSalary = state.careerStartSalary;
   const pathName = state.retirementPath ? PATH_NAMES[state.retirementPath] : null;
-  const keyEvents = extractKeyEvents(state, 22);
-  const eventsText = keyEventsPhrase(keyEvents);
+  const ev = extractKeyEvents(state, 22);
+  const p = state.partner;
 
-  // —— 开篇：时间感
-  lines.push('三十岁。没有仪式感，只是某天填表时年龄栏的数字换了——你这才意识到，"年轻"已经不是你的挡箭牌了。');
-
-  // —— 事业与路径
+  // —— 开篇：十年
   if (pathName) {
     if (state.isAllInPath) {
-      lines.push(`你All In了${pathName}这条路。辞职那天像从悬崖跳进海里，到现在你还没分清自己是在飞还是在坠。`);
+      lines.push(`三十岁。你辞了职All In做${pathName}，到现在好几年了。收入不稳定，好的月份和差的月份差好几倍，你已经不跟家里人说具体数字了。`);
     } else {
-      lines.push(`你选了${pathName}这条路，白天上班，夜晚和周末喂养它。它还没长大，但你还在喂——这本身就是一种回答。`);
+      lines.push(`三十岁。白天上班，晚上和周末做${pathName}，两份工叠在一起，你很久没有在十二点前睡过觉了。`);
     }
   } else {
-    const multiple = startSalary > 0 ? (salary / startSalary).toFixed(1) : '1.0';
-    lines.push(`月薪从${fmtWan(startSalary)}到${fmtWan(salary)}，${parseFloat(multiple) >= 2 ? '翻了一倍多' : '涨了一些'}。所谓职业发展，不过是无数个"再撑一年"叠成的台阶。`);
+    const mult = startSalary > 0 ? (salary / startSalary) : 1;
+    const salaryDesc = mult >= 3 ? '翻了三倍' : mult >= 2 ? '翻了一倍多' : '涨了一些';
+    const jobDesc = ev.unemployed ? '中间被裁过一次，在家待了两个月才找到下家' : '没跳过槽';
+    lines.push(`三十岁。月薪从${fmtWan(startSalary)}到${fmtWan(salary)}，${salaryDesc}，${jobDesc}。第一个十年，就这么过来了。`);
+  }
+
+  // —— 具体人生事件（编织进叙事，不罗列）
+  const eventPieces: string[] = [];
+
+  // 感情/婚姻
+  if (ev.divorced) {
+    eventPieces.push('结了婚又离了，搬走那天你帮着把箱子拎到楼下，你们谁都没说保重');
+  } else if (p && p.datingStage === 'married' && !p.hasDivorced) {
+    const years = 30 - p.marriedYear;
+    eventPieces.push(`结婚${years > 0 ? years + '年' : '不到一年'}，日子过得比恋爱时安静`);
+  } else if (p && p.datingStage === 'serious') {
+    eventPieces.push('在一段认真的关系里，但你还没下定决心');
+  } else if (p && (p.datingStage === 'divorced' || p.hasDivorced)) {
+    eventPieces.push('经历过一段婚姻，现在一个人住');
+  }
+
+  // 房子
+  if (ev.boughtHouse) {
+    eventPieces.push('买了房，房贷每个月从工资里扣走一大块');
+  }
+  // 搬家
+  if (ev.moved && !ev.boughtHouse) {
+    eventPieces.push('搬了好几次家，东西越搬越少');
+  }
+  // 父母住院
+  if (ev.parentHospitalized && !ev.fatherDied && !ev.motherDied && !ev.parentDiedGeneric) {
+    eventPieces.push('爸住过一次院，你连夜赶回去，在病房外的走廊上坐了半宿');
+  }
+  // 父母离世
+  const deathPhrase = parentDeathPhrase(ev);
+  if (deathPhrase) {
+    eventPieces.push(`${deathPhrase}，你有时候拿起手机想拨那个号码，拨到一半想起来`);
+  }
+  // 自己重病
+  if (ev.seriousIllness) {
+    eventPieces.push('自己也住过一次院，一个人签的手术同意书');
+  }
+  // 破产/爆仓
+  if (ev.bankrupt) {
+    eventPieces.push('那年爆了仓，存款一夜清零，你不敢告诉家里人');
+  }
+  // 创业
+  if (ev.startedBusiness && !ev.businessFailed) {
+    eventPieces.push('跟朋友注册了家小公司，还没赚钱，但也没倒');
+  }
+
+  if (eventPieces.length >= 2) {
+    lines.push(eventPieces.slice(0, 2).join('。') + '。');
+  } else if (eventPieces.length === 1) {
+    lines.push(eventPieces[0] + '。');
+  } else {
+    // 没有重大事件：写日常
+    if (p && p.datingStage === 'dating') {
+      lines.push('谈着一段不咸不淡的恋爱，租着一间不大的房子，周末偶尔和朋友吃饭。');
+    } else if (!p || p.datingStage === 'single') {
+      lines.push('还是一个人，租着房子，周末加班或者睡觉，没有什么特别的事发生。');
+    } else {
+      lines.push('日子过得不紧不慢，没有大起，也没有大落。');
+    }
   }
 
   // —— 财务现实
-  if (savings > 500000) {
-    lines.push(`存款${fmtWan(savings)}。同龄人还在为房租发愁时，你有了一点底气——但你知道这点底气在一场大病面前什么都不是。`);
+  if (ev.bankrupt || savings < 0) {
+    lines.push(`存款是负的。三十岁的你比二十二岁时还穷，信用卡还欠着钱。你不再跟大学同学聊理想了——不是不想聊，是聊不起。`);
+  } else if (savings > 500000) {
+    lines.push(`存款${fmtWan(savings)}。你有了一点底气，但你见过同事被裁后三个月找不到工作的样子，知道这点底气经不住什么风浪。`);
   } else if (savings > 100000) {
-    lines.push(`存款${fmtWan(savings)}，不多不少。卡在"饿不死也富不了"的中间地带，和大多数人一样。`);
-  } else if (savings < 0) {
-    lines.push(`存款是负的。三十岁的你比二十岁时更穷了——但你只能告诉自己，这不是终点。`);
+    lines.push(`存款${fmtWan(savings)}。饿不死，也撑不起什么野心。`);
   } else {
-    lines.push(`存款${fmtWan(savings)}。说多不多，说少……确实少。你在心里把"财务自由"划掉，换成了"活着就行"。`);
+    lines.push(`存款${fmtWan(savings)}。你已经不做三十岁财务自由的梦了。`);
   }
 
-  // —— 感情/家庭
-  const p = state.partner;
-  if (p && p.datingStage === 'married' && !p.hasDivorced) {
-    const years = 30 - p.marriedYear;
-    lines.push(`${years > 0 ? `结婚${years}年了` : '刚结婚'}。婚姻不是童话的结局，是另一段故事的序章。`);
-  } else if (p && p.datingStage === 'serious') {
-    lines.push(`你在一段认真的关系里。ta见过你最疲惫的样子，你还没决定要不要让ta见你最老的样子。`);
-  } else if (p && (p.datingStage === 'divorced' || p.hasDivorced)) {
-    lines.push(`经历过一段婚姻的起落。你不再急着找下一个人——一个人也没什么不好，只是偶尔深夜觉得安静得有点多余。`);
+  // —— 收尾：承认
+  const hasScars = ev.divorced || ev.seriousIllness || ev.bankrupt || ev.fatherDied || ev.motherDied || ev.parentDiedGeneric;
+  if (hasScars) {
+    lines.push('三十岁，你没活成十八岁时想象的样子。那些疤还在，但你不再试图遮掩它们了。');
   } else {
-    lines.push(`还是一个人。不是不想爱，是越来越难遇到那个让你愿意交出时间和软弱的人。`);
+    lines.push('三十岁。你承认自己大概率不会成为十八岁时想象的那个人了。这个承认花了十年，但说出口的时候，反而松了口气。');
   }
 
-  // —— 重大事件
-  if (eventsText) {
-    lines.push(`这些年——${eventsText}。有些成了勋章，有些成了疤，都长在你身上了。`);
-  }
-
-  // —— 收尾感慨
-  lines.push('三十岁。你不再年轻，但也远未老去。最难的从来不是做选择——是做了选择之后不回头。');
-
-  return lines;
+  return lines.slice(0, 6);
 }
 
 // ============================================================
-// 40岁小结：承重与和解
+// 40岁小结：承重与失去
+// 父母老去、身体走下坡、朋友变少、梦想褪色，但有具体的东西在支撑你
+// 直面伤痕，不用"和解"搪塞
 // ============================================================
 function summaryAt40(state: GameState): string[] {
   const lines: string[] = [];
   const savings = state.currentSavings;
   const pathName = state.retirementPath ? PATH_NAMES[state.retirementPath] : null;
-  const keyEvents = extractKeyEvents(state, 30);
-  const eventsText = keyEventsPhrase(keyEvents);
-
-  // —— 开篇：中年的重量
-  lines.push('四十不惑——古人说的。但你不记得从哪天起，"不惑"变成了"不问"。不是想通了，是懒得想了。');
-
-  // —— 路径与信念
-  if (pathName) {
-    if (state.isAllInPath) {
-      const faith = state.pathFaith;
-      if (faith > 60) {
-        lines.push(`All In ${pathName}好几年了。你瘦了，也硬了。信念还在，只是从燃烧的火变成了闷烧的炭——不亮，但烫。`);
-      } else if (faith > 30) {
-        lines.push(`All In ${pathName}这些年，你开始怀疑当初的孤注一掷是不是太冲动。但你已经回不去了——不是不能，是不甘心。`);
-      } else {
-        lines.push(`${pathName}这条路，你快走不下去了。信念像沙漏里最后几粒沙，你看着它们落下去，攥不住。`);
-      }
-    } else {
-      lines.push(`${pathName}这条路你还在走，白天上班，晚上经营。有人说你"不务正业"，你笑笑没说话——他们不知道，正是这条路让你在格子间里撑过了这些年。`);
-    }
-  } else {
-    lines.push('你没有选那条额外的路。生活就是上班、下班、还贷、偶尔旅行。没什么不好——只是偶尔会想：如果当初……算了。');
-  }
-
-  // —— 财务与责任
-  const hasMortgage = state.currentMortgageCost > 0;
+  const ev = extractKeyEvents(state, 30);
+  const p = state.partner;
   const hasChild = state.hasChild && state.children.length > 0;
+  const hasMortgage = state.currentMortgageCost > 0;
   const parentAlive = state.parents.isAlive;
+  const deathPhrase = parentDeathPhrase(ev);
 
-  let burdens: string[] = [];
-  if (hasMortgage) burdens.push('房贷');
-  if (hasChild) burdens.push('孩子');
-  if (parentAlive && state.parents.health < 50) burdens.push('年迈的父母');
-  if (burdens.length > 0) {
-    lines.push(`存款${fmtWan(savings)}。${burdens.join('、')}压在肩上，你成了那个"不能倒下"的人。你开始理解父亲当年沉默抽烟的背影。`);
-  } else if (savings > 2000000) {
-    lines.push(`存款${fmtWan(savings)}。你终于不用看价格标签了，但发现自己已经没什么想买的东西。`);
-  } else {
-    lines.push(`存款${fmtWan(savings)}。不上不下，不好不坏。四十岁就是这样——没有大起大落，只有日复一日的"还过得去"。`);
-  }
+  // —— 开篇：身体先说话
+  lines.push('四十岁。身体先告诉你的——腰开始酸了，体检报告上箭头一年比一年多，熬一次夜要两天才能缓过来。');
 
   // —— 父母
-  if (!parentAlive) {
-    lines.push('父母不在了。你在某些瞬间还会习惯性地想拨那个号码，然后停住。有些失去不是疼，是空。');
-  } else if (state.parents.health < 40) {
-    lines.push(`父母${state.parents.age}岁了，身体大不如前。你开始害怕接到老家的电话，每次铃响心脏都会停一拍。`);
+  if (!parentAlive || deathPhrase) {
+    const who = deathPhrase || '父母不在了';
+    lines.push(`${who}。过年不用再抢票回家，但年夜饭桌上永远多了一副碗筷。你没有走出来，只是学会了带着那个空缺继续过日子。`);
+  } else if (state.parents.health < 40 || ev.parentHospitalized) {
+    lines.push(`父母${state.parents.age}岁了，住过院，身体明显不如从前。你开始害怕手机在深夜响起，每次看到老家的号码心跳都会漏一拍。`);
+  } else {
+    lines.push(`父母${state.parents.age}岁了，头发白了大半。你回家的次数比三十岁时多了，每次走都塞一车吃的回来。`);
   }
 
-  // —— 重大事件
-  if (eventsText) {
-    lines.push(`这十年——${eventsText}。你以为过不去的坎，现在都成了简历上一行淡淡的字。`);
+  // —— 这十年的伤（直面，不和解）
+  const scars: string[] = [];
+  if (ev.divorced) {
+    scars.push('离了婚，财产分走了一部分，孩子每周见一次');
+  }
+  if (ev.unemployed) {
+    scars.push('被裁过，投出去的简历石沉大海，最后那份工作薪水不如以前');
+  }
+  if (ev.bankrupt || ev.businessFailed) {
+    scars.push('创业失败，赔了钱，解散了团队，有个朋友至今没再联系');
+  }
+  if (ev.seriousIllness) {
+    scars.push('生了一场大病，出院后你把烟戒了，也把那些不必要的酒局推了');
   }
 
-  // —— 收尾感慨
-  lines.push('四十岁。你不再和命运讨价还价了——不是认命，是终于学会和遗憾坐下来喝杯茶。');
+  let pathLine: string | null = null;
+  if (scars.length > 0) {
+    lines.push(`这十年，${scars.slice(0, 2).join('。')}。你没有和这些事和解。有些夜晚你还是会想"如果当初"，但天亮了你还是得爬起来。`);
+  } else {
+    if (pathName) {
+      if (state.isAllInPath) {
+        if (state.pathFaith < 30) {
+          pathLine = `${pathName}这条路快走不下去了。收入不稳定，信心在磨损，但你已经四十了，回头的成本比往前走还高。`;
+        } else {
+          pathLine = `All In ${pathName}这些年，你没赚到什么大钱，但也没饿死。你不再跟人解释这条路对不对了——解释了他们也不懂。`;
+        }
+      } else {
+        pathLine = `${pathName}还在做，不温不火。它没能让你财务自由，但它是你在工作和家庭之外，唯一留给自己的东西。`;
+      }
+    } else {
+      pathLine = '这十年没什么大起大落。上班、下班、还贷、陪孩子写作业，每天都差不多。';
+    }
+    if (pathLine) lines.push(pathLine);
+  }
 
-  return lines;
+  // —— 支撑你的具体东西
+  const pillars: string[] = [];
+  if (p && p.datingStage === 'married' && !p.hasDivorced) {
+    pillars.push('身边那个人');
+  }
+  if (hasChild) {
+    const eldest = state.children[0];
+    const childAge = 40 - eldest.birthYear;
+    pillars.push(`${childAge}岁的孩子`);
+  }
+  if (pathName && !ev.businessFailed && !(state.isAllInPath && state.pathFaith < 30)) {
+    pillars.push(`你做了十几年的${pathName}`);
+  }
+  if (hasMortgage) {
+    pillars.push('那套还在还贷的房子');
+  }
+  if (savings > 1000000) {
+    pillars.push(`存款里的${fmtWan(savings)}`);
+  }
+  if (ev.startedBusiness && !ev.businessFailed) {
+    pillars.push('那家还活着的小公司');
+  }
+
+  if (pillars.length > 0) {
+    lines.push(`撑着你的不是什么信念，是具体的东西：${pillars.slice(0, 3).join('、')}。你成了那个不能倒下的人——身后有人等着吃饭、等着交学费、等着有人扛事。`);
+  } else {
+    lines.push(`存款${fmtWan(savings)}。你没什么退路，也没什么指望，但你还是每天早上闹钟响了就爬起来。四十岁的人，不靠热血了。`);
+  }
+
+  // —— 收尾
+  if (scars.length > 1) {
+    lines.push('四十岁。你没有和生活和解，你只是学会了在负重下呼吸。');
+  } else {
+    lines.push('四十岁。年轻时想做的事大多没做成，但你还站在这里。日子还得过。');
+  }
+
+  return lines.slice(0, 6);
 }
 
 // ============================================================
-// 50岁小结：放下与期待
+// 50岁小结：放下与平静
+// 不是认命，是看清什么重要什么不重要
 // ============================================================
 function summaryAt50(state: GameState): string[] {
   const lines: string[] = [];
   const savings = state.currentSavings;
   const pathName = state.retirementPath ? PATH_NAMES[state.retirementPath] : null;
-  const keyEvents = extractKeyEvents(state, 40);
-  const eventsText = keyEventsPhrase(keyEvents);
-  const dream = state.retirementDream;
-
-  // —— 开篇：倒数
-  lines.push('五十岁。退休不再是个遥远的概念，你能看见终点线的颜色了。不是所有故事都有好结局——但每个故事都值得有个结局。');
-
-  // —— 路径回顾
-  if (pathName) {
-    if (state.isAllInPath) {
-      lines.push(`${pathName}——这条路你走了半辈子。它给了你自由，也拿走了一些东西。你不再问"值不值得"，因为答案已经长在你身上了。`);
-    } else {
-      lines.push(`${pathName}这条路你断断续续走了很多年。它没能成为你的全部，但它让你知道：你不只是一份工作。`);
-    }
-  } else {
-    lines.push('大半辈子都在上班。你没有什么"副业"或"梦想"，但你把日子过踏实了——这本身就不容易。');
-  }
-
-  // —— 财务终局预判
+  const ev = extractKeyEvents(state, 40);
   const totalWealth = savings + (state.propertyValue || 0) + (state.shopValue || 0);
-  if (totalWealth > state.targetWealth) {
-    lines.push(`净资产${fmtWan(totalWealth)}。你做到了。这个数字意味着你可以不再为钱工作——虽然你用了三十年才走到这里。`);
-  } else if (totalWealth > state.targetWealth * 0.6) {
-    lines.push(`净资产${fmtWan(totalWealth)}，离目标还差一口气。你知道这口气得用最后几年拼命吹——或者，学会接受"差不多就够了"。`);
+  const p = state.partner;
+  const hasChild = state.hasChild && state.children.length > 0;
+  const parentAlive = state.parents.isAlive;
+  const dream = state.retirementDream;
+  const deathPhrase = parentDeathPhrase(ev);
+
+  // —— 开篇：五十岁
+  lines.push('五十岁。退休看得见了。你不再刷招聘软件了——不是不想，是知道没人会要一个五十岁的人。');
+
+  // —— 父母/代际
+  if (!parentAlive || deathPhrase) {
+    lines.push('父母走了有些年了。你现在做饭的味道越来越像你妈，说话的语气越来越像你爸。有些东西他们留给了你，不是存折上的数字，是你身上改不掉的习惯。');
   } else {
-    lines.push(`净资产${fmtWan(totalWealth)}。说实话，离退休目标还差不少。但五十岁了，你开始想：也许"够"不是一个数字，是一种心态。`);
+    lines.push(`父母${state.parents.age}岁了，你越来越频繁地回去看他们。你不再嫌他们啰嗦了——你知道还能听几年是几年。`);
   }
 
-  // —— 身体
-  if (state.health < 40) {
-    lines.push('身体在提醒你它不是永动机。年轻时透支的，现在开始连本带利地还。你开始认真对待"健康"——不是为了活更久，是为了活得像个人。');
-  } else if (state.health > 70) {
-    lines.push('身体还算争气。同龄人开始各种毛病的时候，你还能跑能跳。你知道这份健康是最大的财富——比存款数字重要得多。');
+  // —— 这十年发生的事，编织进叙事
+  const fiftiesEvents: string[] = [];
+  if (ev.seriousIllness || state.health < 50) {
+    fiftiesEvents.push('身体亮过红灯，住过院，你终于把医生的话当回事了');
   }
-
-  // —— 子女
-  if (state.hasChild && state.children.length > 0) {
+  if (ev.divorced) {
+    fiftiesEvents.push('婚姻还是没撑住，你们在这十年里办了手续');
+  }
+  if (ev.bankrupt || ev.businessFailed) {
+    fiftiesEvents.push('生意亏了大钱，你把商铺挂了出去');
+  }
+  if (ev.unemployed) {
+    fiftiesEvents.push('被裁了，找不到像样的工作，最后接了份零工');
+  }
+  if (hasChild) {
     const eldest = state.children[0];
     const childAge = 50 - eldest.birthYear;
-    if (childAge >= 18) {
-      lines.push(`孩子${childAge}岁了，有了自己的方向。你看着ta的背影，想起自己二十岁时也这样头也不回地走过。现在你站在路的另一头，终于读懂了当年父母的眼神。`);
+    if (childAge >= 22) {
+      fiftiesEvents.push(`孩子${childAge}岁了，参加了工作，不再需要你操心学费`);
+    } else if (childAge >= 18) {
+      fiftiesEvents.push('孩子上大学了，家里忽然安静了很多');
+    }
+  }
+  if (deathPhrase && !parentAlive) {
+    fiftiesEvents.push('送走了最后一位老人，你彻底成了家里辈分最大的人');
+  }
+
+  if (fiftiesEvents.length > 0) {
+    lines.push(fiftiesEvents.slice(0, 2).join('。') + '。');
+  } else {
+    // 没有大事发生：写身体感知
+    if (state.health < 60) {
+      lines.push('血压高了，膝盖不如从前，爬三层楼要歇一次。你开始按时吃药，不再逞强。');
+    } else {
+      lines.push('身体还算争气，同龄人有的已经拄上了拐，你还能自己买菜做饭。');
     }
   }
 
-  // —— 重大事件
-  if (eventsText) {
-    lines.push(`最后这段路——${eventsText}。每件事都像命运在提醒你：你活过，你选择过，你没认输过。`);
+  // —— 看清什么重要，什么不重要
+  const important: string[] = [];
+  if (p && p.datingStage === 'married' && !p.hasDivorced) {
+    important.push('每天晚上给你留灯的那个人');
+  }
+  if (hasChild) {
+    important.push('孩子偶尔打来的电话');
+  }
+  if (state.health > 60) {
+    important.push('还算能走能跳的身体');
+  } else {
+    important.push('还能自己做饭、自己下楼买菜的日子');
+  }
+  if (totalWealth > state.targetWealth * 0.6) {
+    important.push(`账上那${fmtWan(totalWealth)}——不多，但够你不用看别人脸色`);
   }
 
-  // —— 退休梦想
+  const notImportant: string[] = ['别人怎么看你', '同学聚会上谁赚得多'];
+  if (pathName && !state.isAllInPath) {
+    notImportant.push(`${pathName}能不能做成大事业`);
+  }
+
+  lines.push(`你终于分清了什么重要——${important.slice(0, 2).join('、')}。什么不重要——${notImportant.slice(0, 2).join('、')}。这个分清楚花了你五十年。`);
+
+  // —— 路径/事业回顾
+  if (pathName) {
+    if (state.isAllInPath && state.pathFaith >= 30 && !ev.businessFailed && !ev.bankrupt) {
+      lines.push(`${pathName}这条路你走了大半辈子。没赚到什么大钱，也没做成什么大事，但你知道那些时间没有白花。`);
+    } else if (state.isAllInPath && (state.pathFaith < 30 || ev.businessFailed || ev.bankrupt)) {
+      lines.push(`${pathName}这条路最后没走通。账面上的数字告诉你该停了，你停了。`);
+    } else {
+      lines.push(`${pathName}你做了很多年，它没变成主业，但它让你在那些最难熬的夜晚有个地方可去。`);
+    }
+  } else {
+    lines.push('上了一辈子班，没做成什么大事，但把该尽的责任尽了。你不再觉得这是失败。');
+  }
+
+  // —— 收尾：平静，不是认命
   if (dream) {
     const dreamNames: Record<string, string> = {
       world_traveler: '环游世界',
@@ -261,14 +448,13 @@ function summaryAt50(state: GameState): string[] {
       square_dance_king: '广场舞之王',
       silver_volunteer: '银发志愿者',
     };
-    const dreamName = dreamNames[dream] || '你的退休梦想';
-    lines.push(`${dreamName}——这就是你在终点线另一边想看到的东西。光是想着它，这些年就没有白走。`);
+    const dreamName = dreamNames[dream] || '那个想了很多年的事';
+    lines.push(`五十岁，你开始认真准备退休后的日子了。${dreamName}还在清单上，排在第一位。`);
+  } else {
+    lines.push('五十岁。你不再追了，也不再等了。剩下的路，慢慢走。');
   }
 
-  // —— 收尾感慨
-  lines.push('五十岁。该放下的放下，该握紧的握紧。最后一程，轻装上阵。');
-
-  return lines;
+  return lines.slice(0, 6);
 }
 
 // ============================================================

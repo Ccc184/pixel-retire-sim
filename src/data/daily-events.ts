@@ -58,7 +58,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_006',
-    text: '周末两天没出门，外卖盒堆了半张桌。周日晚上你意识到整周只说了两句话——给外卖员"谢谢"，给Siri"明天几点下雨"。',
+    text: '周末两天没出门，外卖盒堆了半张桌。周日晚上你意识到整周只说了两句话——给外卖员"谢谢"，给智能音箱"明天几点下雨"。',
     label: '宅家周末',
     ageRange: [22, 35],
     priority: 1,
@@ -85,7 +85,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_009',
-    text: '过年回家，七大姑八大姨轮番"有对象没""工资多少""啥时买房"。你全程微笑点头，内心已演完三集宫斗剧。',
+    text: '过年回家，七大姑八大姨轮番"有对象没""工资多少""啥时买房"。你全程微笑点头，夹菜的筷子没停过，一顿饭吃了三碗饭。',
     label: '亲戚盘问',
     ageRange: [23, 32],
     conditions: (state) => !state.isMarried,
@@ -113,7 +113,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_012',
-    text: '妈打电话问吃了没、穿暖没、忙不忙。你"嗯嗯"五分钟就挂了。挂完又愧疚，点开她动态圈发现她转了篇《经常熬夜的年轻人要注意》。',
+    text: '妈打电话问吃了没、穿暖没、忙不忙。你敷衍了五分钟就挂了。挂完又愧疚，点开她动态圈发现她转了篇《经常熬夜的年轻人要注意》。',
     label: '妈妈的电话',
     ageRange: [22, 40],
     conditions: (state) => state.parents.isAlive,
@@ -132,8 +132,8 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_014',
-    text: '下班路过钢琴店你站了五分钟，看了看余额转身进了蜜雪冰城。四块钱一杯柠檬水，喝完你也觉得灵魂被治愈了——甜水胜过一切。',
-    label: '柠檬水治愈',
+    text: '下班路过钢琴店你站了五分钟，看了看余额转身进了蜜雪冰城。四块钱一杯柠檬水，你站在路边喝完，杯壁的水珠浸湿了半张纸巾。',
+    label: '柠檬水',
     ageRange: [22, 35],
     priority: 1,
     effects: { happiness: 2 },
@@ -141,7 +141,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_015',
-    text: '手机剩2%，你一路小跑找充电器。突然觉得生活也是这样——永远在找充电的地方，永远充不满。充上电，你刷了会儿短视频压惊。',
+    text: '手机剩2%，你一路小跑找充电器。充上电后屏幕亮起来，你坐在沙发上发了五分钟呆，才想起刚才要给谁回消息。',
     label: '手机没电',
     ageRange: [22, 40],
     priority: 1,
@@ -199,7 +199,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_021',
-    text: '你打开贝壳算了首付和月供，默默关掉App。发了条社交平台"房价什么时候跌"，评论区回"等你退休的时候"。',
+    text: '你打开贝壳算了首付和月供，默默关掉App。窗外对面楼的灯亮了大半，你烧了壶水，水开了没去冲茶，凉了才想起来。',
     label: '房价焦虑',
     ageRange: [26, 35],
     conditions: (state) => !state.hasProperty,
@@ -238,7 +238,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_025',
-    text: '收到"恭喜中奖100万"的短信差点点链接。还好反应过来——100万长啥样你都没见过。打开余额宝看了眼，安慰自己"至少还有三位数"。',
+    text: '收到"恭喜中奖100万"的短信差点点链接。反应过来后你把短信删了，打开余额宝看了眼余额，转了五百到定期账户。',
     label: '诈骗短信',
     ageRange: [22, 55],
     priority: 1,
@@ -257,7 +257,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_027',
-    text: '逛商场看中一件外套，翻吊牌1680，默默放回去去了优衣库。结账发现也涨了20，你在心里算了算这个月的恩格尔系数。',
+    text: '逛商场看中一件外套，翻吊牌1680，默默放回去去了优衣库。结账发现也涨了20，你拎着袋子走出来，在门口站了一会儿才往地铁走。',
     label: '优衣库涨价',
     ageRange: [22, 35],
     conditions: (state) => state.currentMonthlySalary < 15000,
@@ -267,7 +267,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_028',
-    text: '你开始早上喝黑咖啡代替奶茶，下了健身App。三天后打开又关掉——"自律"相关帖子你已经收藏了87篇，篇篇吃灰。',
+    text: '你开始早上喝黑咖啡代替奶茶，下了健身App。三天后打开又关掉，闹钟从早上六点改到了六点半。',
     label: '健身Flag',
     ageRange: [25, 40],
     priority: 1,
@@ -296,7 +296,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_031',
-    text: '你在手机上算退休前能攒多少——算了三遍越算越不想看。关掉计算器打开短视频，今朝有酒今朝醉，反正也攒不下。',
+    text: '你在手机上算退休前能攒多少——算了三遍越算越不想看。关掉计算器，你去烧了壶开水，泡了杯面，打开电视看了半集重播的电视剧。',
     label: '退休算账',
     ageRange: [25, 40],
     priority: 2,
@@ -373,7 +373,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_039',
-    text: '理了个光头试图挽救发际线，同事都说"挺精神的"。你笑着说为了凉快——其实是为了省那瓶防脱洗发水的钱。',
+    text: '理了个光头试图挽救发际线，同事都说"挺精神的"。你摸了摸发凉的头皮，下午出了趟门回来发现脖子晒红了一片。',
     label: '剃光头',
     ageRange: [33, 45],
     priority: 1,
@@ -382,7 +382,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_040',
-    text: '午休刷到"35岁后跳槽有多难"看了三遍，把招聘App卸载了。同事问你在干嘛，你说"清理手机内存"——清理的是对人生的幻想。',
+    text: '午休刷到"35岁后跳槽有多难"看了三遍，把招聘App卸载了。同事问你在干嘛，你说"清理手机内存"，下午三点又默默装了回来。',
     label: '跳槽焦虑',
     ageRange: [33, 42],
     conditions: (state) => !state.isUnemployed,
@@ -402,7 +402,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_042',
-    text: '你开始每天吃保健品，桌上摆了一排瓶瓶罐罐。同事调侃"提前养生"，你笑说"保温杯泡枸杞算啥，我泡脚都加艾草了"。',
+    text: '你开始每天吃保健品，桌上摆了一排瓶瓶罐罐。早饭后你按说明数出几粒就着温水吞下，保温杯里泡的枸杞沉在杯底，颜色慢慢渗出来。',
     label: '养生模式',
     ageRange: [35, 55],
     priority: 1,
@@ -411,7 +411,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_043',
-    text: '颈椎病让你在办公室做起"米字操"。同事经过被你伸长脖子的样子吓一跳"要叫救护车吗"，你说没事继续画米字。',
+    text: '颈椎病让你在办公室做起"米字操"。脖子转到右边的时候咔哒响了一声，你顿了顿，继续慢慢转。',
     label: '颈椎米字操',
     ageRange: [30, 50],
     priority: 1,
@@ -460,7 +460,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_048',
-    text: '你买了张彩票，对完号码揉成团扔进垃圾桶。五块钱的梦想就此终结——看了看手里的泡面，心想这五块还不如加个蛋。',
+    text: '你买了张彩票，对完号码揉成团扔进垃圾桶。回到工位打开外卖软件，点了份带卤蛋的套餐。',
     label: '彩票梦碎',
     ageRange: [22, 55],
     priority: 1,
@@ -491,7 +491,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_051',
-    text: '部门来了个00后，做事又快又好工资还比你低。你端着保温杯的手紧了紧，枸杞好像也没那么甜了——被时代抛弃连招呼都不打。',
+    text: '部门来了个00后，做事又快又好工资还比你低。你端着保温杯回到工位，水凉了，起身去饮水机重新接了一杯。',
     label: '00后同事',
     ageRange: [40, 55],
     conditions: (state) => !state.isUnemployed,
@@ -519,7 +519,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_054',
-    text: '手机系统更新后你研究半天也没搞明白新界面，第一次有了"我是不是老了"的念头。后来发现隔壁95后也没搞明白，心里平衡了不少。',
+    text: '手机系统更新后你研究半天也没搞明白新界面，把字体调大了一号，又调回去了。隔壁工位的95后凑过来看了一眼，也皱起了眉。',
     label: '系统更新',
     ageRange: [40, 55],
     priority: 1,
@@ -528,7 +528,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_055',
-    text: '同事老李退休了，欢送会上大家喝了很多酒。你看着老李收拾办公桌的背影，那个空位有点刺眼——再过几年就是你。',
+    text: '同事老李退休了，欢送会上大家喝了很多酒。你看着老李收拾办公桌的背影，他把那盆养了五年的绿萝留给了你。你把绿萝搬到自己工位旁边，浇了点水。',
     label: '同事退休',
     ageRange: [45, 58],
     priority: 2,
@@ -547,7 +547,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_057',
-    text: '你开始每天吃药——降压的、护肝的、补钙的，床头柜像个小型药房。同事问你在吃啥，你苦笑"中年人的仪式感，饭后三粒风雨无阻"。',
+    text: '你开始每天吃药——降压的、护肝的、补钙的，床头柜上摆了一排瓶瓶罐罐。晚饭后你按例数出三粒，就着温水咽下去。',
     label: '日常吃药',
     ageRange: [42, 60],
     priority: 2,
@@ -556,8 +556,8 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_058',
-    text: '午休刷到"20岁年轻人的一天"，看了三十秒就关了心里堵得慌。打开外卖App想点杯奶茶压惊——发现今天已经喝了三杯。',
-    label: '奶茶压惊',
+    text: '午休刷到"20岁年轻人的一天"，看了三十秒就关了。你端起杯子喝了口水，杯底还剩半杯凉透的茶。',
+    label: '午后恍惚',
     ageRange: [40, 55],
     priority: 1,
     effects: {},
@@ -565,7 +565,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_059',
-    text: '公司推"数字化办公"新系统，培训听了三遍也没搞明白。年轻同事帮你操作了一次，你在心里默念"被裁了就去送外卖"——发现骑手也要会用App。',
+    text: '公司推"数字化办公"新系统，培训听了三遍也没搞明白。年轻同事帮你操作了一次，你在笔记本上画了三个箭头标注步骤，还是不确定下次能不能自己找到入口。',
     label: '新系统培训',
     ageRange: [42, 58],
     conditions: (state) => !state.isUnemployed,
@@ -584,7 +584,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_061',
-    text: '晚饭后和伴侣在小区散步，走了一圈又一圈。谁也没说话但手一直牵着，你突然觉得这样也挺好——比动态圈秀恩爱踏实多了。',
+    text: '晚饭后和伴侣在小区散步，走了一圈又一圈。谁也没说话但手一直牵着，路过便利店买了两根冰棍，你一根对方一根，化了的糖水顺着手腕往下淌。',
     label: '小区散步',
     ageRange: [35, 60],
     conditions: (state) => !!state.partner && !state.partner.hasDivorced,
@@ -604,7 +604,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_063',
-    text: '你帮父母装了视频通话App，教了三遍怎么接电话。第二天妈发来消息"刚才是你打的视频吗？我不知道怎么接"——你叹了口气又教了一遍。',
+    text: '你帮父母装了视频通话App，教了三遍怎么接电话。第二天妈发来消息"刚才是你打的视频吗？我不知道怎么接"。你把手机放下，去客厅倒了杯热水，回来后打了个语音电话过去，一步一步说给她听。',
     label: '教爸妈用App',
     ageRange: [35, 55],
     conditions: (state) => state.parents.isAlive,
@@ -634,7 +634,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_066',
-    text: '上楼梯开始喘了，以前一口气爬五楼不费劲，现在三楼就得歇会儿。你对着楼梯叹了口气——电梯又坏了三天了。',
+    text: '上楼梯开始喘了，以前一口气爬五楼不费劲，现在三楼就得歇会儿。你扶着栏杆站了半分钟，摸出手机打开电商平台，搜了搜"护膝"。',
     label: '爬楼喘气',
     ageRange: [50, 60],
     priority: 2,
@@ -663,7 +663,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_069',
-    text: '翻出年轻时写的日记，看了几页觉得当年的自己又傻又天真。看到"30岁前要财务自由"那段你笑了——笑着笑着就哭了，嘴角还是上扬的。',
+    text: '翻出年轻时写的日记，看了几页觉得当年的自己又傻又天真。看到"30岁前要财务自由"那段，你把日记本合上，放回抽屉最里面。晚饭多炒了一个菜。',
     label: '翻旧日记',
     ageRange: [50, 60],
     priority: 2,
@@ -720,7 +720,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_075',
-    text: '退休倒计时，你开始清理办公桌。抽屉翻出十年前的工牌照片，那时的你头发还是黑的——你举着照片对了对镜子，半天没说话。',
+    text: '退休倒计时，你开始清理办公桌。抽屉翻出十年前的工牌照片，那时的你头发还是黑的。你把工牌放进包里带回家，晚上吃饭的时候拿出来给伴侣看了一眼。',
     label: '清理办公桌',
     ageRange: [57, 60],
     conditions: (state) => !state.isUnemployed,
@@ -833,7 +833,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_086',
-    text: '约老朋友吃饭，到了发现他提前走了"太忙了改天再约"。你独自吃完刷动态圈，发现他刚发了"和客户愉快用餐"配文"越努力越幸运"。你给那条点了个赞。',
+    text: '约老朋友吃饭，到了发现他提前走了"太忙了改天再约"。你独自吃完刷动态圈，发现他刚发了"和客户愉快用餐"配文"越努力越幸运"。你放下手机，把剩下的半碗饭吃完了。',
     label: '朋友爽约',
     ageRange: [30, 55],
     conditions: (state) => state.friends.length > 0,
@@ -843,7 +843,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_087',
-    text: '邻居送了一篮自家种的菜过来，你回赠一箱水果。两人在楼道聊了十分钟，约了下次一起遛狗——这年头有个好邻居比中彩票还难。',
+    text: '邻居送了一篮自家种的菜过来，你回赠一箱水果。两人在楼道聊了十分钟，约了下次一起遛狗。菜篮子里有几根黄瓜、两个番茄，叶子上还沾着泥。',
     label: '邻居送菜',
     ageRange: [28, 60],
     conditions: (state) => state.friends.some(f => f.type === '邻居'),
@@ -865,7 +865,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_089',
-    text: '你看到"35岁前财务自由"的帖子，评论区全是骂声。你点了赞，又翻了翻自己余额，觉得骂声还不够响——应该加上你。',
+    text: '你看到"35岁前财务自由"的帖子，评论区全是骂声。你点了赞，关掉手机去厨房下了碗面，加了个蛋。',
     label: '财务自由帖',
     ageRange: [30, 42],
     priority: 1,
@@ -874,7 +874,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_090',
-    text: '你开始记账每笔都记，坚持三天发现光是"交通"就花了不少。决定以后走路上班，第二天又坐了地铁——走路上班的flag已经倒了87次。',
+    text: '你开始记账每笔都记，坚持三天发现光是"交通"就花了不少。决定以后走路上班，第二天闹钟响的时候按掉了，还是坐了地铁。',
     label: '记账三天',
     ageRange: [22, 45],
     priority: 1,
@@ -885,7 +885,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_091',
-    text: '下雨天忘带伞淋了一路回家。洗完热水澡你发了条动态圈"岁月是一场没有伞的雨"，删了觉得矫情——改成"今天雨真大"配了张糊照。',
+    text: '下雨天忘带伞淋了一路回家。洗完热水澡你泡了杯热茶，站在窗边看雨打在楼下的铁皮棚顶上，噼里啪啦响了很久。',
     label: '淋雨回家',
     ageRange: [22, 55],
     priority: 1,
@@ -903,7 +903,7 @@ const dailyEvents: DailyEvent[] = [
 
   {
     id: 'daily_093',
-    text: '你尝试学习一项新技能，看了三个教学视频点了收藏。然后这个收藏夹就再也没打开过——和那82篇"自律"帖子一个下场。',
+    text: '你尝试学习一项新技能，看了三个教学视频点了收藏。视频缓存占了两个G的手机内存，你清理空间的时候犹豫了一下，还是没删。',
     label: '收藏夹吃灰',
     ageRange: [22, 55],
     priority: 1,
@@ -996,7 +996,7 @@ const dailyEvents: DailyEvent[] = [
   },
   {
     id: 'daily_rain',
-    text: '下班的时候突然下起了大雨。你没带伞，站在公交站台等了二十分钟。雨越下越大，你最后还是冲进了雨里。回到家全身湿透，但你忽然觉得——淋一场雨也不全是坏事。',
+    text: '下班的时候突然下起了大雨。你没带伞，站在公交站台等了二十分钟。雨越下越大，你最后还是冲进了雨里。回到家全身湿透，换了身干衣服，烧了壶姜茶。',
     label: '暴雨下班',
     ageRange: [22, 55],
     priority: 2,
@@ -1034,7 +1034,7 @@ const dailyEvents: DailyEvent[] = [
   // 车辆保养变体2
   {
     id: 'daily_car_maintenance_2',
-    text: '轮胎磨得差不多了，换了四条花了不小一笔。你看着新轮胎上的毛刺，心想这就是生活。',
+    text: '轮胎磨得差不多了，换了四条花了不小一笔。新轮胎踩上去刹车灵敏了一些，你开回家的路上格外小心。',
     label: '车辆保养',
     ageRange: [25, 55],
     conditions: (state) => state.hasCar,
@@ -1055,7 +1055,7 @@ const dailyEvents: DailyEvent[] = [
   // 停车难事件（一线城市+有车时触发）
   {
     id: 'daily_parking_hell',
-    text: '在公司附近绕了三圈才找到车位，迟到了十分钟。你跑到工位上气不接下气，领导看了你一眼没说话。每个月800块的停车费，买的不是便利，是焦虑。',
+    text: '在公司附近绕了三圈才找到车位，迟到了十分钟。你跑到工位上气不接下气，领导看了你一眼没说话。你坐下喝了两大口水，心跳了好一会儿才平复。',
     label: '停车难',
     ageRange: [25, 50],
     conditions: (state) => state.hasCar && state.currentCity === '资本修罗场',
@@ -1066,7 +1066,7 @@ const dailyEvents: DailyEvent[] = [
   // 物业费事件（有房时触发）
   {
     id: 'daily_property_fee',
-    text: '物业费又涨了，你看着缴费通知叹了口气。买房时没人告诉你，房子的钱不是一次性花完的。',
+    text: '物业费又涨了，你看着缴费通知停了几秒。转账之后余额数字跳了一下，你把手机揣回兜里，继续做饭。',
     label: '物业费上涨',
     ageRange: [25, 55],
     conditions: (state) => state.hasProperty,
@@ -1107,12 +1107,289 @@ const dailyEvents: DailyEvent[] = [
   // 房贷压力变体2
   {
     id: 'daily_mortgage_pressure_2',
-    text: '房贷快到头了，你开始幻想还清的那天会是什么感觉。那一天应该像拿到毕业证一样吧——终于熬过来了。',
+    text: '房贷快到头了，你翻出当年的贷款合同看了看，纸张已经发黄。计算器上剩余的还款年限变成了个位数，你把合同放回抽屉，给伴侣发了条消息"晚上加个菜"。',
     label: '房贷快结束',
     ageRange: [40, 55],
     conditions: (state) => state.hasProperty && state.mortgageRemainingYears > 0 && state.mortgageRemainingYears <= 5,
     priority: 2,
     effects: { happiness: 2 },
+  },
+
+  // ============== 不花钱的正面日常 ==============
+
+  {
+    id: 'daily_097',
+    text: '周末路过公园，你站在旁边看一群老人下象棋。一个老头悔棋被对手拍了手背，两人吵了两句又接着下。你站着看了四十分钟，直到一盘棋下完才走。',
+    label: '公园看棋',
+    ageRange: [25, 60],
+    priority: 1,
+    effects: { happiness: 3, stress: -2 },
+  },
+
+  {
+    id: 'daily_098',
+    text: '下了一整天的雨，你哪儿也没去。窝在沙发上翻一本旧书，雨声打在窗户上，书页翻过去的声音和雨声混在一起。天黑的时候你才发现已经看了一下午。',
+    label: '雨天看书',
+    ageRange: [22, 60],
+    priority: 1,
+    effects: { happiness: 3, stress: -3 },
+  },
+
+  {
+    id: 'daily_099',
+    text: '午后出了太阳，你搬了把椅子在阳台上坐着。什么也没做，就晒着太阳发了会儿呆，身上暖洋洋的。一盆绿萝的叶子被光照得透亮。',
+    label: '阳台晒太阳',
+    ageRange: [25, 60],
+    priority: 1,
+    effects: { happiness: 2, health: 1, stress: -2 },
+  },
+
+  {
+    id: 'daily_100',
+    text: '晚上你照着菜谱做了一道红烧肉，炖了一个半小时。掀开锅盖的时候香气扑了一脸，肉色红亮，你尝了一口，咸淡刚好。一个人吃了大半盘。',
+    label: '做了顿好饭',
+    ageRange: [25, 60],
+    priority: 1,
+    effects: { happiness: 4, health: 1 },
+  },
+
+  {
+    id: 'daily_101',
+    text: '晚上翻通讯录翻到一个老朋友的名字，你拨了过去。电话聊了一个多小时，聊各自的近况、聊以前的事、聊共同认识的人。挂了电话手机发烫，你喝了杯凉水。',
+    label: '老友长谈',
+    ageRange: [28, 60],
+    priority: 1,
+    effects: { happiness: 4, stress: -2 },
+  },
+
+  // ============== 中年日常（35-50岁）==============
+
+  {
+    id: 'daily_102',
+    text: '陪孩子写作业到晚上十点，同一道数学题讲了第四遍，孩子还是摇头。你攥紧了笔，指节发白，起身去阳台站了三分钟，回来重新讲。',
+    label: '辅导作业',
+    ageRange: [35, 50],
+    conditions: (state) => state.children.length > 0 && state.children.some(c => c.growthStage === '小学' || c.growthStage === '初中'),
+    priority: 2,
+    effects: { stress: 5, health: -1 },
+  },
+
+  {
+    id: 'daily_103',
+    text: '爸住院做手术，你在医院走廊的折叠床上守了三天。夜里被护士推车的声音吵醒，看到走廊尽头的窗户泛着白，天快亮了。你去开水房打了壶热水，给保温杯续上。',
+    label: '陪床守夜',
+    ageRange: [38, 55],
+    conditions: (state) => state.parents.isAlive && state.parents.age >= 65,
+    priority: 3,
+    effects: { stress: 5, health: -2, savings: -3000 },
+  },
+
+  {
+    id: 'daily_104',
+    text: '同学群里有人发消息说老张走了，心梗。你盯着那条消息看了很久，群里从沉默到一排排蜡烛。你打开抽屉翻出毕业照，老张站在第二排最左边，笑得露出虎牙。',
+    label: '同学离世',
+    ageRange: [38, 55],
+    priority: 3,
+    effects: { stress: 4, happiness: -3, health: -1 },
+  },
+
+  {
+    id: 'daily_105',
+    text: '体检报告出来了，血脂偏高、脂肪肝、颈椎曲度变直，比去年又多了三个箭头。你把报告折好放进包里，路过药店称了称体重，比去年重了四斤。',
+    label: '体检箭头',
+    ageRange: [35, 55],
+    priority: 2,
+    effects: { stress: 3, health: -2 },
+  },
+
+  {
+    id: 'daily_106',
+    text: '早上梳头的时候梳子上缠了一大把头发，你蹲下来捡，发现地漏口也堵了一团。你把那些头发团成一团丢进垃圾桶，在电商平台搜了"防脱"，看了十分钟又退出来了。',
+    label: '脱发严重',
+    ageRange: [33, 50],
+    priority: 2,
+    effects: { stress: 3, happiness: -2 },
+  },
+
+  {
+    id: 'daily_107',
+    text: '你在镜子前拔白头发，拔了一根又发现一根，越拔越多。最后你放弃了，把镊子放回抽屉。第二天去理发店，理发师说"要不要染一下？"你犹豫了一下说"剪短点吧"。',
+    label: '白发增多',
+    ageRange: [35, 55],
+    priority: 1,
+    effects: { happiness: -2 },
+  },
+
+  {
+    id: 'daily_108',
+    text: '看手机上的字越来越模糊，你把胳膊伸直了还是看不清。去配了副老花镜，验光师说"一百度，看近处戴就行"。你把眼镜揣在衬衫口袋里，拿出来戴的时候手抖了一下。',
+    label: '配老花镜',
+    ageRange: [40, 55],
+    priority: 2,
+    effects: { stress: 2 },
+  },
+
+  {
+    id: 'daily_109',
+    text: '孩子去外地上大学了，你帮他把行李搬进宿舍。铺床的时候他说"爸/妈你回去吧"，你"嗯"了一声。开车回家的路上车里很安静，副驾驶座上放着他落下的一件外套。',
+    label: '送孩子住校',
+    ageRange: [42, 55],
+    conditions: (state) => state.children.length > 0 && state.children.some(c => c.growthStage === '大学'),
+    priority: 3,
+    effects: { happiness: -2, stress: 2 },
+  },
+
+  {
+    id: 'daily_110',
+    text: '补习班缴费通知又来了，数学一对一、英语班、物理班，加起来小两万。你输支付密码的时候停顿了两秒，按了确认。短信提示扣款成功，余额少了一截。',
+    label: '补习班缴费',
+    ageRange: [35, 50],
+    conditions: (state) => state.children.length > 0 && state.children.some(c => c.growthStage === '小学' || c.growthStage === '初中' || c.growthStage === '高中'),
+    priority: 2,
+    effects: { savings: -8000, stress: 3 },
+  },
+
+  // ============== 老年日常（50-60岁）==============
+
+  {
+    id: 'daily_111',
+    text: '超市结账要扫健康码，你掏出手机弄了半天也没调出界面。后面排队的人越来越多，你额头出了汗。收银员帮你点了两下才弄好，你连声说谢谢，拎着东西快步走了出去。',
+    label: '健康码',
+    ageRange: [50, 60],
+    priority: 2,
+    effects: { stress: 2 },
+  },
+
+  {
+    id: 'daily_112',
+    text: '你晚上去广场跳广场舞，音乐响起来你跟着队伍比划动作。老伴站在旁边看了一会儿说"你跳得像做操"，你没理他/她，继续跟着节拍走，跳完出了一身汗。',
+    label: '广场舞',
+    ageRange: [50, 60],
+    conditions: (state) => !!state.partner && !state.partner.hasDivorced,
+    priority: 1,
+    effects: { health: 2, happiness: 2 },
+  },
+
+  {
+    id: 'daily_113',
+    text: '带了一天孙子，晚上把他交给他爸妈的时候你腰已经直不起来了。回到家瘫在沙发上，老伴给你倒了杯热茶。你喝了一口，觉得这茶比平时苦一点。',
+    label: '带孙一天',
+    ageRange: [52, 60],
+    conditions: (state) => state.children.length > 0 && state.children.some(c => c.growthStage === '成年'),
+    priority: 2,
+    effects: { health: -3, happiness: 2 },
+  },
+
+  {
+    id: 'daily_114',
+    text: '老周走了，上个月还在一起喝茶的。你去参加追悼会，回来的路上拐去了以前常去的那个茶馆，点了两杯茶，自己喝了一杯，另一杯放对面凉了。',
+    label: '老友走了',
+    ageRange: [50, 60],
+    priority: 3,
+    effects: { happiness: -4, stress: 2 },
+  },
+
+  {
+    id: 'daily_115',
+    text: '膝盖疼了一个星期终于去了医院，医生说是退行性病变，"上了年纪都这样"。给开了膏药和氨基葡萄糖，你拎着一袋子药走出医院，在门口的台阶上坐了五分钟。',
+    label: '膝盖退行性变',
+    ageRange: [50, 60],
+    priority: 2,
+    effects: { health: -2, savings: -800, stress: 2 },
+  },
+
+  {
+    id: 'daily_116',
+    text: '你每天早饭后吃降压药，晚饭后吃降糖药，睡前吃阿司匹林。药盒分七个格子，周一到周日的药提前摆好。今天发现周三的格子空了，你想了半天，不记得是吃了还是忘了摆。',
+    label: '每日吃药',
+    ageRange: [50, 60],
+    priority: 2,
+    effects: { health: -1 },
+  },
+
+  {
+    id: 'daily_117',
+    text: '你开始学着用智能手机打车，站在路边等了十分钟没等到车。后来才知道你定位定到了马路对面。你取消订单重新叫了一辆，这次车停对了地方，你拉开车门坐上去。',
+    label: '学打车',
+    ageRange: [52, 60],
+    priority: 1,
+    effects: { stress: 1 },
+  },
+
+  {
+    id: 'daily_118',
+    text: '你翻出以前的老照片，一张一张看过来。年轻时的照片里你站在山顶、在海边、在雪地里，笑得露出牙齿。现在你的膝盖不允许你爬山了，你把照片按时间顺序排好，收进了相册。',
+    label: '翻老照片',
+    ageRange: [50, 60],
+    priority: 1,
+    effects: { happiness: 2, stress: -1 },
+  },
+
+  {
+    id: 'daily_119',
+    text: '晚上你和老伴在客厅看电视，他/她在织毛衣，你在看报纸。电视里在放一部老电视剧，你看过但还是看了下去。水壶响了，你起身去灌水，回来的时候老伴已经靠在沙发上睡着了。',
+    label: '客厅看电视',
+    ageRange: [52, 60],
+    conditions: (state) => !!state.partner && !state.partner.hasDivorced,
+    priority: 1,
+    effects: { happiness: 3, stress: -2 },
+  },
+
+  {
+    id: 'daily_120',
+    text: '你去菜市场买菜，跟卖菜的大姐砍了两毛钱的价。回来的路上遇到以前单位的老同事，两人站在路边聊了二十分钟，说来说去都是谁谁又病了、谁谁的孩子结婚了。',
+    label: '菜市场聊天',
+    ageRange: [50, 60],
+    priority: 1,
+    effects: { happiness: 2 },
+  },
+
+  {
+    id: 'daily_121',
+    text: '你开始在阳台种菜，花盆里种了小葱、香菜和几棵辣椒。每天早上起来先去看看有没有发芽，今天小葱冒出了一截嫩绿的尖，你蹲下来看了好一会儿。',
+    label: '阳台种菜',
+    ageRange: [48, 60],
+    priority: 1,
+    effects: { happiness: 3, stress: -2 },
+  },
+
+  {
+    id: 'daily_122',
+    text: '最近总觉得眼睛干，看会儿手机就要闭一会儿。你去药店买了瓶眼药水，滴进去的时候凉飕飕的，眼泪跟着流出来。你坐在椅子上等那股劲过去，才睁开眼。',
+    label: '眼睛干涩',
+    ageRange: [45, 60],
+    priority: 1,
+    effects: { health: -1 },
+  },
+
+  {
+    id: 'daily_123',
+    text: '公司开始传裁员的消息，你没主动打听，但名字不在第一批名单上。下班的时候你特意绕了远路走回家，路过小学门口，放学的孩子涌出来，你被挤到路边站了一会儿。',
+    label: '裁员风声',
+    ageRange: [40, 55],
+    conditions: (state) => !state.isUnemployed,
+    priority: 3,
+    effects: { stress: 4 },
+  },
+
+  {
+    id: 'daily_124',
+    text: '你去医院给爸/妈陪床，夜里租了折叠床睡在走廊。护士凌晨两点来量血压，推车轱辘碾过地砖接缝处咯噔响了一声。你醒了，摸出手机看了眼时间，翻了个身接着睡。',
+    label: '医院走廊',
+    ageRange: [40, 58],
+    conditions: (state) => state.parents.isAlive && state.parents.age >= 70,
+    priority: 2,
+    effects: { stress: 3, health: -2 },
+  },
+
+  {
+    id: 'daily_125',
+    text: '你开始把"我年轻的时候"挂在嘴边，说完自己才意识到。孩子翻了个白眼说"又来了"，你没再接话，低头喝了口茶。茶凉了。',
+    label: '话当年',
+    ageRange: [48, 60],
+    conditions: (state) => state.children.length > 0,
+    priority: 1,
+    effects: { happiness: -1 },
   },
 
   // ============== 6条路径专属日常事件 ==============
