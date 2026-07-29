@@ -1,1765 +1,995 @@
 /**
- * 三分镜像素场景定义
+ * 三分镜像素场景定义 v2 - 开罗游戏风格
  *
- * 每个场景是一幅像素画，用二维数组表示。
- * 数字代表颜色索引，0=透明，其余对应调色板颜色。
- * 所有场景保持赛博朋克色调：深色背景 + 霓虹高光。
+ * 核心改进：
+ * - 画布 24×20 像素，实际渲染 120×100px
+ * - 标准2头身Q版小人（高8像素：头3+身3+腿2），有五官有表情
+ * - 每个场景2-4帧循环动画（打字/走路/举杯/跳跃等）
+ * - 场景=小人+道具+背景，一眼看懂剧情
+ * - 赛博朋克霓虹色调，三个分类统一调色板索引
+ * - 单年播放模式：新事件替换旧场景，不累积
  *
- * 设计原则：
- * - 家庭(🏠粉): 暖色调，人物、情感相关
- * - 生活(☕青): 冷色调，消费、健康、社交相关
- * - 事业(💼绿): 金属色调，工作、金钱、成就相关
+ * 统一调色板索引（三个分类共用此布局）：
+ *   0: transparent  1: 深背景     2: 主题色     3: 高光
+ *   4: 深主题色     5: 肤色       6: 副主题色   7: 深棕/黑发
+ *   8: 金发/金黄    9: 白色      10: 青色点缀  11: 中主题色
+ *  12: 深红/嘴     13: 备用      14: 极暗/灰发 15: 近黑/眼睛/阴影
  */
 
 export type StoryboardCategory = 'family' | 'life' | 'career'
+
+/** 单帧像素数据 */
+type PixelFrame = number[][]
 
 export interface StoryboardScene {
   id: string
   category: StoryboardCategory
   name: string
-  /** 触发关键词（日志中包含这些词时触发此场景） */
   keywords: string[]
-  /** 像素调色板，索引0固定为透明 */
   palette: string[]
-  /** 16列 x 12行 的像素数据（更大画布以容纳更多细节） */
-  pixels: number[][]
-  /** 入场动画类型 */
-  animIn: 'fade' | 'rise' | 'pop' | 'slide' | 'blink' | 'shake'
-  /** 持续微动效类型 */
-  idleAnim?: 'none' | 'breath' | 'flicker' | 'float' | 'sway' | 'blink-slow'
-  /** 优先级（数字越大越优先匹配） */
+  /** 多帧动画，frames[0]为起始帧 */
+  frames: PixelFrame[]
+  /** 帧间隔（毫秒） */
+  frameDelay: number
+  /** 入场动画 */
+  animIn: 'fade' | 'rise' | 'pop' | 'slide' | 'blink' | 'shake' | 'bounce'
+  /** 优先级 */
   priority?: number
 }
 
 // ============================================================
-// 调色板预设（赛博朋克风，更饱和更霓虹）
+// 统一调色板（索引布局一致，颜色按分类主题变化）
 // ============================================================
 
 const FAMILY_PALETTE = [
-  'transparent',
-  '#120810',      // 1 深粉紫背景
+  'transparent',  // 0
+  '#1a0a14',      // 1 深紫背景
   '#ff8ab8',      // 2 粉主色
   '#ffd6e7',      // 3 浅粉高光
-  '#ff3d7f',      // 4 深粉红/玫红
-  '#fff0c2',      // 5 暖肤色
-  '#ffc4d9',      // 6 皮肤色
-  '#8b4557',      // 7 深棕/暗部
-  '#ffecb3',      // 8 金发/暖光
+  '#ff3d7f',      // 4 玫红（深主题）
+  '#ffe0c2',      // 5 暖肤色（统一）
+  '#ff6b9d',      // 6 中粉（副主题）
+  '#5a3040',      // 7 棕发/暗部
+  '#ffecb3',      // 8 金发/金黄
   '#ffffff',      // 9 白
-  '#00d4ff',      // 10 青（点缀）
-  '#ff6b9d',      // 11 中粉
-  '#ffb3c6',      // 12 浅肤色
+  '#00d4ff',      // 10 青点缀
+  '#ffb3c6',      // 11 浅粉（中主题）
+  '#cc2255',      // 12 深红/嘴
+  '#ffc4a0',      // 13 深肤色（备用）
+  '#884455',      // 14 深棕/灰发
+  '#2a1020',      // 15 阴影/眼睛
 ]
 
 const LIFE_PALETTE = [
-  'transparent',
+  'transparent',  // 0
   '#080d18',      // 1 深蓝黑背景
   '#00d4ff',      // 2 青主色
   '#8eefff',      // 3 浅青高光
-  '#0088aa',      // 4 深青
-  '#ff8ab8',      // 5 粉点缀
-  '#00ff88',      // 6 绿点缀
-  '#ffffff',      // 7 白
+  '#006688',      // 4 深青（深主题）
+  '#ffe0c2',      // 5 暖肤色（统一）
+  '#ff6b35',      // 6 橙（副主题）
+  '#3a2a1a',      // 7 棕发/暗部
   '#ffd700',      // 8 金黄
-  '#ff6b35',      // 9 橙红
-  '#c900ff',      // 10 紫
-  '#0099cc',      // 11 中青
-  '#ff4466',      // 12 红
+  '#ffffff',      // 9 白
+  '#c900ff',      // 10 紫点缀
+  '#0099cc',      // 11 中青（中主题）
+  '#ff4466',      // 12 红/嘴
+  '#ff8ab8',      // 13 粉点缀
+  '#004466',      // 14 暗青/灰发
+  '#203040',      // 15 阴影/眼睛
 ]
 
 const CAREER_PALETTE = [
-  'transparent',
+  'transparent',  // 0
   '#080f0a',      // 1 深绿黑背景
   '#00ff88',      // 2 绿主色
   '#a3ffcc',      // 3 浅绿高光
-  '#007744',      // 4 深绿
-  '#ffd700',      // 5 金
-  '#ff6b35',      // 6 橙
-  '#ffffff',      // 7 白
-  '#ff3d3d',      // 8 红
-  '#00d4ff',      // 9 青
-  '#c900ff',      // 10 紫
-  '#00cc6a',      // 11 中绿
-  '#4488ff',      // 12 蓝
+  '#005533',      // 4 深绿（深主题）
+  '#ffe0c2',      // 5 暖肤色（统一）
+  '#ff6b35',      // 6 橙（副主题）
+  '#3a2a1a',      // 7 棕发/暗部
+  '#ffd700',      // 8 金黄
+  '#ffffff',      // 9 白
+  '#00d4ff',      // 10 青点缀
+  '#00cc6a',      // 11 中绿（中主题）
+  '#ff3d3d',      // 12 红/嘴
+  '#4488ff',      // 13 蓝点缀
+  '#003322',      // 14 暗绿/灰发
+  '#203028',      // 15 阴影/眼睛
 ]
 
 // ============================================================
-// 辅助：创建空像素画布
+// 画布 & 常量
 // ============================================================
-function emptyCanvas(w = 16, h = 12): number[][] {
-  return Array.from({ length: h }, () => Array(w).fill(0))
+const W = 24, H = 20
+
+function emptyCanvas(): PixelFrame {
+  return Array.from({ length: H }, () => Array(W).fill(0))
 }
 
 // ============================================================
-// 家庭场景
+// 像素小人绘制辅助（开罗风格2头身Q版）
+// 标准小人高8像素：头(3行) + 身(3行) + 腿(2行)，宽4像素
 // ============================================================
 
-// 婚礼/结婚：两个人站在一起，中间有爱心
-function sceneMarriage(): number[][] {
-  const c = emptyCanvas()
-  // 左边小人
-  c[2][3] = 6; c[2][4] = 6; c[3][3] = 6; c[3][4] = 6  // 头
-  c[4][3] = 2; c[4][4] = 2; c[5][3] = 2; c[5][4] = 2  // 西装
-  c[6][3] = 7; c[6][4] = 7; c[7][3] = 7; c[7][4] = 7  // 腿
-  // 右边小人
-  c[2][10] = 6; c[2][11] = 6; c[3][10] = 6; c[3][11] = 6
-  c[4][10] = 4; c[4][11] = 4; c[5][10] = 4; c[5][11] = 4  // 婚纱
-  c[6][10] = 7; c[6][11] = 7; c[7][10] = 7; c[7][11] = 7
-  // 爱心
-  c[2][6] = 4; c[2][7] = 4; c[2][8] = 4; c[2][9] = 4
-  c[3][5] = 4; c[3][6] = 4; c[3][7] = 4; c[3][8] = 4; c[3][9] = 4; c[3][10] = 0
-  c[4][6] = 4; c[4][7] = 4; c[4][8] = 4; c[4][9] = 4
-  c[5][7] = 4; c[5][8] = 4
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 2
-  // 花瓣
-  c[0][2] = 4; c[1][5] = 3; c[0][12] = 4; c[1][13] = 3
-  return c
+/**
+ * 在画布上画一个Q版小人
+ * 调色板索引约定：5=肤色, 7=深棕发, 8=金发, 9=白, 12=红嘴, 14=灰发, 15=黑眼/阴影
+ */
+function drawPerson(
+  c: PixelFrame,
+  x: number, y: number,
+  color: number,
+  skin: number = 5,
+  hair: number = 7,
+  dir: 'front'|'left'|'right'|'back' = 'front',
+  mood: 'normal'|'happy'|'sad'|'surprised'|'angry' = 'normal',
+  action: 'stand'|'walk1'|'walk2'|'armsup'|'sit'|'jump'|'bow'|'cheer'|'type'|'lie' = 'stand'
+) {
+  // 安全检查：确保行存在
+  const ensureRow = (r: number) => {
+    if (!c[r]) c[r] = Array(W).fill(0)
+  }
+
+  // 头部 (y, y+1, y+2) - 3行高
+  // 头发
+  ensureRow(y); ensureRow(y+1); ensureRow(y+2)
+  c[y][x+1] = hair; c[y][x+2] = hair
+  if (dir !== 'back') {
+    c[y+1][x] = hair; c[y+1][x+3] = hair
+  } else {
+    c[y+1][x] = hair; c[y+1][x+1] = hair; c[y+1][x+2] = hair; c[y+1][x+3] = hair
+    c[y+2][x] = hair; c[y+2][x+3] = hair
+  }
+  // 脸
+  if (dir !== 'back') {
+    c[y+1][x+1] = skin; c[y+1][x+2] = skin
+    c[y+2][x+1] = skin; c[y+2][x+2] = skin
+    // 五官
+    if (dir === 'front') {
+      c[y+1][x+1] = 15; c[y+1][x+2] = 15  // 黑眼睛
+      switch (mood) {
+        case 'happy':
+          c[y+2][x+1] = skin; c[y+2][x+2] = skin
+          c[y+2][x+1] = 12; c[y+2][x+2] = 12  // 笑嘴（红色）
+          break
+        case 'sad':
+          c[y+2][x+1] = 15; c[y+2][x+2] = 15
+          break
+        case 'surprised':
+          c[y+2][x+1] = 9; c[y+2][x+2] = 9  // O嘴（白）
+          break
+        case 'angry':
+          c[y][x+1] = 12; c[y][x+2] = 12  // 皱眉（红）
+          c[y+2][x+1] = 12; c[y+2][x+2] = 12
+          break
+        default:
+          c[y+2][x+1] = 15; c[y+2][x+2] = 15  // 普通小嘴
+      }
+    } else if (dir === 'left') {
+      c[y+1][x+1] = 15
+      c[y+2][x+1] = 15
+    } else if (dir === 'right') {
+      c[y+1][x+2] = 15
+      c[y+2][x+2] = 15
+    }
+  }
+  // 身体 (y+3, y+4, y+5) - 3行
+  const sy = y + 3
+  ensureRow(sy); ensureRow(sy+1); ensureRow(sy+2); ensureRow(sy+3)
+  switch (action) {
+    case 'stand':
+      c[sy][x+1] = color; c[sy][x+2] = color
+      c[sy+1][x+1] = color; c[sy+1][x+2] = color
+      c[sy+2][x+1] = color; c[sy+2][x+2] = color
+      c[sy+1][x] = skin; c[sy+1][x+3] = skin
+      // 腿
+      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
+      break
+    case 'walk1':
+      c[sy][x+1] = color; c[sy][x+2] = color
+      c[sy+1][x+1] = color; c[sy+1][x+2] = color
+      c[sy+2][x+1] = color; c[sy+2][x+2] = color
+      c[sy][x] = skin; c[sy+2][x+3] = skin
+      c[sy+3][x+1] = 7; c[sy+3][x+3] = 7
+      break
+    case 'walk2':
+      c[sy][x+1] = color; c[sy][x+2] = color
+      c[sy+1][x+1] = color; c[sy+1][x+2] = color
+      c[sy+2][x+1] = color; c[sy+2][x+2] = color
+      c[sy+2][x] = skin; c[sy][x+3] = skin
+      c[sy+3][x] = 7; c[sy+3][x+2] = 7
+      break
+    case 'armsup':
+      c[sy][x+1] = color; c[sy][x+2] = color
+      c[sy+1][x+1] = color; c[sy+1][x+2] = color
+      c[sy+2][x+1] = color; c[sy+2][x+2] = color
+      ensureRow(sy-1)
+      c[sy-1][x] = skin; c[sy-1][x+3] = skin
+      c[sy][x] = color; c[sy][x+3] = color
+      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
+      break
+    case 'cheer':
+      c[sy][x+1] = color; c[sy][x+2] = color
+      c[sy+1][x+1] = color; c[sy+1][x+2] = color
+      c[sy+2][x+1] = color; c[sy+2][x+2] = color
+      ensureRow(sy-1)
+      c[sy-1][x+3] = skin
+      c[sy][x+3] = color
+      c[sy+1][x] = skin
+      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
+      break
+    case 'jump':
+      ensureRow(sy-1)
+      c[sy-1][x+1] = color; c[sy-1][x+2] = color
+      c[sy][x+1] = color; c[sy][x+2] = color
+      c[sy+1][x+1] = color; c[sy+1][x+2] = color
+      c[sy][x] = skin; c[sy][x+3] = skin
+      c[sy+2][x] = 7; c[sy+2][x+3] = 7
+      break
+    case 'sit':
+      c[sy][x+1] = color; c[sy][x+2] = color
+      c[sy+1][x+1] = color; c[sy+1][x+2] = color
+      c[sy+2][x] = 7; c[sy+2][x+1] = 7; c[sy+2][x+2] = 7; c[sy+2][x+3] = 7
+      c[sy+1][x] = skin
+      break
+    case 'bow':
+      c[y+2][x+1] = color; c[y+2][x+2] = color
+      c[sy][x+1] = color; c[sy][x+2] = color
+      c[sy+1][x+1] = color; c[sy+1][x+2] = color
+      c[sy+2][x+1] = color; c[sy+2][x+2] = color
+      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
+      break
+    case 'type':
+      c[sy][x+1] = color; c[sy][x+2] = color
+      c[sy+1][x+1] = color; c[sy+1][x+2] = color
+      c[sy+2][x+1] = color; c[sy+2][x+2] = color
+      c[sy+1][x+3] = skin
+      ensureRow(x+4)
+      if (c[sy+1]) c[sy+1][x+4] = skin
+      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
+      break
+    case 'lie':
+      c[y][x+1] = hair; c[y][x+2] = hair
+      c[y+1][x+1] = skin; c[y+1][x+2] = skin
+      c[y+1][x+1] = 15; c[y+1][x+2] = 15  // 闭眼
+      ensureRow(y+2); ensureRow(y+3)
+      c[y+2][x] = color; c[y+2][x+1] = color; c[y+2][x+2] = color; c[y+2][x+3] = color
+      c[y+3][x] = color; c[y+3][x+1] = color; c[y+3][x+2] = color; c[y+3][x+3] = color
+      break
+  }
 }
 
-// 宝宝出生：婴儿床
-function sceneBaby(): number[][] {
-  const c = emptyCanvas()
-  // 婴儿床
-  for (let x = 3; x <= 12; x++) { c[5][x] = 7; c[9][x] = 7 }
-  for (let y = 5; y <= 9; y++) { c[y][3] = 7; c[y][12] = 7 }
-  // 栏杆
-  for (let x = 4; x <= 11; x += 2) { c[6][x] = 7; c[7][x] = 7; c[8][x] = 7 }
-  // 婴儿
-  c[7][6] = 6; c[7][7] = 6; c[7][8] = 6; c[7][9] = 6
-  c[8][6] = 5; c[8][7] = 5; c[8][8] = 5; c[8][9] = 5
-  c[7][7] = 3; c[7][8] = 3  // 被子高光
-  // 星星
-  c[1][2] = 8; c[0][7] = 8; c[2][13] = 8; c[1][14] = 3
-  // 月亮
-  c[1][14] = 8; c[2][14] = 8; c[1][15] = 8
-  return c
+// 画地面线
+function drawGround(c: PixelFrame, color: number, y: number = H-1) {
+  if (!c[y]) c[y] = Array(W).fill(0)
+  for (let i = 0; i < W; i++) c[y][i] = color
 }
 
-// 父母离世：空椅子和相框
-function sceneParentDeath(): number[][] {
-  const c = emptyCanvas()
-  // 相框
-  for (let x = 4; x <= 11; x++) { c[1][x] = 7; c[5][x] = 7 }
-  for (let y = 1; y <= 5; y++) { c[y][4] = 7; c[y][11] = 7 }
-  c[2][5] = 4; c[2][6] = 6; c[2][7] = 6; c[2][8] = 6; c[2][9] = 6; c[2][10] = 4
-  c[3][5] = 4; c[3][6] = 6; c[3][7] = 5; c[3][8] = 5; c[3][9] = 6; c[3][10] = 4
-  c[4][5] = 4; c[4][6] = 7; c[4][7] = 4; c[4][8] = 4; c[4][9] = 7; c[4][10] = 4
-  // 空椅子
-  c[7][7] = 7; c[7][8] = 7; c[8][7] = 7; c[8][8] = 7
-  c[7][6] = 7; c[8][6] = 7; c[7][9] = 7; c[8][9] = 7
-  c[9][6] = 7; c[9][9] = 7; c[10][6] = 7; c[10][9] = 7
-  // 蜡烛
-  c[7][3] = 3; c[8][3] = 3; c[6][3] = 9
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  return c
+// 画爱心
+function drawHeart(c: PixelFrame, cx: number, cy: number, color: number) {
+  for (let r = 0; r < 4; r++) if (!c[cy+r]) c[cy+r] = Array(W).fill(0)
+  c[cy][cx-1] = color; c[cy][cx] = color; c[cy][cx+1] = color; c[cy][cx+2] = color
+  c[cy+1][cx-2] = color; c[cy+1][cx-1] = color; c[cy+1][cx] = color; c[cy+1][cx+1] = color; c[cy+1][cx+2] = color; c[cy+1][cx+3] = color
+  c[cy+2][cx-1] = color; c[cy+2][cx] = color; c[cy+2][cx+1] = color; c[cy+2][cx+2] = color
+  c[cy+3][cx] = color; c[cy+3][cx+1] = color
 }
 
-// 约会/恋爱：烛光晚餐
-function sceneDate(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let x = 1; x <= 14; x++) c[7][x] = 7
-  c[8][2] = 7; c[8][13] = 7; c[9][2] = 7; c[9][13] = 7
-  // 蜡烛
-  c[4][7] = 8; c[5][7] = 8; c[4][8] = 8; c[5][8] = 8
-  c[3][7] = 9; c[3][8] = 9  // 火焰
-  c[2][7] = 3; c[2][8] = 3  // 光晕
-  // 两个人
-  c[3][3] = 6; c[4][3] = 6; c[3][4] = 6; c[4][4] = 6
-  c[5][3] = 2; c[5][4] = 2; c[6][3] = 2; c[6][4] = 2
-  c[3][11] = 6; c[4][11] = 6; c[3][12] = 6; c[4][12] = 6
-  c[5][11] = 4; c[5][12] = 4; c[6][11] = 4; c[6][12] = 4
-  // 酒杯
-  c[6][5] = 9; c[6][10] = 9
-  // 爱心
-  c[1][7] = 4; c[1][8] = 4
-  return c
+// 画房子
+function drawHouse(c: PixelFrame, x: number, y: number, wallColor: number, roofColor: number, doorColor: number, hasSmoke: boolean = false) {
+  for (let r = 0; r < 9; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  c[y][x+3] = roofColor
+  c[y+1][x+2] = roofColor; c[y+1][x+3] = roofColor; c[y+1][x+4] = roofColor
+  c[y+2][x+1] = roofColor; c[y+2][x+2] = roofColor; c[y+2][x+3] = roofColor; c[y+2][x+4] = roofColor; c[y+2][x+5] = roofColor
+  for (let r = y+3; r <= y+7; r++) {
+    for (let col = x; col <= x+6; col++) {
+      c[r][col] = wallColor
+    }
+  }
+  c[y+6][x+3] = doorColor; c[y+6][x+4] = doorColor
+  c[y+7][x+3] = doorColor; c[y+7][x+4] = doorColor
+  c[y+7][x+4] = 5  // 门把手（肤色=金属感）
+  c[y+4][x+1] = 9; c[y+4][x+5] = 9
+  c[y+5][x+1] = 9; c[y+5][x+5] = 9
+  c[y+4][x] = 15; c[y+5][x] = 15
+  c[y+4][x+6] = 15; c[y+5][x+6] = 15
+  if (hasSmoke) {
+    c[y+1][x+5] = 15; c[y+2][x+5] = 15
+  }
 }
 
-// 离婚/分手：两个人背对背走开
-function sceneDivorce(): number[][] {
-  const c = emptyCanvas()
-  c[3][1] = 6; c[3][2] = 6; c[4][1] = 6; c[4][2] = 6
-  c[5][1] = 4; c[5][2] = 4; c[6][1] = 4; c[6][2] = 4
-  c[7][0] = 7; c[7][2] = 7; c[8][0] = 7; c[8][3] = 7
-  c[3][13] = 6; c[3][14] = 6; c[4][13] = 6; c[4][14] = 6
-  c[5][13] = 2; c[5][14] = 2; c[6][13] = 2; c[6][14] = 2
-  c[7][12] = 7; c[7][14] = 7; c[8][13] = 7; c[8][15] = 7
-  // 中间裂痕（碎心）
-  c[3][7] = 4; c[3][8] = 4; c[4][6] = 4; c[4][9] = 4
-  c[5][7] = 7; c[5][8] = 7; c[6][7] = 4; c[6][8] = 4
-  c[4][7] = 1; c[4][8] = 1  // 裂缝
-  // 地面阴影
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  return c
+// 画电脑/显示器
+function drawComputer(c: PixelFrame, x: number, y: number, screenColor: number = 3) {
+  for (let r = 0; r < 6; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  c[y][x] = 15; c[y][x+1] = 15; c[y][x+2] = 15; c[y][x+3] = 15; c[y][x+4] = 15
+  c[y+1][x] = 15; c[y+1][x+1] = screenColor; c[y+1][x+2] = screenColor; c[y+1][x+3] = screenColor; c[y+1][x+4] = 15
+  c[y+2][x] = 15; c[y+2][x+1] = screenColor; c[y+2][x+2] = screenColor; c[y+2][x+3] = screenColor; c[y+2][x+4] = 15
+  c[y+3][x] = 15; c[y+3][x+1] = 15; c[y+3][x+2] = 15; c[y+3][x+3] = 15; c[y+3][x+4] = 15
+  c[y+4][x+2] = 15
+  c[y+5][x+1] = 15; c[y+5][x+2] = 15; c[y+5][x+3] = 15
 }
 
-// 一家人吃饭：三人围桌
-function sceneFamilyDinner(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let x = 2; x <= 13; x++) c[7][x] = 8
-  // 爸爸
-  c[3][3] = 6; c[4][3] = 6; c[3][4] = 6; c[4][4] = 6
-  c[5][3] = 2; c[5][4] = 2; c[6][3] = 2; c[6][4] = 2
-  // 妈妈
-  c[3][11] = 6; c[4][11] = 6; c[3][12] = 6; c[4][12] = 6
-  c[5][11] = 4; c[5][12] = 4; c[6][11] = 4; c[6][12] = 4
-  // 孩子
-  c[4][7] = 6; c[5][7] = 6; c[4][8] = 6; c[5][8] = 6
-  c[6][7] = 3; c[6][8] = 3
-  // 碗和菜
-  c[6][5] = 7; c[6][6] = 8; c[6][9] = 9; c[6][10] = 7
-  // 灯
-  c[0][7] = 8; c[0][8] = 8; c[1][7] = 3; c[1][8] = 3; c[2][7] = 3; c[2][8] = 3
-  // 热气
-  c[3][6] = 3; c[3][9] = 3
-  return c
+// 画床
+function drawBed(c: PixelFrame, x: number, y: number, blanketColor: number) {
+  for (let r = 0; r < 5; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  c[y][x] = 14; c[y+1][x] = 14; c[y+2][x] = 14
+  for (let r = y; r <= y+3; r++) {
+    for (let col = x+1; col <= x+8; col++) {
+      c[r][col] = blanketColor
+    }
+  }
+  c[y][x+1] = 9; c[y][x+2] = 9; c[y+1][x+1] = 9; c[y+1][x+2] = 9
 }
 
-// 求婚：单膝跪地
-function sceneProposal(): number[][] {
-  const c = emptyCanvas()
-  // 站着的人
-  c[2][10] = 6; c[2][11] = 6; c[3][10] = 6; c[3][11] = 6
-  c[4][10] = 3; c[4][11] = 3; c[5][10] = 3; c[5][11] = 3
-  c[6][10] = 7; c[6][11] = 7; c[7][10] = 7; c[7][11] = 7
-  // 跪着的人
-  c[5][3] = 6; c[5][4] = 6; c[6][3] = 6; c[6][4] = 6
-  c[7][2] = 2; c[7][3] = 2; c[7][4] = 2; c[8][3] = 2; c[8][4] = 2
-  c[8][2] = 2; c[9][2] = 7; c[9][4] = 7
-  // 戒指盒
-  c[6][6] = 8; c[6][7] = 8; c[7][6] = 8; c[7][7] = 8
-  c[6][6] = 5; c[6][7] = 5  // 戒指闪光
-  // 大爱心
-  c[1][6] = 4; c[1][7] = 4; c[1][8] = 4; c[2][5] = 4; c[2][6] = 4; c[2][7] = 4; c[2][8] = 4; c[2][9] = 4
-  c[3][6] = 4; c[3][7] = 4; c[3][8] = 4; c[4][7] = 4; c[4][8] = 4
-  // 星星
-  c[0][2] = 8; c[0][13] = 8
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 2
-  return c
+// 画桌子
+function drawTable(c: PixelFrame, x: number, y: number, color: number = 14) {
+  for (let r = 0; r < 4; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  for (let col = x; col <= x+7; col++) c[y][col] = color
+  c[y+1][x] = color; c[y+1][x+7] = color
+  c[y+2][x] = color; c[y+2][x+7] = color
+  c[y+3][x] = 15; c[y+3][x+7] = 15
 }
 
-// 相亲：咖啡厅对坐
-function sceneBlindDate(): number[][] {
-  const c = emptyCanvas()
-  // 咖啡桌
-  for (let x = 3; x <= 12; x++) c[7][x] = 8
-  c[8][4] = 8; c[8][11] = 8; c[9][4] = 8; c[9][11] = 8
-  // 两个人（尴尬距离）
-  c[3][4] = 6; c[4][4] = 6; c[3][5] = 6; c[4][5] = 6
-  c[5][4] = 2; c[5][5] = 2; c[6][4] = 2; c[6][5] = 2
-  c[3][10] = 6; c[4][10] = 6; c[3][11] = 6; c[4][11] = 6
-  c[5][10] = 4; c[5][11] = 4; c[6][10] = 4; c[6][11] = 4
-  // 咖啡杯
-  c[6][6] = 7; c[6][9] = 7
-  // 问号（尴尬）
-  c[2][7] = 7; c[2][8] = 7; c[3][8] = 7; c[4][8] = 7; c[5][8] = 0; c[5][7] = 7
-  // 汗滴
-  c[2][3] = 3
-  return c
+// 画椅子
+function drawChair(c: PixelFrame, x: number, y: number, color: number = 7) {
+  for (let r = 0; r < 4; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  c[y][x] = color; c[y][x+1] = color; c[y][x+2] = color
+  c[y+1][x] = color; c[y+1][x+2] = color
+  c[y+2][x] = color; c[y+2][x+2] = color
+  c[y+3][x] = 15; c[y+3][x+2] = 15
 }
 
-// 养猫/宠物：猫在腿上
-function scenePet(): number[][] {
-  const c = emptyCanvas()
-  // 人坐着
-  c[3][6] = 6; c[3][7] = 6; c[4][6] = 6; c[4][7] = 6
-  c[5][5] = 2; c[5][6] = 2; c[5][7] = 2; c[5][8] = 2
-  c[6][5] = 2; c[6][6] = 2; c[6][7] = 2; c[6][8] = 2
-  c[7][5] = 7; c[7][8] = 7; c[8][5] = 7; c[8][8] = 7; c[9][5] = 7; c[9][8] = 7
-  // 猫（橘猫）
-  c[6][6] = 9; c[6][7] = 9; c[7][6] = 9; c[7][7] = 9
-  c[5][7] = 9; c[5][6] = 9  // 猫头
-  c[5][5] = 9; c[5][8] = 9  // 耳朵
-  c[7][6] = 5; c[7][7] = 5  // 猫眼睛
-  // 沙发
-  for (let x = 3; x <= 12; x++) c[9][x] = 7
-  c[8][3] = 7; c[8][12] = 7
-  // 爱心
-  c[2][7] = 4; c[2][8] = 4; c[3][7] = 4; c[3][8] = 4
-  return c
+// 画酒杯/杯子
+function drawCup(c: PixelFrame, x: number, y: number, color: number = 8) {
+  for (let r = 0; r < 3; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  c[y][x] = color; c[y][x+1] = color
+  c[y+1][x] = color; c[y+1][x+1] = color
+  c[y+2][x] = 9; c[y+2][x+1] = 9
 }
 
-// 陪孩子写作业
-function sceneHomework(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let x = 2; x <= 13; x++) c[7][x] = 8
-  // 孩子
-  c[4][5] = 6; c[5][5] = 6; c[4][6] = 6; c[5][6] = 6
-  c[6][5] = 3; c[6][6] = 3
-  // 家长（指着作业，生气）
-  c[3][10] = 6; c[4][10] = 6; c[3][11] = 6; c[4][11] = 6
-  c[5][9] = 2; c[5][10] = 2; c[5][11] = 2; c[5][12] = 2
-  c[6][10] = 2; c[6][11] = 2
-  // 作业本
-  c[6][7] = 7; c[6][8] = 7; c[6][9] = 7
-  // 愤怒符号
-  c[2][12] = 8; c[3][12] = 8; c[2][13] = 8
-  // 汗滴（孩子）
-  c[3][4] = 3
-  // 台灯
-  c[2][3] = 8; c[3][3] = 3; c[4][3] = 3; c[5][3] = 7; c[6][3] = 7
-  return c
+// 画行李箱
+function drawSuitcase(c: PixelFrame, x: number, y: number, color: number = 6) {
+  for (let r = 0; r < 4; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  c[y][x+1] = 15
+  for (let col = x; col <= x+4; col++) c[y+1][col] = color
+  for (let col = x; col <= x+4; col++) c[y+2][col] = color
+  for (let col = x; col <= x+4; col++) c[y+3][col] = color
+  c[y+2][x+2] = 8; c[y+2][x+3] = 8
+}
+
+// 画火车/地铁
+function drawTrain(c: PixelFrame, x: number, y: number) {
+  for (let r = 0; r < 5; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  for (let col = x; col <= x+12; col++) c[y][col] = 15
+  for (let col = x; col <= x+12; col++) c[y+1][col] = 2
+  c[y+1][x+2] = 3; c[y+1][x+3] = 3; c[y+1][x+4] = 3
+  c[y+1][x+8] = 3; c[y+1][x+9] = 3; c[y+1][x+10] = 3
+  for (let col = x; col <= x+12; col++) c[y+2][col] = 2
+  for (let col = x; col <= x+12; col++) c[y+3][col] = 15
+  c[y+4][x+1] = 15; c[y+4][x+2] = 15; c[y+4][x+10] = 15; c[y+4][x+11] = 15
+}
+
+// 画手机
+function drawPhone(c: PixelFrame, x: number, y: number, screenColor: number = 3) {
+  for (let r = 0; r < 4; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  c[y][x] = 15; c[y][x+1] = 15; c[y][x+2] = 15
+  c[y+1][x] = 15; c[y+1][x+1] = screenColor; c[y+1][x+2] = 15
+  c[y+2][x] = 15; c[y+2][x+1] = screenColor; c[y+2][x+2] = 15
+  c[y+3][x] = 15; c[y+3][x+1] = 15; c[y+3][x+2] = 15
+}
+
+// 画钱/钞票
+function drawMoney(c: PixelFrame, x: number, y: number, color: number = 8) {
+  for (let r = 0; r < 3; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  c[y][x] = color; c[y][x+1] = color; c[y][x+2] = color
+  c[y+1][x] = color; c[y+1][x+1] = 9; c[y+1][x+2] = color
+  c[y+2][x] = color; c[y+2][x+1] = color; c[y+2][x+2] = color
+}
+
+// 画星星/闪光
+function drawSparkle(c: PixelFrame, x: number, y: number, color: number = 8) {
+  for (let r = 0; r < 3; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
+  c[y][x+1] = color
+  c[y+1][x] = color; c[y+1][x+1] = color; c[y+1][x+2] = color
+  c[y+2][x+1] = color
+}
+
+// ============================================================
+// 场景生成 - 家庭
+// ============================================================
+
+function sceneMarriage(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 4, 6, 4, 5, 7, 'front', 'happy', 'stand')
+  drawPerson(f1, 14, 6, 9, 5, 8, 'front', 'happy', 'stand')
+  drawPerson(f2, 4, 6, 4, 5, 7, 'front', 'happy', 'cheer')
+  drawPerson(f2, 14, 6, 9, 5, 8, 'front', 'happy', 'cheer')
+  drawHeart(f1, 10, 3, 4); drawHeart(f2, 10, 2, 4)
+  f1[1][2] = 4; f1[0][8] = 3; f1[1][18] = 4; f1[2][20] = 3
+  f2[2][2] = 4; f2[1][8] = 3; f2[0][18] = 4; f2[1][20] = 3
+  return [f1, f2]
+}
+
+function sceneHouse(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawHouse(f1, 14, 5, 11, 4, 7, true)
+  drawHouse(f2, 14, 5, 11, 4, 7, true)
+  drawPerson(f1, 4, 9, 2, 5, 7, 'right', 'happy', 'cheer')
+  drawPerson(f2, 4, 9, 2, 5, 7, 'right', 'happy', 'jump')
+  f1[10][9] = 8; f1[11][9] = 8
+  f2[8][9] = 8; f2[9][9] = 8
+  f1[3][20] = 1; f1[2][20] = 1
+  f2[4][20] = 1; f2[3][20] = 1
+  return [f1, f2]
+}
+
+function sceneBaby(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 8, 6, 2, 5, 7, 'front', 'happy', 'armsup')
+  drawPerson(f2, 8, 6, 2, 5, 7, 'front', 'happy', 'cheer')
+  f1[6][11] = 9; f1[6][12] = 9; f1[7][11] = 5; f1[7][12] = 5
+  f2[6][11] = 9; f2[6][12] = 9; f2[7][11] = 5; f2[7][12] = 5
+  f1[2][4] = 8; f1[1][18] = 8; f1[3][20] = 3
+  f2[3][4] = 8; f2[2][18] = 8; f2[1][20] = 3
+  return [f1, f2]
+}
+
+function sceneCar(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  // 车身 - 用life调色板的青色系
+  for (let col = 8; col <= 19; col++) { f1[13][col] = 2; f2[13][col] = 2 }
+  for (let col = 10; col <= 17; col++) { f1[12][col] = 2; f2[12][col] = 2 }
+  for (let col = 11; col <= 16; col++) { f1[11][col] = 3; f2[11][col] = 3 }
+  // 车轮
+  f1[14][9] = 15; f1[14][10] = 15; f1[15][9] = 15; f1[15][10] = 15
+  f1[14][17] = 15; f1[14][18] = 15; f1[15][17] = 15; f1[15][18] = 15
+  f2[14][9] = 15; f2[14][10] = 15; f2[15][9] = 15; f2[15][10] = 15
+  f2[14][17] = 15; f2[14][18] = 15; f2[15][17] = 15; f2[15][18] = 15
+  f1[13][19] = 8; f2[13][19] = 8
+  drawPerson(f1, 2, 10, 2, 5, 7, 'right', 'happy', 'jump')
+  drawPerson(f2, 3, 10, 2, 5, 7, 'right', 'happy', 'stand')
+  return [f1, f2]
+}
+
+function sceneCoupleFight(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 5, 8, 4, 5, 7, 'right', 'angry', 'armsup')
+  drawPerson(f1, 14, 8, 2, 5, 8, 'left', 'angry', 'armsup')
+  drawPerson(f2, 5, 8, 4, 5, 7, 'right', 'angry', 'stand')
+  drawPerson(f2, 14, 8, 2, 5, 8, 'left', 'angry', 'stand')
+  f1[4][11] = 8; f1[5][11] = 8; f1[5][10] = 8; f1[6][11] = 8
+  f2[3][11] = 8; f2[4][11] = 8; f2[4][10] = 8; f2[5][11] = 8
+  return [f1, f2]
+}
+
+function sceneDivorce(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 2, 9, 4, 5, 7, 'left', 'sad', 'walk1')
+  drawPerson(f1, 17, 9, 2, 5, 8, 'right', 'sad', 'walk2')
+  drawPerson(f2, 1, 9, 4, 5, 7, 'left', 'sad', 'walk2')
+  drawPerson(f2, 18, 9, 2, 5, 8, 'right', 'sad', 'walk1')
+  f1[11][10] = 12; f1[11][11] = 12; f1[12][9] = 12; f1[12][12] = 12
+  f2[11][10] = 12; f2[11][11] = 12; f2[12][9] = 12; f2[12][12] = 12
+  return [f1, f2]
+}
+
+function sceneOldCouple(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  for (let r = 13; r <= 16; r++) {
+    for (let col = 2; col <= 20; col++) { f1[r][col] = 4; f2[r][col] = 4 }
+  }
+  drawPerson(f1, 4, 7, 4, 5, 14, 'front', 'happy', 'sit')
+  drawPerson(f1, 12, 7, 2, 5, 14, 'front', 'happy', 'sit')
+  drawPerson(f2, 4, 7, 4, 5, 14, 'front', 'happy', 'sit')
+  drawPerson(f2, 12, 7, 2, 5, 14, 'front', 'happy', 'sit')
+  // 电视
+  for (let r = 2; r <= 6; r++) for (let col = 8; col <= 15; col++) { f1[r][col] = 15; f2[r][col] = 15 }
+  for (let r = 3; r <= 5; r++) for (let col = 9; col <= 14; col++) { f1[r][col] = 3; f2[r][col] = 3 }
+  f1[4][11] = 8; f1[4][12] = 8; f2[4][11] = 8; f2[4][12] = 8
+  return [f1, f2]
+}
+
+function sceneMidnightBaby(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  for (let r = 12; r <= 15; r++) for (let col = 13; col <= 21; col++) { f1[r][col] = 4; f2[r][col] = 4 }
+  f1[13][16] = 5; f1[13][17] = 5; f1[14][16] = 9; f1[14][17] = 9
+  f2[13][16] = 5; f2[13][17] = 5; f2[14][16] = 9; f2[14][17] = 9
+  drawPerson(f1, 3, 9, 2, 5, 7, 'right', 'surprised', 'sit')
+  drawPerson(f2, 3, 10, 2, 5, 7, 'right', 'sad', 'sit')
+  f1[4][19] = 9; f1[3][20] = 9; f1[2][21] = 9
+  f2[5][19] = 9; f2[4][20] = 9; f2[3][21] = 9
+  f1[1][3] = 8; f1[1][4] = 8; f1[2][3] = 8
+  f2[1][3] = 8; f2[1][4] = 8; f2[2][3] = 8
+  return [f1, f2]
+}
+
+function sceneGrandchildren(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 3, 8, 4, 5, 14, 'front', 'happy', 'sit')
+  drawPerson(f2, 3, 8, 4, 5, 14, 'front', 'happy', 'stand')
+  const cx = 13, cy = 11
+  f1[cy][cx] = 5; f1[cy][cx+1] = 5; f1[cy+1][cx] = 5; f1[cy+1][cx+1] = 5
+  f1[cy+2][cx] = 2; f1[cy+2][cx+1] = 2; f1[cy+3][cx] = 7; f1[cy+3][cx+1] = 7
+  f1[cy][cx] = 15; f1[cy][cx+1] = 15
+  f2[cy-1][cx] = 5; f2[cy-1][cx+1] = 5; f2[cy][cx] = 5; f2[cy][cx+1] = 5
+  f2[cy+1][cx] = 2; f2[cy+1][cx+1] = 2; f2[cy+2][cx] = 7; f2[cy+2][cx+1] = 7
+  f2[cy-1][cx] = 15; f2[cy-1][cx+1] = 15
+  f1[2][19] = 8; f1[3][21] = 3
+  f2[3][19] = 8; f2[2][21] = 3
+  return [f1, f2]
+}
+
+function sceneAnniversary(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 4, H-1); drawGround(f2, 4, H-1)
+  for (let col = 6; col <= 17; col++) { f1[14][col] = 9; f2[14][col] = 9 }
+  for (let col = 6; col <= 17; col++) { f1[15][col] = 15; f2[15][col] = 15 }
+  drawPerson(f1, 3, 8, 4, 5, 7, 'right', 'happy', 'sit')
+  drawPerson(f1, 16, 8, 2, 5, 8, 'left', 'happy', 'sit')
+  drawPerson(f2, 3, 8, 4, 5, 7, 'right', 'happy', 'sit')
+  drawPerson(f2, 16, 8, 2, 5, 8, 'left', 'happy', 'sit')
+  f1[12][11] = 8; f1[13][11] = 9
+  f2[11][11] = 8; f2[12][11] = 8; f2[13][11] = 9
+  drawHeart(f1, 10, 3, 4); drawHeart(f2, 10, 2, 4)
+  return [f1, f2]
+}
+
+// ============================================================
+// 场景生成 - 生活
+// ============================================================
+
+function sceneWork(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  for (let col = 5; col <= 18; col++) { f1[14][col] = 15; f2[14][col] = 15 }
+  drawComputer(f1, 9, 7); drawComputer(f2, 9, 7)
+  f1[8][10] = 3; f1[8][11] = 3; f1[8][12] = 3
+  f2[8][10] = 2; f2[8][11] = 2; f2[8][12] = 2
+  drawPerson(f1, 7, 8, 2, 5, 7, 'front', 'normal', 'type')
+  drawPerson(f2, 7, 8, 2, 5, 7, 'front', 'normal', 'type')
+  f1[12][14] = 5; f2[12][13] = 5
+  return [f1, f2]
+}
+
+function sceneFriendDrink(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  for (let col = 5; col <= 18; col++) { f1[15][col] = 14; f2[15][col] = 14 }
+  drawPerson(f1, 4, 8, 9, 5, 7, 'right', 'happy', 'sit')
+  drawPerson(f1, 13, 8, 6, 5, 8, 'left', 'happy', 'sit')
+  drawPerson(f2, 4, 8, 9, 5, 7, 'right', 'happy', 'cheer')
+  drawPerson(f2, 13, 8, 6, 5, 8, 'left', 'happy', 'cheer')
+  f1[14][9] = 8; f1[14][10] = 8
+  f2[13][9] = 8; f2[13][10] = 8
+  f2[12][17] = 8; f2[12][18] = 8
+  f1[3][7] = 3; f1[2][15] = 3
+  f2[4][7] = 3; f2[3][15] = 3
+  return [f1, f2]
+}
+
+function sceneTravel(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  f1[2][2] = 9; f1[2][3] = 9; f1[2][4] = 9; f1[3][3] = 9
+  f1[1][17] = 9; f1[1][18] = 9; f1[1][19] = 9; f1[2][18] = 9
+  f2[3][2] = 9; f2[3][3] = 9; f2[3][4] = 9; f2[4][3] = 9
+  f2[2][17] = 9; f2[2][18] = 9; f2[2][19] = 9; f2[3][18] = 9
+  f1[2][20] = 8; f1[2][21] = 8; f1[3][20] = 8; f1[3][21] = 8
+  f2[2][20] = 8; f2[2][21] = 8; f2[3][20] = 8; f2[3][21] = 8
+  drawPerson(f1, 9, 7, 2, 5, 7, 'right', 'happy', 'walk1')
+  drawPerson(f2, 10, 7, 2, 5, 7, 'right', 'happy', 'walk2')
+  f1[8][8] = 6; f1[9][8] = 6; f1[10][8] = 6
+  f2[8][9] = 6; f2[9][9] = 6; f2[10][9] = 6
+  return [f1, f2]
+}
+
+function sceneSickness(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawBed(f1, 4, 10, 4); drawBed(f2, 4, 10, 4)
+  drawPerson(f1, 6, 10, 9, 5, 7, 'front', 'sad', 'lie')
+  drawPerson(f2, 6, 10, 9, 5, 7, 'front', 'sad', 'lie')
+  f1[10][8] = 3; f1[10][9] = 3
+  f2[10][8] = 3; f2[10][9] = 3
+  f1[2][20] = 12; f1[1][20] = 12; f1[2][19] = 12; f1[2][21] = 12; f1[3][20] = 12
+  f2[2][20] = 12; f2[1][20] = 12; f2[2][19] = 12; f2[2][21] = 12; f2[3][20] = 12
+  return [f1, f2]
+}
+
+function sceneGym(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 9, 7, 6, 5, 7, 'front', 'happy', 'armsup')
+  drawPerson(f2, 9, 6, 6, 5, 7, 'front', 'happy', 'armsup')
+  f1[6][8] = 15; f1[6][9] = 15; f1[6][14] = 15; f1[6][15] = 15
+  f2[5][8] = 15; f2[5][9] = 15; f2[5][14] = 15; f2[5][15] = 15
+  f1[5][13] = 3; f1[4][14] = 3
+  f2[4][13] = 3; f2[3][14] = 3
+  return [f1, f2]
+}
+
+function sceneFishing(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  for (let col = 0; col < W; col++) { f1[16][col] = 4; f2[16][col] = 4 }
+  for (let col = 0; col < W; col++) { f1[17][col] = 4; f2[17][col] = 4 }
+  for (let col = 0; col < W; col++) { f1[18][col] = 14; f2[18][col] = 14 }
+  for (let col = 0; col < W; col++) { f1[19][col] = 1; f2[19][col] = 1 }
+  drawGround(f1, 2, 15); drawGround(f2, 2, 15)
+  drawPerson(f1, 3, 8, 2, 5, 7, 'right', 'normal', 'sit')
+  drawPerson(f2, 3, 8, 2, 5, 7, 'right', 'happy', 'sit')
+  const rod = [[9,8],[9,9],[9,10],[9,11],[9,12],[10,13],[11,14],[12,15],[13,16],[14,16]]
+  for (const [r,c] of rod) { f1[r][c] = 7; f2[r][c] = 7 }
+  f2[14][17] = 7
+  f1[17][18] = 8; f2[16][18] = 8
+  f1[16][15] = 3; f1[16][16] = 3
+  f2[16][17] = 3; f2[16][18] = 3
+  return [f1, f2]
+}
+
+function sceneSquareDance(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 4, 8, 4, 5, 7, 'front', 'happy', 'cheer')
+  drawPerson(f1, 10, 8, 2, 5, 8, 'front', 'happy', 'armsup')
+  drawPerson(f1, 16, 8, 6, 5, 7, 'front', 'happy', 'jump')
+  drawPerson(f2, 4, 8, 4, 5, 7, 'front', 'happy', 'jump')
+  drawPerson(f2, 10, 8, 2, 5, 8, 'front', 'happy', 'cheer')
+  drawPerson(f2, 16, 8, 6, 5, 7, 'front', 'happy', 'armsup')
+  f1[2][2] = 8; f1[3][10] = 8; f1[1][19] = 8
+  f2[3][2] = 8; f2[2][10] = 8; f2[2][19] = 8
+  return [f1, f2]
+}
+
+function sceneLottery(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 8, H-1); drawGround(f2, 8, H-1)
+  drawPerson(f1, 9, 8, 2, 5, 7, 'front', 'surprised', 'armsup')
+  drawPerson(f2, 9, 8, 2, 5, 7, 'front', 'happy', 'jump')
+  for (let i = 0; i < 8; i++) {
+    const x = 2 + i * 3
+    f1[2 + (i%3)][x] = 8; f1[4 + (i%2)][x+1] = 8
+    f2[3 + (i%3)][x] = 8; f2[2 + (i%2)][x+1] = 8
+  }
+  f1[5][5] = 8; f1[5][18] = 8; f2[6][5] = 8; f2[6][18] = 8
+  return [f1, f2]
+}
+
+function scenePet(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 5, 8, 2, 5, 7, 'right', 'happy', 'sit')
+  drawPerson(f2, 5, 8, 2, 5, 7, 'right', 'happy', 'sit')
+  const cx = 14, cy = 13
+  f1[cy][cx] = 6; f1[cy][cx+1] = 6; f1[cy][cx+2] = 6; f1[cy+1][cx] = 6
+  f1[cy+1][cx+1] = 6; f1[cy+1][cx+2] = 6; f1[cy+2][cx+1] = 6
+  f1[cy][cx] = 15; f1[cy][cx+2] = 15
+  f1[cy+1][cx] = 3; f1[cy+1][cx+2] = 3
+  f2[cy][cx] = 6; f2[cy][cx+1] = 6; f2[cy][cx+2] = 6; f2[cy+1][cx] = 6
+  f2[cy+1][cx+1] = 6; f2[cy+1][cx+2] = 6; f2[cy+2][cx] = 6; f2[cy+2][cx+2] = 6
+  f2[cy][cx] = 15; f2[cy][cx+2] = 15
+  f2[cy+1][cx] = 3; f2[cy+1][cx+2] = 3
+  drawHeart(f1, 16, 4, 5); drawHeart(f2, 16, 3, 5)
+  return [f1, f2]
+}
+
+function sceneReading(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 9, 8, 10, 5, 7, 'front', 'normal', 'sit')
+  drawPerson(f2, 9, 8, 10, 5, 7, 'front', 'happy', 'sit')
+  f1[13][10] = 9; f1[13][11] = 9; f1[13][12] = 9; f1[13][13] = 9
+  f2[13][10] = 9; f2[13][11] = 9; f2[13][12] = 9; f2[13][13] = 9
+  f1[6][16] = 8; f1[7][16] = 15; f1[8][16] = 15
+  f2[6][16] = 8; f2[7][16] = 15; f2[8][16] = 15
+  return [f1, f2]
+}
+
+// 恋爱/约会
+function sceneDating(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 4, H-1); drawGround(f2, 4, H-1)
+  drawTable(f1, 7, 13, 4); drawTable(f2, 7, 13, 4)
+  drawCup(f1, 9, 11, 8); drawCup(f1, 12, 11, 8)
+  drawCup(f2, 9, 11, 8); drawCup(f2, 12, 11, 8)
+  drawPerson(f1, 3, 7, 4, 5, 7, 'right', 'happy', 'sit')
+  drawPerson(f1, 16, 7, 6, 5, 8, 'left', 'happy', 'sit')
+  drawPerson(f2, 3, 7, 4, 5, 7, 'right', 'happy', 'sit')
+  drawPerson(f2, 16, 7, 6, 5, 8, 'left', 'happy', 'sit')
+  drawHeart(f1, 11, 3, 4); drawHeart(f2, 11, 2, 4)
+  f1[2][2] = 8; f1[1][20] = 8
+  f2[1][2] = 8; f2[2][20] = 8
+  return [f1, f2]
+}
+
+// 表白
+function sceneConfess(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 4, 8, 4, 5, 7, 'right', 'happy', 'bow')
+  drawPerson(f1, 15, 8, 6, 5, 8, 'left', 'surprised', 'stand')
+  drawPerson(f2, 4, 8, 4, 5, 7, 'right', 'happy', 'stand')
+  drawPerson(f2, 15, 8, 6, 5, 8, 'left', 'happy', 'stand')
+  // 鲜花
+  for (let i = 0; i < 3; i++) { f1[7+i][10+i] = 12; f2[7+i][10+i] = 12 }
+  f1[9][11] = 8; f2[8][11] = 8
+  drawHeart(f1, 18, 3, 4); drawHeart(f2, 18, 2, 4)
+  drawSparkle(f1, 1, 2, 8); drawSparkle(f1, 21, 4, 8)
+  drawSparkle(f2, 2, 1, 8); drawSparkle(f2, 20, 3, 8)
+  return [f1, f2]
+}
+
+// 恋爱分手
+function sceneBreakup(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 3, 9, 15, 5, 7, 'left', 'sad', 'walk1')
+  drawPerson(f1, 16, 9, 15, 5, 8, 'right', 'sad', 'walk2')
+  drawPerson(f2, 2, 9, 15, 5, 7, 'left', 'sad', 'walk2')
+  drawPerson(f2, 17, 9, 15, 5, 8, 'right', 'sad', 'walk1')
+  // 破碎的心
+  f1[5][10] = 12; f1[5][13] = 12
+  f1[6][9] = 12; f1[6][10] = 12; f1[6][12] = 12; f1[6][13] = 12; f1[6][14] = 12
+  f1[7][10] = 12; f1[7][11] = 12; f1[7][13] = 12
+  f1[6][11] = 1; f2[6][11] = 1
+  f2[4][10] = 12; f2[4][13] = 12
+  f2[5][9] = 12; f2[5][10] = 12; f2[5][12] = 12; f2[5][13] = 12; f2[5][14] = 12
+  f2[6][10] = 12; f2[6][11] = 12; f2[6][13] = 12
+  f2[5][11] = 1
+  return [f1, f2]
+}
+
+// 搬家/迁移城市
+function sceneMove(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawSuitcase(f1, 4, 12, 6); drawSuitcase(f1, 10, 12, 4); drawSuitcase(f1, 16, 12, 2)
+  drawSuitcase(f2, 5, 12, 6); drawSuitcase(f2, 11, 12, 4); drawSuitcase(f2, 17, 12, 2)
+  drawPerson(f1, 8, 7, 2, 5, 7, 'right', 'normal', 'walk1')
+  drawPerson(f2, 9, 7, 2, 5, 7, 'right', 'happy', 'walk2')
+  drawTrain(f1, 2, 2); drawTrain(f2, 1, 2)
+  f1[1][21] = 8; f1[0][22] = 8
+  f2[0][20] = 8; f2[1][22] = 8
+  return [f1, f2]
+}
+
+// 父母探望/回家
+function sceneParents(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawHouse(f1, 13, 5, 11, 4, 7, true)
+  drawHouse(f2, 13, 5, 11, 4, 7, true)
+  // 父母（灰发）
+  drawPerson(f1, 3, 9, 4, 5, 14, 'right', 'happy', 'stand')
+  drawPerson(f1, 8, 9, 2, 5, 14, 'right', 'happy', 'stand')
+  drawPerson(f2, 3, 9, 4, 5, 14, 'right', 'happy', 'cheer')
+  drawPerson(f2, 8, 9, 2, 5, 14, 'right', 'happy', 'cheer')
+  // 自己
+  drawPerson(f1, 14, 9, 6, 5, 7, 'left', 'happy', 'armsup')
+  drawPerson(f2, 14, 9, 6, 5, 7, 'left', 'happy', 'jump')
+  drawHeart(f1, 11, 3, 4); drawHeart(f2, 11, 2, 4)
+  return [f1, f2]
 }
 
 // 父母生病
-function sceneParentSick(): number[][] {
-  const c = emptyCanvas()
-  // 病床
-  for (let x = 2; x <= 11; x++) c[7][x] = 7
-  c[8][3] = 7; c[8][10] = 7; c[9][3] = 7; c[9][10] = 7
-  // 躺着的老人
-  c[6][4] = 6; c[6][5] = 6; c[6][6] = 6; c[6][7] = 6
-  c[6][8] = 7; c[6][9] = 7; c[7][8] = 4  // 白头发
-  c[7][4] = 4; c[7][5] = 4; c[7][6] = 4; c[7][7] = 4  // 被子
-  // 守在旁边的人
-  c[5][11] = 6; c[6][11] = 6; c[5][12] = 6; c[6][12] = 6
-  c[7][11] = 4; c[7][12] = 4; c[8][11] = 4; c[8][12] = 4
-  c[9][11] = 7; c[9][12] = 7
-  // 吊瓶
-  c[1][13] = 2; c[2][13] = 2; c[3][13] = 2; c[4][13] = 2; c[5][13] = 2; c[6][13] = 2
-  c[2][14] = 2
-  // 十字
-  c[0][1] = 8; c[1][0] = 8; c[1][1] = 8; c[1][2] = 8
-  return c
+function sceneParentSick(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawBed(f1, 6, 9, 4); drawBed(f2, 6, 9, 4)
+  drawPerson(f1, 8, 9, 9, 5, 14, 'front', 'sad', 'lie')
+  drawPerson(f2, 8, 9, 9, 5, 14, 'front', 'sad', 'lie')
+  drawPerson(f1, 2, 9, 15, 5, 7, 'right', 'sad', 'sit')
+  drawPerson(f2, 2, 9, 15, 5, 7, 'right', 'sad', 'bow')
+  f1[2][20] = 12; f1[1][20] = 12; f1[2][19] = 12; f1[2][21] = 12; f1[3][20] = 12
+  f2[2][20] = 12; f2[1][20] = 12; f2[2][19] = 12; f2[2][21] = 12; f2[3][20] = 12
+  return [f1, f2]
 }
 
-// 夫妻吵架
-function sceneCoupleFight(): number[][] {
-  const c = emptyCanvas()
-  // 两个人对质
-  c[3][3] = 6; c[4][3] = 6; c[3][4] = 6; c[4][4] = 6
-  c[5][3] = 2; c[5][4] = 2; c[6][3] = 2; c[6][4] = 2
-  c[3][11] = 6; c[4][11] = 6; c[3][12] = 6; c[4][12] = 6
-  c[5][11] = 4; c[5][12] = 4; c[6][11] = 4; c[6][12] = 4
-  // 闪电/冲突符号
-  c[3][7] = 8; c[4][6] = 8; c[4][7] = 8; c[4][8] = 8; c[5][7] = 8
-  c[2][7] = 8; c[5][6] = 8; c[5][8] = 8
-  // 摔碎的杯子
-  c[8][6] = 7; c[9][5] = 7; c[9][7] = 7; c[8][8] = 7
-  // 怒号 lines
-  c[2][2] = 4; c[2][5] = 4; c[2][10] = 4; c[2][13] = 4
-  return c
+// 朋友借钱
+function sceneLendMoney(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 4, 8, 9, 5, 7, 'right', 'normal', 'stand')
+  drawPerson(f1, 15, 8, 15, 5, 8, 'left', 'sad', 'bow')
+  drawPerson(f2, 4, 8, 9, 5, 7, 'right', 'normal', 'stand')
+  drawPerson(f2, 15, 8, 15, 5, 8, 'left', 'sad', 'bow')
+  drawMoney(f1, 10, 10, 8); drawMoney(f1, 10, 11, 8)
+  drawMoney(f2, 9, 10, 8); drawMoney(f2, 9, 11, 8); drawMoney(f2, 11, 10, 8)
+  f1[3][3] = 6; f1[4][3] = 6
+  f2[2][3] = 6; f2[3][3] = 6; f2[4][3] = 6
+  return [f1, f2]
 }
 
-// ============================================================
-// 生活场景
-// ============================================================
-
-// 买房：一栋小房子
-function sceneHouse(): number[][] {
-  const c = emptyCanvas()
-  // 屋顶
-  c[1][7] = 7; c[1][8] = 7
-  c[2][6] = 7; c[2][7] = 7; c[2][8] = 7; c[2][9] = 7
-  c[3][5] = 7; c[3][6] = 7; c[3][7] = 7; c[3][8] = 7; c[3][9] = 7; c[3][10] = 7
-  // 房身
-  for (let y = 4; y <= 9; y++) {
-    for (let x = 4; x <= 11; x++) {
-      c[y][x] = 8
-    }
-  }
-  // 门
-  c[7][6] = 7; c[7][7] = 7; c[8][6] = 7; c[8][7] = 7; c[9][6] = 7; c[9][7] = 7
-  c[9][7] = 8
-  // 窗户
-  c[5][5] = 2; c[5][9] = 2; c[6][5] = 2; c[6][9] = 2
-  c[5][4] = 7; c[6][4] = 7; c[5][10] = 7; c[6][10] = 7
-  c[8][9] = 3; c[8][10] = 3; c[9][9] = 3; c[9][10] = 3  // 亮灯的窗户
-  // 烟囱冒烟
-  c[2][10] = 7; c[3][10] = 7
-  c[1][10] = 3; c[0][10] = 3; c[0][11] = 3
-  // 小路
-  c[10][6] = 4; c[10][7] = 4; c[11][6] = 4; c[11][7] = 4
-  // 星星/夜景
-  c[0][2] = 3; c[1][13] = 3
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 2
-  return c
+// 相亲
+function sceneBlindDate(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 4, H-1); drawGround(f2, 4, H-1)
+  drawTable(f1, 7, 13, 14); drawTable(f2, 7, 13, 14)
+  drawCup(f1, 9, 11, 8); drawCup(f1, 12, 11, 8)
+  drawCup(f2, 9, 11, 8); drawCup(f2, 12, 11, 8)
+  drawPerson(f1, 3, 7, 4, 5, 7, 'right', 'surprised', 'sit')
+  drawPerson(f1, 16, 7, 6, 5, 8, 'left', 'surprised', 'sit')
+  drawPerson(f2, 3, 7, 4, 5, 7, 'right', 'normal', 'sit')
+  drawPerson(f2, 16, 7, 6, 5, 8, 'left', 'normal', 'sit')
+  // 问号
+  f1[2][11] = 8; f1[3][11] = 8; f1[4][11] = 8; f1[4][12] = 8; f1[5][12] = 8
+  f2[3][11] = 8; f2[4][11] = 8; f2[5][11] = 8; f2[5][12] = 8; f2[6][12] = 8
+  return [f1, f2]
 }
 
-// 买车：一辆车
-function sceneCar(): number[][] {
-  const c = emptyCanvas()
-  // 车身
-  for (let x = 2; x <= 13; x++) { c[6][x] = 9; c[7][x] = 9 }
-  for (let x = 4; x <= 11; x++) c[5][x] = 9
-  c[4][5] = 9; c[4][6] = 9; c[4][7] = 9; c[4][8] = 9; c[4][9] = 9; c[4][10] = 9
-  // 车窗
-  for (let x = 5; x <= 10; x++) c[5][x] = 2
-  // 车轮
-  c[8][3] = 7; c[8][4] = 7; c[9][3] = 7; c[9][4] = 7
-  c[8][11] = 7; c[8][12] = 7; c[9][11] = 7; c[9][12] = 7
-  c[8][3] = 1; c[9][4] = 1; c[8][12] = 1; c[9][11] = 1  // 轮心
-  // 车灯
-  c[6][13] = 8; c[7][2] = 8
-  // 路面
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  c[11][0] = 8; c[11][4] = 8; c[11][8] = 8; c[11][12] = 8  // 路面虚线
-  // 速度线
-  c[5][0] = 3; c[6][0] = 3; c[4][1] = 3
-  return c
-}
-
-// 旅行：飞机+云
-function sceneTravel(): number[][] {
-  const c = emptyCanvas()
-  // 机身
-  for (let x = 4; x <= 12; x++) c[5][x] = 7
-  c[5][3] = 2; c[4][6] = 7; c[4][7] = 7; c[4][8] = 7  // 尾翼
-  c[6][6] = 7; c[6][7] = 7; c[6][8] = 7  // 机翼
-  c[5][13] = 2; c[5][2] = 2
-  // 窗户
-  c[5][5] = 2; c[5][7] = 2; c[5][9] = 2; c[5][11] = 2
-  // 云
-  c[2][1] = 3; c[2][2] = 3; c[2][3] = 3; c[3][1] = 3; c[3][2] = 3
-  c[2][12] = 3; c[2][13] = 3; c[2][14] = 3; c[3][13] = 3; c[3][14] = 3
-  c[8][0] = 3; c[8][1] = 3; c[9][0] = 3
-  c[9][13] = 3; c[9][14] = 3; c[10][12] = 3; c[10][13] = 3; c[10][14] = 3
-  // 尾迹
-  c[5][0] = 3; c[5][1] = 3; c[6][1] = 3
-  return c
-}
-
-// 重病住院
-function sceneSickness(): number[][] {
-  const c = emptyCanvas()
-  // 床
-  for (let x = 2; x <= 11; x++) c[7][x] = 7
-  c[8][3] = 7; c[8][10] = 7; c[9][3] = 7; c[9][10] = 7
-  // 枕头
-  c[6][3] = 3; c[6][4] = 3
-  // 人躺着
-  c[6][5] = 6; c[6][6] = 6; c[6][7] = 6; c[6][8] = 6
-  c[7][5] = 4; c[7][6] = 4; c[7][7] = 4; c[7][8] = 4
-  // 吊瓶架
-  for (let y = 1; y <= 9; y++) c[y][12] = 7
-  // 吊瓶
-  c[2][13] = 2; c[3][13] = 2; c[4][13] = 2
-  // 管子
-  c[4][12] = 2; c[5][11] = 2; c[6][10] = 2
-  // 心跳监护
-  c[2][2] = 8; c[2][3] = 8; c[2][4] = 8; c[3][2] = 8; c[3][4] = 8  // 屏幕框
-  c[3][3] = 8  // 心跳线
-  c[2][3] = 12; c[3][3] = 12  // 红色心跳
-  // 十字
-  c[0][7] = 8; c[1][6] = 8; c[1][7] = 8; c[1][8] = 8
-  return c
-}
-
-// 朋友喝酒/相聚
-function sceneFriendDrink(): number[][] {
-  const c = emptyCanvas()
-  // 吧台
-  for (let x = 1; x <= 14; x++) c[8][x] = 8
-  c[9][2] = 8; c[9][13] = 8
-  // 两个人
-  c[3][3] = 6; c[4][3] = 6; c[3][4] = 6; c[4][4] = 6
-  c[5][3] = 2; c[5][4] = 2; c[6][3] = 2; c[6][4] = 2; c[7][3] = 2; c[7][4] = 2
-  c[3][11] = 6; c[4][11] = 6; c[3][12] = 6; c[4][12] = 6
-  c[5][11] = 4; c[5][12] = 4; c[6][11] = 4; c[6][12] = 4; c[7][11] = 4; c[7][12] = 4
-  // 碰杯
-  c[4][6] = 9; c[5][6] = 9; c[4][8] = 9; c[5][8] = 9
-  c[6][6] = 9; c[6][8] = 9
-  c[4][7] = 3; c[5][7] = 3  // 碰撞闪光
-  // 气泡
-  c[2][5] = 3; c[2][9] = 3; c[1][7] = 3; c[0][6] = 3
-  // 酒瓶
-  c[6][1] = 9; c[7][1] = 9; c[6][14] = 9; c[7][14] = 9
-  return c
-}
-
-// 搬家：纸箱
-function sceneMoving(): number[][] {
-  const c = emptyCanvas()
-  // 大箱子
-  for (let x = 2; x <= 6; x++) { c[6][x] = 8; c[7][x] = 8; c[8][x] = 8 }
-  c[5][2] = 8; c[5][3] = 8; c[5][4] = 8; c[5][5] = 8; c[5][6] = 8
-  // 中箱子
-  for (let x = 8; x <= 12; x++) { c[7][x] = 8; c[8][x] = 8 }
-  c[6][8] = 8; c[6][9] = 8; c[6][10] = 8; c[6][11] = 8; c[6][12] = 8
-  // 小箱子
-  for (let x = 3; x <= 5; x++) c[10][x] = 8
-  c[9][3] = 8; c[9][4] = 8; c[9][5] = 8
-  // 胶带
-  c[7][4] = 7; c[6][4] = 7; c[7][10] = 7; c[6][10] = 7
-  // 箭头
-  c[5][10] = 9; c[5][11] = 9; c[4][10] = 9
-  // 搬东西的人
-  c[3][13] = 6; c[4][13] = 6; c[3][14] = 6; c[4][14] = 6
-  c[5][13] = 2; c[5][14] = 2; c[6][12] = 8; c[6][13] = 8; c[6][14] = 8; c[6][15] = 8  // 抱着箱子
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  return c
-}
-
-// 健身
-function sceneFitness(): number[][] {
-  const c = emptyCanvas()
-  // 人
-  c[2][7] = 6; c[2][8] = 6; c[3][7] = 6; c[3][8] = 6
-  c[4][6] = 2; c[4][7] = 2; c[4][8] = 2; c[4][9] = 2
-  c[5][7] = 2; c[5][8] = 2
-  c[6][7] = 2; c[6][8] = 2; c[7][7] = 2; c[7][8] = 2
-  // 哑铃
-  c[4][3] = 9; c[4][4] = 9; c[4][5] = 9; c[4][10] = 9; c[4][11] = 9; c[4][12] = 9
-  c[3][3] = 9; c[3][4] = 9; c[3][5] = 9; c[3][10] = 9; c[3][11] = 9; c[3][12] = 9
-  // 汗滴
-  c[1][9] = 3; c[0][10] = 3; c[1][6] = 3
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  // 肌肉线条/闪光
-  c[2][5] = 3; c[2][10] = 3
-  return c
-}
-
-// 吃饭
-function sceneNoodles(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let i = 0; i < 16; i++) c[10][i] = 8
-  // 大碗
-  for (let x = 4; x <= 11; x++) c[7][x] = 8
-  c[6][3] = 8; c[6][12] = 8; c[8][3] = 8; c[8][12] = 8
-  c[9][4] = 8; c[9][5] = 8; c[9][6] = 8; c[9][7] = 8; c[9][8] = 8; c[9][9] = 8; c[9][10] = 8; c[9][11] = 8
-  // 面
-  c[5][5] = 3; c[5][6] = 3; c[5][7] = 3; c[5][8] = 3; c[5][9] = 3; c[5][10] = 3
-  c[4][6] = 3; c[4][7] = 3; c[4][8] = 3; c[4][9] = 3
-  c[6][5] = 3; c[6][6] = 3; c[6][7] = 3; c[6][8] = 3; c[6][9] = 3; c[6][10] = 3
-  // 筷子
-  c[3][4] = 7; c[4][5] = 7; c[3][11] = 7; c[4][10] = 7
-  // 热气
-  c[2][6] = 3; c[1][7] = 3; c[2][8] = 3; c[1][9] = 3; c[0][7] = 3; c[0][8] = 3
-  // 蛋
-  c[6][7] = 8; c[6][8] = 8
-  return c
-}
-
-// 体检/医院
-function sceneHealthCheck(): number[][] {
-  const c = emptyCanvas()
-  // 大十字
-  for (let y = 2; y <= 8; y++) { c[y][7] = 8; c[y][8] = 8 }
-  for (let x = 4; x <= 11; x++) { c[4][x] = 8; c[5][x] = 8 }
-  // 听诊器
-  c[8][2] = 6; c[9][2] = 6; c[9][3] = 6
-  c[9][12] = 9; c[8][12] = 9; c[8][13] = 9
-  c[7][10] = 9; c[8][11] = 9  // 连线
-  // 心电图屏幕
-  for (let x = 2; x <= 6; x++) { c[1][x] = 1; c[2][x] = 1 }
-  c[1][2] = 7; c[1][6] = 7; c[2][2] = 7; c[2][6] = 7
-  c[2][3] = 12; c[2][4] = 12; c[2][5] = 12  // 红线
-  return c
-}
-
-// 理财投资/K线图
-function sceneInvestment(): number[][] {
-  const c = emptyCanvas()
-  // 屏幕框
-  for (let x = 2; x <= 13; x++) { c[1][x] = 7; c[8][x] = 7 }
-  for (let y = 1; y <= 8; y++) { c[y][2] = 7; c[y][13] = 7 }
-  // K线图（上涨 绿色/涨 红色/跌）
-  c[6][3] = 2; c[5][3] = 2; c[4][3] = 2  // 涨
-  c[6][5] = 8; c[7][5] = 8  // 跌
-  c[5][7] = 2; c[4][7] = 2; c[3][7] = 2  // 涨
-  c[4][9] = 8; c[5][9] = 8; c[6][9] = 8  // 跌
-  c[5][11] = 2; c[4][11] = 2; c[3][11] = 2; c[2][11] = 2  // 大涨
-  // 趋势线
-  c[7][4] = 2; c[7][6] = 2; c[7][8] = 2; c[7][10] = 2; c[7][12] = 2
-  // 钱符号
-  c[3][4] = 5; c[3][5] = 5
-  // 向上箭头
-  c[0][11] = 2; c[0][12] = 2; c[1][10] = 2; c[1][11] = 2; c[1][12] = 2; c[1][13] = 2
-  return c
-}
-
-// 心理咨询
-function sceneTherapy(): number[][] {
-  const c = emptyCanvas()
-  // 两张椅子
-  c[7][3] = 7; c[7][4] = 7; c[8][3] = 7; c[8][4] = 7; c[9][3] = 7; c[9][4] = 7
-  c[7][11] = 7; c[7][12] = 7; c[8][11] = 7; c[8][12] = 7; c[9][11] = 7; c[9][12] = 7
-  // 两个人（一个说话一个听）
-  c[4][3] = 6; c[5][3] = 6; c[4][4] = 6; c[5][4] = 6
-  c[6][3] = 2; c[6][4] = 2
-  c[4][11] = 6; c[5][11] = 6; c[4][12] = 6; c[5][12] = 6
-  c[6][11] = 4; c[6][12] = 4
-  // 中间的纸巾盒
-  c[6][7] = 7; c[6][8] = 7; c[7][7] = 7; c[7][8] = 7
-  c[5][7] = 3; c[5][8] = 3  // 纸巾抽出
-  // 对话框
-  c[3][6] = 3; c[3][7] = 3; c[3][8] = 3; c[3][9] = 3; c[2][7] = 3; c[2][8] = 3
-  // 安静的时钟
-  c[1][1] = 7; c[1][2] = 7; c[2][1] = 7; c[2][2] = 7
-  c[1][2] = 3
-  return c
-}
-
-// 生日蛋糕
-function sceneBirthday(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let i = 0; i < 16; i++) c[10][i] = 8
-  // 蛋糕
-  for (let x = 5; x <= 10; x++) { c[6][x] = 8; c[7][x] = 8; c[8][x] = 8 }
-  c[5][5] = 8; c[5][10] = 8
-  // 奶油
-  for (let x = 5; x <= 10; x++) c[5][x] = 3
-  // 蜡烛
-  c[3][6] = 9; c[4][6] = 9; c[3][8] = 9; c[4][8] = 9; c[3][9] = 9; c[4][9] = 9
-  // 火焰
-  c[2][6] = 8; c[2][8] = 8; c[2][9] = 8; c[1][6] = 3; c[1][8] = 3; c[1][9] = 3
-  // 一个人
-  c[3][2] = 6; c[4][2] = 6; c[3][3] = 6; c[4][3] = 6
-  c[5][2] = 4; c[5][3] = 4; c[6][2] = 4; c[6][3] = 4; c[7][2] = 7; c[7][3] = 7; c[8][2] = 7; c[8][3] = 7
-  // 气球
-  c[1][13] = 4; c[2][13] = 4; c[1][14] = 2; c[2][14] = 2
-  c[3][13] = 7; c[3][14] = 7
-  return c
-}
-
-// ============================================================
-// 事业场景
-// ============================================================
-
-// 裁员/失业
-function sceneFired(): number[][] {
-  const c = emptyCanvas()
-  // 办公桌
-  for (let x = 1; x <= 8; x++) c[6][x] = 7
-  c[7][1] = 7; c[7][8] = 7; c[8][1] = 7; c[8][8] = 7
-  // 纸箱
-  for (let x = 10; x <= 14; x++) { c[7][x] = 8; c[8][x] = 8 }
-  c[6][10] = 8; c[6][11] = 8; c[6][12] = 8; c[6][13] = 8; c[6][14] = 8
-  // 人低头
-  c[3][4] = 6; c[3][5] = 6; c[4][4] = 6; c[4][5] = 6
-  c[5][4] = 4; c[5][5] = 4; c[6][4] = 4; c[6][5] = 4
-  // 关掉的电脑
-  c[3][2] = 1; c[4][2] = 1; c[3][7] = 1; c[4][7] = 1
-  c[2][2] = 1; c[2][7] = 1
-  // 散落的纸
-  c[9][12] = 7; c[10][4] = 7; c[9][2] = 7
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  return c
-}
-
-// 升职/涨薪
-function scenePromotion(): number[][] {
-  const c = emptyCanvas()
-  // 向上大箭头
-  c[1][7] = 5; c[1][8] = 5
-  c[2][6] = 5; c[2][7] = 5; c[2][8] = 5; c[2][9] = 5
-  c[3][7] = 5; c[3][8] = 5
-  c[4][7] = 5; c[4][8] = 5
-  c[5][7] = 5; c[5][8] = 5
-  c[6][7] = 5; c[6][8] = 5
-  c[7][7] = 5; c[7][8] = 5
-  c[8][7] = 5; c[8][8] = 5
-  // 星星
-  c[0][4] = 5; c[0][11] = 5; c[2][2] = 5; c[2][13] = 5
-  c[1][1] = 5; c[1][14] = 5; c[3][0] = 5; c[3][15] = 5
-  // 钱袋
-  c[9][6] = 8; c[9][7] = 8; c[9][8] = 8; c[9][9] = 8
-  c[10][6] = 8; c[10][7] = 5; c[10][8] = 5; c[10][9] = 8
-  c[11][6] = 8; c[11][7] = 8; c[11][8] = 8; c[11][9] = 8
-  // ¥符号
-  c[8][7] = 5; c[8][8] = 5
-  // 光芒
-  c[0][7] = 3; c[0][8] = 3
-  return c
-}
-
-// 创业：火箭发射
-function sceneStartup(): number[][] {
-  const c = emptyCanvas()
-  // 火箭身
-  c[2][7] = 7; c[2][8] = 7
-  c[3][7] = 7; c[3][8] = 7
-  c[4][6] = 9; c[4][7] = 7; c[4][8] = 7; c[4][9] = 9
-  c[5][6] = 9; c[5][7] = 7; c[5][8] = 7; c[5][9] = 9
-  c[6][7] = 7; c[6][8] = 7
-  c[7][7] = 7; c[7][8] = 7
-  // 窗口
-  c[5][7] = 2; c[5][8] = 2
-  // 火焰
-  c[8][6] = 6; c[8][7] = 8; c[8][8] = 8; c[8][9] = 6
-  c[9][5] = 8; c[9][6] = 8; c[9][7] = 9; c[9][8] = 9; c[9][9] = 8; c[9][10] = 8
-  c[10][7] = 9; c[10][8] = 9
-  c[11][7] = 6; c[11][8] = 6
-  // 星星
-  c[0][2] = 3; c[1][4] = 3; c[3][13] = 3; c[0][12] = 3; c[2][1] = 3; c[1][14] = 3
-  return c
-}
-
-// 加班/电脑前工作
-function sceneWork(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let x = 1; x <= 14; x++) c[8][x] = 7
-  c[9][2] = 7; c[9][13] = 7; c[10][2] = 7; c[10][13] = 7
-  // 大显示器
-  for (let x = 4; x <= 11; x++) { c[2][x] = 2; c[3][x] = 2; c[4][x] = 2; c[5][x] = 2; c[6][x] = 2 }
-  c[2][4] = 7; c[2][11] = 7; c[6][4] = 7; c[6][11] = 7
-  // 代码
-  c[3][5] = 3; c[3][6] = 3; c[3][8] = 3; c[3][10] = 3
-  c[4][5] = 3; c[4][7] = 5; c[4][9] = 3; c[4][10] = 3
-  c[5][5] = 3; c[5][6] = 3; c[5][8] = 3; c[5][9] = 3
-  // 人
-  c[6][7] = 6; c[6][8] = 6; c[7][7] = 6; c[7][8] = 6
-  c[8][7] = 4; c[8][8] = 4
+// 加班
+function sceneOvertime(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  for (let r = 4; r <= 12; r++) for (let col = 6; col <= 17; col++) { f1[r][col] = 1; f2[r][col] = 1 }
+  drawComputer(f1, 9, 6, 3); drawComputer(f2, 9, 6, 12)
+  drawPerson(f1, 7, 9, 15, 5, 7, 'front', 'sad', 'type')
+  drawPerson(f2, 7, 9, 15, 5, 7, 'front', 'surprised', 'type')
+  // 月亮
+  f1[1][19] = 8; f1[1][20] = 8; f1[2][19] = 8; f1[2][20] = 8
+  f2[1][19] = 8; f2[2][18] = 8; f2[2][19] = 8; f2[2][20] = 8
   // 咖啡杯
-  c[7][12] = 8; c[7][13] = 8; c[8][12] = 8; c[8][13] = 8
-  c[6][13] = 3  // 热气
-  // 台灯
-  c[1][1] = 8; c[2][1] = 3; c[3][1] = 3; c[4][1] = 3; c[5][1] = 3; c[6][1] = 3; c[7][1] = 7; c[8][1] = 7
-  // 月亮（窗外）
-  c[0][14] = 8; c[1][14] = 8; c[0][15] = 8
-  return c
+  drawCup(f1, 15, 9, 4); drawCup(f2, 15, 9, 4)
+  f1[14][5] = 9; f1[13][5] = 9; f2[14][5] = 9; f2[13][5] = 9
+  return [f1, f2]
 }
 
-// 破产/爆仓
-function sceneBankruptcy(): number[][] {
-  const c = emptyCanvas()
-  // 碎硬币
-  c[3][4] = 8; c[3][5] = 8; c[4][4] = 8; c[4][5] = 8
-  c[3][5] = 0; c[4][5] = 0
-  c[2][9] = 8; c[2][10] = 8; c[3][10] = 8
-  c[6][3] = 8; c[7][3] = 8; c[7][4] = 8
-  c[6][10] = 8; c[7][11] = 8; c[7][10] = 8
-  c[9][7] = 8; c[9][8] = 8; c[10][7] = 8; c[10][8] = 8
-  // 下落
-  c[1][7] = 8; c[0][8] = 8
-  // 大感叹号
-  c[1][13] = 8; c[2][13] = 8; c[4][13] = 8
-  c[3][13] = 0
-  // X 眼睛的人
-  c[6][6] = 8; c[6][7] = 1; c[6][8] = 1; c[6][9] = 8
-  c[7][6] = 4; c[7][7] = 4; c[7][8] = 4; c[7][9] = 4
-  c[8][6] = 4; c[8][7] = 4; c[8][8] = 4; c[8][9] = 4
-  // 地面阴影
-  for (let i = 0; i < 16; i++) c[11][i] = 8
-  return c
+// 玩手机/刷手机
+function scenePhone(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawChair(f1, 9, 11, 7); drawChair(f2, 9, 11, 7)
+  drawPerson(f1, 9, 5, 2, 5, 7, 'front', 'happy', 'sit')
+  drawPerson(f2, 9, 5, 2, 5, 7, 'front', 'happy', 'sit')
+  drawPhone(f1, 11, 9, 10); drawPhone(f2, 11, 9, 6)
+  // 信号/通知
+  f1[3][3] = 10; f1[2][4] = 10; f1[3][20] = 10; f1[2][19] = 10
+  f2[4][3] = 10; f2[3][4] = 10; f2[4][20] = 10; f2[3][19] = 10
+  return [f1, f2]
 }
 
-// 辞职
-function sceneQuit(): number[][] {
-  const c = emptyCanvas()
-  // 门框
-  c[1][5] = 7; c[1][6] = 7; c[1][7] = 7; c[1][8] = 7; c[1][9] = 7
-  for (let y = 2; y <= 10; y++) { c[y][5] = 7; c[y][9] = 7 }
-  for (let x = 5; x <= 9; x++) c[10][x] = 7
-  // 门开着（强光）
-  for (let y = 2; y <= 9; y++) { c[y][6] = 3; c[y][7] = 3; c[y][8] = 3 }
-  // 人走出去（背影）
-  c[5][6] = 6; c[5][7] = 6; c[5][8] = 6
-  c[6][6] = 4; c[6][7] = 4; c[6][8] = 4
-  c[7][6] = 4; c[7][7] = 4; c[7][8] = 4
-  c[8][6] = 7; c[8][7] = 7; c[8][8] = 7
-  c[9][6] = 7; c[9][7] = 7; c[9][8] = 7
-  // EXIT 标识
-  c[0][6] = 9; c[0][7] = 9; c[0][8] = 9
-  // 光芒射线
-  c[0][7] = 3; c[1][7] = 3
-  return c
-}
-
-// AI突破
-function sceneAIBreakthrough(): number[][] {
-  const c = emptyCanvas()
-  // 大屏幕
-  for (let x = 1; x <= 14; x++) {
-    for (let y = 1; y <= 9; y++) {
-      c[y][x] = 1
-    }
-  }
-  c[1][1] = 10; c[1][14] = 10; c[9][1] = 10; c[9][14] = 10
-  for (let x = 1; x <= 14; x++) { c[0][x] = 10; c[10][x] = 10 }
-  // 神经网络节点
-  c[3][3] = 3; c[3][7] = 3; c[3][12] = 3
-  c[5][5] = 5; c[5][10] = 5
-  c[7][3] = 3; c[7][7] = 3; c[7][12] = 3
-  // 连接线
-  c[4][4] = 3; c[4][6] = 3; c[4][8] = 3; c[4][11] = 3
-  c[6][4] = 3; c[6][6] = 3; c[6][8] = 3; c[6][11] = 3
-  c[5][4] = 5; c[5][6] = 5; c[5][8] = 5; c[5][9] = 5; c[5][11] = 5
-  // 中心发光
-  c[4][7] = 5; c[4][8] = 5; c[5][7] = 5; c[6][7] = 5; c[6][8] = 5
-  c[3][7] = 7; c[3][8] = 7
-  return c
-}
-
-// 信念危机
-function sceneFaithCrisis(): number[][] {
-  const c = emptyCanvas()
-  // 人坐着
-  c[4][7] = 6; c[4][8] = 6; c[5][7] = 6; c[5][8] = 6
-  c[6][6] = 4; c[6][7] = 4; c[6][8] = 4; c[6][9] = 4
-  c[7][7] = 4; c[7][8] = 4; c[8][6] = 7; c[8][9] = 7
-  c[9][6] = 7; c[9][9] = 7; c[10][6] = 7; c[10][9] = 7
-  // 酒瓶
-  c[6][3] = 8; c[7][3] = 8; c[8][3] = 8; c[6][4] = 8; c[7][4] = 8
-  // 阴影
-  for (let x = 0; x <= 15; x++) c[11][x] = 4
-  // 问号
-  c[2][11] = 7; c[2][12] = 7; c[3][12] = 7; c[4][12] = 7; c[5][12] = 0; c[6][12] = 7
-  // 雨
-  c[0][1] = 3; c[1][3] = 3; c[0][5] = 3; c[1][10] = 3; c[0][13] = 3; c[2][14] = 3
-  return c
-}
-
-// 跳槽
-function sceneJobHop(): number[][] {
-  const c = emptyCanvas()
-  // 旧门（暗）
-  c[2][2] = 7; c[2][3] = 7; c[2][4] = 7
-  for (let y = 3; y <= 8; y++) { c[y][2] = 7; c[y][4] = 7 }
-  for (let x = 2; x <= 4; x++) c[8][x] = 7
-  c[3][3] = 4; c[4][3] = 4; c[5][3] = 4; c[6][3] = 4; c[7][3] = 4
-  // 新门（亮）
-  c[2][11] = 7; c[2][12] = 7; c[2][13] = 7
-  for (let y = 3; y <= 8; y++) { c[y][11] = 7; c[y][13] = 7 }
-  for (let x = 11; x <= 13; x++) c[8][x] = 7
-  c[3][12] = 3; c[4][12] = 3; c[5][12] = 3; c[6][12] = 3; c[7][12] = 3
-  // 人走向新门
-  c[5][7] = 6; c[5][8] = 6; c[6][7] = 6; c[6][8] = 6
-  c[7][7] = 4; c[7][8] = 4; c[8][7] = 7; c[8][8] = 7
-  // 箭头指向新门
-  c[5][9] = 3; c[5][10] = 3
-  // 旧门的叉
-  c[4][3] = 8; c[5][3] = 8; c[5][3] = 8; c[6][3] = 8
-  return c
-}
-
-// 副业/熬夜工作
-function sceneSideHustle(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let x = 2; x <= 13; x++) c[8][x] = 7
-  c[9][3] = 7; c[9][12] = 7
-  // 笔记本电脑
-  for (let x = 5; x <= 10; x++) { c[4][x] = 2; c[5][x] = 2; c[6][x] = 2 }
-  c[4][5] = 7; c[4][10] = 7; c[6][5] = 7; c[6][10] = 7
-  for (let x = 5; x <= 10; x++) c[7][x] = 7
-  // 屏幕上的代码/钱
-  c[5][6] = 5; c[5][7] = 5; c[5][8] = 5; c[5][9] = 5
-  c[6][6] = 3; c[6][8] = 3
-  // 人
-  c[6][7] = 6; c[6][8] = 6; c[7][7] = 6; c[7][8] = 6
-  c[8][7] = 4; c[8][8] = 4
-  // 月亮
-  c[1][1] = 8; c[1][2] = 8; c[2][1] = 8; c[0][1] = 3; c[0][2] = 3; c[1][0] = 3
-  // 星星
-  c[0][13] = 3; c[2][14] = 3; c[1][14] = 3
-  // 咖啡
-  c[7][3] = 8; c[8][3] = 8; c[7][12] = 8; c[8][12] = 8
-  c[6][3] = 3; c[6][12] = 3
-  return c
-}
-
-// 考公/考证学习
-function sceneStudy(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let x = 1; x <= 14; x++) c[8][x] = 8
-  // 书本堆
-  c[5][3] = 7; c[5][4] = 7; c[5][5] = 7; c[6][3] = 7; c[6][4] = 7; c[6][5] = 7; c[7][3] = 7; c[7][4] = 7; c[7][5] = 7
-  c[4][4] = 7; c[4][5] = 7; c[5][4] = 3; c[6][4] = 3
-  // 人
-  c[3][9] = 6; c[3][10] = 6; c[4][9] = 6; c[4][10] = 6
-  c[5][8] = 2; c[5][9] = 2; c[5][10] = 2; c[5][11] = 2
-  c[6][9] = 2; c[6][10] = 2; c[7][9] = 2; c[7][10] = 2
-  // 笔
-  c[5][6] = 7; c[6][7] = 7
-  // 台灯
-  c[1][12] = 8; c[2][12] = 3; c[3][12] = 3; c[4][12] = 3; c[5][12] = 3; c[6][12] = 3; c[7][12] = 7; c[8][12] = 7
-  // 汗水/努力
-  c[2][8] = 3; c[2][11] = 3
-  // 证书/通过标志
-  c[1][2] = 5; c[1][3] = 5; c[2][2] = 5; c[2][3] = 5
-  c[1][3] = 7; c[2][2] = 7
-  return c
-}
-
-// 远程工作/数字游民
-function sceneRemote(): number[][] {
-  const c = emptyCanvas()
-  // 笔记本
-  for (let x = 4; x <= 10; x++) { c[4][x] = 2; c[5][x] = 2; c[6][x] = 2 }
-  c[4][4] = 7; c[4][10] = 7; c[6][4] = 7; c[6][10] = 7
-  for (let x = 4; x <= 10; x++) c[7][x] = 7
-  // 屏幕上地球/wifi
-  c[5][6] = 3; c[5][7] = 3; c[5][8] = 3; c[5][9] = 3
-  c[6][7] = 9; c[6][8] = 9
-  // 咖啡
-  c[5][2] = 8; c[6][2] = 8; c[5][3] = 8; c[6][3] = 8
-  c[4][2] = 3; c[4][3] = 3
-  // 棕榈树/海滩元素
-  c[3][13] = 6; c[4][13] = 6; c[5][13] = 6; c[6][13] = 6; c[7][13] = 7; c[8][13] = 7; c[9][13] = 7
-  c[2][12] = 6; c[2][14] = 6
-  // 太阳
-  c[1][1] = 8; c[1][2] = 8; c[2][1] = 8; c[2][2] = 8
-  c[0][1] = 3; c[0][2] = 3; c[1][0] = 3; c[1][3] = 3; c[2][0] = 3; c[2][3] = 3
-  // 波浪
-  c[10][0] = 2; c[10][1] = 2; c[10][2] = 2; c[10][14] = 2; c[10][15] = 2
-  c[11][0] = 2; c[11][1] = 2; c[11][15] = 2
-  return c
-}
-
-// 35岁危机/中年危机
-function sceneMidlifeCrisis(): number[][] {
-  const c = emptyCanvas()
-  // 镜子
-  for (let x = 4; x <= 11; x++) { c[1][x] = 7; c[8][x] = 7 }
-  for (let y = 1; y <= 8; y++) { c[y][4] = 7; c[y][11] = 7 }
-  // 镜子里的人（有白发）
-  c[3][6] = 6; c[3][7] = 6; c[3][8] = 6; c[3][9] = 6
-  c[4][6] = 6; c[4][7] = 5; c[4][8] = 5; c[4][9] = 6
-  c[5][6] = 4; c[5][7] = 4; c[5][8] = 4; c[5][9] = 4
-  c[3][6] = 7; c[3][9] = 7  // 白发
-  // 分叉路
-  c[9][3] = 4; c[10][2] = 4; c[11][1] = 4; c[11][2] = 4
-  c[9][12] = 3; c[10][13] = 3; c[11][14] = 3; c[11][13] = 3
-  c[10][7] = 4; c[10][8] = 4; c[11][7] = 4; c[11][8] = 4
-  // 问号
-  c[0][7] = 7; c[0][8] = 7
-  return c
-}
-
-// 带团队/管理
-function sceneManageTeam(): number[][] {
-  const c = emptyCanvas()
-  // 白板
-  for (let x = 3; x <= 12; x++) { c[1][x] = 7; c[5][x] = 7 }
-  for (let y = 1; y <= 5; y++) { c[y][3] = 7; c[y][12] = 7 }
-  c[2][5] = 3; c[2][6] = 3; c[2][7] = 3; c[3][8] = 3; c[3][9] = 3; c[3][10] = 3  // 图表
-  c[4][6] = 5; c[4][9] = 5  // 重点标记
-  // 讲话的人
-  c[6][7] = 6; c[6][8] = 6; c[7][7] = 6; c[7][8] = 6
-  c[8][6] = 2; c[8][7] = 2; c[8][8] = 2; c[8][9] = 2
-  c[9][7] = 2; c[9][8] = 2
-  // 三个听众
-  c[8][3] = 6; c[9][3] = 6; c[8][4] = 6; c[9][4] = 4; c[10][3] = 7; c[10][4] = 7
-  c[8][11] = 6; c[9][11] = 6; c[8][12] = 6; c[9][12] = 4; c[10][11] = 7; c[10][12] = 7
-  c[9][1] = 6; c[10][1] = 7; c[10][0] = 7; c[9][14] = 6; c[10][14] = 7; c[10][15] = 7
-  return c
-}
-
-// ============================================================
-// 新增家庭场景
-// ============================================================
-
-// 见家长：紧张的对坐
-function sceneMeetParents(): number[][] {
-  const c = emptyCanvas()
-  // 沙发
-  for (let x = 1; x <= 7; x++) c[8][x] = 7
-  c[7][1] = 7; c[7][7] = 7
-  // 两个老人（父母）
-  c[4][2] = 6; c[4][3] = 6; c[5][2] = 6; c[5][3] = 6
-  c[6][2] = 4; c[6][3] = 4; c[4][2] = 7; c[4][3] = 7  // 白发
-  c[4][5] = 6; c[4][6] = 6; c[5][5] = 6; c[5][6] = 6
-  c[6][5] = 4; c[6][6] = 4; c[4][5] = 7; c[4][6] = 7
-  // 紧张的年轻人（站着）
-  c[4][11] = 6; c[4][12] = 6; c[5][11] = 6; c[5][12] = 6
-  c[6][10] = 2; c[6][11] = 2; c[6][12] = 2; c[6][13] = 2
-  c[7][11] = 7; c[7][12] = 7; c[8][11] = 7; c[8][12] = 7
-  // 茶几
-  for (let x = 3; x <= 6; x++) c[9][x] = 8
-  // 茶杯
-  c[8][4] = 7; c[8][5] = 7
-  // 汗滴
-  c[3][10] = 3; c[3][13] = 3
-  // 问号
-  c[2][9] = 7; c[3][9] = 7; c[4][9] = 7; c[5][9] = 0; c[6][9] = 7
-  return c
-}
-
-// 七年之痒：两人背对背玩手机
-function sceneSevenYearItch(): number[][] {
-  const c = emptyCanvas()
-  // 沙发
-  for (let x = 2; x <= 13; x++) c[8][x] = 7
-  c[7][2] = 7; c[7][13] = 7
-  // 左边的人
-  c[4][4] = 6; c[4][5] = 6; c[5][4] = 6; c[5][5] = 6
-  c[6][3] = 4; c[6][4] = 4; c[6][5] = 4; c[6][6] = 4
-  c[7][4] = 7; c[7][5] = 7
-  // 右边的人
-  c[4][10] = 6; c[4][11] = 6; c[5][10] = 6; c[5][11] = 6
-  c[6][9] = 2; c[6][10] = 2; c[6][11] = 2; c[6][12] = 2
-  c[7][10] = 7; c[7][11] = 7
-  // 手机屏幕发光
-  c[5][6] = 2; c[5][9] = 4
-  c[4][6] = 3; c[4][9] = 3; c[6][6] = 3; c[6][9] = 3
-  // 中间的裂痕/距离线
-  c[6][7] = 1; c[6][8] = 1; c[5][7] = 1; c[5][8] = 1
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  return c
-}
-
-// 婆媳矛盾：三个人，婆婆指责，媳妇委屈
-function sceneMotherInLaw(): number[][] {
-  const c = emptyCanvas()
-  // 婆婆（左，手指着）
-  c[3][2] = 7; c[3][3] = 7; c[4][2] = 7; c[4][3] = 7  // 白发盘头
-  c[5][2] = 6; c[5][3] = 6; c[4][2] = 6; c[4][3] = 6
-  c[6][2] = 4; c[6][3] = 4; c[7][2] = 4; c[7][3] = 4
-  c[8][2] = 7; c[8][3] = 7
-  // 手指指向
-  c[5][5] = 6; c[5][6] = 6
-  // 中间的丈夫（夹在中间，头疼）
-  c[4][7] = 6; c[4][8] = 6; c[5][7] = 6; c[5][8] = 6
-  c[6][7] = 2; c[6][8] = 2; c[7][7] = 2; c[7][8] = 2
-  // 汗滴
-  c[3][6] = 3; c[3][9] = 3
-  // 媳妇（右，低头）
-  c[4][12] = 6; c[4][13] = 6; c[5][12] = 6; c[5][13] = 6
-  c[6][11] = 4; c[6][12] = 4; c[6][13] = 4; c[6][14] = 4
-  c[7][12] = 7; c[7][13] = 7
-  // 眼泪
-  c[5][11] = 3
-  // 闪电冲突
-  c[3][10] = 8; c[2][9] = 8; c[3][9] = 8
-  return c
-}
-
-// 空巢/送孩子上大学：孩子背书包挥手
-function sceneEmptyNest(): number[][] {
-  const c = emptyCanvas()
-  // 父母（左边站着挥手）
-  c[3][2] = 6; c[3][3] = 6; c[4][2] = 6; c[4][3] = 6
-  c[5][2] = 4; c[5][3] = 4; c[6][2] = 4; c[6][3] = 4
-  c[7][2] = 7; c[7][3] = 7; c[3][2] = 7; c[3][3] = 7  // 妈妈有白发
-  c[3][5] = 6; c[4][5] = 6; c[5][5] = 2; c[6][5] = 2; c[7][5] = 7
-  // 挥手
-  c[2][1] = 6; c[2][4] = 6
-  // 孩子（右边，背书包走）
-  c[3][11] = 6; c[3][12] = 6; c[4][11] = 6; c[4][12] = 6
-  c[5][10] = 3; c[5][11] = 3; c[5][12] = 3; c[5][13] = 3
-  c[6][11] = 7; c[6][12] = 7; c[7][11] = 7; c[7][12] = 7
-  // 书包
-  c[4][10] = 9; c[5][10] = 9; c[4][13] = 9
-  // 挥手
-  c[2][13] = 6
-  // 门口/列车
-  for (let x = 9; x <= 15; x++) c[8][x] = 7
-  for (let y = 1; y <= 7; y++) c[y][9] = 7
-  c[2][14] = 2; c[3][14] = 2; c[4][14] = 2  // 车窗
-  // 眼泪
-  c[4][1] = 3; c[4][4] = 3
-  return c
-}
-
-// 带孙子：老人牵着小孩
-function sceneGrandchild(): number[][] {
-  const c = emptyCanvas()
-  // 老人（奶奶）
-  c[3][3] = 7; c[3][4] = 7; c[4][3] = 7; c[4][4] = 7  // 白发
-  c[5][3] = 6; c[5][4] = 6; c[4][3] = 6; c[4][4] = 6
-  c[6][3] = 4; c[6][4] = 4; c[7][3] = 4; c[7][4] = 4
-  c[8][3] = 7; c[8][4] = 7
-  // 牵着手
-  c[6][6] = 6; c[7][6] = 6
+// 陪孩子玩
+function scenePlayWithKid(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 3, 7, 2, 5, 7, 'right', 'happy', 'armsup')
+  drawPerson(f2, 3, 6, 2, 5, 7, 'right', 'happy', 'jump')
   // 小孩
-  c[5][8] = 6; c[5][9] = 6; c[6][8] = 6; c[6][9] = 6
-  c[7][7] = 3; c[7][8] = 3; c[7][9] = 3; c[7][10] = 3
-  c[8][8] = 7; c[8][9] = 7
-  // 气球（小孩拿着）
-  c[2][11] = 4; c[3][11] = 4; c[2][12] = 4; c[3][12] = 4
-  c[4][11] = 7  // 绳子
-  // 公园地面
-  for (let i = 0; i < 16; i++) c[11][i] = 2
-  // 小花
-  c[10][1] = 4; c[10][13] = 4; c[9][1] = 8; c[9][13] = 8
-  return c
+  const kx = 12, ky = 11
+  f1[ky][kx] = 5; f1[ky][kx+1] = 5; f1[ky+1][kx] = 5; f1[ky+1][kx+1] = 5
+  f1[ky][kx] = 15; f1[ky][kx+1] = 15
+  f1[ky+2][kx] = 6; f1[ky+2][kx+1] = 6; f1[ky+3][kx] = 7; f1[ky+3][kx+1] = 7
+  f2[ky-1][kx] = 5; f2[ky-1][kx+1] = 5; f2[ky][kx] = 5; f2[ky][kx+1] = 5
+  f2[ky-1][kx] = 15; f2[ky-1][kx+1] = 15
+  f2[ky+1][kx] = 6; f2[ky+1][kx+1] = 6; f2[ky+2][kx] = 7; f2[ky+2][kx+1] = 7
+  // 球
+  f1[12][17] = 8; f1[12][18] = 8; f1[13][17] = 8; f1[13][18] = 8
+  f2[11][16] = 8; f2[11][17] = 8; f2[12][16] = 8; f2[12][17] = 8
+  drawHeart(f1, 18, 3, 4); drawHeart(f2, 18, 2, 4)
+  return [f1, f2]
 }
 
-// 老两口看电视
-function sceneOldCoupleTV(): number[][] {
-  const c = emptyCanvas()
-  // 沙发
-  for (let x = 2; x <= 13; x++) c[8][x] = 7
-  c[7][2] = 7; c[7][13] = 7
-  // 老爷爷
-  c[4][4] = 7; c[4][5] = 7; c[5][4] = 7; c[5][5] = 7  // 白发
-  c[5][4] = 6; c[5][5] = 6; c[6][4] = 4; c[6][5] = 4
-  c[7][4] = 7; c[7][5] = 7
-  // 老奶奶
-  c[4][10] = 7; c[4][11] = 7; c[5][10] = 7; c[5][11] = 7
-  c[5][10] = 6; c[5][11] = 6; c[6][10] = 4; c[6][11] = 4
-  c[7][10] = 7; c[7][11] = 7
-  // 织毛衣（奶奶）
-  c[6][8] = 9; c[6][9] = 9; c[7][8] = 9; c[7][9] = 9
-  c[5][8] = 9
-  // 电视机
-  for (let x = 5; x <= 10; x++) { c[1][x] = 7; c[4][x] = 7 }
-  for (let y = 1; y <= 4; y++) { c[y][5] = 7; c[y][10] = 7 }
-  c[2][6] = 2; c[2][7] = 2; c[2][8] = 2; c[2][9] = 2
-  c[3][6] = 2; c[3][7] = 8; c[3][8] = 8; c[3][9] = 2  // 屏幕内容
-  // 茶杯
-  c[7][2] = 7; c[7][13] = 7
-  return c
-}
-
-// 教老人用手机
-function sceneTeachPhone(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let x = 2; x <= 13; x++) c[8][x] = 8
-  // 老人（左）
-  c[3][3] = 7; c[3][4] = 7; c[4][3] = 7; c[4][4] = 7
-  c[5][3] = 6; c[5][4] = 6; c[6][3] = 4; c[6][4] = 4
-  c[7][3] = 7; c[7][4] = 7
-  // 大手机
-  c[5][6] = 7; c[5][7] = 7; c[5][8] = 7; c[5][9] = 7
-  c[6][6] = 2; c[6][7] = 2; c[6][8] = 2; c[6][9] = 2
-  c[7][6] = 7; c[7][7] = 7; c[7][8] = 7; c[7][9] = 7
-  c[6][7] = 8; c[6][8] = 8  // 屏幕上的图标
-  // 年轻人手指着屏幕
-  c[5][11] = 6; c[5][12] = 6; c[4][11] = 6; c[4][12] = 6
-  c[6][10] = 2; c[6][11] = 2; c[6][12] = 2; c[6][13] = 2
-  c[7][11] = 7; c[7][12] = 7; c[5][10] = 6  // 手指
-  // 问号（老人困惑）
-  c[2][2] = 7; c[3][2] = 7; c[4][2] = 7; c[5][2] = 0; c[6][2] = 7
-  return c
-}
-
-// 半夜哄娃：抱着婴儿走来走去
-function sceneMidnightBaby(): number[][] {
-  const c = emptyCanvas()
-  // 黑暗的房间（暗色背景）
-  // 月亮
-  c[1][13] = 8; c[1][14] = 8; c[2][13] = 8; c[0][14] = 8
-  c[0][13] = 3; c[0][14] = 3; c[1][15] = 3
-  // 星星
-  c[0][2] = 3; c[2][5] = 3; c[1][9] = 3
-  // 大人抱着孩子
-  c[3][6] = 6; c[3][7] = 6; c[4][6] = 6; c[4][7] = 6
-  c[5][5] = 4; c[5][6] = 4; c[5][7] = 4; c[5][8] = 4
-  c[6][6] = 4; c[6][7] = 4
-  c[7][6] = 7; c[7][7] = 7; c[8][5] = 7; c[8][8] = 7; c[9][5] = 7; c[9][8] = 7
-  // 婴儿
-  c[4][8] = 6; c[4][9] = 6; c[5][9] = 5; c[5][10] = 5
-  c[5][8] = 3; c[5][9] = 3  // 襁褓
-  // ZZZ（困）
-  c[2][3] = 7; c[1][3] = 7; c[0][2] = 7
-  // 奶瓶
-  c[6][3] = 7; c[6][4] = 3; c[5][4] = 3
-  // 床
-  for (let x = 1; x <= 14; x++) c[10][x] = 7
-  return c
-}
-
-// 结婚纪念/金婚：老两口碰杯
-function sceneAnniversary(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let x = 1; x <= 14; x++) c[8][x] = 8
-  // 老爷爷
-  c[3][4] = 7; c[3][5] = 7; c[4][4] = 7; c[4][5] = 7
-  c[4][4] = 6; c[4][5] = 6; c[5][4] = 2; c[5][5] = 2
-  c[6][4] = 2; c[6][5] = 2; c[7][4] = 7; c[7][5] = 7
-  // 老奶奶
-  c[3][10] = 7; c[3][11] = 7; c[4][10] = 7; c[4][11] = 7
-  c[4][10] = 6; c[4][11] = 6; c[5][10] = 4; c[5][11] = 4
-  c[6][10] = 4; c[6][11] = 4; c[7][10] = 7; c[7][11] = 7
-  // 碰杯
-  c[4][7] = 9; c[5][7] = 9; c[4][8] = 9; c[5][8] = 9
-  c[4][7] = 3; c[4][8] = 3  // 碰杯闪光
-  // 小蛋糕
-  c[6][7] = 8; c[6][8] = 8; c[7][7] = 8; c[7][8] = 8
-  c[5][7] = 8; c[5][8] = 8
-  c[4][7] = 0; c[4][8] = 0  // 蜡烛（被酒杯挡住）
-  c[3][7] = 9; c[3][8] = 9  // 蜡烛
-  c[2][7] = 3; c[2][8] = 3  // 火焰
-  // 爱心
-  c[1][7] = 4; c[1][8] = 4; c[2][6] = 4; c[2][9] = 4; c[3][7] = 0; c[3][8] = 0
-  c[1][7] = 4; c[1][8] = 4; c[0][7] = 4; c[0][8] = 4
-  return c
+// 跳槽/换工作
+function sceneJobHop(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 4, 9, 15, 5, 7, 'right', 'normal', 'walk1')
+  drawPerson(f2, 5, 9, 2, 5, 7, 'right', 'happy', 'walk2')
+  // 旧公司（灰暗）
+  for (let r = 5; r <= 12; r++) for (let col = 0; col <= 5; col++) f1[r][col] = 15
+  for (let r = 6; r <= 11; r++) for (let col = 1; col <= 4; col++) f1[r][col] = 1
+  // 新公司（明亮）
+  for (let r = 3; r <= 12; r++) for (let col = 16; col <= 23; col++) f2[r][col] = 11
+  for (let r = 4; r <= 11; r++) for (let col = 17; col <= 22; col++) f2[r][col] = 3
+  f1[8][10] = 8; f1[9][10] = 8; f1[10][10] = 8
+  f2[8][11] = 8; f2[9][11] = 8; f2[10][11] = 8
+  drawSparkle(f1, 19, 2, 8); drawSparkle(f2, 20, 1, 8)
+  return [f1, f2]
 }
 
 // ============================================================
-// 新增生活场景
+// 场景生成 - 事业
 // ============================================================
 
-// 脱发/照镜子发现秃头
-function sceneHairLoss(): number[][] {
-  const c = emptyCanvas()
-  // 镜子
-  for (let x = 4; x <= 11; x++) { c[1][x] = 7; c[8][x] = 7 }
-  for (let y = 1; y <= 8; y++) { c[y][4] = 7; c[y][11] = 7 }
-  // 镜子里的人（头顶稀疏）
-  c[3][6] = 6; c[3][7] = 6; c[3][8] = 6; c[3][9] = 6
-  c[4][6] = 6; c[4][7] = 1; c[4][8] = 1; c[4][9] = 6  // 头顶秃了
-  c[5][6] = 6; c[5][7] = 6; c[5][8] = 6; c[5][9] = 6
-  c[6][6] = 4; c[6][7] = 4; c[6][8] = 4; c[6][9] = 4
-  // 震惊的眼睛
-  c[4][7] = 7; c[4][8] = 7
-  // 手摸头
-  c[3][5] = 6; c[2][5] = 6; c[2][6] = 6
-  // 掉落的头发
-  c[9][6] = 7; c[10][7] = 7; c[9][9] = 7; c[10][8] = 7; c[11][7] = 7
-  // 感叹号
-  c[0][2] = 8; c[1][2] = 8; c[3][2] = 8; c[2][2] = 0
-  return c
+function scenePromotion(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 9, 7, 2, 5, 7, 'front', 'happy', 'jump')
+  drawPerson(f2, 9, 8, 2, 5, 7, 'front', 'happy', 'cheer')
+  const stars: [number,number][] = [[3,2],[6,1],[12,0],[18,1],[20,3],[2,5],[21,6]]
+  for (const [x,y] of stars) { f1[y][x] = 5; f2[y+1][x] = 5 }
+  f1[3][10] = 5; f1[3][11] = 5; f1[3][12] = 5; f1[3][13] = 5
+  f1[2][11] = 5; f1[2][12] = 5; f1[1][12] = 5
+  f2[4][10] = 5; f2[4][11] = 5; f2[4][12] = 5; f2[4][13] = 5
+  f2[3][11] = 5; f2[3][12] = 5; f2[2][12] = 5
+  return [f1, f2]
 }
 
-// 吃药/一堆药瓶
-function scenePills(): number[][] {
-  const c = emptyCanvas()
-  // 桌子
-  for (let i = 0; i < 16; i++) c[10][i] = 8
-  // 大药瓶
-  c[4][3] = 7; c[4][4] = 7; c[5][3] = 8; c[5][4] = 8
-  c[6][3] = 8; c[6][4] = 8; c[7][3] = 8; c[7][4] = 8
-  c[8][3] = 8; c[8][4] = 8; c[9][3] = 7; c[9][4] = 7
-  c[5][3] = 12; c[5][4] = 12  // 标签
-  // 中药瓶
-  c[5][6] = 9; c[6][6] = 9; c[7][6] = 9; c[8][6] = 9; c[9][6] = 9
-  c[4][6] = 7  // 瓶盖
-  // 小药瓶
-  c[6][9] = 7; c[7][9] = 7; c[8][9] = 7; c[9][9] = 7; c[7][8] = 12
-  c[6][11] = 7; c[7][11] = 7; c[8][11] = 7; c[9][11] = 7
-  // 药片散落
-  c[8][1] = 7; c[9][2] = 7; c[7][13] = 12; c[8][14] = 12; c[9][13] = 7
-  c[8][7] = 8; c[9][8] = 8
-  // 药盒（分药器）
-  c[5][12] = 7; c[5][13] = 7; c[6][12] = 7; c[6][13] = 7
-  c[5][12] = 3; c[5][13] = 12; c[6][12] = 8; c[6][13] = 7
-  return c
+function sceneStartup(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 8, H-1); drawGround(f2, 8, H-1)
+  drawComputer(f1, 7, 4, 6); drawComputer(f2, 7, 4, 8)
+  drawPerson(f1, 6, 9, 6, 5, 7, 'front', 'surprised', 'type')
+  drawPerson(f2, 6, 9, 6, 5, 7, 'front', 'surprised', 'type')
+  f1[13][13] = 5; f1[13][14] = 5
+  f2[13][12] = 5; f2[13][15] = 5
+  f1[3][5] = 6; f1[2][5] = 8; f1[3][6] = 6; f1[2][6] = 6; f1[4][5] = 6; f1[4][6] = 8
+  f2[2][5] = 6; f2[1][5] = 8; f2[2][6] = 6; f2[1][6] = 8; f2[3][5] = 8; f2[3][6] = 6
+  f1[3][18] = 6; f1[2][18] = 8; f1[3][19] = 6
+  f2[2][18] = 6; f2[1][18] = 8; f2[2][19] = 6
+  return [f1, f2]
 }
 
-// 车祸/追尾
-function sceneCarAccident(): number[][] {
-  const c = emptyCanvas()
-  // 前面的车（被追尾）
-  for (let x = 2; x <= 7; x++) { c[5][x] = 9; c[6][x] = 9 }
-  for (let x = 3; x <= 6; x++) c[4][x] = 9
-  c[4][3] = 9; c[4][4] = 9; c[4][5] = 9; c[4][6] = 9
-  c[5][4] = 2; c[5][5] = 2  // 后窗
-  c[7][3] = 7; c[7][6] = 7; c[8][3] = 7; c[8][6] = 7
-  // 后面的车（追尾的）
-  for (let x = 9; x <= 14; x++) { c[6][x] = 8; c[7][x] = 8 }
-  for (let x = 10; x <= 13; x++) c[5][x] = 8
-  c[6][11] = 1; c[6][12] = 1  // 碎挡风玻璃
-  c[8][10] = 7; c[8][13] = 7; c[9][10] = 7; c[9][13] = 7
-  // 碰撞火花/爆炸
-  c[4][8] = 8; c[5][8] = 8; c[5][7] = 8; c[4][7] = 8
-  c[3][7] = 8; c[3][8] = 8; c[6][7] = 8; c[6][8] = 8
-  c[2][8] = 3; c[3][9] = 3; c[4][9] = 3
-  // 感叹号
-  c[1][11] = 8; c[2][11] = 8; c[4][11] = 8; c[3][11] = 0
-  // 路面
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  return c
+function sceneFired(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 9, 8, 15, 5, 7, 'front', 'sad', 'stand')
+  drawPerson(f2, 9, 8, 15, 5, 7, 'front', 'sad', 'bow')
+  for (let r = 13; r <= 15; r++) for (let col = 9; col <= 12; col++) { f1[r][col] = 8; f2[r][col] = 8 }
+  f1[2][4] = 9; f1[4][18] = 9; f1[6][20] = 9
+  f2[3][4] = 9; f2[5][18] = 9; f2[7][20] = 9
+  return [f1, f2]
 }
 
-// 广场舞
-function sceneSquareDance(): number[][] {
-  const c = emptyCanvas()
-  // 三个人跳舞
-  // 左边人
-  c[3][2] = 6; c[3][3] = 6; c[4][2] = 6; c[4][3] = 6
-  c[5][1] = 4; c[5][2] = 4; c[5][3] = 4; c[5][4] = 4
-  c[6][2] = 4; c[6][3] = 4; c[7][1] = 7; c[7][4] = 7; c[8][1] = 7; c[8][4] = 7
-  c[2][1] = 6; c[2][4] = 6  // 手举起
-  // 中间人（领舞）
-  c[3][7] = 6; c[3][8] = 6; c[4][7] = 6; c[4][8] = 6
-  c[5][6] = 9; c[5][7] = 9; c[5][8] = 9; c[5][9] = 9
-  c[6][7] = 9; c[6][8] = 9; c[7][6] = 7; c[7][9] = 7; c[8][6] = 7; c[8][9] = 7
-  c[2][5] = 6; c[2][10] = 6
-  // 右边人
-  c[3][12] = 6; c[3][13] = 6; c[4][12] = 6; c[4][13] = 6
-  c[5][11] = 4; c[5][12] = 4; c[5][13] = 4; c[5][14] = 4
-  c[6][12] = 4; c[6][13] = 4; c[7][11] = 7; c[7][14] = 7; c[8][11] = 7; c[8][14] = 7
-  c[2][11] = 6; c[2][14] = 6
-  // 音符
-  c[1][5] = 5; c[0][7] = 5; c[1][10] = 5; c[0][12] = 5
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 2
-  // 音响
-  c[8][0] = 7; c[9][0] = 7; c[8][15] = 7; c[9][15] = 7
-  return c
+function sceneBankruptcy(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 9, 10, 12, 5, 7, 'front', 'sad', 'bow')
+  drawPerson(f2, 9, 10, 12, 5, 7, 'front', 'sad', 'bow')
+  for (let i = 0; i < 6; i++) {
+    const y = 2 + i*2
+    f1[y][2+i*3] = 8; f1[y+1][2+i*3] = 5
+    f2[y+1][3+i*3] = 8; f2[y+2][3+i*3] = 5
+  }
+  return [f1, f2]
 }
 
-// 钓鱼
-function sceneFishing(): number[][] {
-  const c = emptyCanvas()
-  // 水面
-  for (let i = 0; i < 16; i++) { c[9][i] = 2; c[10][i] = 4; c[11][i] = 4 }
-  c[9][3] = 3; c[9][7] = 3; c[9][12] = 3  // 波纹
-  // 岸边/草地
-  for (let x = 0; x <= 5; x++) c[8][x] = 6
-  // 人坐着
-  c[4][2] = 6; c[4][3] = 6; c[5][2] = 6; c[5][3] = 6
-  c[6][1] = 4; c[6][2] = 4; c[6][3] = 4; c[6][4] = 4
-  c[7][2] = 7; c[7][3] = 7; c[8][1] = 7; c[8][4] = 7
-  // 鱼竿
-  c[3][4] = 7; c[2][5] = 7; c[1][6] = 7; c[1][7] = 7; c[2][8] = 7
-  c[3][9] = 7; c[4][10] = 7; c[5][10] = 7
-  // 鱼线+浮漂
-  c[6][10] = 3; c[7][10] = 3; c[8][10] = 3
-  // 鱼（水下）
-  c[10][11] = 9; c[10][12] = 9; c[10][13] = 9
-  c[9][12] = 9; c[11][12] = 9
-  // 帽子
-  c[3][2] = 8; c[3][3] = 8; c[2][2] = 8; c[2][3] = 8
-  // 太阳
-  c[0][13] = 8; c[0][14] = 8; c[1][13] = 8; c[1][14] = 8
-  c[0][12] = 3; c[0][15] = 3; c[1][12] = 3; c[1][15] = 3
-  return c
+function sceneRetirementParty(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 9, 7, 2, 5, 14, 'front', 'happy', 'cheer')
+  drawPerson(f2, 9, 7, 2, 5, 14, 'front', 'happy', 'armsup')
+  for (let i = 0; i < 10; i++) {
+    const x = i * 2 + 1
+    f1[1+i%3][x] = [2,3,4,6,8,10,12][i%7]
+    f2[2+i%3][x] = [2,3,4,6,8,10,12][(i+2)%7]
+  }
+  f1[5][10] = 4; f1[5][11] = 4; f1[5][12] = 4; f1[4][11] = 4
+  f2[4][10] = 4; f2[4][11] = 4; f2[4][12] = 4; f2[3][11] = 4
+  return [f1, f2]
 }
 
-// 中彩票
-function sceneLottery(): number[][] {
-  const c = emptyCanvas()
-  // 彩票
-  for (let x = 5; x <= 10; x++) { c[4][x] = 8; c[5][x] = 8; c[6][x] = 8; c[7][x] = 8 }
-  c[4][5] = 12; c[4][10] = 12; c[7][5] = 12; c[7][10] = 12
-  c[5][6] = 7; c[5][7] = 7; c[5][8] = 7; c[5][9] = 7  // 号码
-  c[6][6] = 7; c[6][7] = 5; c[6][8] = 5; c[6][9] = 7  // 中奖号码金色
-  // 飞舞的钱币
-  c[1][2] = 5; c[2][4] = 5; c[0][7] = 5; c[1][10] = 5; c[2][13] = 5
-  c[3][1] = 5; c[4][14] = 5; c[0][12] = 5
-  // 人（震惊/狂喜）
-  c[9][6] = 6; c[9][7] = 6; c[9][8] = 6; c[9][9] = 6
-  c[10][5] = 4; c[10][6] = 4; c[10][7] = 4; c[10][8] = 4; c[10][9] = 4; c[10][10] = 4
-  c[11][6] = 7; c[11][7] = 7; c[11][8] = 7; c[11][9] = 7
-  // 举手庆祝
-  c[8][5] = 6; c[8][10] = 6
-  // 星星眼
-  c[9][7] = 5; c[9][8] = 5
-  return c
+function sceneInvestment(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
+  drawPerson(f1, 3, 8, 2, 5, 7, 'right', 'normal', 'sit')
+  drawPerson(f2, 3, 8, 2, 5, 7, 'right', 'happy', 'sit')
+  for (let r = 4; r <= 12; r++) for (let col = 10; col <= 21; col++) { f1[r][col] = 1; f2[r][col] = 1 }
+  for (let r = 4; r <= 12; r++) { f1[r][10] = 15; f1[r][21] = 15; f2[r][10] = 15; f2[r][21] = 15 }
+  for (let col = 10; col <= 21; col++) { f1[12][col] = 15; f2[12][col] = 15; f1[4][col] = 15; f2[4][col] = 15 }
+  const bars1 = [[11,11,6],[12,9,6],[13,10,8],[14,7,6],[15,8,8],[16,6,6],[17,5,8],[18,6,6],[19,4,8]]
+  const bars2 = [[11,10,6],[12,8,8],[13,9,6],[14,8,8],[15,7,6],[16,6,8],[17,5,6],[18,4,8],[19,3,6]]
+  for (const [x,y,c] of bars1) for (let r = y; r <= 11; r++) f1[r][x] = c
+  for (const [x,y,c] of bars2) for (let r = y; r <= 11; r++) f2[r][x] = c
+  return [f1, f2]
 }
 
-// 诈骗/AI诈骗电话
-function sceneScam(): number[][] {
-  const c = emptyCanvas()
-  // 手机
-  c[3][6] = 7; c[3][7] = 7; c[3][8] = 7; c[3][9] = 7
-  for (let y = 4; y <= 8; y++) { c[y][6] = 7; c[y][9] = 7 }
-  c[9][6] = 7; c[9][7] = 7; c[9][8] = 7; c[9][9] = 7
-  // 屏幕上的警告
-  c[4][7] = 12; c[4][8] = 12; c[5][7] = 12; c[5][8] = 12
-  c[6][7] = 7; c[6][8] = 7; c[7][7] = 8; c[7][8] = 8
-  // 警告三角
-  c[5][7] = 0; c[5][8] = 0; c[4][7] = 0; c[4][8] = 0
-  c[4][7] = 8; c[5][7] = 8; c[5][8] = 8; c[6][8] = 8; c[6][7] = 8; c[4][8] = 8
-  c[5][7] = 0; c[5][8] = 0  // !号
-  c[5][7] = 1
-  // 电话听筒（拒绝）
-  c[8][7] = 12; c[8][8] = 12
-  // 骗子的影子（手机里）
-  c[2][7] = 1; c[2][8] = 1; c[1][7] = 1; c[1][8] = 1
-  c[1][6] = 12; c[1][9] = 12
-  // 问号/冷汗
-  c[3][3] = 3; c[2][4] = 3
-  // 人接电话
-  c[6][2] = 6; c[6][3] = 6; c[7][2] = 6; c[7][3] = 6
-  c[8][2] = 4; c[8][3] = 4; c[9][2] = 7; c[9][3] = 7
-  return c
-}
-
-// 通胀/物价上涨
-function sceneInflation(): number[][] {
-  const c = emptyCanvas()
-  // 超市货架
-  for (let x = 1; x <= 14; x++) c[3][x] = 7
-  for (let x = 1; x <= 14; x++) c[7][x] = 7
-  for (let y = 3; y <= 7; y++) { c[y][1] = 7; c[y][14] = 7 }
-  // 价签（一个比一个高）
-  c[5][3] = 8; c[5][4] = 8; c[4][4] = 8
-  c[5][7] = 8; c[5][8] = 8; c[4][8] = 8; c[4][7] = 8
-  c[5][11] = 8; c[5][12] = 8; c[4][11] = 8; c[4][12] = 8; c[3][12] = 8
-  // 向上箭头
-  c[2][5] = 12; c[2][9] = 12; c[2][13] = 12
-  c[1][5] = 12; c[1][9] = 12; c[1][13] = 12
-  c[0][5] = 12; c[0][9] = 12; c[0][13] = 12
-  // 人看着价签惊讶
-  c[8][6] = 6; c[8][7] = 6; c[9][6] = 6; c[9][7] = 6
-  c[10][5] = 4; c[10][6] = 4; c[10][7] = 4; c[10][8] = 4
-  c[11][6] = 7; c[11][7] = 7
-  // 张大嘴
-  c[9][7] = 1; c[9][6] = 1
-  // 购物车
-  c[10][2] = 7; c[10][3] = 7; c[11][2] = 7; c[11][3] = 7
-  c[9][2] = 7; c[9][3] = 7
-  return c
-}
-
-// 同学聚会攀比
-function sceneClassReunion(): number[][] {
-  const c = emptyCanvas()
-  // 圆桌
-  for (let x = 3; x <= 12; x++) c[7][x] = 8
-  c[6][3] = 8; c[6][12] = 8; c[8][3] = 8; c[8][12] = 8
-  c[9][4] = 8; c[9][5] = 8; c[9][6] = 8; c[9][7] = 8; c[9][8] = 8; c[9][9] = 8; c[9][10] = 8; c[9][11] = 8
-  // 左边人（炫耀车钥匙）
-  c[3][3] = 6; c[3][4] = 6; c[4][3] = 6; c[4][4] = 6
-  c[5][2] = 2; c[5][3] = 2; c[5][4] = 2; c[5][5] = 2
-  c[6][3] = 2; c[6][4] = 2
-  // 车钥匙
-  c[4][6] = 5; c[5][6] = 5
-  // 右边人（炫耀手表）
-  c[3][11] = 6; c[3][12] = 6; c[4][11] = 6; c[4][12] = 6
-  c[5][10] = 4; c[5][11] = 4; c[5][12] = 4; c[5][13] = 4
-  c[6][11] = 4; c[6][12] = 4
-  // 金表
-  c[4][9] = 5
-  // 中间的"我"（尴尬）
-  c[4][7] = 6; c[4][8] = 6; c[5][7] = 6; c[5][8] = 6
-  c[6][7] = 4; c[6][8] = 4
-  // 汗滴
-  c[3][6] = 3; c[3][9] = 3
-  // 酒杯
-  c[6][5] = 9; c[6][10] = 9
-  // 尴尬的笑
-  c[5][7] = 1; c[5][8] = 1
-  return c
-}
-
-// 朋友离世/追悼会
-function sceneFuneral(): number[][] {
-  const c = emptyCanvas()
-  // 相框（黑白）
-  for (let x = 5; x <= 10; x++) { c[2][x] = 7; c[7][x] = 7 }
-  for (let y = 2; y <= 7; y++) { c[y][5] = 7; c[y][10] = 7 }
-  c[3][6] = 1; c[3][7] = 1; c[3][8] = 1; c[3][9] = 1
-  c[4][6] = 1; c[4][7] = 7; c[4][8] = 7; c[4][9] = 1
-  c[5][6] = 1; c[5][7] = 1; c[5][8] = 1; c[5][9] = 1
-  c[6][6] = 1; c[6][7] = 1; c[6][8] = 1; c[6][9] = 1
-  // 白花
-  c[1][4] = 7; c[1][11] = 7; c[8][4] = 7; c[8][11] = 7
-  c[0][4] = 7; c[0][11] = 7; c[9][4] = 7; c[9][11] = 7
-  // 蜡烛
-  c[8][7] = 3; c[8][8] = 3; c[7][7] = 9; c[7][8] = 9
-  c[6][7] = 9; c[6][8] = 9; c[5][7] = 8; c[5][8] = 8
-  c[4][7] = 3; c[4][8] = 3
-  // 鞠躬的人
-  c[10][7] = 4; c[10][8] = 4; c[11][6] = 7; c[11][9] = 7
-  c[9][7] = 6; c[9][8] = 6
-  return c
-}
-
-// 继承遗产/宝箱遗嘱
-function sceneInheritance(): number[][] {
-  const c = emptyCanvas()
-  // 宝箱
-  for (let x = 4; x <= 11; x++) { c[5][x] = 8; c[6][x] = 8; c[7][x] = 8 }
-  c[4][4] = 8; c[4][11] = 8
-  for (let y = 4; y <= 8; y++) { c[y][4] = 8; c[y][11] = 8 }
-  c[8][4] = 8; c[8][5] = 8; c[8][6] = 8; c[8][7] = 8; c[8][8] = 8; c[8][9] = 8; c[8][10] = 8; c[8][11] = 8
-  // 箱盖打开
-  c[3][5] = 8; c[3][6] = 8; c[3][7] = 8; c[3][8] = 8; c[3][9] = 8; c[3][10] = 8
-  c[2][6] = 8; c[2][7] = 8; c[2][8] = 8; c[2][9] = 8
-  // 金光
-  c[4][6] = 5; c[4][7] = 5; c[4][8] = 5; c[4][9] = 5
-  c[5][6] = 5; c[5][7] = 5; c[5][8] = 5; c[5][9] = 5
-  c[3][7] = 3; c[3][8] = 3; c[2][7] = 3; c[2][8] = 3; c[1][7] = 3; c[1][8] = 3
-  // 金币
-  c[6][6] = 5; c[6][7] = 5; c[6][8] = 5; c[6][9] = 5
-  c[7][7] = 5; c[7][8] = 5
-  // 遗嘱纸张
-  c[9][2] = 7; c[9][3] = 7; c[10][2] = 7; c[10][3] = 7; c[11][2] = 7; c[11][3] = 7
-  c[10][2] = 3; c[10][3] = 3
-  return c
-}
-
-// 阳台种菜
-function sceneBalconyGarden(): number[][] {
-  const c = emptyCanvas()
-  // 阳台栏杆
-  for (let x = 0; x <= 15; x++) c[7][x] = 7
-  for (let x = 1; x <= 14; x += 2) { c[8][x] = 7; c[9][x] = 7 }
-  // 花盆
-  c[8][2] = 9; c[8][3] = 9; c[9][2] = 9; c[9][3] = 9
-  c[8][6] = 9; c[8][7] = 9; c[9][6] = 9; c[9][7] = 9
-  c[8][11] = 9; c[8][12] = 9; c[9][11] = 9; c[9][12] = 9
-  // 植物（葱/辣椒/番茄）
-  c[5][2] = 6; c[6][2] = 6; c[7][2] = 6; c[5][3] = 6; c[6][3] = 6; c[7][3] = 6
-  c[6][2] = 2; c[6][3] = 2
-  c[5][6] = 6; c[6][6] = 6; c[7][6] = 6; c[5][7] = 6; c[6][7] = 6; c[7][7] = 6
-  c[6][6] = 2; c[6][7] = 2
-  c[4][7] = 12; c[5][7] = 12  // 红辣椒/番茄
-  c[5][11] = 6; c[6][11] = 6; c[7][11] = 6; c[5][12] = 6; c[6][12] = 6; c[7][12] = 6
-  c[6][11] = 2; c[6][12] = 2
-  c[4][12] = 8; c[4][11] = 8  // 黄花
-  // 太阳
-  c[0][1] = 8; c[0][2] = 8; c[1][1] = 8; c[1][2] = 8
-  c[0][0] = 3; c[0][3] = 3; c[1][0] = 3; c[1][3] = 3
-  // 浇水壶
-  c[6][14] = 2; c[7][14] = 2; c[8][14] = 2
-  // 水滴
-  c[5][13] = 3; c[4][13] = 3
-  return c
-}
-
-// 喂流浪猫
-function sceneStrayCat(): number[][] {
-  const c = emptyCanvas()
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  // 墙角/巷子
-  for (let y = 0; y <= 10; y++) c[y][0] = 7
-  // 人蹲着
-  c[6][4] = 6; c[6][5] = 6; c[7][4] = 6; c[7][5] = 6
-  c[8][3] = 4; c[8][4] = 4; c[8][5] = 4; c[8][6] = 4
-  c[9][3] = 7; c[9][6] = 7; c[10][3] = 7; c[10][6] = 7
-  // 手伸出
-  c[7][7] = 6; c[8][7] = 6
-  // 小猫（瘦）
-  c[8][9] = 9; c[8][10] = 9; c[9][9] = 9; c[9][10] = 9
-  c[7][9] = 9; c[7][10] = 9  // 头
-  c[7][8] = 9; c[7][11] = 9  // 耳朵
-  c[8][9] = 1; c[8][10] = 1  // 大眼睛
-  // 食物碗
-  c[10][9] = 7; c[10][10] = 7; c[10][11] = 7
-  c[9][10] = 8
-  // 爱心
-  c[5][6] = 4; c[5][7] = 4; c[4][7] = 4; c[4][8] = 4; c[5][8] = 4
-  c[6][7] = 4
-  // 月亮
-  c[1][13] = 8; c[1][14] = 8; c[2][13] = 8; c[0][14] = 8
-  return c
-}
-
-// 淋雨
-function sceneRain(): number[][] {
-  const c = emptyCanvas()
-  // 雨丝
-  for (let i = 0; i < 16; i += 2) { c[1][i] = 3; c[3][i+1] = 3; c[5][i] = 3; c[7][i+1] = 3 }
-  c[0][3] = 3; c[2][7] = 3; c[4][11] = 3; c[6][14] = 3; c[8][2] = 3; c[9][8] = 3
-  // 积水
-  for (let i = 0; i < 16; i++) c[11][i] = 2
-  c[10][3] = 2; c[10][7] = 2; c[10][12] = 2  // 水洼
-  // 人（抱头跑）
-  c[4][6] = 6; c[4][7] = 6; c[5][6] = 6; c[5][7] = 6
-  c[6][5] = 4; c[6][6] = 4; c[6][7] = 4; c[6][8] = 4
-  c[7][6] = 4; c[7][7] = 4; c[8][5] = 7; c[8][8] = 7; c[9][5] = 7; c[9][8] = 7
-  // 手护头
-  c[3][5] = 6; c[3][8] = 6
-  // 公文包/包
-  c[7][9] = 7; c[8][9] = 7; c[7][10] = 7; c[8][10] = 7
-  // 乌云
-  c[0][4] = 1; c[0][5] = 1; c[0][6] = 1; c[0][7] = 1; c[0][8] = 1; c[0][9] = 1
-  c[1][3] = 1; c[1][4] = 1; c[1][5] = 1; c[1][6] = 1; c[1][7] = 1; c[1][8] = 1; c[1][9] = 1; c[1][10] = 1
-  return c
-}
-
-// 菜市场
-function sceneMarket(): number[][] {
-  const c = emptyCanvas()
-  // 摊位
-  for (let x = 0; x <= 15; x++) c[8][x] = 8
-  // 蔬菜
-  c[6][1] = 6; c[6][2] = 6; c[7][1] = 6; c[7][2] = 6; c[6][2] = 2  // 青菜
-  c[6][4] = 12; c[6][5] = 12; c[7][4] = 12; c[7][5] = 12  // 番茄
-  c[6][7] = 8; c[6][8] = 8; c[7][7] = 8; c[7][8] = 8  // 土豆/南瓜
-  c[6][10] = 6; c[6][11] = 6; c[7][10] = 6; c[7][11] = 6; c[6][11] = 2  // 葱
-  c[6][13] = 9; c[6][14] = 9; c[7][13] = 9; c[7][14] = 9  // 胡萝卜
-  // 摊主
-  c[3][2] = 6; c[3][3] = 6; c[4][2] = 6; c[4][3] = 6
-  c[5][2] = 4; c[5][3] = 4; c[4][2] = 7; c[4][3] = 7  // 白帽子
-  c[3][2] = 7; c[3][3] = 7
-  // 顾客（提着菜篮子）
-  c[4][11] = 6; c[4][12] = 6; c[5][11] = 6; c[5][12] = 6
-  c[6][10] = 4; c[6][11] = 4; c[6][12] = 4; c[6][13] = 4
-  c[7][11] = 7; c[7][12] = 7
-  // 篮子
-  c[6][8] = 8; c[6][9] = 8; c[7][8] = 8; c[7][9] = 8
-  // 对话气泡（讨价还价）
-  c[2][5] = 7; c[2][6] = 7; c[2][7] = 7; c[2][8] = 7; c[3][5] = 7; c[3][8] = 7; c[4][5] = 7
-  c[3][6] = 12; c[3][7] = 12
-  return c
-}
-
-// 公园打太极
-function sceneTaiji(): number[][] {
-  const c = emptyCanvas()
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 2
-  // 树
-  c[1][1] = 6; c[2][0] = 6; c[2][1] = 6; c[2][2] = 6; c[3][1] = 6
-  c[4][1] = 7; c[5][1] = 7; c[6][1] = 7; c[7][1] = 7; c[8][1] = 7
-  // 打太极的人（三个人）
-  // 中间
-  c[4][7] = 6; c[4][8] = 6; c[5][7] = 6; c[5][8] = 6
-  c[6][6] = 4; c[6][7] = 4; c[6][8] = 4; c[6][9] = 4
-  c[7][7] = 4; c[7][8] = 4; c[8][6] = 7; c[8][9] = 7; c[9][6] = 7; c[9][9] = 7
-  // 太极手势
-  c[3][5] = 6; c[3][10] = 6; c[4][5] = 6; c[4][10] = 6
-  // 左边
-  c[5][3] = 6; c[5][4] = 6; c[6][3] = 6; c[6][4] = 6
-  c[7][2] = 4; c[7][3] = 4; c[7][4] = 4; c[7][5] = 4
-  c[8][3] = 7; c[8][4] = 7
-  c[4][2] = 6; c[4][5] = 6
-  // 右边
-  c[5][11] = 6; c[5][12] = 6; c[6][11] = 6; c[6][12] = 6
-  c[7][10] = 4; c[7][11] = 4; c[7][12] = 4; c[7][13] = 4
-  c[8][11] = 7; c[8][12] = 7
-  c[4][10] = 0; c[4][13] = 6
-  // 太极图
-  c[1][13] = 7; c[1][14] = 7; c[2][13] = 7; c[2][14] = 7
-  c[1][13] = 2; c[2][14] = 2
-  return c
-}
-
-// 房价上涨
-function sceneHousePriceUp(): number[][] {
-  const c = emptyCanvas()
-  // 房子
-  c[2][6] = 8; c[2][7] = 8; c[2][8] = 8; c[2][9] = 8
-  c[3][5] = 8; c[3][6] = 8; c[3][7] = 8; c[3][8] = 8; c[3][9] = 8; c[3][10] = 8
-  for (let y = 4; y <= 8; y++) for (let x = 4; x <= 11; x++) c[y][x] = 8
-  c[6][6] = 7; c[6][7] = 7; c[7][6] = 7; c[7][7] = 7; c[8][6] = 7; c[8][7] = 7
-  c[5][5] = 2; c[5][9] = 2; c[6][5] = 2; c[6][9] = 2
-  // 向上大箭头
-  c[0][7] = 2; c[0][8] = 2
-  c[1][6] = 2; c[1][7] = 2; c[1][8] = 2; c[1][9] = 2
-  for (let y = 2; y <= 6; y++) { c[y][7] = 2; c[y][8] = 2 }
-  // ￥符号
-  c[7][7] = 5; c[7][8] = 5
-  // 地面
-  for (let i = 0; i < 16; i++) c[11][i] = 4
-  // 上涨符号
-  c[0][5] = 5; c[0][10] = 5; c[1][4] = 5; c[1][11] = 5
-  return c
-}
-
-// ============================================================
-// 新增事业场景
-// ============================================================
-
-// 降薪（工资条缩水）
-function scenePayCut(): number[][] {
-  const c = emptyCanvas()
-  // 工资条
-  for (let x = 3; x <= 12; x++) { c[2][x] = 7; c[8][x] = 7 }
-  for (let y = 2; y <= 8; y++) { c[y][3] = 7; c[y][12] = 7 }
-  // 旧工资（划掉）
-  c[4][5] = 8; c[4][6] = 8; c[4][7] = 8; c[4][8] = 8; c[4][9] = 8; c[4][10] = 8
-  c[3][5] = 7; c[3][6] = 7; c[3][7] = 7; c[3][8] = 7; c[3][9] = 7; c[3][10] = 7
-  // 斜线划掉
-  c[3][5] = 12; c[4][6] = 12; c[5][7] = 12; c[6][8] = 12; c[7][9] = 12
-  // 新工资（小）
-  c[6][6] = 12; c[6][7] = 12; c[6][8] = 12; c[6][9] = 12
-  c[7][7] = 12; c[7][8] = 12
-  // 向下箭头
-  c[1][7] = 12; c[1][8] = 12; c[0][7] = 12; c[0][8] = 12
-  c[2][7] = 12; c[2][8] = 12
-  // 人看着工资条
-  c[9][7] = 6; c[9][8] = 6; c[10][7] = 6; c[10][8] = 6
-  c[11][6] = 4; c[11][7] = 4; c[11][8] = 4; c[11][9] = 4
-  // 汗滴
-  c[8][2] = 3; c[9][2] = 3
-  return c
-}
-
-// 投简历/面试等待
-function sceneResume(): number[][] {
-  const c = emptyCanvas()
-  // 一个人坐在桌前
-  for (let x = 2; x <= 13; x++) c[8][x] = 7
-  c[9][3] = 7; c[9][12] = 7; c[10][3] = 7; c[10][12] = 7
-  // 人
-  c[4][7] = 6; c[4][8] = 6; c[5][7] = 6; c[5][8] = 6
-  c[6][6] = 4; c[6][7] = 4; c[6][8] = 4; c[6][9] = 4
-  c[7][7] = 4; c[7][8] = 4
-  // 简历纸堆
-  c[5][3] = 7; c[5][4] = 7; c[6][3] = 7; c[6][4] = 7; c[7][3] = 7; c[7][4] = 7
-  c[5][3] = 3; c[6][3] = 3  // 纸张高光
-  c[6][4] = 5; c[6][4] = 5
-  // 笔记本电脑
-  for (let x = 10; x <= 13; x++) { c[4][x] = 2; c[5][x] = 2; c[6][x] = 2 }
-  c[4][10] = 7; c[4][13] = 7; c[6][10] = 7; c[6][13] = 7
-  for (let x = 10; x <= 13; x++) c[7][x] = 7
-  c[5][11] = 3; c[5][12] = 3  // 屏幕光
-  // 等待的时钟
-  c[2][2] = 7; c[2][3] = 7; c[3][2] = 7; c[3][3] = 7
-  c[2][2] = 3
-  c[1][2] = 7
-  // 咖啡
-  c[7][2] = 8; c[7][1] = 8; c[6][1] = 3
-  return c
-}
-
-// 开公司/办公室当老板
-function sceneOffice(): number[][] {
-  const c = emptyCanvas()
-  // 大办公桌
-  for (let x = 1; x <= 10; x++) c[6][x] = 7
-  c[7][1] = 7; c[7][10] = 7; c[8][1] = 7; c[8][10] = 7
-  // 老板椅上的人
-  c[2][5] = 6; c[2][6] = 6; c[3][5] = 6; c[3][6] = 6
-  c[4][4] = 2; c[4][5] = 2; c[4][6] = 2; c[4][7] = 2
-  c[5][5] = 2; c[5][6] = 2
-  // 椅背
-  c[2][4] = 7; c[2][7] = 7; c[3][4] = 7; c[3][7] = 7
-  // 电脑
-  for (let x = 2; x <= 5; x++) { c[3][x] = 2; c[4][x] = 2 }
-  c[3][2] = 7; c[3][5] = 7; c[4][2] = 7; c[4][5] = 7
-  c[3][3] = 3; c[3][4] = 5
-  // 窗外城市
-  c[1][12] = 7; c[2][12] = 7; c[3][12] = 7; c[4][12] = 7; c[5][12] = 7
-  c[1][14] = 7; c[2][14] = 7; c[3][14] = 7
-  c[1][13] = 3; c[2][13] = 3; c[3][13] = 3; c[4][13] = 3
-  // 员工剪影
-  c[8][13] = 6; c[9][13] = 4; c[8][15] = 6; c[9][15] = 4
-  c[10][13] = 7; c[10][15] = 7
-  // 公司logo/名字
-  c[1][2] = 5; c[1][3] = 5; c[0][2] = 5; c[0][3] = 5
-  return c
-}
-
-// 年终奖/红包
-function sceneYearEndBonus(): number[][] {
-  const c = emptyCanvas()
-  // 红包
-  c[3][6] = 12; c[3][7] = 12; c[3][8] = 12; c[3][9] = 12
-  c[4][5] = 12; c[4][6] = 12; c[4][7] = 5; c[4][8] = 5; c[4][9] = 12; c[4][10] = 12
-  for (let y = 5; y <= 9; y++) { c[y][5] = 12; c[y][10] = 12 }
-  for (let x = 5; x <= 10; x++) { c[5][x] = 12; c[9][x] = 12 }
-  c[6][6] = 5; c[6][7] = 5; c[6][8] = 5; c[6][9] = 5
-  c[7][7] = 5; c[7][8] = 5; c[8][7] = 5; c[8][8] = 5
-  // 金色闪光
-  c[2][7] = 5; c[2][8] = 5; c[1][7] = 3; c[1][8] = 3; c[0][7] = 3; c[0][8] = 3
-  c[3][4] = 5; c[3][11] = 5; c[4][4] = 3; c[4][11] = 3
-  // 钱飞出
-  c[2][3] = 5; c[1][5] = 5; c[0][10] = 5; c[2][12] = 5; c[5][2] = 5; c[7][3] = 5
-  // 开心的人
-  c[10][7] = 6; c[10][8] = 6; c[11][6] = 4; c[11][7] = 4; c[11][8] = 4; c[11][9] = 4
-  c[9][7] = 6; c[9][8] = 6
-  // 举手
-  c[8][6] = 6; c[8][9] = 6
-  return c
-}
-
-// 网暴/恶评
-function sceneCyberbullying(): number[][] {
-  const c = emptyCanvas()
-  // 手机/电脑屏幕
-  for (let x = 3; x <= 12; x++) { c[2][x] = 7; c[9][x] = 7 }
-  for (let y = 2; y <= 9; y++) { c[y][3] = 7; c[y][12] = 7 }
-  // 恶评弹幕
-  c[3][4] = 12; c[3][5] = 12; c[3][6] = 12
-  c[4][7] = 12; c[4][8] = 12; c[4][9] = 12; c[4][10] = 12; c[4][11] = 12
-  c[5][4] = 12; c[5][5] = 12; c[5][6] = 12; c[5][7] = 12
-  c[6][8] = 12; c[6][9] = 12; c[6][10] = 12
-  c[7][4] = 12; c[7][5] = 12; c[7][6] = 12; c[7][7] = 12; c[7][8] = 12
-  c[8][9] = 12; c[8][10] = 12; c[8][11] = 12
-  // 人抱着头
-  c[10][7] = 6; c[10][8] = 6; c[11][6] = 4; c[11][7] = 4; c[11][8] = 4; c[11][9] = 4
-  c[9][6] = 6; c[9][9] = 6  // 手抱头
-  // 震动线
-  c[1][5] = 12; c[1][10] = 12; c[10][3] = 12; c[10][12] = 12
-  return c
+function sceneBurnout(): PixelFrame[] {
+  const f1 = emptyCanvas(), f2 = emptyCanvas()
+  drawPerson(f1, 7, 8, 15, 5, 7, 'front', 'sad', 'type')
+  drawPerson(f2, 7, 8, 15, 5, 7, 'front', 'surprised', 'type')
+  drawComputer(f1, 10, 5, 12); drawComputer(f2, 10, 5, 8)
+  f1[9][8] = 15; f1[9][9] = 15
+  f2[9][8] = 15; f2[9][9] = 15
+  f1[14][6] = 9; f1[13][6] = 9
+  f2[14][6] = 9; f2[13][6] = 9
+  f1[1][20] = 9; f1[1][21] = 9; f1[2][20] = 9
+  f2[1][20] = 9; f2[1][21] = 9; f2[2][20] = 9
+  return [f1, f2]
 }
 
 // ============================================================
@@ -1767,122 +997,88 @@ function sceneCyberbullying(): number[][] {
 // ============================================================
 
 export const STORYBOARD_SCENES: StoryboardScene[] = [
-  // ---- 家庭 (20 scenes) ----
-  { id: 'marriage', category: 'family', name: '结婚', keywords: ['结婚', '婚礼', '领证', '娶', '嫁'], palette: FAMILY_PALETTE, pixels: sceneMarriage(), animIn: 'pop', idleAnim: 'breath', priority: 10 },
-  { id: 'baby', category: 'family', name: '宝宝出生', keywords: ['宝宝', '出生', '为人父', '为人母', '当爸爸', '当妈妈', '生了', '孩子出生', '怀孕', '验孕棒', '第一次叫'], palette: FAMILY_PALETTE, pixels: sceneBaby(), animIn: 'pop', idleAnim: 'breath', priority: 10 },
-  { id: 'parent_death', category: 'family', name: '父母离世', keywords: ['离世', '去世', '走了', '不在了', '过世', '病逝', '永别', '咽气', '没能留住', '遗物', '追悼会', '葬礼', '同学去世', '老友走了', '心梗去世'], palette: FAMILY_PALETTE, pixels: sceneParentDeath(), animIn: 'fade', idleAnim: 'flicker', priority: 10 },
-  { id: 'date', category: 'family', name: '恋爱约会', keywords: ['约会', '恋爱', '暧昧', '表白', '在一起', '谈恋爱'], palette: FAMILY_PALETTE, pixels: sceneDate(), animIn: 'rise', idleAnim: 'flicker', priority: 8 },
-  { id: 'divorce', category: 'family', name: '离婚分手', keywords: ['离婚', '分手', '分开', '离了', '掰了'], palette: FAMILY_PALETTE, pixels: sceneDivorce(), animIn: 'fade', idleAnim: 'none', priority: 10 },
-  { id: 'family_dinner', category: 'family', name: '家庭团聚', keywords: ['团圆', '年夜饭', '一家人', '回家过年', '家庭聚餐', '父母家', '陪父母', '陪爸妈'], palette: FAMILY_PALETTE, pixels: sceneFamilyDinner(), animIn: 'rise', idleAnim: 'flicker', priority: 7 },
-  { id: 'proposal', category: 'family', name: '求婚', keywords: ['求婚', '戒指', '嫁给我', '单膝跪地'], palette: FAMILY_PALETTE, pixels: sceneProposal(), animIn: 'pop', idleAnim: 'breath', priority: 9 },
-  { id: 'blind_date', category: 'family', name: '相亲', keywords: ['相亲', '介绍对象', '婚恋网站', '交友APP', '交友软件', '杀猪盘', '催婚', '七大姑八大姨', '亲戚盘问'], palette: FAMILY_PALETTE, pixels: sceneBlindDate(), animIn: 'rise', idleAnim: 'sway', priority: 6 },
-  { id: 'pet', category: 'family', name: '养宠物', keywords: ['养猫', '养狗', '宠物', '橘猫', '救助站', '宠物医院', '流浪猫', '喂猫'], palette: FAMILY_PALETTE, pixels: scenePet(), animIn: 'pop', idleAnim: 'breath', priority: 7 },
-  { id: 'homework', category: 'family', name: '陪读', keywords: ['陪孩子写作业', '学区房', '补习班', '班主任', '辅导作业', '孩子顶嘴', '青春期', '教育分歧'], palette: FAMILY_PALETTE, pixels: sceneHomework(), animIn: 'shake', idleAnim: 'blink-slow', priority: 7 },
-  { id: 'parent_sick', category: 'family', name: '父母生病', keywords: ['老爸冠心病', '父母住院', '带父母看病', '爸生病', '妈生病', '父亲病', '母亲病', '老毛病'], palette: FAMILY_PALETTE, pixels: sceneParentSick(), animIn: 'fade', idleAnim: 'flicker', priority: 9 },
-  { id: 'couple_fight', category: 'family', name: '夫妻争吵', keywords: ['吵架', '摔杯子', '反锁门', '婚姻咨询', '感情修复', '夫妻', '彩礼'], palette: FAMILY_PALETTE, pixels: sceneCoupleFight(), animIn: 'shake', idleAnim: 'blink-slow', priority: 8 },
-  { id: 'meet_parents', category: 'family', name: '见家长', keywords: ['见家长', '见父母', '带对象回家', '上门', '拜见'], palette: FAMILY_PALETTE, pixels: sceneMeetParents(), animIn: 'rise', idleAnim: 'sway', priority: 8 },
-  { id: 'seven_year_itch', category: 'family', name: '七年之痒', keywords: ['七年之痒', '感情冷淡', '没话说', '各玩各的手机', '分房睡', '冷漠'], palette: FAMILY_PALETTE, pixels: sceneSevenYearItch(), animIn: 'fade', idleAnim: 'none', priority: 7 },
-  { id: 'mother_in_law', category: 'family', name: '婆媳矛盾', keywords: ['婆媳', '婆婆', '丈母娘', '带孩子吵架'], palette: FAMILY_PALETTE, pixels: sceneMotherInLaw(), animIn: 'shake', idleAnim: 'blink-slow', priority: 8 },
-  { id: 'empty_nest', category: 'family', name: '空巢送别', keywords: ['上大学', '送孩子', '空巢', '孩子离家', '去外地上学', '孩子长大飞走'], palette: FAMILY_PALETTE, pixels: sceneEmptyNest(), animIn: 'fade', idleAnim: 'flicker', priority: 8 },
-  { id: 'grandchild', category: 'family', name: '带孙子', keywords: ['孙子', '孙女', '隔代', '带孙辈', '抱孙子', '帮忙带孩子'], palette: FAMILY_PALETTE, pixels: sceneGrandchild(), animIn: 'pop', idleAnim: 'breath', priority: 8 },
-  { id: 'old_couple_tv', category: 'family', name: '老两口', keywords: ['看电视', '织毛衣', '老两口', '晚年', '退休后和老伴', '养老院', '退休', '办退休', '退休手续'], palette: FAMILY_PALETTE, pixels: sceneOldCoupleTV(), animIn: 'fade', idleAnim: 'flicker', priority: 6 },
-  { id: 'teach_phone', category: 'family', name: '教父母用手机', keywords: ['教父母', '教爸妈', '教老人', '健康码', '手机打车', '数字鸿沟', '适老化'], palette: FAMILY_PALETTE, pixels: sceneTeachPhone(), animIn: 'rise', idleAnim: 'sway', priority: 6 },
-  { id: 'midnight_baby', category: 'family', name: '半夜哄娃', keywords: ['半夜', '哄娃', '夜醒', '喂奶', '哄睡', '熬夜带娃'], palette: FAMILY_PALETTE, pixels: sceneMidnightBaby(), animIn: 'fade', idleAnim: 'flicker', priority: 7 },
-  { id: 'anniversary', category: 'family', name: '结婚纪念日', keywords: ['纪念日', '金婚', '银婚', '结婚周年'], palette: FAMILY_PALETTE, pixels: sceneAnniversary(), animIn: 'pop', idleAnim: 'breath', priority: 7 },
+  // 家庭 - 核心关系事件
+  { id: 'marriage', category: 'family', name: '结婚', keywords: ['结婚','婚礼','领证','娶','嫁'], palette: FAMILY_PALETTE, frames: sceneMarriage(), frameDelay: 600, animIn: 'pop', priority: 10 },
+  { id: 'baby', category: 'family', name: '生子', keywords: ['生孩子','宝宝','婴儿','怀孕','当爸','当妈','出生'], palette: FAMILY_PALETTE, frames: sceneBaby(), frameDelay: 500, animIn: 'bounce', priority: 10 },
+  { id: 'house', category: 'family', name: '买房', keywords: ['买房','购房','房子','房贷','月供','安家'], palette: FAMILY_PALETTE, frames: sceneHouse(), frameDelay: 500, animIn: 'pop', priority: 10 },
+  { id: 'confess', category: 'family', name: '表白', keywords: ['表白','告白','喜欢','在一起','脱单','谈恋爱','恋爱','初恋'], palette: FAMILY_PALETTE, frames: sceneConfess(), frameDelay: 500, animIn: 'bounce', priority: 9 },
+  { id: 'dating', category: 'family', name: '约会', keywords: ['约会','拍拖','交往','谈恋爱','对象'], palette: FAMILY_PALETTE, frames: sceneDating(), frameDelay: 600, animIn: 'fade', priority: 8 },
+  { id: 'divorce', category: 'family', name: '离婚', keywords: ['离婚','离异'], palette: FAMILY_PALETTE, frames: sceneDivorce(), frameDelay: 500, animIn: 'fade', priority: 9 },
+  { id: 'breakup', category: 'family', name: '分手', keywords: ['分手','分开','散了','失恋','吹了'], palette: FAMILY_PALETTE, frames: sceneBreakup(), frameDelay: 600, animIn: 'shake', priority: 8 },
+  { id: 'parents', category: 'family', name: '回家探望', keywords: ['回家','看父母','探望','爸妈','回老家','探亲','团圆'], palette: FAMILY_PALETTE, frames: sceneParents(), frameDelay: 500, animIn: 'rise', priority: 8 },
+  { id: 'parent_sick', category: 'family', name: '父母生病', keywords: ['爸病','妈病','父亲病','母亲病','爸妈住院','老人病'], palette: FAMILY_PALETTE, frames: sceneParentSick(), frameDelay: 800, animIn: 'shake', priority: 9 },
+  { id: 'car', category: 'family', name: '买车', keywords: ['买车','购车','新车','提车'], palette: FAMILY_PALETTE, frames: sceneCar(), frameDelay: 400, animIn: 'slide', priority: 8 },
+  { id: 'play_kid', category: 'family', name: '陪孩子玩', keywords: ['陪孩子','带娃玩','陪娃','亲子','接孩子','送孩子'], palette: FAMILY_PALETTE, frames: scenePlayWithKid(), frameDelay: 400, animIn: 'pop', priority: 7 },
+  { id: 'couple_fight', category: 'family', name: '吵架', keywords: ['吵架','争吵','矛盾','冷战','婆媳'], palette: FAMILY_PALETTE, frames: sceneCoupleFight(), frameDelay: 400, animIn: 'shake', priority: 7 },
+  { id: 'midnight_baby', category: 'family', name: '熬夜带娃', keywords: ['夜奶','哄睡','带娃','熬夜带','孩子哭'], palette: FAMILY_PALETTE, frames: sceneMidnightBaby(), frameDelay: 700, animIn: 'fade', priority: 7 },
+  { id: 'anniversary', category: 'family', name: '纪念日', keywords: ['纪念日','烛光晚餐','周年'], palette: FAMILY_PALETTE, frames: sceneAnniversary(), frameDelay: 600, animIn: 'fade', priority: 7 },
+  { id: 'blind_date', category: 'family', name: '相亲', keywords: ['相亲','介绍对象','见一面','媒婆'], palette: FAMILY_PALETTE, frames: sceneBlindDate(), frameDelay: 600, animIn: 'fade', priority: 6 },
+  { id: 'grandchildren', category: 'family', name: '含饴弄孙', keywords: ['孙子','孙女','孙辈','抱孙'], palette: FAMILY_PALETTE, frames: sceneGrandchildren(), frameDelay: 500, animIn: 'pop', priority: 6 },
+  { id: 'old_couple_tv', category: 'family', name: '白头偕老', keywords: ['白头','老伴','金婚','晚年','退休生活','养老'], palette: FAMILY_PALETTE, frames: sceneOldCouple(), frameDelay: 800, animIn: 'fade', priority: 6 },
 
-  // ---- 生活 (25 scenes) ----
-  { id: 'house', category: 'life', name: '买房', keywords: ['买房', '购房', '入住新房', '交房', '签了购房合同', '首付', '房贷', '月供'], palette: LIFE_PALETTE, pixels: sceneHouse(), animIn: 'rise', idleAnim: 'flicker', priority: 10 },
-  { id: 'house_price_up', category: 'life', name: '房产升值', keywords: ['房价涨', '升值', '地铁开通', '房子涨了', '增值'], palette: LIFE_PALETTE, pixels: sceneHousePriceUp(), animIn: 'pop', idleAnim: 'breath', priority: 9 },
-  { id: 'car', category: 'life', name: '买车', keywords: ['买车', '提车', '新车', '购车'], palette: LIFE_PALETTE, pixels: sceneCar(), animIn: 'slide', idleAnim: 'sway', priority: 9 },
-  { id: 'car_accident', category: 'life', name: '车祸', keywords: ['车祸', '追尾', '撞车', '事故', '撞护栏', '爆胎', '修车', '4S店'], palette: LIFE_PALETTE, pixels: sceneCarAccident(), animIn: 'shake', idleAnim: 'blink-slow', priority: 9 },
-  { id: 'travel', category: 'life', name: '旅行', keywords: ['旅行', '旅游', '出发', '去了云南', '去了三亚', '出国', '度假', '环游', '海边', '沙滩', '民宿'], palette: LIFE_PALETTE, pixels: sceneTravel(), animIn: 'slide', idleAnim: 'float', priority: 8 },
-  { id: 'sickness', category: 'life', name: '重病住院', keywords: ['重病', '住院', '手术', '躺在病', 'ICU', '抢救'], palette: LIFE_PALETTE, pixels: sceneSickness(), animIn: 'fade', idleAnim: 'flicker', priority: 10 },
-  { id: 'friend_drink', category: 'life', name: '朋友相聚', keywords: ['朋友', '兄弟', '喝酒', '聚', '喝了', '吃饭', '借钱给', '老朋友', '发小'], palette: LIFE_PALETTE, pixels: sceneFriendDrink(), animIn: 'rise', idleAnim: 'sway', priority: 7 },
-  { id: 'moving', category: 'life', name: '搬家移居', keywords: ['搬家', '移居', '迁到', '搬去', '离开', '换城市', '搬到'], palette: LIFE_PALETTE, pixels: sceneMoving(), animIn: 'slide', idleAnim: 'float', priority: 8 },
-  { id: 'fitness', category: 'life', name: '健身运动', keywords: ['健身', '跑步', '运动', '锻炼', '健身房', '跑马拉松', '养生', '枸杞'], palette: LIFE_PALETTE, pixels: sceneFitness(), animIn: 'pop', idleAnim: 'sway', priority: 6 },
-  { id: 'noodles', category: 'life', name: '日常吃饭', keywords: ['外卖', '泡面', '做饭', '吃饭', '下了碗面', '煮了', '美食', '柠檬水', '蜜雪冰城', '奶茶', '咖啡', '红烧肉'], palette: LIFE_PALETTE, pixels: sceneNoodles(), animIn: 'fade', idleAnim: 'flicker', priority: 5 },
-  { id: 'health_check', category: 'life', name: '体检', keywords: ['体检', '检查身体', '体检报告', '颈椎病', '腰椎', '血压高', '慢性病', '脂肪肝', '三高', '膝盖'], palette: LIFE_PALETTE, pixels: sceneHealthCheck(), animIn: 'blink', idleAnim: 'blink-slow', priority: 7 },
-  { id: 'pills', category: 'life', name: '吃药', keywords: ['吃药', '药盒', '降压药', '保健品', '分药器', '每天吃药', '一大把药'], palette: LIFE_PALETTE, pixels: scenePills(), animIn: 'fade', idleAnim: 'flicker', priority: 7 },
-  { id: 'hair_loss', category: 'life', name: '脱发', keywords: ['脱发', '发际线', '秃头', '光头', '白发', '拔白头发', '染发', '秃顶'], palette: LIFE_PALETTE, pixels: sceneHairLoss(), animIn: 'blink', idleAnim: 'blink-slow', priority: 7 },
-  { id: 'investment', category: 'life', name: '理财投资', keywords: ['理财', '定投', '指数基金', '基金', '股票', '炒股', '定期存款', '余额宝', '比特币', '炒币', '合约', 'NFT', '币圈'], palette: LIFE_PALETTE, pixels: sceneInvestment(), animIn: 'slide', idleAnim: 'flicker', priority: 8 },
-  { id: 'therapy', category: 'life', name: '心理咨询', keywords: ['心理咨询', '心理医生', '咨询室', '沙盘', '看心理'], palette: LIFE_PALETTE, pixels: sceneTherapy(), animIn: 'fade', idleAnim: 'none', priority: 8 },
-  { id: 'birthday', category: 'life', name: '过生日', keywords: ['生日', '蛋糕', '许愿', '一个人过生日'], palette: LIFE_PALETTE, pixels: sceneBirthday(), animIn: 'pop', idleAnim: 'flicker', priority: 7 },
-  { id: 'square_dance', category: 'life', name: '广场舞', keywords: ['广场舞', '跳舞', '舞团', '大妈'], palette: LIFE_PALETTE, pixels: sceneSquareDance(), animIn: 'pop', idleAnim: 'sway', priority: 7 },
-  { id: 'fishing', category: 'life', name: '钓鱼', keywords: ['钓鱼', '垂钓', '鱼竿', '钓竿'], palette: LIFE_PALETTE, pixels: sceneFishing(), animIn: 'rise', idleAnim: 'float', priority: 6 },
-  { id: 'lottery', category: 'life', name: '中彩票', keywords: ['彩票', '中奖', '头奖', '五百万', '彩票中奖', '刮刮乐'], palette: LIFE_PALETTE, pixels: sceneLottery(), animIn: 'pop', idleAnim: 'breath', priority: 9 },
-  { id: 'inheritance', category: 'life', name: '继承遗产', keywords: ['继承', '遗产', '遗嘱', '远房亲戚', '遗物里'], palette: LIFE_PALETTE, pixels: sceneInheritance(), animIn: 'pop', idleAnim: 'breath', priority: 9 },
-  { id: 'scam', category: 'life', name: '诈骗', keywords: ['诈骗', 'AI换脸', '被骗', '电信诈骗', '电话诈骗', '杀猪盘'], palette: LIFE_PALETTE, pixels: sceneScam(), animIn: 'shake', idleAnim: 'blink-slow', priority: 9 },
-  { id: 'inflation', category: 'life', name: '物价上涨', keywords: ['通胀', '物价', '涨价', '菜价涨', '价签', '钱不值钱'], palette: LIFE_PALETTE, pixels: sceneInflation(), animIn: 'shake', idleAnim: 'blink-slow', priority: 7 },
-  { id: 'class_reunion', category: 'life', name: '同学聚会', keywords: ['同学聚会', '同学会', '攀比', '差距', '毕业聚会', '红色炸弹', '朋友结婚包'], palette: LIFE_PALETTE, pixels: sceneClassReunion(), animIn: 'rise', idleAnim: 'sway', priority: 7 },
-  { id: 'funeral', category: 'life', name: '追悼会', keywords: ['追悼会', '遗体告别', '送别', '参加葬礼'], palette: LIFE_PALETTE, pixels: sceneFuneral(), animIn: 'fade', idleAnim: 'flicker', priority: 9 },
-  { id: 'balcony_garden', category: 'life', name: '阳台种菜', keywords: ['种菜', '种花', '小葱', '辣椒', '阳台', '花盆', '浇水'], palette: LIFE_PALETTE, pixels: sceneBalconyGarden(), animIn: 'rise', idleAnim: 'sway', priority: 5 },
-  { id: 'stray_cat', category: 'life', name: '喂流浪猫', keywords: ['流浪猫', '喂猫', '投喂', '流浪动物', '小猫咪'], palette: LIFE_PALETTE, pixels: sceneStrayCat(), animIn: 'fade', idleAnim: 'breath', priority: 5 },
-  { id: 'rain', category: 'life', name: '淋雨', keywords: ['淋雨', '暴雨', '忘带伞', '淋透', '下雨'], palette: LIFE_PALETTE, pixels: sceneRain(), animIn: 'fade', idleAnim: 'flicker', priority: 5 },
-  { id: 'market', category: 'life', name: '菜市场', keywords: ['菜市场', '买菜', '小贩', '砍价', '菜场'], palette: LIFE_PALETTE, pixels: sceneMarket(), animIn: 'rise', idleAnim: 'sway', priority: 5 },
-  { id: 'taiji', category: 'life', name: '公园打太极', keywords: ['太极', '打太极', '公园', '下棋', '散步', '太极队'], palette: LIFE_PALETTE, pixels: sceneTaiji(), animIn: 'rise', idleAnim: 'sway', priority: 5 },
+  // 生活 - 日常事件
+  { id: 'sickness', category: 'life', name: '生病', keywords: ['生病','住院','病倒','手术','身体出','病了'], palette: LIFE_PALETTE, frames: sceneSickness(), frameDelay: 800, animIn: 'shake', priority: 8 },
+  { id: 'move', category: 'life', name: '搬家/换城市', keywords: ['搬家','换城市','去北京','去上海','去深圳','去广州','北漂','沪漂','深漂','回老家','迁移','搬去'], palette: LIFE_PALETTE, frames: sceneMove(), frameDelay: 400, animIn: 'slide', priority: 8 },
+  { id: 'lottery', category: 'life', name: '中奖', keywords: ['彩票','中奖','奖金','红包','横财'], palette: LIFE_PALETTE, frames: sceneLottery(), frameDelay: 300, animIn: 'pop', priority: 8 },
+  { id: 'lend_money', category: 'life', name: '朋友借钱', keywords: ['借钱','欠钱','催债','借点钱','周转','朋友借'], palette: LIFE_PALETTE, frames: sceneLendMoney(), frameDelay: 500, animIn: 'fade', priority: 7 },
+  { id: 'travel', category: 'life', name: '旅行', keywords: ['旅行','旅游','出游','度假','出去玩','去趟'], palette: LIFE_PALETTE, frames: sceneTravel(), frameDelay: 300, animIn: 'slide', priority: 7 },
+  { id: 'friend_drink', category: 'life', name: '朋友聚会', keywords: ['朋友','喝酒','聚餐','聚会','兄弟','闺蜜','吃酒'], palette: LIFE_PALETTE, frames: sceneFriendDrink(), frameDelay: 500, animIn: 'rise', priority: 6 },
+  { id: 'pet', category: 'life', name: '养宠物', keywords: ['养猫','养狗','宠物','猫','狗','收养'], palette: LIFE_PALETTE, frames: scenePet(), frameDelay: 700, animIn: 'pop', priority: 6 },
+  { id: 'phone', category: 'life', name: '刷手机', keywords: ['刷手机','玩手机','刷视频','追剧','刷抖音','看手机'], palette: LIFE_PALETTE, frames: scenePhone(), frameDelay: 800, animIn: 'fade', priority: 5 },
+  { id: 'gym', category: 'life', name: '健身', keywords: ['健身','锻炼','运动','跑步','健身房','撸铁'], palette: LIFE_PALETTE, frames: sceneGym(), frameDelay: 350, animIn: 'pop', priority: 5 },
+  { id: 'fishing', category: 'life', name: '钓鱼', keywords: ['钓鱼','垂钓'], palette: LIFE_PALETTE, frames: sceneFishing(), frameDelay: 600, animIn: 'fade', priority: 5 },
+  { id: 'square_dance', category: 'life', name: '广场舞', keywords: ['广场舞','跳舞','广场'], palette: LIFE_PALETTE, frames: sceneSquareDance(), frameDelay: 350, animIn: 'bounce', priority: 5 },
+  { id: 'reading', category: 'life', name: '阅读学习', keywords: ['看书','读书','学习','阅读','考','证书','考研','考公'], palette: LIFE_PALETTE, frames: sceneReading(), frameDelay: 2000, animIn: 'fade', priority: 4 },
 
-  // ---- 事业 (18 scenes) ----
-  { id: 'fired', category: 'career', name: '裁员失业', keywords: ['裁员', '失业', '被裁', '开除', '辞退', '解雇', '优化', '毕业'], palette: CAREER_PALETTE, pixels: sceneFired(), animIn: 'fade', idleAnim: 'none', priority: 10 },
-  { id: 'pay_cut', category: 'career', name: '降薪', keywords: ['降薪', '薪资砍', '工资砍', '薪水下调', '减薪'], palette: CAREER_PALETTE, pixels: scenePayCut(), animIn: 'fade', idleAnim: 'blink-slow', priority: 9 },
-  { id: 'promotion', category: 'career', name: '升职涨薪', keywords: ['涨薪', '升职', '加薪', '晋升', '提拔', '月薪', '工资涨了', '薪资', '绩效', '分红', '盈利'], palette: CAREER_PALETTE, pixels: scenePromotion(), animIn: 'pop', idleAnim: 'breath', priority: 9 },
-  { id: 'bonus', category: 'career', name: '年终奖', keywords: ['年终奖', '年终', '红包', '发钱', '奖金'], palette: CAREER_PALETTE, pixels: sceneYearEndBonus(), animIn: 'pop', idleAnim: 'breath', priority: 8 },
-  { id: 'startup', category: 'career', name: '创业', keywords: ['创业', '注册公司', '成立公司', 'All In', '辞职创业', '合伙人', '融资', '天使轮', 'A轮', 'TS', 'VC', '被收购', '并购', '卖掉公司'], palette: CAREER_PALETTE, pixels: sceneStartup(), animIn: 'rise', idleAnim: 'float', priority: 10 },
-  { id: 'office', category: 'career', name: '当老板', keywords: ['当老板', '开公司', '自己的公司', '雇人', '招员工', '发工资', 'CEO', '老板椅'], palette: CAREER_PALETTE, pixels: sceneOffice(), animIn: 'rise', idleAnim: 'breath', priority: 9 },
-  { id: 'work', category: 'career', name: '加班工作', keywords: ['加班', '熬夜', '项目', '赶工', '通宵', '报表', '需求', '代码'], palette: CAREER_PALETTE, pixels: sceneWork(), animIn: 'fade', idleAnim: 'flicker', priority: 6 },
-  { id: 'bankruptcy', category: 'career', name: '破产爆仓', keywords: ['破产', '爆仓', '黑天鹅', '亏损', '欠债', '负债', '赔光', '清算', '交易所跑路', '币圈暴雷', '暴雷'], palette: CAREER_PALETTE, pixels: sceneBankruptcy(), animIn: 'blink', idleAnim: 'blink-slow', priority: 10 },
-  { id: 'quit', category: 'career', name: '辞职', keywords: ['辞职', '裸辞', '离职', '辞掉', '不干了', '辞职信'], palette: CAREER_PALETTE, pixels: sceneQuit(), animIn: 'slide', idleAnim: 'float', priority: 9 },
-  { id: 'ai_breakthrough', category: 'career', name: 'AI突破', keywords: ['AI', '大模型', '自动化', '人工智能', '提示词', '机器学习', '开源', 'GitHub'], palette: CAREER_PALETTE, pixels: sceneAIBreakthrough(), animIn: 'blink', idleAnim: 'breath', priority: 9 },
-  { id: 'cyberbullying', category: 'career', name: '网暴', keywords: ['网暴', '恶评', '网络暴力', '热搜', '私信骂', '黑粉', '喷子', '社死'], palette: CAREER_PALETTE, pixels: sceneCyberbullying(), animIn: 'shake', idleAnim: 'blink-slow', priority: 9 },
-  { id: 'faith_crisis', category: 'career', name: '信念危机', keywords: ['怀疑', '动摇', '信念', '迷茫', '怀疑自己', '还要坚持', '要不要放弃'], palette: CAREER_PALETTE, pixels: sceneFaithCrisis(), animIn: 'fade', idleAnim: 'none', priority: 8 },
-  { id: 'job_hop', category: 'career', name: '跳槽', keywords: ['跳槽', '新工作', 'offer', '换工作', '猎头', '挖人'], palette: CAREER_PALETTE, pixels: sceneJobHop(), animIn: 'slide', idleAnim: 'sway', priority: 8 },
-  { id: 'resume', category: 'career', name: '投简历', keywords: ['投简历', '海投', '找工作', '面试被拒', '再就业', '待业'], palette: CAREER_PALETTE, pixels: sceneResume(), animIn: 'fade', idleAnim: 'flicker', priority: 8 },
-  { id: 'side_hustle', category: 'career', name: '副业接单', keywords: ['副业', '私活', '外快', '接单', '兼职', '自媒体', '商单'], palette: CAREER_PALETTE, pixels: sceneSideHustle(), animIn: 'fade', idleAnim: 'flicker', priority: 8 },
-  { id: 'study', category: 'career', name: '考公考证', keywords: ['考公', '公务员', '体制内', '省考', '行测', '考证', '证书', '线上课程', '学习', '考试'], palette: CAREER_PALETTE, pixels: sceneStudy(), animIn: 'rise', idleAnim: 'flicker', priority: 8 },
-  { id: 'remote', category: 'career', name: '远程工作', keywords: ['远程工作', '数字游民', 'Upwork', '跨境', '时区', '旅居', '自由职业'], palette: CAREER_PALETTE, pixels: sceneRemote(), animIn: 'slide', idleAnim: 'float', priority: 8 },
-  { id: 'midlife_crisis', category: 'career', name: '中年危机', keywords: ['35岁', '中年危机', '年龄焦虑', '00后同事', '被新人替代', '跟不上新系统', '学不会'], palette: CAREER_PALETTE, pixels: sceneMidlifeCrisis(), animIn: 'fade', idleAnim: 'blink-slow', priority: 9 },
-  { id: 'manage_team', category: 'career', name: '带团队', keywords: ['管理', '带团队', '带新人', '招人手', '管理岗', '演讲', '峰会', '分享'], palette: CAREER_PALETTE, pixels: sceneManageTeam(), animIn: 'rise', idleAnim: 'sway', priority: 7 },
+  // 事业 - 工作事件
+  { id: 'fired', category: 'career', name: '被裁', keywords: ['裁员','被裁','解雇','开除','失业','优化','毕业'], palette: CAREER_PALETTE, frames: sceneFired(), frameDelay: 800, animIn: 'shake', priority: 10 },
+  { id: 'startup', category: 'career', name: '创业', keywords: ['创业','开公司','下海','自己干','all in','allin','搏一把'], palette: CAREER_PALETTE, frames: sceneStartup(), frameDelay: 250, animIn: 'shake', priority: 10 },
+  { id: 'bankruptcy', category: 'career', name: '破产', keywords: ['破产','倒闭','赔光','血本无归','爆仓','欠债','负债'], palette: CAREER_PALETTE, frames: sceneBankruptcy(), frameDelay: 500, animIn: 'fade', priority: 10 },
+  { id: 'retirement_party', category: 'career', name: '退休', keywords: ['退休','退役','告老','还乡','不干了','退休了'], palette: CAREER_PALETTE, frames: sceneRetirementParty(), frameDelay: 400, animIn: 'bounce', priority: 10 },
+  { id: 'promotion', category: 'career', name: '升职加薪', keywords: ['升职','加薪','晋升','提拔','涨薪','升值'], palette: CAREER_PALETTE, frames: scenePromotion(), frameDelay: 400, animIn: 'bounce', priority: 9 },
+  { id: 'job_hop', category: 'career', name: '跳槽', keywords: ['跳槽','换工作','新工作','离职','辞职','裸辞','offer'], palette: CAREER_PALETTE, frames: sceneJobHop(), frameDelay: 400, animIn: 'slide', priority: 8 },
+  { id: 'bonus', category: 'career', name: '发奖金', keywords: ['奖金','年终奖','绩效','分红'], palette: CAREER_PALETTE, frames: sceneLottery(), frameDelay: 300, animIn: 'pop', priority: 8 },
+  { id: 'overtime', category: 'career', name: '加班', keywords: ['加班','熬夜','996','通宵','赶项目'], palette: CAREER_PALETTE, frames: sceneOvertime(), frameDelay: 600, animIn: 'fade', priority: 7 },
+  { id: 'investment', category: 'career', name: '投资', keywords: ['投资','炒股','股票','基金','币圈','理财','K线'], palette: CAREER_PALETTE, frames: sceneInvestment(), frameDelay: 500, animIn: 'slide', priority: 7 },
+  { id: 'burnout', category: 'career', name: '倦怠', keywords: ['burnout','倦怠','过劳','熬不动','扛不住','内卷'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 1500, animIn: 'fade', priority: 7 },
+  { id: 'work', category: 'career', name: '日常工作', keywords: ['上班','工作','搬砖','工位'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 3 },
 ]
 
+export function getSceneById(id: string): StoryboardScene | undefined {
+  return STORYBOARD_SCENES.find(s => s.id === id)
+}
+
 /**
- * 从日志文本中匹配对应的分镜场景
- * 按 priority 排序，优先匹配高优先级场景
- * 返回按分类组织的场景id列表
+ * 从日志文本匹配场景
+ * 单年模式：每个分类最多返回1个场景id（取优先级最高的），每年完全替换
  */
 export function matchStoryboardScenes(logs: string[]): {
   family: string[]
   life: string[]
   career: string[]
 } {
-  // 按优先级排序（高优先级先匹配）
-  const sortedScenes = [...STORYBOARD_SCENES].sort((a, b) => (b.priority || 0) - (a.priority || 0))
-
   const family: string[] = []
   const life: string[] = []
   const career: string[] = []
   const matched = new Set<string>()
 
+  // 按优先级排序
+  const sorted = [...STORYBOARD_SCENES].sort((a, b) => (b.priority || 0) - (a.priority || 0))
+
   for (const log of logs) {
-    for (const scene of sortedScenes) {
+    for (const scene of sorted) {
       if (matched.has(scene.id)) continue
       if (scene.keywords.some(kw => log.includes(kw))) {
-        if (scene.category === 'family') family.push(scene.id)
-        else if (scene.category === 'life') life.push(scene.id)
-        else career.push(scene.id)
+        if (scene.category === 'family' && family.length === 0) family.push(scene.id)
+        else if (scene.category === 'life' && life.length === 0) life.push(scene.id)
+        else if (scene.category === 'career' && career.length === 0) career.push(scene.id)
         matched.add(scene.id)
+        // 如果三个分类都匹配到了就可以提前退出
+        if (family.length && life.length && career.length) return { family, life, career }
         break
       }
     }
   }
 
-  // 每个分类最多取1个主要场景（避免画布太小放不下多个）
-  return {
-    family: family.slice(0, 1),
-    life: life.slice(0, 1),
-    career: career.slice(0, 1),
-  }
-}
-
-/** 根据id获取场景定义 */
-export function getSceneById(id: string): StoryboardScene | undefined {
-  return STORYBOARD_SCENES.find(s => s.id === id)
+  return { family, life, career }
 }

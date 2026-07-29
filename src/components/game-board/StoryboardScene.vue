@@ -10,7 +10,7 @@
       class="sb-window"
       :class="[
         'sb-' + win.key,
-        { 'is-on': hasTrigger(win.key), 'is-empty': !getLatestScene(win.key), 'is-glitch': getState(win.key).glitch }
+        { 'is-on': hasScene(win.key), 'is-empty': !getScene(win.key), 'is-glitch': getState(win.key).glitch }
       ]"
       :style="{ '--c': win.themeColor, '--g': win.glowColor, '--b': win.borderColor, '--d': win.delay + 'ms' }"
     >
@@ -26,8 +26,7 @@
         <span class="sb-txt">{{ win.label }}</span>
         <span class="sb-sub">{{ win.subtitle }}</span>
         <span class="sb-yr">{{ currentYear }}</span>
-        <span v-if="hasTrigger(win.key)" class="sb-rec" />
-        <span v-if="getHistoryCount(win.key) > 1" class="sb-count">{{ getHistoryCount(win.key) }}</span>
+        <span v-if="hasScene(win.key)" class="sb-rec" />
       </div>
 
       <!-- 舞台 -->
@@ -44,19 +43,8 @@
           />
         </div>
 
-        <!-- 记忆残影层（旧场景的半透明叠加，体现"累积"感） -->
-        <div class="sb-memory-layer">
-          <div
-            v-for="(ghost, idx) in getGhostScenes(win.key)"
-            :key="ghost.id + '-' + idx"
-            class="sb-ghost"
-            :class="'sb-ghost-' + idx"
-            :style="getSceneStyle(ghost)"
-          />
-        </div>
-
         <!-- 待机 -->
-        <div v-if="!getLatestScene(win.key)" class="sb-standby">
+        <div v-if="!getScene(win.key)" class="sb-standby">
           <div class="sb-standby-dot" />
           <div class="sb-standby-line" />
           <div class="sb-standby-text">STANDBY</div>
@@ -70,14 +58,14 @@
           <div class="sb-art-scale">
             <div
               class="sb-art"
-              :style="getSceneStyle(getState(win.key).prevScene!)"
+              :style="getFrameStyle(getState(win.key).prevScene!, 0)"
             />
           </div>
         </div>
 
-        <!-- 当前主场景 -->
+        <!-- 当前主场景（帧动画） -->
         <div
-          v-if="getLatestScene(win.key)"
+          v-if="getScene(win.key)"
           class="sb-art-wrap"
           :class="{ 'sb-in': getState(win.key).visible, 'sb-new': getState(win.key).isNew }"
         >
@@ -85,17 +73,16 @@
             <div
               class="sb-art"
               :class="[
-                'sb-anim-' + getLatestScene(win.key)!.animIn,
-                idleClass(getLatestScene(win.key)),
-                sceneEffectClass(getLatestScene(win.key))
+                'sb-anim-' + getScene(win.key)!.animIn,
+                sceneEffectClass(getScene(win.key))
               ]"
-              :style="getSceneStyle(getLatestScene(win.key)!)"
+              :style="getFrameStyle(getScene(win.key)!, getCurrentFrame(win.key))"
             />
             <!-- 场景特效叠加层 -->
             <div
-              v-if="sceneEffectClass(getLatestScene(win.key))"
+              v-if="sceneEffectClass(getScene(win.key))"
               class="sb-effect-layer"
-              :class="sceneEffectClass(getLatestScene(win.key))"
+              :class="sceneEffectClass(getScene(win.key))"
             />
           </div>
         </div>
@@ -106,23 +93,12 @@
         </div>
 
         <!-- 光晕 -->
-        <div v-if="getLatestScene(win.key) && getState(win.key).visible" class="sb-glow" />
-
-        <!-- 记忆轨迹条（底部小圆点，每个点代表一个历史事件） -->
-        <div v-if="getHistoryCount(win.key) > 0" class="sb-memory-track">
-          <span
-            v-for="(hid, idx) in getHistory(win.key)"
-            :key="hid"
-            class="sb-mem-dot"
-            :class="{ 'sb-mem-dot-active': idx === getHistory(win.key).length - 1, 'sb-mem-dot-new': idx === getHistory(win.key).length - 1 && getState(win.key).isNew }"
-            :title="getSceneName(hid)"
-          />
-        </div>
+        <div v-if="getScene(win.key) && getState(win.key).visible" class="sb-glow" />
       </div>
 
-      <!-- 场景名（打字机效果轮换） -->
-      <div class="sb-name" :class="{ 'sb-name-on': getLatestScene(win.key) && getState(win.key).visible }">
-        <span v-if="getLatestScene(win.key)" class="sb-name-text">▸ {{ getLatestScene(win.key)!.name }}</span>
+      <!-- 场景名 -->
+      <div class="sb-name" :class="{ 'sb-name-on': getScene(win.key) && getState(win.key).visible }">
+        <span v-if="getScene(win.key)" class="sb-name-text">▸ {{ getScene(win.key)!.name }}</span>
       </div>
 
       <div v-if="win.key !== 'family'" class="sb-sep" />
@@ -132,20 +108,18 @@
 
 <script setup lang="ts">
 /**
- * 三分镜像素场景组件 (v4 - 累积式记忆版)
+ * 三分镜像素场景组件 v5 - 开罗游戏风格单年版
  *
  * 三个窗口并列：💼事业(绿) / ☕生活(青) / 🏠家庭(粉)
  * 当年触发的剧情事件，次年在对应窗口展示像素动画演绎。
  *
- * v4核心改进 - 累积式分镜：
- * - 场景不再被替换，而是"沉淀"累积
- * - 主画面显示最新事件，旧场景变为半透明残影叠加
- * - 底部记忆轨迹条：小圆点标记每个历史事件
- * - 新事件入场有更强烈的"加入"动画
- * - 事件计数标签显示累计事件数
- * - 63+像素场景，CSS box-shadow渲染
- * - 环境漂浮粒子、CRT故障、色差分离
- * - 场景专属微动效（火焰、炊烟、雨丝、爱心等）
+ * v5核心改进：
+ * - 单年播放模式：每年新场景完全替换旧场景，不累积残影
+ * - 24x20像素画布，Q版小人有表情有动作
+ * - 多帧循环动画：每帧间隔frameDelay毫秒，小人会动
+ * - 开罗游戏风格：人物跳跃、举杯、走路、打字等动作
+ * - 保留CRT扫描线、噪点、霓虹边框、漂浮粒子
+ * - 入场动画 + 持续微动效
  */
 
 import { computed, ref, watch, onMounted, onUnmounted } from 'vue'
@@ -155,7 +129,7 @@ import { getSceneById, type StoryboardScene } from '../../data/storyboard-scenes
 const store = useGameStore()
 
 // ================================================================
-//  分镜队列（累积式，每个分类保存历史场景id列表）
+//  分镜队列（单年模式：每个分类只有1个当前场景id）
 // ================================================================
 
 const storyboards = computed(() => {
@@ -195,17 +169,18 @@ const windows: WindowConfig[] = [
 ]
 
 // ================================================================
-//  像素渲染
+//  像素渲染（24x20画布，多帧）
 // ================================================================
 
 const PIXEL_SIZE = 5
+const CANVAS_W = 24
+const CANVAS_H = 20
 
-function buildPixelShadows(scene: StoryboardScene): string {
+function buildFrameShadows(frame: number[][], palette: string[]): string {
   const shadows: string[] = []
-  const { pixels, palette } = scene
-  for (let row = 0; row < pixels.length; row++) {
-    for (let col = 0; col < pixels[row].length; col++) {
-      const ci = pixels[row][col]
+  for (let row = 0; row < frame.length && row < CANVAS_H; row++) {
+    for (let col = 0; col < frame[row].length && col < CANVAS_W; col++) {
+      const ci = frame[row][col]
       if (ci === 0) continue
       const color = palette[ci]
       if (!color || color === 'transparent') continue
@@ -215,12 +190,53 @@ function buildPixelShadows(scene: StoryboardScene): string {
   return shadows.join(', ')
 }
 
-function getSceneStyle(scene: StoryboardScene) {
+function getFrameStyle(scene: StoryboardScene, frameIndex: number) {
+  const frame = scene.frames[frameIndex % scene.frames.length]
   return {
-    width: 16 * PIXEL_SIZE + 'px',
-    height: 12 * PIXEL_SIZE + 'px',
-    boxShadow: buildPixelShadows(scene),
+    width: CANVAS_W * PIXEL_SIZE + 'px',
+    height: CANVAS_H * PIXEL_SIZE + 'px',
+    boxShadow: buildFrameShadows(frame, scene.palette),
   }
+}
+
+// ================================================================
+//  帧动画循环
+// ================================================================
+
+const currentFrames = ref<Record<string, number>>({
+  family: 0, life: 0, career: 0,
+})
+
+let frameTimers: Record<string, number | null> = {
+  family: null, life: null, career: null,
+}
+
+function startFrameLoop(key: string, scene: StoryboardScene) {
+  stopFrameLoop(key)
+  if (scene.frames.length <= 1) return
+  currentFrames.value[key] = 0
+  const tick = () => {
+    currentFrames.value[key] = (currentFrames.value[key] + 1) % scene.frames.length
+    frameTimers[key] = window.setTimeout(tick, scene.frameDelay)
+  }
+  frameTimers[key] = window.setTimeout(tick, scene.frameDelay)
+}
+
+function stopFrameLoop(key: string) {
+  if (frameTimers[key]) {
+    clearTimeout(frameTimers[key]!)
+    frameTimers[key] = null
+  }
+}
+
+function stopAllFrameLoops() {
+  for (const key of ['family', 'life', 'career']) {
+    stopFrameLoop(key)
+  }
+}
+
+function getCurrentFrame(key: string): number {
+  return currentFrames.value[key] || 0
 }
 
 // ================================================================
@@ -228,17 +244,11 @@ function getSceneStyle(scene: StoryboardScene) {
 // ================================================================
 
 interface WinState {
-  /** 当前主场景 */
   scene: StoryboardScene | null
-  /** 上一个场景（用于过渡） */
   prevScene: StoryboardScene | null
-  /** 主场景是否可见 */
   visible: boolean
-  /** 粒子爆发 */
   burst: boolean
-  /** 窗口故障 */
   glitch: boolean
-  /** 是否为新加入的事件（控制入场动画强度） */
   isNew: boolean
 }
 
@@ -248,7 +258,7 @@ const states = ref<Record<string, WinState>>({
   career:  { scene: null, prevScene: null, visible: false, burst: false, glitch: false, isNew: false },
 })
 
-const prevLatestIds = ref<Record<string, string | null>>({
+const prevSceneIds = ref<Record<string, string | null>>({
   family: null, life: null, career: null,
 })
 
@@ -269,35 +279,38 @@ function scheduleGlitch() {
 function playStoryboards() {
   for (const win of windows) {
     const key = win.key
-    const history = getHistory(key)
-    const latestId = history.length > 0 ? history[history.length - 1] : null
-    const latestScene = latestId ? (getSceneById(latestId) || null) : null
+    const idList = (storyboards.value as any)[key] as string[]
+    const currentId = idList.length > 0 ? idList[idList.length - 1] : null
+    const currentScene = currentId ? (getSceneById(currentId) || null) : null
     const st = states.value[key]
-    const prevId = prevLatestIds.value[key]
+    const prevId = prevSceneIds.value[key]
 
-    if (latestId === prevId) {
+    if (currentId === prevId) {
       st.visible = true
       st.isNew = false
       continue
     }
 
-    // 新事件到来
+    // 新事件到来：停止旧帧循环，准备切换
+    stopFrameLoop(key)
     st.prevScene = st.scene
     st.visible = false
     st.isNew = true
+    currentFrames.value[key] = 0
 
     setTimeout(() => {
-      st.scene = latestScene
-      prevLatestIds.value[key] = latestId
+      st.scene = currentScene
+      prevSceneIds.value[key] = currentId
       st.visible = true
-      if (latestScene) {
+      if (currentScene) {
+        // 启动帧动画循环
+        startFrameLoop(key, currentScene)
         st.burst = true
         setTimeout(() => { st.burst = false }, 900)
         setTimeout(() => {
           st.glitch = true
           setTimeout(() => { st.glitch = false }, 220)
         }, 500 + win.delay)
-        // "新加入"标记持续一段时间后消失
         setTimeout(() => { st.isNew = false }, 2000)
       }
     }, win.delay + 150)
@@ -312,131 +325,72 @@ onMounted(() => {
 })
 onUnmounted(() => {
   if (glitchTimer) clearTimeout(glitchTimer)
+  stopAllFrameLoops()
 })
 
 // ================================================================
-//  累积式辅助函数
+//  辅助函数
 // ================================================================
 
 function getState(key: string): WinState {
   return states.value[key] || { scene: null, prevScene: null, visible: false, burst: false, glitch: false, isNew: false }
 }
 
-/** 获取某分类的历史场景id列表 */
-function getHistory(key: string): string[] {
-  return (storyboards.value as any)[key] || []
+function getScene(key: string): StoryboardScene | null {
+  return getState(key).scene
 }
 
-/** 获取历史事件数量 */
-function getHistoryCount(key: string): number {
-  return getHistory(key).length
-}
-
-/** 获取最新（当前主）场景 */
-function getLatestScene(key: string): StoryboardScene | null {
-  const hist = getHistory(key)
-  if (hist.length === 0) return null
-  return getSceneById(hist[hist.length - 1]) || null
-}
-
-/** 获取残影场景（除最新外的旧场景，最多显示2个残影） */
-function getGhostScenes(key: string): StoryboardScene[] {
-  const hist = getHistory(key)
-  if (hist.length <= 1) return []
-  // 取倒数第2、第3个作为残影（最多2个），越旧越透明
-  const ghosts: StoryboardScene[] = []
-  for (let i = hist.length - 2; i >= Math.max(0, hist.length - 3); i--) {
-    const s = getSceneById(hist[i])
-    if (s) ghosts.push(s)
-  }
-  return ghosts
-}
-
-function hasTrigger(key: string): boolean {
-  return getHistoryCount(key) > 0
-}
-
-function getSceneName(id: string): string {
-  const s = getSceneById(id)
-  return s ? s.name : id
-}
-
-function idleClass(scene: StoryboardScene | null): string {
-  if (!scene) return ''
-  return 'sb-idle-' + (scene.idleAnim || 'breath')
+function hasScene(key: string): boolean {
+  return getScene(key) !== null
 }
 
 // 获取场景专属特效class
 function sceneEffectClass(scene: StoryboardScene | null): string {
   if (!scene) return ''
   const effects: Record<string, string> = {
+    // 家庭
     house: 'sb-effect-smoke',
     car: 'sb-effect-speed',
     marriage: 'sb-effect-hearts',
+    confess: 'sb-effect-hearts',
+    dating: 'sb-effect-hearts',
     baby: 'sb-effect-twinkle',
-    birthday: 'sb-effect-flame',
-    sickness: 'sb-effect-heartbeat',
-    parent_sick: 'sb-effect-heartbeat',
-    health_check: 'sb-effect-heartbeat',
-    work: 'sb-effect-screen',
-    investment: 'sb-effect-chart',
-    startup: 'sb-effect-flames',
-    bankruptcy: 'sb-effect-shake',
-    fired: 'sb-effect-paper-fall',
-    friend_drink: 'sb-effect-bubbles',
-    travel: 'sb-effect-clouds',
-    fishing: 'sb-effect-water',
-    rain: 'sb-effect-rain',
-    square_dance: 'sb-effect-notes',
-    lottery: 'sb-effect-coins',
-    bonus: 'sb-effect-coins',
-    promotion: 'sb-effect-stars',
-    inheritance: 'sb-effect-shine',
-    house_price_up: 'sb-effect-stars',
-    ai_breakthrough: 'sb-effect-neural',
-    cyberbullying: 'sb-effect-glitch-text',
-    pills: 'sb-effect-pills',
-    hair_loss: 'sb-effect-shock',
-    scam: 'sb-effect-alert',
-    inflation: 'sb-effect-up',
-    car_accident: 'sb-effect-crash',
-    funeral: 'sb-effect-candle',
-    anniversary: 'sb-effect-flame',
-    date: 'sb-effect-candle',
-    midnight_baby: 'sb-effect-zzz',
-    old_couple_tv: 'sb-effect-tv',
-    balcony_garden: 'sb-effect-grow',
-    stray_cat: 'sb-effect-heart-small',
     couple_fight: 'sb-effect-lightning',
-    mother_in_law: 'sb-effect-lightning',
-    homework: 'sb-effect-anger',
-    faith_crisis: 'sb-effect-rain',
-    midlife_crisis: 'sb-effect-mirror',
-    seven_year_itch: 'sb-effect-distance',
     divorce: 'sb-effect-broken',
-    therapy: 'sb-effect-tissue',
-    office_politics: 'sb-effect-dark',
-    side_hustle: 'sb-effect-spark',
-    burnout: 'sb-effect-fog',
-    gym: 'sb-effect-flex',
-    exam: 'sb-effect-brain',
-    pet: 'sb-effect-paw',
-    plant: 'sb-effect-leaf',
-    reading: 'sb-effect-book',
-    concert: 'sb-effect-wave',
-    reunion: 'sb-effect-cheers',
-    debt: 'sb-effect-down',
-    stock_crash: 'sb-effect-down',
-    crypto_crash: 'sb-effect-down',
-    hospital: 'sb-effect-cross',
-    checkup: 'sb-effect-cross',
-    volunteer: 'sb-effect-sun',
-    donate: 'sb-effect-sun',
-    yoga: 'sb-effect-lotus',
-    meditation: 'sb-effect-lotus',
-    gray_hair: 'sb-effect-silver',
-    retirement_party: 'sb-effect-confetti',
+    breakup: 'sb-effect-broken',
+    parents: 'sb-effect-hearts',
+    parent_sick: 'sb-effect-heartbeat',
+    play_kid: 'sb-effect-stars-small',
+    midnight_baby: 'sb-effect-zzz',
+    anniversary: 'sb-effect-flame',
     grandchildren: 'sb-effect-stars-small',
+    old_couple_tv: 'sb-effect-tv',
+    blind_date: 'sb-effect-question',
+    // 生活
+    sickness: 'sb-effect-heartbeat',
+    move: 'sb-effect-speed',
+    lottery: 'sb-effect-coins',
+    lend_money: 'sb-effect-coins',
+    travel: 'sb-effect-clouds',
+    friend_drink: 'sb-effect-bubbles',
+    pet: 'sb-effect-heart-small',
+    phone: 'sb-effect-screen',
+    gym: 'sb-effect-flex',
+    fishing: 'sb-effect-water',
+    square_dance: 'sb-effect-notes',
+    reading: 'sb-effect-book',
+    // 事业
+    work: 'sb-effect-screen',
+    promotion: 'sb-effect-stars',
+    startup: 'sb-effect-flames',
+    fired: 'sb-effect-paper-fall',
+    bankruptcy: 'sb-effect-shake',
+    retirement_party: 'sb-effect-confetti',
+    job_hop: 'sb-effect-stars',
+    bonus: 'sb-effect-coins',
+    overtime: 'sb-effect-moon',
+    investment: 'sb-effect-chart',
+    burnout: 'sb-effect-fog',
   }
   return effects[scene.id] || ''
 }
@@ -596,18 +550,6 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   0%,100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
-.sb-count {
-  min-width: 14px;
-  height: 14px;
-  line-height: 14px;
-  text-align: center;
-  border-radius: 3px;
-  background: var(--c);
-  color: #000;
-  font-size: 8px;
-  font-weight: bold;
-  box-shadow: 0 0 6px var(--g);
-}
 
 /* ===== 舞台 ===== */
 .sb-stage {
@@ -656,40 +598,6 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   50% { transform: translateY(-60px) translateX(5px); opacity: 0.6; }
   90% { opacity: 0.2; }
   100% { transform: translateY(-120px) translateX(-3px); opacity: 0; }
-}
-
-/* 记忆残影层（旧场景半透明叠加，体现累积感） */
-.sb-memory-layer {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-}
-.sb-ghost {
-  position: absolute;
-  opacity: 0;
-  filter: grayscale(0.8) brightness(0.5);
-}
-.sb-ghost-0 {
-  opacity: 0.12;
-  transform: scale(0.85) translate(-8px, 3px);
-  animation: ghostDrift1 8s ease-in-out infinite;
-}
-.sb-ghost-1 {
-  opacity: 0.07;
-  transform: scale(0.7) translate(10px, -5px);
-  animation: ghostDrift2 10s ease-in-out infinite;
-}
-@keyframes ghostDrift1 {
-  0%,100% { transform: scale(0.85) translate(-8px, 3px); opacity: 0.12; }
-  50% { transform: scale(0.88) translate(-10px, 1px); opacity: 0.16; }
-}
-@keyframes ghostDrift2 {
-  0%,100% { transform: scale(0.7) translate(10px, -5px); opacity: 0.07; }
-  50% { transform: scale(0.73) translate(12px, -7px); opacity: 0.1; }
 }
 
 /* 待机 */
@@ -761,6 +669,7 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   position: relative;
   transform-origin: center bottom;
   image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 /* 入场动画 */
@@ -810,7 +719,7 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
 
 .sb-anim-blink {
   opacity: 0;
-  animation: aBlink 0.5s steps(5) forwards, aShock 2.5s ease-in-out 0.6s infinite;
+  animation: aBlink 0.5s steps(5) forwards;
   animation-delay: var(--d);
 }
 @keyframes aBlink {
@@ -819,10 +728,6 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   60%  { opacity: 0; }
   80%  { opacity: 1; }
   100% { opacity: 1; }
-}
-@keyframes aShock {
-  0%,100% { filter: brightness(1) drop-shadow(0 0 8px var(--c)); }
-  50%     { filter: brightness(1.5) drop-shadow(0 0 18px var(--c)); }
 }
 
 .sb-anim-shake {
@@ -843,63 +748,30 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   80%     { transform: translateX(2px); }
 }
 
-/* 持续微动效 */
-.sb-idle-breath {
-  animation: idleBreath 4s ease-in-out infinite;
-  animation-delay: calc(var(--d) + 1s);
+.sb-anim-bounce {
+  opacity: 0;
+  transform: translateY(20px) scale(0.8);
+  animation: aBounce 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  animation-delay: var(--d);
 }
-@keyframes idleBreath {
-  0%,100% { transform: scale(1); filter: drop-shadow(0 0 5px var(--g)) brightness(1); }
-  50%     { transform: scale(1.05); filter: drop-shadow(0 0 12px var(--g)) brightness(1.15); }
-}
-
-.sb-idle-flicker {
-  animation: idleBreath 4s ease-in-out infinite, idleFlicker 7s ease-in-out infinite;
-  animation-delay: calc(var(--d) + 1s);
-}
-@keyframes idleFlicker {
-  0%,100% { filter: drop-shadow(0 0 4px var(--g)) brightness(1); }
-  5%      { filter: drop-shadow(0 0 2px var(--g)) brightness(0.6); }
-  8%      { filter: drop-shadow(0 0 10px var(--g)) brightness(1.3); }
-  11%     { filter: drop-shadow(0 0 4px var(--g)) brightness(1); }
-  45%     { filter: drop-shadow(0 0 4px var(--g)) brightness(1); }
-  47%     { filter: drop-shadow(0 0 2px var(--g)) brightness(0.7); }
-  50%     { filter: drop-shadow(0 0 4px var(--g)) brightness(1); }
-  82%     { filter: drop-shadow(0 0 4px var(--g)) brightness(1); }
-  84%     { filter: drop-shadow(0 0 2px var(--g)) brightness(0.8); }
-  86%     { filter: drop-shadow(0 0 4px var(--g)) brightness(1); }
+@keyframes aBounce {
+  0%   { opacity: 0; transform: translateY(20px) scale(0.8); }
+  50%  { opacity: 1; transform: translateY(-5px) scale(1.1); }
+  70%  { transform: translateY(3px) scale(0.95); }
+  85%  { transform: translateY(-2px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-.sb-idle-float {
-  animation: idleFloat 3.5s ease-in-out infinite;
+/* 持续微动效：开罗游戏经典小人弹跳+呼吸 */
+.sb-art {
+  animation: idleBounce 2s ease-in-out infinite;
   animation-delay: calc(var(--d) + 1s);
 }
-@keyframes idleFloat {
-  0%,100% { transform: translateY(0); filter: drop-shadow(0 0 4px var(--g)); }
-  50%     { transform: translateY(-4px); filter: drop-shadow(0 0 10px var(--g)); }
+@keyframes idleBounce {
+  0%,100% { transform: translateY(0) scale(1); filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 5px var(--g)) brightness(1); }
+  40%     { transform: translateY(-3px) scale(1.02, 0.98); filter: drop-shadow(0 6px 8px rgba(0,0,0,0.4)) drop-shadow(0 0 10px var(--g)) brightness(1.1); }
+  60%     { transform: translateY(-3px) scale(1.02, 0.98); filter: drop-shadow(0 6px 8px rgba(0,0,0,0.4)) drop-shadow(0 0 10px var(--g)) brightness(1.1); }
 }
-
-.sb-idle-sway {
-  animation: idleSway 4s ease-in-out infinite;
-  animation-delay: calc(var(--d) + 1s);
-  transform-origin: bottom center;
-}
-@keyframes idleSway {
-  0%,100% { transform: rotate(0deg); }
-  25%     { transform: rotate(-2deg); }
-  75%     { transform: rotate(2deg); }
-}
-
-.sb-idle-blink-slow {
-  animation: idleBlink 5s ease-in-out infinite;
-  animation-delay: calc(var(--d) + 1s);
-}
-@keyframes idleBlink {
-  0%,92%,100% { opacity: 1; }
-  95% { opacity: 0.3; }
-}
-
-.sb-idle-none {}
 
 /* 粒子爆发 */
 .sb-burst {
@@ -919,7 +791,7 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   box-shadow: 0 0 8px var(--c), 0 0 16px var(--g);
   animation: burstOut 0.9s ease-out forwards;
   --angle: calc(var(--i) * 22.5deg);
-  --dist: 30px;
+  --dist: 40px;
 }
 @keyframes burstOut {
   0% {
@@ -936,54 +808,18 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
 .sb-glow {
   position: absolute;
   z-index: 0;
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--g) 0%, transparent 70%);
   opacity: 0.3;
   animation: glowPulse 3s ease-in-out infinite;
   pointer-events: none;
-  filter: blur(8px);
+  filter: blur(10px);
 }
 @keyframes glowPulse {
   0%,100% { opacity: 0.2; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.3); }
-}
-
-/* 记忆轨迹条 */
-.sb-memory-track {
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9;
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  padding: 2px 6px;
-  background: rgba(0,0,0,0.5);
-  border-radius: 6px;
-}
-.sb-mem-dot {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.2);
-  transition: all 0.3s;
-}
-.sb-mem-dot-active {
-  background: var(--c);
-  border-color: var(--c);
-  box-shadow: 0 0 6px var(--c);
-}
-.sb-mem-dot-new {
-  animation: memDotNew 1.5s ease-out;
-}
-@keyframes memDotNew {
-  0% { transform: scale(2.5); box-shadow: 0 0 12px var(--c); }
-  50% { transform: scale(1.5); }
-  100% { transform: scale(1); box-shadow: 0 0 6px var(--c); }
+  50% { opacity: 0.4; transform: scale(1.2); }
 }
 
 /* 场景名 */
@@ -1033,270 +869,314 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
 .sb-effect-smoke::after {
   content: '';
   position: absolute;
-  width: 4px; height: 4px;
-  background: rgba(200,200,200,0.4);
+  width: 6px; height: 6px;
+  background: rgba(200,200,200,0.3);
   border-radius: 50%;
-  top: -8px; right: 20px;
+  top: -10px; right: 25px;
   animation: smokeRise 3s ease-out infinite;
 }
 @keyframes smokeRise {
-  0% { transform: translateY(0) scale(1); opacity: 0.6; }
-  100% { transform: translateY(-20px) scale(2.5); opacity: 0; }
+  0% { transform: translateY(0) scale(1); opacity: 0.5; }
+  100% { transform: translateY(-25px) scale(3); opacity: 0; }
 }
 
 /* 火焰 */
-.sb-effect-flame::after {
+.sb-effect-flame::after, .sb-effect-flames::after {
   content: '';
   position: absolute;
-  width: 4px; height: 6px;
+  width: 6px; height: 8px;
   background: radial-gradient(ellipse at bottom, #ffdd00, #ff6600, transparent);
   border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-  top: -10px; left: 50%;
-  margin-left: -2px;
-  animation: flameFlicker 0.5s ease-in-out infinite alternate;
+  top: -12px;
+  animation: flameFlicker 0.4s ease-in-out infinite alternate;
   filter: blur(0.5px);
 }
+.sb-effect-flames::after { left: 20px; }
+.sb-effect-flame::after { left: 50%; margin-left: -3px; }
 @keyframes flameFlicker {
   0% { transform: scale(1) rotate(-2deg); opacity: 0.9; }
-  100% { transform: scale(1.15) rotate(2deg); opacity: 1; }
-}
-
-/* 雨丝 */
-.sb-effect-rain::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    100deg,
-    transparent, transparent 8px,
-    rgba(0,212,255,0.15) 8px, rgba(0,212,255,0.15) 9px
-  );
-  animation: rainFall 0.3s linear infinite;
-}
-@keyframes rainFall {
-  0% { transform: translateY(-5px); }
-  100% { transform: translateY(5px); }
+  100% { transform: scale(1.2) rotate(3deg); opacity: 1; }
 }
 
 /* 爱心飘升 */
 .sb-effect-hearts::after, .sb-effect-heart-small::after {
   content: '♥';
   position: absolute;
-  font-size: 8px;
+  font-size: 10px;
   color: var(--c);
   top: 0; left: 50%;
+  margin-left: -5px;
   opacity: 0;
-  animation: heartFloat 3s ease-in-out infinite;
-  text-shadow: 0 0 6px var(--c);
+  animation: heartFloat 2.5s ease-in-out infinite;
+  text-shadow: 0 0 8px var(--c);
 }
+.sb-effect-heart-small::after { font-size: 8px; }
 @keyframes heartFloat {
   0% { transform: translateY(0) scale(0.5); opacity: 0; }
-  20% { opacity: 0.8; }
-  100% { transform: translateY(-30px) scale(1.2); opacity: 0; }
+  20% { opacity: 0.9; }
+  100% { transform: translateY(-40px) scale(1.3); opacity: 0; }
 }
 
 /* 星星闪烁 */
 .sb-effect-twinkle::before, .sb-effect-twinkle::after {
   content: '✦';
   position: absolute;
-  font-size: 6px;
+  font-size: 8px;
   color: #ffdd88;
-  animation: twinkle 2s ease-in-out infinite;
-  text-shadow: 0 0 6px #ffdd88;
+  animation: twinkle 1.5s ease-in-out infinite;
+  text-shadow: 0 0 8px #ffdd88;
 }
-.sb-effect-twinkle::before { top: -5px; left: -5px; animation-delay: 0s; }
-.sb-effect-twinkle::after { top: -8px; right: -3px; animation-delay: 1s; }
+.sb-effect-twinkle::before { top: -8px; left: -8px; animation-delay: 0s; }
+.sb-effect-twinkle::after { top: -10px; right: -5px; animation-delay: 0.8s; }
 @keyframes twinkle {
-  0%,100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1.2); }
+  0%,100% { opacity: 0.2; transform: scale(0.7); }
+  50% { opacity: 1; transform: scale(1.3); }
 }
 
-/* 心跳（生病/医院） */
+/* 心跳 */
 .sb-effect-heartbeat::after {
   content: '♥';
   position: absolute;
-  font-size: 10px;
+  font-size: 14px;
   color: #ff4466;
   top: 50%; left: 50%;
-  margin: -20px 0 0 -5px;
+  margin: -25px 0 0 -7px;
   animation: heartbeat 0.8s ease-in-out infinite;
-  text-shadow: 0 0 8px #ff4466;
-  opacity: 0.7;
+  text-shadow: 0 0 10px #ff4466;
+  opacity: 0.6;
 }
 @keyframes heartbeat {
   0%,100% { transform: scale(1); }
-  15% { transform: scale(1.3); }
+  15% { transform: scale(1.4); }
   30% { transform: scale(1); }
-  45% { transform: scale(1.2); }
+  45% { transform: scale(1.3); }
 }
 
-/* 气泡（喝酒） */
+/* 气泡 */
 .sb-effect-bubbles::after {
   content: '';
   position: absolute;
-  width: 3px; height: 3px;
+  width: 4px; height: 4px;
   border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.5);
   bottom: 0; left: 50%;
-  animation: bubbleUp 2s ease-out infinite;
+  margin-left: -2px;
+  animation: bubbleUp 1.8s ease-out infinite;
 }
 @keyframes bubbleUp {
   0% { transform: translateY(0) scale(1); opacity: 0.6; }
-  100% { transform: translateY(-25px) scale(0.3); opacity: 0; }
+  100% { transform: translateY(-30px) scale(0.3); opacity: 0; }
 }
 
-/* 云朵飘过（旅行） */
+/* 云朵 */
 .sb-effect-clouds::before {
   content: '☁';
   position: absolute;
-  font-size: 8px;
-  top: -5px; left: -20px;
+  font-size: 10px;
+  top: -8px; left: -25px;
   color: rgba(255,255,255,0.3);
-  animation: cloudDrift 8s linear infinite;
+  animation: cloudDrift 7s linear infinite;
 }
 @keyframes cloudDrift {
   0% { transform: translateX(0); opacity: 0; }
-  20% { opacity: 0.5; }
-  80% { opacity: 0.5; }
-  100% { transform: translateX(100px); opacity: 0; }
+  15% { opacity: 0.4; }
+  85% { opacity: 0.4; }
+  100% { transform: translateX(140px); opacity: 0; }
 }
 
-/* 水波纹（钓鱼） */
+/* 水波纹 */
 .sb-effect-water::after {
   content: '';
   position: absolute;
-  width: 20px; height: 6px;
-  bottom: -2px; left: 50%;
-  margin-left: -10px;
+  width: 24px; height: 8px;
+  bottom: -5px; left: 50%;
+  margin-left: -12px;
   border: 1px solid rgba(0,150,255,0.4);
   border-radius: 50%;
   animation: waterRipple 2s ease-out infinite;
 }
 @keyframes waterRipple {
-  0% { transform: scale(0.5); opacity: 0.8; }
-  100% { transform: scale(2); opacity: 0; }
+  0% { transform: scale(0.4); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
 }
 
-/* 音符（广场舞） */
+/* 音符 */
 .sb-effect-notes::after {
   content: '♪';
   position: absolute;
-  font-size: 8px;
+  font-size: 10px;
   color: var(--c);
-  top: -5px; right: 0;
+  top: -8px; right: 5px;
   opacity: 0;
-  animation: noteFloat 2.5s ease-in-out infinite;
-  text-shadow: 0 0 6px var(--c);
+  animation: noteFloat 2s ease-in-out infinite;
+  text-shadow: 0 0 8px var(--c);
 }
 @keyframes noteFloat {
   0% { transform: translateY(0) rotate(0deg); opacity: 0; }
   30% { opacity: 0.8; }
-  100% { transform: translateY(-20px) rotate(15deg); opacity: 0; }
+  100% { transform: translateY(-25px) rotate(20deg); opacity: 0; }
 }
 
-/* 金币掉落（彩票/奖金） */
+/* 金币 */
 .sb-effect-coins::before {
   content: '¥';
   position: absolute;
-  font-size: 8px;
+  font-size: 10px;
   color: #ffdd00;
   font-weight: bold;
-  top: -10px;
-  animation: coinDrop 1.5s ease-in infinite;
-  text-shadow: 0 0 6px #ffdd00;
+  top: -12px; left: 50%;
+  margin-left: -5px;
+  animation: coinDrop 1.2s ease-in infinite;
+  text-shadow: 0 0 8px #ffdd00;
 }
 @keyframes coinDrop {
-  0% { transform: translateY(-10px) rotate(0deg); opacity: 0; }
+  0% { transform: translateY(-15px) rotate(0deg); opacity: 0; }
   20% { opacity: 1; }
-  100% { transform: translateY(30px) rotate(360deg); opacity: 0; }
+  100% { transform: translateY(35px) rotate(360deg); opacity: 0; }
 }
 
-/* 星星爆发（升职/涨价） */
+/* 星星爆发 */
 .sb-effect-stars::before, .sb-effect-stars-small::before {
   content: '★';
   position: absolute;
   color: #ffdd00;
-  animation: starBurst 1s ease-out;
-  text-shadow: 0 0 8px #ffdd00;
+  animation: starBurst 1.2s ease-out;
+  text-shadow: 0 0 10px #ffdd00;
 }
-.sb-effect-stars::before { font-size: 10px; top: -8px; left: 50%; margin-left: -5px; }
-.sb-effect-stars-small::before { font-size: 7px; top: -5px; left: 50%; margin-left: -3px; }
+.sb-effect-stars::before { font-size: 14px; top: -10px; left: 50%; margin-left: -7px; }
+.sb-effect-stars-small::before { font-size: 9px; top: -6px; left: 50%; margin-left: -4px; }
 @keyframes starBurst {
   0% { transform: scale(0) rotate(0deg); opacity: 1; }
-  50% { transform: scale(1.5) rotate(180deg); opacity: 1; }
-  100% { transform: scale(0.5) rotate(360deg); opacity: 0; }
+  40% { transform: scale(1.6) rotate(180deg); opacity: 1; }
+  100% { transform: scale(0.4) rotate(360deg); opacity: 0; }
 }
 
-/* 闪电（吵架/婆媳） */
+/* 闪电 */
 .sb-effect-lightning::after {
   content: '⚡';
   position: absolute;
-  font-size: 12px;
-  top: -10px; left: 50%;
-  margin-left: -6px;
+  font-size: 16px;
+  top: -12px; left: 50%;
+  margin-left: -8px;
   opacity: 0;
-  animation: lightning 3s ease-in-out infinite;
-  text-shadow: 0 0 10px #ffee00;
+  animation: lightning 2.5s ease-in-out infinite;
+  text-shadow: 0 0 12px #ffee00;
 }
 @keyframes lightning {
-  0%,90%,100% { opacity: 0; }
-  92% { opacity: 1; }
-  94% { opacity: 0.3; }
-  96% { opacity: 1; }
+  0%,88%,100% { opacity: 0; }
+  90% { opacity: 1; }
+  92% { opacity: 0.2; }
+  94% { opacity: 1; }
 }
 
-/* 蜡烛（葬礼/纪念日） */
-.sb-effect-candle::after {
-  content: '';
-  position: absolute;
-  width: 3px; height: 5px;
-  background: radial-gradient(ellipse at bottom, #ffddaa, #ff8800, transparent);
-  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-  top: -8px; left: 50%;
-  margin-left: -1px;
-  animation: flameFlicker 0.6s ease-in-out infinite alternate;
-}
-
-/* ZZZ（熬夜带娃） */
+/* ZZZ */
 .sb-effect-zzz::after {
   content: 'Z z';
   position: absolute;
-  font-size: 7px;
+  font-size: 9px;
   color: rgba(255,255,255,0.5);
-  top: -8px; right: 0;
+  top: -10px; right: 5px;
   animation: zzzFloat 3s ease-out infinite;
 }
 @keyframes zzzFloat {
   0% { transform: translate(0,0) scale(0.8); opacity: 0; }
   30% { opacity: 0.6; }
-  100% { transform: translate(8px,-15px) scale(1.2); opacity: 0; }
+  100% { transform: translate(10px,-20px) scale(1.3); opacity: 0; }
 }
 
-/* 其余特效的轻量版本 */
+/* 碎心 */
+.sb-effect-broken::after {
+  content: '💔';
+  position: absolute;
+  font-size: 12px;
+  top: 50%; left: 50%;
+  margin: -20px 0 0 -8px;
+  opacity: 0.7;
+  animation: brokenShake 0.5s ease-in-out infinite;
+}
+@keyframes brokenShake {
+  0%,100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* 其余特效的轻量光晕 */
 .sb-effect-speed::after, .sb-effect-screen::after, .sb-effect-chart::after,
-.sb-effect-flames::after, .sb-effect-shake::after, .sb-effect-paper-fall::after,
-.sb-effect-shine::after, .sb-effect-neural::after, .sb-effect-glitch-text::after,
-.sb-effect-pills::after, .sb-effect-shock::after, .sb-effect-alert::after,
-.sb-effect-up::after, .sb-effect-crash::after, .sb-effect-tv::after,
-.sb-effect-grow::after, .sb-effect-mirror::after, .sb-effect-distance::after,
-.sb-effect-broken::after, .sb-effect-tissue::after, .sb-effect-anger::after,
-.sb-effect-dark::after, .sb-effect-spark::after, .sb-effect-fog::after,
-.sb-effect-flex::after, .sb-effect-brain::after, .sb-effect-paw::after,
-.sb-effect-leaf::after, .sb-effect-book::after, .sb-effect-wave::after,
-.sb-effect-cheers::after, .sb-effect-down::after, .sb-effect-cross::after,
-.sb-effect-sun::after, .sb-effect-lotus::after, .sb-effect-silver::after,
-.sb-effect-confetti::after {
+.sb-effect-shake::after, .sb-effect-paper-fall::after,
+.sb-effect-fog::after, .sb-effect-flex::after,
+.sb-effect-book::after, .sb-effect-tv::after {
   content: '';
   position: absolute;
   inset: 0;
   pointer-events: none;
   opacity: 0.15;
   background: radial-gradient(circle at center, var(--c) 0%, transparent 70%);
-  animation: genericPulse 3s ease-in-out infinite;
+  animation: genericPulse 2.5s ease-in-out infinite;
 }
 @keyframes genericPulse {
-  0%,100% { opacity: 0.1; }
-  50% { opacity: 0.25; }
+  0%,100% { opacity: 0.08; }
+  50% { opacity: 0.2; }
+}
+
+/* 问号（相亲） */
+.sb-effect-question::after {
+  content: '?';
+  position: absolute;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--c);
+  top: -8px; left: 50%;
+  margin-left: -5px;
+  animation: questionBounce 1s ease-in-out infinite;
+  text-shadow: 0 0 8px var(--c);
+}
+@keyframes questionBounce {
+  0%,100% { transform: translateY(0) scale(1); opacity: 0.7; }
+  50% { transform: translateY(-6px) scale(1.2); opacity: 1; }
+}
+
+/* 月亮（加班） */
+.sb-effect-moon::before {
+  content: '';
+  position: absolute;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: #ffeaa7;
+  top: -5px; right: 5px;
+  box-shadow: 0 0 12px #ffeaa7, 0 0 20px rgba(255,234,167,0.5);
+  animation: moonGlow 3s ease-in-out infinite;
+}
+.sb-effect-moon::after {
+  content: '';
+  position: absolute;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #0a0d14;
+  top: -7px; right: 3px;
+}
+@keyframes moonGlow {
+  0%,100% { opacity: 0.8; box-shadow: 0 0 12px #ffeaa7, 0 0 20px rgba(255,234,167,0.5); }
+  50% { opacity: 1; box-shadow: 0 0 18px #ffeaa7, 0 0 30px rgba(255,234,167,0.7); }
+}
+
+/* 彩带（退休派对） */
+.sb-effect-confetti::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 20%, #ff3d7f 2px, transparent 2px),
+    radial-gradient(circle at 80% 15%, #00d4ff 2px, transparent 2px),
+    radial-gradient(circle at 30% 80%, #ffd700 2px, transparent 2px),
+    radial-gradient(circle at 70% 70%, #00ff88 2px, transparent 2px),
+    radial-gradient(circle at 50% 10%, #c900ff 2px, transparent 2px);
+  animation: confettiFall 2s ease-in-out infinite;
+  opacity: 0.6;
+}
+@keyframes confettiFall {
+  0% { transform: translateY(-5px); opacity: 0; }
+  30% { opacity: 0.8; }
+  100% { transform: translateY(10px); opacity: 0; }
 }
 
 /* ===== 响应式 ===== */
@@ -1306,8 +1186,6 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   .sb-txt { font-size: 8px; }
   .sb-sub { display: none; }
   .sb-name-text { font-size: 7px; }
-  .sb-memory-track { gap: 3px; padding: 1px 4px; }
-  .sb-mem-dot { width: 4px; height: 4px; }
 }
 
 @media (min-width: 1400px) {
@@ -1318,7 +1196,6 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   .sb-yr { font-size: 9px; }
   .sb-name { padding: 4px 10px; min-height: 22px; }
   .sb-name-text { font-size: 10px; }
-  .sb-count { font-size: 9px; min-width: 16px; height: 16px; line-height: 16px; }
   .sb-rec { width: 7px; height: 7px; }
 }
 

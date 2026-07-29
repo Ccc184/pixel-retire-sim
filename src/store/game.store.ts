@@ -209,27 +209,9 @@ export const useGameStore = defineStore('game', () => {
     career: [],
   });
 
-  /** 将本年度日志分类到三分镜队列（累积式：追加新场景到历史，不替换） */
+  /** 将本年度日志分类到三分镜队列（单年模式：每年替换为新场景，不累积） */
   function classifyStoryboards(logs: string[]) {
-    const newScenes = matchStoryboardScenes(logs);
-    const MAX_HISTORY = 6; // 每个分类最多保留6个历史场景
-    const merged = {
-      family: [...pendingStoryboards.value.family],
-      life: [...pendingStoryboards.value.life],
-      career: [...pendingStoryboards.value.career],
-    };
-    for (const cat of ['family', 'life', 'career'] as const) {
-      for (const id of newScenes[cat]) {
-        if (!merged[cat].includes(id)) {
-          merged[cat].push(id);
-        }
-      }
-      // 限制历史长度，保留最新的
-      if (merged[cat].length > MAX_HISTORY) {
-        merged[cat] = merged[cat].slice(-MAX_HISTORY);
-      }
-    }
-    pendingStoryboards.value = merged;
+    pendingStoryboards.value = matchStoryboardScenes(logs);
   }
 
   // ========== 叙事事件系统（替代三卡） ==========
