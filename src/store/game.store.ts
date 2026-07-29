@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { shallowRef } from 'vue';
+import { matchStoryboardScenes } from '../data/storyboard-scenes.js';
 import type { GameState, Profession, CityType, OriginChoices, YearResult, CrossroadEvent, NarrativeEvent, MBTIType, SalaryChangeEntry, RetirementDream } from '../types/global.d.js';
 import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth } from '../utils/math-engine.js';
 import { rollRandomEvents } from '../data/events.js';
@@ -201,30 +202,34 @@ export const useGameStore = defineStore('game', () => {
   }
 
   // ========== 三分镜队列 ==========
-  // 当年触发的剧情事件，次年对应窗口展示分镜动画
+  // 当年触发的剧情事件，次年对应窗口展示像素动画场景
   const pendingStoryboards = ref<{ family: string[]; life: string[]; career: string[] }>({
     family: [],
     life: [],
     career: [],
   });
 
-  /** 将本年度日志分类到三分镜队列 */
+  /** 将本年度日志分类到三分镜队列（累积式：追加新场景到历史，不替换） */
   function classifyStoryboards(logs: string[]) {
-    const family: string[] = [];
-    const life: string[] = [];
-    const career: string[] = [];
-
-    const familyKw = ['结婚', '婚礼', '离婚', '分手', '宝宝', '出生', '为人父', '为人母', '父母', '离世', '去世', '孩子', '见家长', '求婚', '约会', '恋爱'];
-    const lifeKw = ['旅行', '体检', '健身', '重病', '住院', '手术', '买房', '购房', '入住', '搬家', '移居', '车', '日常', '生活'];
-    const careerKw = ['裁员', '失业', '被裁', '涨薪', '降薪', '跳槽', '升职', '创业', '注册公司', '成立', 'All In', '辞职', '全力', '黑天鹅', '爆仓', '破产', '信念', '里程碑'];
-
-    for (const log of logs) {
-      if (familyKw.some(kw => log.includes(kw))) family.push(log);
-      if (lifeKw.some(kw => log.includes(kw))) life.push(log);
-      if (careerKw.some(kw => log.includes(kw))) career.push(log);
+    const newScenes = matchStoryboardScenes(logs);
+    const MAX_HISTORY = 6; // 每个分类最多保留6个历史场景
+    const merged = {
+      family: [...pendingStoryboards.value.family],
+      life: [...pendingStoryboards.value.life],
+      career: [...pendingStoryboards.value.career],
+    };
+    for (const cat of ['family', 'life', 'career'] as const) {
+      for (const id of newScenes[cat]) {
+        if (!merged[cat].includes(id)) {
+          merged[cat].push(id);
+        }
+      }
+      // 限制历史长度，保留最新的
+      if (merged[cat].length > MAX_HISTORY) {
+        merged[cat] = merged[cat].slice(-MAX_HISTORY);
+      }
     }
-
-    pendingStoryboards.value = { family, life, career };
+    pendingStoryboards.value = merged;
   }
 
   // ========== 叙事事件系统（替代三卡） ==========
@@ -364,6 +369,8 @@ export const useGameStore = defineStore('game', () => {
     state.value.pathSkills = {};
     state.value.narrativeEventFired = {};
     state.value.triggeredAchievements = [];
+    // 重置三分镜队列
+    pendingStoryboards.value = { family: [], life: [], career: [] };
     crossroadFiredTags.value = new Map();
 
     addLog(`第22岁，你在${city}开始了${profession}的职业生涯，初始月薪${actualStartSalary}元。像素人生，正式开局。`);
