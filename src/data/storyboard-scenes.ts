@@ -1611,6 +1611,542 @@ function sceneCoupleFight(): PixelFrame[] {
   return f
 }
 
+// ===== 新增趣味专属场景 =====
+
+// 演讲/领奖/上台：聚光灯下讲台+人物，观众席小点头
+function sceneSpeech(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    // 聚光灯效果（从上方照下来）
+    for (let r = 0; r < 12; r++) {
+      const w = Math.max(1, r);
+      for (let col = Math.max(0, 11-w); col <= Math.min(23, 12+w); col++) {
+        if (fr[r][col] === T.dark) S(fr, r, col, T.gold)
+      }
+    }
+    // 地面（舞台）
+    for (let col = 0; col < W; col++) { S(fr, 17, col, T.brown); S(fr, 18, col, T.dark) }
+    // 观众席（几个小点头）
+    S(fr, 16, 3, T.hair_dark); S(fr, 16, 7, T.hair_dark); S(fr, 16, 16, T.hair_light); S(fr, 16, 20, T.hair_dark)
+  })
+  // 讲台（在人物前面，后画形成遮挡）
+  // 人物站在讲台后 y=8（脚在15，讲台在13-15）
+  drawPerson(f[0], 10, 8, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[1], 10, 8, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'armsup')
+  drawPerson(f[2], 10, 8, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 10, 8, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'armsup')
+  // 讲台
+  f.forEach(fr => {
+    for (let col = 8; col <= 15; col++) { S(fr, 13, col, T.brown); S(fr, 14, col, T.brown) }
+    S(fr, 15, 8, T.dark); S(fr, 15, 15, T.dark)
+    S(fr, 13, 11, T.white); S(fr, 13, 12, T.white) // 麦克风
+  })
+  // 奖杯/证书
+  S(f[2], 7, 15, T.gold); S(f[3], 7, 15, T.gold)
+  S(f[2], 8, 14, T.gold); S(f[2], 8, 16, T.gold); S(f[3], 8, 14, T.gold); S(f[3], 8, 16, T.gold)
+  // 掌声（小点点）
+  S(f[1], 15, 2, T.white); S(f[1], 15, 5, T.white); S(f[1], 15, 18, T.white); S(f[1], 15, 22, T.white)
+  S(f[3], 15, 1, T.gold); S(f[3], 15, 6, T.gold); S(f[3], 15, 17, T.gold); S(f[3], 15, 22, T.gold)
+  return f
+}
+
+// 哭泣/崩溃：人物坐着，手擦眼泪，纸巾
+function sceneCry(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.gray)
+    drawGround(fr, T.gray)
+  })
+  // 人物坐在地上/床边 y=12（坐姿位置）
+  drawPerson(f[0], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawPerson(f[1], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawPerson(f[2], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawPerson(f[3], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  // 眼泪（蓝色水滴，动画：掉落）
+  S(f[0], 12, 10, T.sky); S(f[0], 12, 13, T.sky)
+  S(f[1], 13, 10, T.sky); S(f[1], 13, 13, T.sky)
+  S(f[2], 12, 10, T.sky); S(f[2], 12, 13, T.sky); S(f[2], 13, 11, T.sky)
+  S(f[3], 13, 10, T.sky); S(f[3], 13, 13, T.sky); S(f[3], 14, 12, T.sky)
+  // 纸巾（白色方块）
+  f.forEach(fr => { S(fr, 13, 14, T.white); S(fr, 14, 14, T.white) })
+  return f
+}
+
+// 雨天撑伞：人物撑伞走路，雨滴下落
+function sceneRainUmbrella(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+  })
+  // 雨滴动画（蓝色细线，位置逐帧变化）
+  for (let i = 0; i < 12; i++) {
+    const col = (i * 2 + 1) % W
+    S(f[0], 1 + (i*3)%14, col, T.sky)
+    S(f[0], 2 + (i*3)%14, col, T.white)
+    const col2 = (i * 2 + 5) % W
+    S(f[1], 3 + (i*3)%12, col2, T.white)
+    S(f[1], 4 + (i*3)%12, col2, T.sky)
+    const col3 = (i * 3 + 3) % W
+    S(f[2], 2 + (i*2)%13, col3, T.sky)
+    S(f[2], 3 + (i*2)%13, col3, T.white)
+    const col4 = (i * 2 + 7) % W
+    S(f[3], 4 + (i*3)%11, col4, T.white)
+    S(f[3], 5 + (i*3)%11, col4, T.sky)
+  }
+  // 伞（弧形红色伞面 + 伞柄），伞在y=5-7位置
+  function drawUmbrella(fr: PixelFrame, cx: number, cy: number) {
+    // 伞面（弧形）
+    S(fr, cy, cx-3, T.cloth_red); S(fr, cy, cx-2, T.cloth_red); S(fr, cy, cx-1, T.cloth_red)
+    S(fr, cy, cx, T.cloth_red); S(fr, cy, cx+1, T.cloth_red); S(fr, cy, cx+2, T.cloth_red); S(fr, cy, cx+3, T.cloth_red)
+    S(fr, cy+1, cx-4, T.cloth_red); S(fr, cy+1, cx-3, T.cloth_red); S(fr, cy+1, cx-2, T.cloth_red)
+    S(fr, cy+1, cx-1, T.cloth_red); S(fr, cy+1, cx, T.cloth_red); S(fr, cy+1, cx+1, T.cloth_red)
+    S(fr, cy+1, cx+2, T.cloth_red); S(fr, cy+1, cx+3, T.cloth_red); S(fr, cy+1, cx+4, T.cloth_red)
+    S(fr, cy+1, cx, T.dark) // 伞尖
+    // 伞柄
+    S(fr, cy+2, cx, T.brown); S(fr, cy+3, cx, T.brown); S(fr, cy+4, cx, T.brown)
+    S(fr, cy+5, cx+1, T.brown)
+  }
+  // 人物撑伞走路 y=11（脚在18），伞在上方
+  drawPerson(f[0], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'normal', 'walk1')
+  drawUmbrella(f[0], 12, 5)
+  drawPerson(f[1], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'walk2')
+  drawUmbrella(f[1], 12, 5)
+  drawPerson(f[2], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'normal', 'walk1')
+  drawUmbrella(f[2], 12, 5)
+  drawPerson(f[3], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'walk2')
+  drawUmbrella(f[3], 12, 5)
+  // 水洼（地面上的小蓝色块）
+  f.forEach(fr => {
+    S(fr, 17, 3, T.sky); S(fr, 17, 4, T.sky); S(fr, 17, 19, T.sky); S(fr, 17, 20, T.sky)
+  })
+  return f
+}
+
+// 情侣牵手散步：夕阳下两人牵手走
+function sceneCoupleWalk(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    // 夕阳渐变天空（上半深蓝，下半橙红）
+    for (let r = 0; r < 8; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.purple)
+    for (let r = 8; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.peach)
+    // 夕阳（圆形）
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+      if (dr*dr + dc*dc <= 4) S(fr, 12+dr, 18+dc, T.gold)
+    }
+    drawGround(fr, T.brown)
+  })
+  // 两个人牵手走（左边男蓝，右边女红）
+  drawPerson(f[0], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  drawPerson(f[0], 14, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'walk1')
+  drawPerson(f[1], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk2')
+  drawPerson(f[1], 14, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'walk2')
+  drawPerson(f[2], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  drawPerson(f[2], 14, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'walk1')
+  drawPerson(f[3], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk2')
+  drawPerson(f[3], 14, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'walk2')
+  // 牵手效果（中间画一个肤色像素连接）
+  f.forEach(fr => S(fr, 14, 10, T.skin))
+  // 小爱心飘起
+  S(f[1], 9, 9, T.bright_red); S(f[3], 8, 11, T.bright_red)
+  return f
+}
+
+// 烟花：夜空中烟花绽放
+function sceneFireworks(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.dark)
+  })
+  // 人物抬头看烟花 y=11（背影/侧脸）
+  drawPerson(f[0], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'back', 'happy', 'stand')
+  drawPerson(f[1], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'back', 'happy', 'stand')
+  drawPerson(f[2], 10, 11, T.hair_dark, T.skin, T.cloth_red, 'back', 'happy', 'cheer')
+  drawPerson(f[3], 10, 11, T.hair_dark, T.skin, T.cloth_red, 'back', 'happy', 'cheer')
+  drawPerson(f[4], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'back', 'happy', 'armsup')
+  drawPerson(f[5], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'back', 'happy', 'jump')
+  // 烟花绽放动画
+  const c1 = T.bright_red, c2 = T.gold, c3 = T.cloth_blue, c4 = T.teal, c5 = T.peach
+  // Frame 0-1: 烟花上升（小点往上）
+  S(f[0], 14, 5, c2); S(f[0], 13, 5, c2); S(f[1], 10, 5, c2); S(f[1], 9, 5, c2)
+  // Frame 2: 第一朵烟花绽放（中心在(5,5)）
+  for (let i = 0; i < 8; i++) {
+    const angle = (i / 8) * Math.PI * 2
+    S(f[2], 5+Math.round(Math.sin(angle)*2), 5+Math.round(Math.cos(angle)*2), [c1,c2,c3][i%3])
+    S(f[2], 5+Math.round(Math.sin(angle)*3), 5+Math.round(Math.cos(angle)*3), [c1,c2,c3][i%3])
+  }
+  S(f[2], 5, 5, c2)
+  // Frame 3: 更大绽放
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2
+    S(f[3], 5+Math.round(Math.sin(angle)*2), 5+Math.round(Math.cos(angle)*2), [c1,c2,c3,c4][i%4])
+    S(f[3], 5+Math.round(Math.sin(angle)*3), 5+Math.round(Math.cos(angle)*3), [c1,c2,c3,c4][i%4])
+    S(f[3], 5+Math.round(Math.sin(angle)*4), 5+Math.round(Math.cos(angle)*4), [c1,c2,c3,c4][i%4])
+  }
+  S(f[3], 5, 5, c2)
+  // 第二朵烟花（在右侧）
+  for (let i = 0; i < 10; i++) {
+    const angle = (i / 10) * Math.PI * 2
+    S(f[3], 18+Math.round(Math.sin(angle)*2), 8+Math.round(Math.cos(angle)*2), [c5,c1,c2][i%3])
+    S(f[3], 18+Math.round(Math.sin(angle)*3), 8+Math.round(Math.cos(angle)*3), [c5,c1,c2][i%3])
+  }
+  S(f[3], 18, 8, c5)
+  // Frame 4: 烟花散落（小点点）
+  for (let i = 0; i < 16; i++) {
+    const angle = (i / 16) * Math.PI * 2
+    S(f[4], 5+Math.round(Math.sin(angle)*4), 5+Math.round(Math.cos(angle)*4), [c1,c2,c3,c4,c5][i%5])
+    S(f[4], 18+Math.round(Math.sin(angle)*3), 8+Math.round(Math.cos(angle)*3), [c1,c2,c5][i%3])
+  }
+  // Frame 5: 最后一朵大烟花
+  for (let i = 0; i < 16; i++) {
+    const angle = (i / 16) * Math.PI * 2
+    S(f[5], 12+Math.round(Math.sin(angle)*2), 3+Math.round(Math.cos(angle)*2), [c1,c2,c3,c4,c5][i%5])
+    S(f[5], 12+Math.round(Math.sin(angle)*3), 3+Math.round(Math.cos(angle)*3), [c1,c2,c3,c4,c5][i%5])
+    S(f[5], 12+Math.round(Math.sin(angle)*4), 3+Math.round(Math.cos(angle)*4), [c1,c2,c3,c4,c5][i%5])
+  }
+  S(f[5], 12, 3, c2)
+  return f
+}
+
+// 拍照：人物举手机拍照
+function scenePhoto(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawCloud(fr, 1, 3, true); drawCloud(fr, 2, 18, false)
+    drawTree(fr, 2, 12); drawTree(fr, 20, 12)
+  })
+  // 人物举着手机拍照 y=11（armsup姿势）
+  drawPerson(f[0], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'armsup')
+  drawPerson(f[1], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'armsup')
+  drawPerson(f[2], 9, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'armsup')
+  drawPerson(f[3], 9, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  // 手机（黑色方块举在手上）
+  f.forEach(fr => {
+    S(fr, 9, 10, T.dark); S(fr, 9, 11, T.dark); S(fr, 10, 10, T.dark); S(fr, 10, 11, T.dark)
+    S(fr, 9, 10, T.sky) // 屏幕亮光
+  })
+  // 拍照闪光效果
+  S(f[1], 0, 0, T.white); for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) if (f[1][r][col] === T.dark || f[1][r][col] === T.sky) S(f[1], r, col, T.white)
+  drawPerson(f[1], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'surprised', 'armsup')
+  S(f[1], 9, 10, T.dark); S(f[1], 9, 11, T.dark); S(f[1], 10, 10, T.dark); S(f[1], 10, 11, T.dark)
+  drawGround(f[1], T.theme)
+  return f
+}
+
+// 温暖拥抱：两人相拥
+function sceneHug(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.peach)
+    drawGround(fr, T.brown)
+    drawHeart(fr, 2, 3, T.bright_red, 0); drawHeart(fr, 1, 19, T.bright_red, 0)
+  })
+  // 两人拥抱（部分重叠，左边人偏右，右边人偏左）
+  // 先用蓝色画左边人
+  drawPerson(f[0], 7, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[0], 12, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'stand')
+  drawPerson(f[1], 7, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[1], 12, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'stand')
+  drawPerson(f[2], 7, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[2], 12, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'stand')
+  drawPerson(f[3], 7, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[3], 12, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'stand')
+  // 拥抱时手臂环住（肤色连接）
+  f.forEach(fr => {
+    S(fr, 14, 11, T.skin); S(fr, 14, 12, T.cloth_blue)
+    S(fr, 14, 8, T.skin); S(fr, 14, 8, T.cloth_red)
+  })
+  // 大爱心在头顶
+  drawHeart(f[1], 6, 9, T.bright_red, 1)
+  drawHeart(f[3], 5, 8, T.bright_red, 1); drawHeart(f[3], 7, 14, T.peach, 0)
+  return f
+}
+
+// 冥想/阳台发呆：人物盘腿/安静坐着，阳光
+function sceneMeditation(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    // 阳台栏杆
+    for (let col = 0; col < W; col++) S(fr, 14, col, T.gray)
+    for (let col = 2; col < W; col += 4) { S(fr, 15, col, T.gray); S(fr, 16, col, T.gray) }
+    // 太阳
+    for (let dr = -1; dr <= 1; dr++) for (let dc = -1; dc <= 1; dc++) S(fr, 3+dr, 19+dc, T.gold)
+    S(fr, 2, 19, T.gold); S(fr, 4, 19, T.gold)
+    drawGround(fr, T.brown)
+  })
+  // 人物盘腿坐着（用sit姿势，y=11位置比地面高因为在椅子/垫子上）
+  drawPerson(f[0], 10, 10, T.hair_dark, T.skin, T.cloth_blue, 'back', 'happy', 'sit')
+  drawPerson(f[1], 10, 10, T.hair_dark, T.skin, T.cloth_blue, 'back', 'happy', 'sit')
+  drawPerson(f[2], 10, 10, T.hair_dark, T.skin, T.teal, 'back', 'happy', 'sit')
+  drawPerson(f[3], 10, 10, T.hair_dark, T.skin, T.teal, 'back', 'happy', 'sit')
+  // 深呼吸动画（圆圈扩散）
+  S(f[1], 8, 12, T.white); S(f[3], 7, 11, T.white); S(f[3], 7, 13, T.white); S(f[3], 9, 11, T.white); S(f[3], 9, 13, T.white)
+  // 花盆/绿萝
+  f.forEach(fr => {
+    S(fr, 16, 2, T.teal); S(fr, 15, 2, T.teal); S(fr, 16, 3, T.teal); S(fr, 15, 1, T.teal)
+    S(fr, 17, 1, T.brown); S(fr, 17, 2, T.brown); S(fr, 17, 3, T.brown)
+  })
+  // 鸟飞过
+  S(f[0], 2, 5, T.dark); S(f[0], 2, 6, T.dark); S(f[0], 3, 7, T.dark)
+  S(f[2], 3, 8, T.dark); S(f[2], 3, 9, T.dark); S(f[2], 4, 10, T.dark)
+  return f
+}
+
+// 讲课/教学：黑板+人物讲课+学生
+function sceneTeach(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    // 黑板（深绿色）
+    for (let r = 1; r <= 7; r++) for (let col = 2; col <= 21; col++) S(fr, r, col, T.teal)
+    S(fr, 1, 2, T.brown); S(fr, 7, 2, T.brown); S(fr, 1, 21, T.brown); S(fr, 7, 21, T.brown)
+    // 粉笔字
+    S(fr, 3, 5, T.white); S(fr, 3, 6, T.white); S(fr, 3, 7, T.white)
+    S(fr, 4, 10, T.white); S(fr, 5, 15, T.white); S(fr, 5, 16, T.white)
+    drawGround(fr, T.brown)
+  })
+  // 老师站在黑板前 y=8
+  drawPerson(f[0], 10, 8, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'stand')
+  drawPerson(f[1], 10, 8, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'armsup')
+  drawPerson(f[2], 10, 8, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'stand')
+  drawPerson(f[3], 10, 8, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'armsup')
+  // 粉笔（在手上）
+  f.forEach((fr, i) => { if (i % 2 === 1) S(fr, 10, 7, T.white) })
+  // 学生（坐在下方，小一点的头）
+  f.forEach(fr => {
+    S(fr, 15, 3, T.hair_dark); S(fr, 16, 3, T.skin); S(fr, 16, 4, T.skin); S(fr, 16, 2, T.hair_dark); S(fr, 16, 5, T.hair_dark)
+    S(fr, 15, 8, T.hair_light); S(fr, 16, 8, T.skin); S(fr, 16, 9, T.skin); S(fr, 16, 7, T.hair_light); S(fr, 16, 10, T.hair_light)
+    S(fr, 15, 16, T.hair_dark); S(fr, 16, 16, T.skin); S(fr, 16, 17, T.skin); S(fr, 16, 15, T.hair_dark); S(fr, 16, 18, T.hair_dark)
+    // 课桌
+    for (let col = 1; col <= 6; col++) S(fr, 17, col, T.brown)
+    for (let col = 14; col <= 19; col++) S(fr, 17, col, T.brown)
+  })
+  return f
+}
+
+// 签售/出书：人物坐在桌前签名，桌上有书
+function sceneBookSign(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.peach)
+    drawGround(fr, T.brown)
+  })
+  // 桌子（在人物前面）桌面y=14
+  // 人物坐着 y=10
+  drawPerson(f[0], 9, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  drawPerson(f[1], 9, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  drawPerson(f[2], 9, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  drawPerson(f[3], 9, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  // 桌子（后画遮挡）
+  f.forEach(fr => {
+    for (let col = 5; col <= 18; col++) S(fr, 14, col, T.brown)
+    S(fr, 15, 5, T.dark); S(fr, 15, 18, T.dark); S(fr, 16, 5, T.dark); S(fr, 16, 18, T.dark)
+  })
+  // 书堆（桌上）
+  f.forEach((fr, i) => {
+    S(fr, 12, 7, T.cloth_blue); S(fr, 12, 8, T.cloth_blue); S(fr, 13, 7, T.cloth_blue); S(fr, 13, 8, T.cloth_blue)
+    S(fr, 13, 7, T.white); S(fr, 13, 8, T.white)
+    S(fr, 12, 15, T.bright_red); S(fr, 12, 16, T.bright_red); S(fr, 13, 15, T.bright_red); S(fr, 13, 16, T.bright_red)
+    S(fr, 13, 15, T.gold); S(fr, 13, 16, T.gold)
+    // 笔（在手上，签名动作）
+    if (i % 2 === 0) S(fr, 12, 11, T.dark)
+  })
+  // 排队的读者（小点头）
+  f.forEach(fr => {
+    S(fr, 16, 20, T.hair_dark); S(fr, 17, 20, T.cloth_blue); S(fr, 17, 21, T.cloth_blue)
+    S(fr, 16, 22, T.hair_light); S(fr, 17, 22, T.cloth_red); S(fr, 17, 23, T.cloth_red)
+  })
+  // 星星/好评
+  S(f[1], 4, 4, T.gold); S(f[3], 3, 6, T.gold); S(f[3], 5, 3, T.gold)
+  return f
+}
+
+// 网暴：人物看手机，周围愤怒符号
+function sceneCyberbully(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.gray)
+    drawGround(fr, T.dark)
+  })
+  // 人物坐在沙发上看手机 y=10，难过表情
+  drawSofa(f[0], T.brown); drawPerson(f[0], 9, 9, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawSofa(f[1], T.brown); drawPerson(f[1], 9, 9, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawSofa(f[2], T.brown); drawPerson(f[2], 9, 9, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawSofa(f[3], T.gray); drawPerson(f[3], 9, 9, T.hair_dark, T.skin, T.dark, 'front', 'angry', 'sit')
+  // 手机（发光的屏幕）
+  f.forEach(fr => {
+    S(fr, 11, 8, T.dark); S(fr, 11, 9, T.dark); S(fr, 12, 8, T.dark); S(fr, 12, 9, T.dark)
+    S(fr, 11, 8, T.white); S(fr, 11, 9, T.white)
+  })
+  // 愤怒符号/恶评（红色感叹号和叉号围绕）
+  S(f[0], 3, 3, T.bright_red); S(f[0], 3, 20, T.bright_red)
+  S(f[0], 5, 6, T.bright_red); S(f[0], 6, 17, T.bright_red)
+  S(f[1], 2, 5, T.bright_red); S(f[1], 4, 18, T.bright_red); S(f[1], 6, 2, T.bright_red)
+  S(f[2], 3, 2, T.bright_red); S(f[2], 3, 21, T.bright_red); S(f[2], 5, 19, T.bright_red); S(f[2], 7, 4, T.bright_red)
+  S(f[3], 1, 4, T.bright_red); S(f[3], 2, 12, T.bright_red); S(f[3], 4, 19, T.bright_red); S(f[3], 6, 7, T.bright_red); S(f[3], 7, 16, T.bright_red)
+  // 红色X和感叹号
+  function drawAnger(fr: PixelFrame, r: number, c: number) {
+    S(fr, r, c, T.bright_red); S(fr, r, c+1, T.bright_red)
+    S(fr, r+1, c, T.bright_red); S(fr, r+2, c+1, T.bright_red)
+  }
+  drawAnger(f[1], 3, 3); drawAnger(f[2], 2, 18); drawAnger(f[3], 4, 2)
+  return f
+}
+
+// 机场告别/飞机窗：飞机窗外的云+靠窗坐着的人
+function sceneAirport(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    // 机舱内部（深色）
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    // 椭圆形窗户
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+      if (dr*dr + dc*dc <= 4) S(fr, 8+dr, 12+dc, T.sky)
+    }
+    S(fr, 8, 12, T.dark); S(fr, 8, 13, T.dark); S(fr, 8, 14, T.dark) // 窗框
+    S(fr, 7, 12, T.dark); S(fr, 7, 13, T.dark); S(fr, 7, 14, T.dark)
+    S(fr, 9, 12, T.dark); S(fr, 9, 13, T.dark); S(fr, 9, 14, T.dark)
+    S(fr, 10, 13, T.dark)
+    // 窗外蓝天白云（透过窗户）
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+      if (dr*dr + dc*dc <= 4) S(fr, 8+dr, 12+dc, T.sky)
+    }
+    // 云朵在窗外
+    S(fr, 7, 13, T.white); S(fr, 8, 12, T.white); S(fr, 8, 14, T.white)
+    S(fr, 9, 13, T.white)
+  })
+  // 人物坐在靠窗座位 y=10（侧脸朝右看窗外）
+  drawPerson(f[0], 3, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'sad', 'sit')
+  drawPerson(f[1], 3, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'sit')
+  drawPerson(f[2], 3, 10, T.hair_dark, T.skin, T.cloth_red, 'right', 'sad', 'sit')
+  drawPerson(f[3], 3, 10, T.hair_dark, T.skin, T.cloth_red, 'right', 'normal', 'sit')
+  // 座椅（人物后面的椅背）
+  f.forEach(fr => {
+    for (let col = 0; col <= 4; col++) { S(fr, 15, col, T.brown); S(fr, 16, col, T.brown) }
+    S(fr, 16, 0, T.dark); S(fr, 16, 4, T.dark)
+  })
+  // 飞机飞过（窗外小飞机或云朵移动）
+  S(f[1], 6, 14, T.white); S(f[1], 7, 15, T.white); S(f[1], 8, 14, T.white)
+  S(f[3], 9, 12, T.white); S(f[3], 8, 11, T.white)
+  // 眼泪（告别场景）
+  S(f[0], 11, 6, T.sky); S(f[2], 12, 6, T.sky)
+  return f
+}
+
+// 兴趣爱好（画画/烘焙/弹琴）：人物在画架前画画
+function sceneHobby(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.brown)
+    // 画架（三角架）
+    S(fr, 4, 17, T.brown); S(fr, 5, 17, T.brown); S(fr, 6, 17, T.brown)
+    S(fr, 7, 16, T.brown); S(fr, 7, 18, T.brown)
+    S(fr, 8, 15, T.brown); S(fr, 8, 19, T.brown)
+    S(fr, 9, 15, T.brown); S(fr, 9, 19, T.brown)
+  })
+  // 画布（白色带色块）
+  f.forEach(fr => {
+    for (let r = 5; r <= 8; r++) for (let col = 15; col <= 19; col++) S(fr, r, col, T.white)
+    S(fr, 5, 15, T.brown); S(fr, 8, 15, T.brown); S(fr, 5, 19, T.brown); S(fr, 8, 19, T.brown)
+    // 色块（画作内容）
+    S(fr, 6, 16, T.sky); S(fr, 6, 17, T.teal); S(fr, 7, 17, T.gold); S(fr, 7, 18, T.bright_red)
+  })
+  // 人物坐着画画 y=10
+  drawPerson(f[0], 7, 10, T.hair_light, T.skin, T.peach, 'right', 'happy', 'sit')
+  drawPerson(f[1], 7, 10, T.hair_light, T.skin, T.peach, 'right', 'happy', 'sit')
+  drawPerson(f[2], 7, 10, T.hair_light, T.skin, T.cloth_red, 'right', 'happy', 'sit')
+  drawPerson(f[3], 7, 10, T.hair_light, T.skin, T.cloth_red, 'right', 'happy', 'sit')
+  // 画笔（在手上）
+  f.forEach((fr, i) => {
+    S(fr, 12, 13, T.brown);
+    if (i % 2 === 0) S(fr, 11, 14, T.bright_red)
+    else S(fr, 11, 14, T.sky)
+  })
+  // 音符/创意符号（表示享受）
+  S(f[1], 3, 4, T.gold); S(f[3], 2, 6, T.gold); S(f[3], 4, 3, T.purple)
+  return f
+}
+
+// 地铁/高铁靠窗：人物坐着看窗外，窗外景色后退
+function sceneMetro(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.gray)
+    // 大窗户（右半侧）
+    for (let r = 1; r <= 13; r++) for (let col = 12; col <= 22; col++) S(fr, r, col, T.dark)
+    S(fr, 0, 12, T.gray); S(fr, 14, 12, T.gray); S(fr, 0, 22, T.gray); S(fr, 14, 22, T.gray)
+    // 窗框竖条
+    for (let r = 1; r <= 13; r++) { S(fr, r, 17, T.gray) }
+    drawGround(fr, T.dark)
+  })
+  // 窗外景色（深色中的灯光/建筑轮廓，逐帧移动表示速度）
+  // 窗外景色用深色+偶尔的黄色灯光
+  f.forEach(fr => {
+    for (let r = 2; r <= 13; r++) for (let col = 13; col <= 21; col++) {
+      if (col !== 17) S(fr, r, col, T.dark)
+    }
+  })
+  // 移动的灯光
+  S(f[0], 5, 14, T.gold); S(f[0], 8, 19, T.gold); S(f[0], 11, 15, T.gold)
+  S(f[1], 5, 16, T.gold); S(f[1], 7, 20, T.gold); S(f[1], 10, 13, T.gold)
+  S(f[2], 5, 13, T.gold); S(f[2], 9, 18, T.gold); S(f[2], 11, 20, T.gold)
+  S(f[3], 5, 18, T.gold); S(f[3], 8, 14, T.gold); S(f[3], 10, 19, T.gold)
+  // 人物坐着靠窗 y=10（侧脸朝右看窗外）
+  drawPerson(f[0], 5, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'sit')
+  drawPerson(f[1], 5, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'sad', 'sit')
+  drawPerson(f[2], 5, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'sit')
+  drawPerson(f[3], 5, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'sad', 'sit')
+  // 座椅
+  f.forEach(fr => {
+    for (let col = 3; col <= 11; col++) S(fr, 15, col, T.brown)
+    S(fr, 16, 3, T.dark); S(fr, 16, 11, T.dark)
+  })
+  // 耳机线
+  f.forEach(fr => {
+    S(fr, 11, 7, T.white); S(fr, 12, 7, T.white); S(fr, 13, 7, T.white)
+  })
+  return f
+}
+
+// 便利店门口独处：站在路灯下喝啤酒
+function sceneConvenienceStore(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    // 便利店灯光（右侧，亮白/青色）
+    for (let r = 2; r <= 14; r++) for (let col = 15; col <= 22; col++) S(fr, r, col, T.teal)
+    // 招牌条纹（红蓝白）
+    S(fr, 2, 15, T.bright_red); S(fr, 2, 16, T.bright_red); S(fr, 2, 17, T.white); S(fr, 2, 18, T.white)
+    S(fr, 2, 19, T.cloth_blue); S(fr, 2, 20, T.cloth_blue)
+    // 路灯（左侧）
+    S(fr, 1, 5, T.gold); S(fr, 1, 4, T.gold); S(fr, 1, 6, T.gold)
+    S(fr, 2, 5, T.gold); S(fr, 3, 5, T.gold)
+    for (let r = 4; r <= 15; r++) S(fr, r, 5, T.gray)
+    // 灯光光晕
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+      if (dr*dr + dc*dc <= 4) S(fr, 2+dr, 5+dc, T.gold)
+    }
+    S(fr, 3, 5, T.gold) // 灯泡
+    drawGround(fr, T.dark)
+  })
+  // 人物站在路灯下 y=11，手持啤酒罐
+  drawPerson(f[0], 8, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'stand')
+  drawPerson(f[1], 8, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'normal', 'stand')
+  drawPerson(f[2], 8, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'stand')
+  drawPerson(f[3], 8, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'normal', 'stand')
+  // 啤酒罐（在手上）
+  f.forEach(fr => {
+    S(fr, 14, 6, T.gold); S(fr, 15, 6, T.gold); S(fr, 14, 7, T.white); S(fr, 15, 7, T.white)
+  })
+  return f
+}
+
 // ===== 场景映射表 =====
 export const STORYBOARD_SCENES: StoryboardScene[] = [
   // ===== 里程碑事件（priority: 10）=====
@@ -1645,6 +2181,22 @@ export const STORYBOARD_SCENES: StoryboardScene[] = [
   { id: 'research', category: 'career', name: '科研实验', keywords: ['实验室','做实验','实验数据','N=1实验','自体实验','临床试验','一期临床','二期临床','三期临床','双盲试验','安慰剂','数据','分析数据','血检','抽血','送检','检测','指标','炎症因子','自噬','端粒','表观遗传','线粒体','干细胞','衰老细胞','雷帕霉素','NMN','NAD+','白藜芦醇','达沙替尼','非瑟酮','槲皮素','多肽','基因疗法','基因重编程','CGM','心率变异性','生物标记','生理年龄','生物黑客','生物科技','长寿研究','衰老研究','PI','课题组','组会','论文','作者列表','ORCID','学术','科研','科学家','研究者','研究团队','协作网络','国际协作','样本','质控','论文发表','预印本','文献','读文献','查文献','ELISA','质谱','p值','效应量','小鼠实验','动物实验','细胞','基因','蛋白质','临床数据','受试者','剂量','药物','补剂','药盒','药瓶','药片','服用','监测','抽血的日子','日历上标满了抽血','公开文档','N=1','数据清洗','数据分析','统计','显著性','对照组'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 350, animIn: 'fade', priority: 6 },
   { id: 'coding', category: 'career', name: '编程开发', keywords: ['编程','写代码','代码','coding','debug','调试','重构','架构','技术栈','部署','上线','服务器','后端','前端','算法','模型','AI模型','大模型','LLM','GPT','Transformer','微调','fine-tune','prompt工程','提示词','量化','INT8','推理加速','延迟','P99','缓存','框架','开源','GitHub','star','PR','commit','代码审查','代码审核','code review','技术周会','技术分享','技术方案','系统设计','写测试','测试代码','单元测试','集成测试','合约','智能合约','Solidity','合约部署','合约审计','漏洞赏金','黑客松','MVP','产品迭代','v1','v2','v3','用户增长','留存率','付费墙','转化率','裂变','SOP','自动化','AI自动化','AI工具','AI代码审查工具','技术博客','技术教程','AI教程','量化模型','模型优化','工程优化','绞杀者模式','旧系统替换','技术管理','IC','Individual Contributor','带团队','CTO','技术顾问','股份','顾问费','架构师','资深工程师','代码把键盘','脸印着按键','趴在键盘上','逐行拆解','画流程图','开源了一个自己写的','star冲到','技术直觉','系统一块一块地替换','加了一层缓存','把模型量化','引入了推理加速框架','把文案生成质量做到了','微调+prompt工程'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 250, animIn: 'fade', priority: 7, requires: { employed: true } },
   { id: 'lawsuit', category: 'life', name: '法律纠纷', keywords: ['律师','官司','法院','起诉','应诉','判决','判决书','维权','维权群','追偿','法务','律所','法律咨询','被告','原告','诉讼','仲裁','反诉','诽谤','抄袭指控','被抄袭','侵权','知识产权','版权','商标','合规','合规申报','罚款','交了罚款','税务','税务局','罚款比顾问费贵','请了律师','律师函','传票','开庭','庭外和解','赔偿','索赔','医疗纠纷','AI误诊','误诊官司','认知清洗','神经广告','脑机接口','广告弹窗','记忆碎片','认知干扰','后遗症'], palette: LIFE_PALETTE, frames: sceneSick(), frameDelay: 400, animIn: 'fade', priority: 9 },
+  // ===== 新增趣味专属场景（priority: 7-9）=====
+  { id: 'speech', category: 'career', name: '演讲领奖', keywords: ['演讲','上台','主题演讲','开场演讲','领奖','颁奖典礼','领奖台','获奖','年度影响力','掌声雷动','全场起立鼓掌','千人掌声','走上台','灯光打下来','台下安静','大会讲完','一个年轻人过来说','火就是这么传的','公开课','讲台上','大学的讲台','第一堂课','讲师孵化营','粉丝见面会','读者见面会','签售会','线下见面会','做开场','站上AI前沿峰会','两千人','二十分钟','上台前一秒你腿还在抖','恐惧突然消失了','宣布你获奖'], palette: CAREER_PALETTE, frames: sceneSpeech(), frameDelay: 250, animIn: 'pop', priority: 8 },
+  { id: 'cry', category: 'life', name: '哭泣崩溃', keywords: ['哭了','哭了一整晚','哭了一场','崩溃','眼泪','眼眶','蹲在走廊','蹲了很久','哭了','泪','偷偷擦了擦眼角','眼眶有点热','挂掉电话你哭了','眼泪差点掉下来','说着说着就哭了','突然崩溃','蹲在地上','回家哭了','你哭了','痛哭','泪流满面','在走廊里蹲了很久','在门口坐了很久','坐了很久'], palette: LIFE_PALETTE, frames: sceneCry(), frameDelay: 500, animIn: 'fade', priority: 8 },
+  { id: 'rain', category: 'life', name: '雨天撑伞', keywords: ['下雨','下雨天','撑伞','淋了雨','没带伞','淋雨','湿透','大雨','暴雨','雨打在','雨声','窗外雨声','姜茶','冲进了雨里','忘带伞','雨水','打湿','全身湿透','雨季','连下一周雨','被雨打湿','石板路被雨打湿','雨越下越大','雨里','雨停了','雨伞'], palette: LIFE_PALETTE, frames: sceneRainUmbrella(), frameDelay: 300, animIn: 'fade', priority: 6 },
+  { id: 'couple-walk', category: 'family', name: '情侣散步', keywords: ['手牵手','牵手','牵着手','手一直牵着','握紧了她的手','握紧了他的手','沿着沙滩走','河边走','走在河边','沿着河边','影子拉得很长','靠在你肩上','一起走了很久','散步回家','晚饭后散步','靠在肩上','她靠在你肩上','一起在阳台看日落','阳台看夕阳','坐在一起','依偎','肩并肩','散步的时候','一起慢慢走','浪花打在脚踝'], palette: FAMILY_PALETTE, frames: sceneCoupleWalk(), frameDelay: 300, animIn: 'fade', priority: 7, requires: { dating: true } },
+  { id: 'fireworks', category: 'life', name: '烟花庆祝', keywords: ['烟花','跨年','新年','除夕','年夜饭','过年','春晚','红包飞了','放烟花','看烟花','窗外烟花','新年快乐','举杯','庆祝','群里炸了','拿下','烟花表情','庆祝的','鞭炮','烟火','烟花绽放','放了烟花','对着窗户上自己的影子说新年快乐','一个人在家煮了饺子','窗外烟花响起来','家族群里红包'], palette: LIFE_PALETTE, frames: sceneFireworks(), frameDelay: 200, animIn: 'bounce', priority: 8 },
+  { id: 'photo', category: 'life', name: '拍照合影', keywords: ['拍照','合影','自拍','拍了张照片','拍了一张','举着手机','拍了三十遍','手抖得看不清','照片','合影留念','拍了几张糊了的照片','粉丝合影','要合影','掏出手机拍照','拍照留念','拍了一张自拍','镜子前','健身房镜子前','发了条动态圈配','视频','录视频','录了三十遍','全家福','翻到一张全家福','相册','翻出以前的老照片','相机'], palette: LIFE_PALETTE, frames: scenePhoto(), frameDelay: 300, animIn: 'pop', priority: 5 },
+  { id: 'hug', category: 'family', name: '温暖拥抱', keywords: ['拥抱','抱了很久','紧紧抱着','抱在一起','机场见面抱了很久','交换了一个很长的拥抱','拥抱告别','她扑进你怀里','抱住','抱了','TA抱','拥抱了一下','抱一下','给了一个拥抱','重逢','机场重逢','拥抱了很久','很久的拥抱','拥抱比什么都真实','他看到你第一句话','手紧紧攥着你的手','握手','拉着你的手','攥着你的手'], palette: FAMILY_PALETTE, frames: sceneHug(), frameDelay: 300, animIn: 'fade', priority: 8 },
+  { id: 'airport', category: 'life', name: '机场飞机', keywords: ['机场','坐飞机','飞机','起飞','落地','登机','候机厅','候机','单程票','飞了','飞往','航班','登机口','素万那普机场','萧山机场','飞机穿过云层','靠窗坐','靠窗的位置','飞机落地','机票','飞第三国','签证跑','返程机票','机场哭了','机场等了十二个小时','飞了二十八个小时','又一次降落在一个陌生的机场','中文标识','方便面的味道','眼泪差点掉下来','在机场站了很久','送他走时','临走那天你妈在机场哭了','机场告别','拥抱告别没哭'], palette: LIFE_PALETTE, frames: sceneAirport(), frameDelay: 400, animIn: 'slide', priority: 7 },
+  { id: 'meditation', category: 'life', name: '冥想发呆', keywords: ['冥想','发呆','坐了一整个下午','阳台上坐了一下午','什么也没想','什么也没做','看了一个小时的夕阳','看了很久','坐了很久','站了很久','在阳台上站了很久','深呼吸','平静','松弛','阳光从左边移到右边','天色变暗','晒太阳','发了会儿呆','坐着','安静','午后','阳光暖洋洋','一盆绿萝','去山里待了两周','没有WiFi','风声和鸟叫','脑子终于不抖了','在台阶上多坐了十分钟','巷子里的灯一盏盏亮起来','坐了一晚上'], palette: LIFE_PALETTE, frames: sceneMeditation(), frameDelay: 600, animIn: 'fade', priority: 5 },
+  { id: 'teach', category: 'career', name: '讲课传承', keywords: ['讲课','教学生','带徒弟','带新人','教学','讲师','老师','教老人','教他们','教一群老人','学了五遍','传承','接力棒','列了一张学习清单','带了三个徒弟','教他们读文献','站上了大学的讲台','引路人','讲师孵化营','我也带新人了','长大了','教他们用智能手机','视频通话','你在旁边假装看资料','带新人问你问题','我百度一下','实习生问','你带的那个新人拿了','最佳新人奖','感谢我的师傅','给师父发了一条消息','第一堂课','把你的方法论教给','从自己讲变成了让别人讲','开始在社区里带新人','review PR','解答问题','带出了五个core contributor'], palette: CAREER_PALETTE, frames: sceneTeach(), frameDelay: 300, animIn: 'fade', priority: 7 },
+  { id: 'book-sign', category: 'career', name: '签售出书', keywords: ['书出版了','你的书','出版了','首印','卖光','签售会','签售','畅销书','当当科技榜','抚摸着书的封面','推荐教材','比任何爆款视频都持久','书店里那本印着你名字的书','入门必读','《HODLer手册》','预付了版税','写了一本行业方法论的书','出版社编辑','私信你','约您出一本书','系列长文','书店','书架','印着你名字','读者说','因为你的书我转行','拍了两小时的队','有大学教授把它列为','三个月卖光'], palette: CAREER_PALETTE, frames: sceneBookSign(), frameDelay: 300, animIn: 'fade', priority: 8 },
+  { id: 'cyberbully', category: 'life', name: '网暴恶评', keywords: ['网暴','恶评','评论区被攻陷','私信全是辱骂','死亡威胁','人肉','掉粉','热搜','负面','恶意','骂你','拉黑','卸载了所有社交APP','三天没出门','评论区翻到凌晨三点','每一条骂你的话都像一根针','手贱点进评论区','一条恶评精准扎在','删了App又装回来','反复看了二十遍','长篇私信骂你','从内容骂到长相','创作者的心是被骂大的','每一刀都留疤','断章取义','转了十万次','他们不知道前因后果','风险标签','合作品牌全部暂停','私信箱塞满','语言真的可以杀人','拉上窗帘的房间','家人信息被人肉'], palette: LIFE_PALETTE, frames: sceneCyberbully(), frameDelay: 400, animIn: 'shake', priority: 9 },
+  { id: 'hobby', category: 'life', name: '兴趣爱好', keywords: ['兴趣班','学画画','学弹琴','烘焙','画画','弹琴','陶艺','茶艺','川剧','种花','种菜','阳台种菜','小葱冒出来','蛋糕歪歪扭扭','学做','学了一门手艺','做了一件手工','弹吉他','弹起《夜来香》','跟着哼','画架','水彩','弹唱','写了一首歌','做蛋糕','做手工','做陶艺','学茶艺','做的蛋糕','做的菜','作品','每个周末都有了一件值得期待的事','安安静静地做一件事','两个小时后你出来','觉得自己活过来了','整周最放松的时刻'], palette: LIFE_PALETTE, frames: sceneHobby(), frameDelay: 300, animIn: 'fade', priority: 5 },
+  { id: 'metro', category: 'life', name: '地铁高铁', keywords: ['地铁','高铁','末班地铁','回程的高铁','回城的高铁','靠窗位置','靠窗坐','坐在靠窗','戴耳机','听着歌','二十分钟发呆','车厢里没几个人','靠在门边','窗外飞过的隧道灯光','玻璃里自己的倒影','手机在口袋里','窗外飞速后退','周日晚上十点半','旁边的人以为你们不认识','最后一班高铁','玻璃里自己','不知道该打给谁','耳机里的歌'], palette: LIFE_PALETTE, frames: sceneMetro(), frameDelay: 400, animIn: 'slide', priority: 5 },
+  { id: 'convenience-store', category: 'life', name: '便利店独处', keywords: ['便利店','便利店买了瓶啤酒','买了瓶啤酒','楼下便利店','站在路灯下','喝了很久','在门口站了一会儿','回家路上没敢听歌','买了瓶啤酒一个人站在路灯下','offer到的那天你在楼下便利店','割肉离场那天坐在便利店门口','喝了罐啤酒','路灯下','一个人站在','啤酒罐','喝了两杯','默默喝了两杯','便利店门口','在楼下站了一会儿'], palette: LIFE_PALETTE, frames: sceneConvenienceStore(), frameDelay: 500, animIn: 'fade', priority: 7 },
   // ===== 路径/重要生活事件（priority: 8）=====
   { id: 'date', category: 'family', name: '约会', keywords: ['约会','恋爱','表白','第一次约会','在一起','烛光晚餐','找对象','对象','伴侣','脱单','谈恋爱','女朋友','男朋友','鼓起勇气表白','表白了','我也是','只把你当朋友','让我再想想','精心准备的惊喜','礼物','微醺','哼着歌','认识了一个人','缘分','社交软件','认识了一些有趣的人','加了几个社交软件','一起健身','一起吃饭','一起骂','TA说','TA没说话','回家的时候你微醺','准备了惊喜','给TA准备','TA笑了','那个笑容'], palette: FAMILY_PALETTE, frames: sceneDate(), frameDelay: 300, animIn: 'fade', priority: 8 },
   { id: 'job-hop', category: 'career', name: '跳槽', keywords: ['跳槽','跳槽去新公司','辞职跳槽','换工作','拿到新offer','跳槽涨薪','离职入职','猎头','内推','刷招聘','三轮面试','终面','职业社交网络','面试','拿到了offer','投简历'], palette: CAREER_PALETTE, frames: sceneJobHop(), frameDelay: 250, animIn: 'slide', priority: 8, requires: { employed: true } },
