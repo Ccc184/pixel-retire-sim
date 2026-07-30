@@ -266,6 +266,10 @@ export interface GameState {
   lifetimeCardCost: number;      // 总卡片花费
   lifetimeGiftMoney: number;     // 总份子钱
   lifetimeInsuranceCost: number; // 总保险费
+
+  // 日常事件去重与感冒免疫
+  firedDailyEvents: Record<string, number>; // 日常事件ID -> 最近触发年龄（近3年去重）
+  lastColdYear: number; // 上次感冒/生病年份，感冒后2年免疫
 }
 
 // 年度各来源的身心/财务变化记录

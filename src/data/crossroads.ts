@@ -1516,6 +1516,15 @@ export function detectCrossroad(state: GameState, firedTags: Map<string, number>
   );
   let fireChance = Math.min(0.70, 0.15 + yearsInRange * 0.10);
 
+  // 保底触发：路径专属十字路口（priority >= 9）在其ageRange的最后一年，触发概率提升到100%
+  // 确保玩家在ageRange范围内至少触发一次
+  const hasPathCrossroadAtMaxAge = selectionPool.some(e =>
+    e.priority >= 9 && state.currentAge >= e.ageRange[1]
+  );
+  if (hasPathCrossroadAtMaxAge) {
+    fireChance = 1.0;
+  }
+
   // 状态加权：人生低谷时更容易面临抉择
   if (state.stress > 65 || state.happiness < 35) {
     fireChance += 0.15; // 高压/低幸福 +15%
@@ -1527,7 +1536,7 @@ export function detectCrossroad(state: GameState, firedTags: Map<string, number>
   if (yearsSinceLastCrossroad > 8) fireChance += 0.10;
   if (yearsSinceLastCrossroad > 12) fireChance += 0.10;
 
-  fireChance = Math.max(0.05, Math.min(0.85, fireChance));
+  fireChance = Math.max(0.05, Math.min(1.0, fireChance));
 
   // 掷骰子决定今年是否出十字
   if (Math.random() > fireChance) return null;
@@ -1544,6 +1553,10 @@ export function detectCrossroad(state: GameState, firedTags: Map<string, number>
     // 快超出ageRange的事件增加权重（避免错过）
     const yearsToEnd = evt.ageRange[1] - state.currentAge;
     if (yearsToEnd <= 2) weight *= 2.0;
+    // 保底：路径专属十字路口在ageRange最后一年，权重设为极高确保选中
+    if (evt.priority >= 9 && state.currentAge >= evt.ageRange[1]) {
+      weight *= 100;
+    }
     return { evt, weight };
   });
 

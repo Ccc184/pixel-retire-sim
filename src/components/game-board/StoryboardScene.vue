@@ -764,8 +764,8 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* 持续微动效：开罗游戏经典小人弹跳+呼吸（入场动画完成后启动） */
-.sb-art-wrap.sb-in .sb-art-scale {
+/* 持续微动效：开罗游戏经典小人弹跳+呼吸（入场动画完成后启动，避免覆盖入场动画） */
+.sb-art-wrap.sb-in:not(.sb-new) .sb-art-scale {
   animation: idleBounce 2s ease-in-out infinite;
   animation-delay: 1s;
 }

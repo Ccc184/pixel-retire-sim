@@ -1623,12 +1623,12 @@ export const STORYBOARD_SCENES: StoryboardScene[] = [
   { id: 'divorce', category: 'family', name: '离婚', keywords: ['离婚','离婚了','分开','离婚协议','婚姻破裂','财产分割'], palette: FAMILY_PALETTE, frames: sceneDivorce(), frameDelay: 400, animIn: 'shake', priority: 9 },
   { id: 'breakup', category: 'family', name: '分手', keywords: ['分手','失恋','被甩','感情破裂','我们分手吧'], palette: FAMILY_PALETTE, frames: sceneBreakup(), frameDelay: 400, animIn: 'fade', priority: 9 },
   { id: 'couple-fight', category: 'family', name: '吵架', keywords: ['吵架','争吵','夫妻吵架','大吵一架','吵架摔东西','两口子吵架','激烈争吵','闹矛盾','冷战','吵了一架','分歧'], palette: FAMILY_PALETTE, frames: sceneCoupleFight(), frameDelay: 400, animIn: 'shake', priority: 9 },
-  { id: 'parent-sick', category: 'family', name: '父母生病', keywords: ['父母生病','父亲生病','母亲生病','爸妈住院','家人重病','陪床','癌症','住院','爸住院','妈住院','父亲住院','母亲住院','急诊','120','诊断书','重病','大病','手术','走了','去世','心梗','离世','养老院','陪床守夜','医院走廊'], palette: FAMILY_PALETTE, frames: sceneParentSick(), frameDelay: 400, animIn: 'fade', priority: 9 },
+  { id: 'parent-sick', category: 'family', name: '父母生病', keywords: ['父母生病','父亲生病','母亲生病','爸妈住院','家人重病','陪床','癌症','住院','爸住院','妈住院','父亲住院','母亲住院','急诊','120','诊断书','重病','大病','手术','去世','心梗','离世','养老院','陪床守夜','医院走廊','父亲走了','母亲走了','爸走了','妈走了','病逝','病危'], palette: FAMILY_PALETTE, frames: sceneParentSick(), frameDelay: 400, animIn: 'fade', priority: 9 },
   { id: 'surgery', category: 'life', name: '手术', keywords: ['手术','动手术','进手术室','开刀','外科手术','住院手术','重大手术','做手术','住院做手术'], palette: LIFE_PALETTE, frames: sceneSurgery(), frameDelay: 400, animIn: 'fade', priority: 9 },
   { id: 'bankruptcy', category: 'life', name: '破产', keywords: ['破产','负债','欠债','赔光','亏钱','血本无归','倒闭','积蓄花光','账户蒸发','爆仓','窟窿'], palette: LIFE_PALETTE, frames: sceneBankruptcy(), frameDelay: 400, animIn: 'shake', priority: 9 },
   { id: 'lend-money', category: 'life', name: '借钱不还', keywords: ['借钱','欠钱不还','讨债','朋友借钱','借出去','发小借钱','转了账','这钱要不回来'], palette: LIFE_PALETTE, frames: sceneLendMoney(), frameDelay: 400, animIn: 'fade', priority: 9 },
   { id: 'burnout', category: 'career', name: '倦怠', keywords: ['倦怠','躺平','辞职','裸辞','厌班','迷茫','抑郁','情绪崩溃','焦虑','不想上班','心理阴影','辞职信'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 500, animIn: 'fade', priority: 9 },
-  { id: 'sick', category: 'life', name: '生病', keywords: ['生病','发烧','感冒','卧病在床','病倒','请病假','生病卧床','医药费','住院','体检','复查','血压','血脂','脂肪肝','颈椎病','脱发','白发','药','吃药','保健品','膏药','降压药','膝盖疼','眼药水','急诊','挂号','药店'], palette: LIFE_PALETTE, frames: sceneSick(), frameDelay: 400, animIn: 'fade', priority: 8 },
+  { id: 'sick', category: 'life', name: '生病', keywords: ['生病','发烧','感冒','卧病在床','病倒','请病假','生病卧床','医药费','住院','体检','复查','血压','血脂','脂肪肝','颈椎病','脱发','药','吃药','保健品','膏药','降压药','膝盖疼','眼药水','急诊','挂号','药店','咳嗽','胃疼','头疼','腰椎'], palette: LIFE_PALETTE, frames: sceneSick(), frameDelay: 400, animIn: 'fade', priority: 8 },
   // ===== 路径/重要生活事件（priority: 8）=====
   { id: 'date', category: 'family', name: '约会', keywords: ['约会','恋爱','表白','第一次约会','在一起','烛光晚餐','找对象','对象','伴侣','脱单','谈恋爱','女朋友','男朋友'], palette: FAMILY_PALETTE, frames: sceneDate(), frameDelay: 300, animIn: 'fade', priority: 8 },
   { id: 'job-hop', category: 'career', name: '跳槽', keywords: ['跳槽','跳槽去新公司','辞职跳槽','换工作','拿到新offer','跳槽涨薪','离职入职','猎头','内推','刷招聘'], palette: CAREER_PALETTE, frames: sceneJobHop(), frameDelay: 250, animIn: 'slide', priority: 8 },
@@ -1636,26 +1636,26 @@ export const STORYBOARD_SCENES: StoryboardScene[] = [
   { id: 'blind-date', category: 'family', name: '相亲', keywords: ['相亲','相亲见面','媒人介绍','被安排相亲','相亲饭局','去相亲','见对象','安排了相亲','周末相亲','有房有车'], palette: FAMILY_PALETTE, frames: sceneBlindDate(), frameDelay: 300, animIn: 'fade', priority: 7 },
   { id: 'parent-visit', category: 'family', name: '父母探望', keywords: ['父母来看我','爸妈从老家来','父母过来探望','父母到访','爸妈来看我','父母登门看望','回家','回老家','过年回家','妈妈打电话','爸妈打电话','视频电话','和爸妈视频','教爸妈用','妈在家族群'], palette: FAMILY_PALETTE, frames: sceneParentVisit(), frameDelay: 300, animIn: 'fade', priority: 7 },
   { id: 'play-kid', category: 'family', name: '陪孩子玩', keywords: ['陪孩子玩','陪孩子玩耍','亲子时光','陪儿子玩','陪女儿玩','亲子互动','陪娃玩','带孩子去公园','玩积木','陪孩子','带孩子','陪娃','周末陪孩子','亲子','辅导作业','陪孩子写作业'], palette: FAMILY_PALETTE, frames: scenePlayKid(), frameDelay: 250, animIn: 'fade', priority: 7 },
-  { id: 'work', category: 'career', name: '工作', keywords: ['上班','工作','搬砖','打工','开干','干活','到公司','公司','工位','办公室','工牌','领导','老板','同事','下班','打卡','开会','项目','需求','社畜','简历','面试','周报','KPI'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 7 },
+  { id: 'work', category: 'career', name: '工作', keywords: ['上班','搬砖','打工','开干','干活','到公司','工位','办公室','工牌','领导','老板','同事','下班','打卡','开会','项目','需求','社畜','周报','KPI','赶需求','改bug','写代码','对接','汇报','工位上','办公桌'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 7 },
   { id: 'overtime', category: 'career', name: '加班', keywords: ['深夜加班','加到深夜','还在加班','加班','通宵','凌晨','凌晨三点','凌晨两点','加班到很晚','加班到凌晨','通宵整晚','deadline','赶项目','红牛'], palette: CAREER_PALETTE, frames: sceneOvertime(), frameDelay: 350, animIn: 'fade', priority: 7 },
   { id: 'midnight-baby', category: 'family', name: '半夜喂奶', keywords: ['半夜喂奶','夜醒喂奶','冲奶粉','哄睡','哄孩子睡觉','夜奶'], palette: FAMILY_PALETTE, frames: sceneMidnightBaby(), frameDelay: 500, animIn: 'fade', priority: 7 },
   { id: 'travel', category: 'life', name: '旅行', keywords: ['旅游','旅行','出去玩','度假','出游','出国','去旅行','海边','看日落','风景','碧海蓝天'], palette: LIFE_PALETTE, frames: sceneTravel(), frameDelay: 250, animIn: 'slide', priority: 7 },
   { id: 'grandchild', category: 'family', name: '抱孙', keywords: ['孙子','孙女','抱孙子','带孙','隔代亲','当爷爷','当奶奶','带孙子','带了一天孙子'], palette: FAMILY_PALETTE, frames: sceneGrandchild(), frameDelay: 250, animIn: 'fade', priority: 7 },
-  { id: 'sunset', category: 'life', name: '夕阳晚年', keywords: ['夕阳','晚年','老了','白头偕老','一起变老','黄昏恋','暮年','退休','广场舞','太极','养生','白发','老花镜','上了年纪','老头','老太太','爬楼喘气'], palette: LIFE_PALETTE, frames: sceneSunset(), frameDelay: 500, animIn: 'fade', priority: 7 },
+  { id: 'sunset', category: 'life', name: '夕阳晚年', keywords: ['夕阳','晚年','老了','白头偕老','一起变老','黄昏恋','暮年','广场舞','白发苍苍','老花镜','上了年纪','老头','老太太','爬楼喘气','含饴弄孙','颐养天年','养老','敬老院'], palette: LIFE_PALETTE, frames: sceneSunset(), frameDelay: 500, animIn: 'fade', priority: 7 },
   { id: 'move', category: 'life', name: '搬家', keywords: ['搬家','搬去','移居','迁徙','搬迁','北漂','沪漂','深漂','去外地','房租上涨','涨房租','房东','新租的房子','租的房子'], palette: LIFE_PALETTE, frames: sceneMove(), frameDelay: 250, animIn: 'slide', priority: 7 },
   { id: 'bonus', category: 'career', name: '发奖金', keywords: ['发奖金','年终奖','项目奖金','年终分红','绩效奖金','发了一大笔奖金','奖金到手','年终奖到账'], palette: CAREER_PALETTE, frames: sceneBonus(), frameDelay: 200, animIn: 'bounce', priority: 7 },
-  { id: 'friend-drink', category: 'life', name: '朋友聚会', keywords: ['朋友聚会','和朋友聚餐','兄弟喝酒','闺蜜聚会','喝酒撸串','饭局举杯','老友重逢','酒吧喝酒','同事喝酒','拼酒','同学聚会','发小','老朋友','邻居','份子钱','红包','结婚请柬','聚餐','干杯'], palette: LIFE_PALETTE, frames: sceneFriendDrink(), frameDelay: 300, animIn: 'fade', priority: 6 },
+  { id: 'friend-drink', category: 'life', name: '朋友聚会', keywords: ['朋友聚会','和朋友聚餐','兄弟喝酒','闺蜜聚会','喝酒撸串','饭局举杯','老友重逢','酒吧喝酒','同事喝酒','拼酒','同学聚会','发小','老朋友','邻居','份子钱','结婚请柬','聚餐','干杯','撸串','烧烤','喝啤酒','白酒'], palette: LIFE_PALETTE, frames: sceneFriendDrink(), frameDelay: 300, animIn: 'fade', priority: 6 },
   { id: 'pet', category: 'life', name: '养宠物', keywords: ['养宠物','养了只小狗','养了只小猫','遛狗','养猫','毛孩子','宠物狗','宠物猫','铲屎','流浪猫','喂小猫','喂流浪猫','金毛','橘猫','猫','狗'], palette: LIFE_PALETTE, frames: scenePet(), frameDelay: 250, animIn: 'fade', priority: 6 },
   { id: 'investment', category: 'career', name: '投资炒股', keywords: ['炒股','买基金','投资理财','股市涨跌','买入股票','理财收益','股票基金','币圈投资','股市','牛市','熊市','持仓','仓位','爆仓','暴跌','行情','风口','币','钱包','交易所','余额宝','记账','存款','银行App'], palette: CAREER_PALETTE, frames: sceneInvestment(), frameDelay: 300, animIn: 'fade', priority: 6 },
-  { id: 'cook', category: 'family', name: '做饭', keywords: ['做饭','炒菜','下厨房','烹饪','做饭菜','烧菜','做了顿好饭','红烧肉','煮面','烧了壶水','姜茶','外卖','外卖盒','馆子','下馆子','奶茶','咖啡'], palette: FAMILY_PALETTE, frames: sceneCook(), frameDelay: 250, animIn: 'fade', priority: 6 },
-  { id: 'shopping', category: 'life', name: '购物', keywords: ['购物','逛街','血拼','买买买','商场购物','超市采购','买东西','剁手','扫货','逛商场','快递','拆包裹','快递到了'], palette: LIFE_PALETTE, frames: sceneShopping(), frameDelay: 250, animIn: 'slide', priority: 4 },
-  { id: 'phone', category: 'life', name: '刷手机', keywords: ['刷手机','刷短视频','刷抖音','刷朋友圈','手机不离手','刷剧','窝沙发刷手机','躺着刷','刷动态圈','小红书','手机没电','截图','发动态圈','设闹钟','刷Boss'], palette: LIFE_PALETTE, frames: scenePhone(), frameDelay: 300, animIn: 'fade', priority: 4 },
-  { id: 'walk', category: 'family', name: '散步', keywords: ['散步','走路','逛街','遛弯','走走','漫步','小区散步','晚饭后散步','溜达','公园'], palette: FAMILY_PALETTE, frames: sceneWalk(), frameDelay: 300, animIn: 'fade', priority: 4 },
+  { id: 'cook', category: 'family', name: '做饭', keywords: ['做饭','炒菜','下厨房','烹饪','做饭菜','烧菜','做了顿好饭','红烧肉','煮面','烧了壶水','姜茶','炖汤','煲汤','厨艺','菜谱','围裙','家常菜'], palette: FAMILY_PALETTE, frames: sceneCook(), frameDelay: 250, animIn: 'fade', priority: 6 },
+  { id: 'shopping', category: 'life', name: '购物', keywords: ['购物','逛街','血拼','买买买','商场购物','超市采购','剁手','扫货','逛商场','快递','拆包裹','快递到了','网购','下单','取快递'], palette: LIFE_PALETTE, frames: sceneShopping(), frameDelay: 250, animIn: 'slide', priority: 4 },
+  { id: 'phone', category: 'life', name: '刷手机', keywords: ['刷手机','刷短视频','刷抖音','刷朋友圈','手机不离手','刷剧','窝沙发刷手机','躺着刷','刷动态圈','小红书','手机没电','截图','发动态圈','设闹钟','刷微博','刷B站','刷手机到深夜','玩手机'], palette: LIFE_PALETTE, frames: scenePhone(), frameDelay: 300, animIn: 'fade', priority: 4 },
+  { id: 'walk', category: 'family', name: '散步', keywords: ['散步','走路','遛弯','走走','漫步','小区散步','晚饭后散步','溜达','公园散步','饭后散步','江边散步','散步回来'], palette: FAMILY_PALETTE, frames: sceneWalk(), frameDelay: 300, animIn: 'fade', priority: 4 },
   { id: 'exercise', category: 'life', name: '锻炼', keywords: ['锻炼','跑步','健身','运动','晨跑','晨练','健身房','太极','米字操','颈椎操','走路上班'], palette: LIFE_PALETTE, frames: sceneExercise(), frameDelay: 200, animIn: 'pop', priority: 5 },
   { id: 'fishing', category: 'life', name: '钓鱼', keywords: ['钓鱼','去钓鱼','垂钓','钓到大鱼'], palette: LIFE_PALETTE, frames: sceneFishing(), frameDelay: 400, animIn: 'fade', priority: 5 },
   { id: 'square-dance', category: 'life', name: '广场舞', keywords: ['广场舞','跳广场舞','大妈跳舞','广场跳广场舞'], palette: LIFE_PALETTE, frames: sceneSquareDance(), frameDelay: 200, animIn: 'bounce', priority: 5 },
-  { id: 'read', category: 'life', name: '看书', keywords: ['看书','读书','阅读','学习','翻书','书店','学习新技能','教学视频','收藏夹','论文'], palette: LIFE_PALETTE, frames: sceneRead(), frameDelay: 400, animIn: 'fade', priority: 3 },
-  { id: 'tv', category: 'family', name: '看电视', keywords: ['看电视','追剧','看剧','看节目','电视机前','窝在沙发','看电影','短视频','刷短视频'], palette: FAMILY_PALETTE, frames: sceneTV(), frameDelay: 350, animIn: 'fade', priority: 3 },
+  { id: 'read', category: 'life', name: '看书', keywords: ['看书','读书','阅读','翻书','书店','学习新技能','教学视频','收藏夹','论文','备考','考研','考证','书架','图书馆','借书'], palette: LIFE_PALETTE, frames: sceneRead(), frameDelay: 400, animIn: 'fade', priority: 3 },
+  { id: 'tv', category: 'family', name: '看电视', keywords: ['看电视','追剧','看剧','看节目','电视机前','窝在沙发','看电影','看电视连续剧','综艺','频道','遥控器','沙发看电视'], palette: FAMILY_PALETTE, frames: sceneTV(), frameDelay: 350, animIn: 'fade', priority: 3 },
   { id: 'sleep', category: 'family', name: '睡觉', keywords: ['睡觉','入睡','晚安','睡着','睡眠','失眠','睡过头','闹钟响了','睡了','困','深睡'], palette: FAMILY_PALETTE, frames: sceneSleep(), frameDelay: 600, animIn: 'fade', priority: 3 },
   { id: 'eat', category: 'family', name: '吃饭', keywords: ['吃饭','吃晚饭','吃饭了','用餐','晚饭','吃火锅','早餐','午饭','外卖','聚餐','饭局','一个人吃饭'], palette: FAMILY_PALETTE, frames: sceneEat(), frameDelay: 300, animIn: 'fade', priority: 3 },
 ]
@@ -1694,7 +1694,7 @@ export function matchSceneByKeywords(text: string): StoryboardScene | null {
  * 匹配场景并按分类返回ID列表（供游戏store使用）
  * 返回 { family: string[], life: string[], career: string[] }
  */
-export function matchStoryboardScenes(logs: string | string[], topN: number = 3): { family: string[]; life: string[]; career: string[] } {
+export function matchStoryboardScenes(logs: string | string[]): { family: string[]; life: string[]; career: string[] } {
   const texts = Array.isArray(logs) ? logs : [logs]
   const result: { family: string[]; life: string[]; career: string[] } = { family: [], life: [], career: [] }
   const scored: { scene: StoryboardScene; score: number }[] = []
@@ -1720,13 +1720,16 @@ export function matchStoryboardScenes(logs: string | string[], topN: number = 3)
     }
   }
 
+  // 按分数降序排列，每个分类只取最高分的场景（避免低优先级场景覆盖高优先级场景）
   scored.sort((a, b) => b.score - a.score)
-  const picked = scored.slice(0, topN)
-  for (const { scene } of picked) {
+  const usedCats = new Set<StoryboardCategory>()
+  for (const { scene } of scored) {
     const cat = scene.category
     if (cat === 'family' || cat === 'life' || cat === 'career') {
-      if (!result[cat].includes(scene.id)) {
+      if (!usedCats.has(cat)) {
+        usedCats.add(cat)
         result[cat].push(scene.id)
+        if (usedCats.size >= 3) break // 三个分类都已覆盖，提前退出
       }
     }
   }

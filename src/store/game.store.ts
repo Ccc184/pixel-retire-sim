@@ -145,6 +145,9 @@ function createInitialState(): GameState {
     lifetimeCardCost: 0,
     lifetimeGiftMoney: 0,
     lifetimeInsuranceCost: 0,
+    // 日常事件去重与感冒免疫
+    firedDailyEvents: {},
+    lastColdYear: 0,
   };
 }
 
@@ -173,6 +176,14 @@ export const useGameStore = defineStore('game', () => {
   // 兼容旧存档：确保 hasCompany 字段存在
   if (initialState.hasCompany === undefined) {
     initialState.hasCompany = false;
+  }
+  // 兼容旧存档：确保 firedDailyEvents 字段存在
+  if (!initialState.firedDailyEvents) {
+    initialState.firedDailyEvents = {};
+  }
+  // 兼容旧存档：确保 lastColdYear 字段存在
+  if (initialState.lastColdYear === undefined || initialState.lastColdYear === null) {
+    initialState.lastColdYear = 0;
   }
   const state = ref<GameState>(initialState);
   
@@ -388,6 +399,12 @@ export const useGameStore = defineStore('game', () => {
 
     state.value.gamePhase = 'playing';
 
+    // 开局首年（22岁）直接展示入职/工作场景，确保三分镜立即可见
+    // 修复：setupGame中的nextTick classifyStoryboards在path_select阶段执行，
+    // 此时StoryboardScene组件尚未挂载。现在在gamePhase变为'playing'后同步分类，
+    // 确保组件挂载时pendingStoryboards已包含首年场景数据。
+    classifyStoryboards([`第${state.value.currentAge}岁，你在${state.value.currentCity}入职上班，开始了${state.value.currentProfession}的职业生涯`]);
+
     // 抽取第一年的叙事事件
     drawNarrativeEvent();
     scheduleSave(state.value);
@@ -433,20 +450,289 @@ export const useGameStore = defineStore('game', () => {
     recentBaseMonologues.push(baseMonologue);
     if (recentBaseMonologues.length > MAX_RECENT_MEMORY) recentBaseMonologues.shift();
 
-    // MBTI人格独白上色：以气质群风格为独白添加存在主义前缀
+    // MBTI人格独白上色：以气质群风格 + 路径基调 为独白添加存在主义前缀
     const mbtiTrait = getActiveMBTITrait(state.value);
     if (mbtiTrait) {
-      // 获取对应风格的前缀池，避开最近使用过的
       const style = mbtiTrait.monologueStyle;
-      const prefixPools: Record<string, string[]> = {
-        '冷峻': ['你看着窗外的城市，像看一个等待被解构的系统。','逻辑是干净的，生活是脏的。你习惯了这种落差。','你把情绪折叠好，放进抽屉。今天也要运转。','代码不会撒谎，人会。你更愿意和代码待着。','系统可以优化，人生不行。你接受了这个bug。','窗外的城市是一个巨型状态机，每个人都是一个节点。','你见过太多承诺化为乌有，只信数据。','你学会了不在无法解决的问题上消耗算力。'],
-        '炽热': ['有什么东西在你胸腔里燃烧，你说不清那是什么。','你用力活着，像怕来不及似的。','今天的阳光打在脸上，你突然想拥抱什么。','你觉得自己能改变世界，至少能改变点什么。','那团火还在，只是烧得更稳了。','你握紧拳头又松开，手心有汗。','你不再想改变世界，只想让今天不白过。','火小了，但还没灭。余温也是温。'],
-        '沉稳': ['闹钟响了。你起身，叠被，倒水。秩序是一种安慰。','日子像砖块，一块一块垒起来，你信这个。','你把昨天的事在脑子里过一遍，确认没有遗漏。','你列了今天的待办清单，一件一件来。','你不再追求速度，开始追求可持续。','保温杯里的茶温度刚好，你喝了一口。','清单短了，但每件都更重要了。','你学会了说"不"，这比说"好"难多了。'],
-        '灵动': ['风从窗口灌进来，你的念头跟着跑了一会儿。','你突然想起一件不相干的事，笑了。','今天的可能性是敞开的，你喜欢这种感觉。','你想试试所有的门，哪怕大部分是锁着的。','好奇心还在，但不再漫无目的。','楼下有人在唱歌，跑调了，但很好听。','你找到了几扇能推开的门，不再敲那些关着的。','你对新鲜事物保持兴趣，但已经知道大部分是噪音。'],
-        '温柔': ['你泡了一杯茶，看着茶叶在水里慢慢展开。','你注意到路边有朵花开了，停下来看了一会儿。','你给在乎的人发了一条消息，然后安静地等。','你想对世界好一点，虽然世界不总是回报你。','温柔不是软弱，是选择不伤害。','猫蹭了蹭你的腿，你蹲下来摸了摸它。','你学会了先对自己好一点，再对别人好。','你不再急着证明什么，安静本身就是力量。'],
-        '锐利': ['你的目光扫过房间，自动标记了三个待解决的问题。','你讨厌浪费时间，所以你已经在想了。','你闻到了空气里的机会，也闻到了风险。','你能一眼看穿别人的敷衍，这让你不太受欢迎。','你的判断力越来越准，但开口越来越少。','你在三秒内评估了今天的优先级，然后开始做第一件。','你看穿了也不说了，有些真相不值得。','你不再试图说服任何人，用结果说话。'],
+      const currentPathId = state.value.retirementPath;
+
+      // 通用前缀池（适用于所有路径，不含强职业/技术视角）
+      const universalPrefixPools: Record<string, string[]> = {
+        '冷峻': [
+          '你看着窗外的城市，像看一个等待被解构的系统。',
+          '逻辑是干净的，生活是脏的。你习惯了这种落差。',
+          '你把情绪折叠好，放进抽屉。今天也要运转。',
+          '你见过太多承诺化为乌有，只信自己亲眼看到的。',
+          '沉默是你最熟练的语言。',
+          '你习惯了把感受压到最底层，先处理该处理的事。',
+          '有些问题没有答案，你已经接受了这件事。',
+        ],
+        '炽热': [
+          '有什么东西在你胸腔里燃烧，你说不清那是什么。',
+          '你用力活着，像怕来不及似的。',
+          '今天的阳光打在脸上，你突然想拥抱什么。',
+          '你觉得自己能改变世界，至少能改变点什么。',
+          '那团火还在，只是烧得更稳了。',
+          '你握紧拳头又松开，手心有汗。',
+          '你不再想改变世界，只想让今天不白过。',
+          '火小了，但还没灭。余温也是温。',
+        ],
+        '沉稳': [
+          '闹钟响了。你起身，叠被，倒水。秩序是一种安慰。',
+          '日子像砖块，一块一块垒起来，你信这个。',
+          '你把昨天的事在脑子里过一遍，确认没有遗漏。',
+          '你列了今天的待办清单，一件一件来。',
+          '你不再追求速度，开始追求可持续。',
+          '保温杯里的茶温度刚好，你喝了一口。',
+          '清单短了，但每件都更重要了。',
+          '你学会了说"不"，这比说"好"难多了。',
+        ],
+        '灵动': [
+          '风从窗口灌进来，你的念头跟着跑了一会儿。',
+          '你突然想起一件不相干的事，笑了。',
+          '今天的可能性是敞开的，你喜欢这种感觉。',
+          '你想试试所有的门，哪怕大部分是锁着的。',
+          '好奇心还在，但不再漫无目的。',
+          '楼下有人在唱歌，跑调了，但很好听。',
+          '你找到了几扇能推开的门，不再敲那些关着的。',
+          '你对新鲜事物保持兴趣，但已经知道大部分是噪音。',
+        ],
+        '温柔': [
+          '你泡了一杯茶，看着茶叶在水里慢慢展开。',
+          '你注意到路边有朵花开了，停下来看了一会儿。',
+          '你给在乎的人发了一条消息，然后安静地等。',
+          '你想对世界好一点，虽然世界不总是回报你。',
+          '温柔不是软弱，是选择不伤害。',
+          '猫蹭了蹭你的腿，你蹲下来摸了摸它。',
+          '你学会了先对自己好一点，再对别人好。',
+          '你不再急着证明什么，安静本身就是力量。',
+        ],
+        '锐利': [
+          '你的目光扫过房间，自动标记了三个待解决的问题。',
+          '你讨厌浪费时间，所以你已经在想了。',
+          '你闻到了空气里的机会，也闻到了风险。',
+          '你能一眼看穿别人的敷衍，这让你不太受欢迎。',
+          '你的判断力越来越准，但开口越来越少。',
+          '你在三秒内评估了今天的优先级，然后开始做第一件。',
+          '你看穿了也不说了，有些真相不值得。',
+          '你不再试图说服任何人，用结果说话。',
+        ],
       };
-      const pool = prefixPools[style] || prefixPools['沉稳'];
+
+      // 路径专属前缀（按路径基调定制，与通用池合并使用）
+      const pathPrefixPools: Record<string, Record<string, string[]>> = {
+        // AI共生者 / 链上原住民 —— 程序员/技术视角
+        ai_symbiote: {
+          '冷峻': [
+            '代码不会撒谎，人会。你更愿意和代码待着。',
+            '系统可以优化，人生不行。你接受了这个bug。',
+            '窗外的城市是一个巨型状态机，每个人都是一个节点。',
+            '你学会了不在无法解决的问题上消耗算力。',
+            '终端里跳动的日志比任何人的承诺都可靠。',
+            'debug到凌晨三点，你和bug之间总有一个要先投降。',
+          ],
+          '炽热': [
+            '你想让AI理解你，又怕它真的理解了。',
+            '模型跑通的那一刻，你差点叫出声来。',
+          ],
+          '沉稳': [
+            '你把prompt改了第十七版，还是不满意。',
+            '服务器没报警，今天就是好日子。',
+          ],
+          '灵动': [
+            'AI又生成了一段意想不到的回答，你笑了。',
+            '你突然想到一个新的模型调优思路，手指已经开始敲键盘了。',
+          ],
+          '温柔': [
+            '你给AI助手起了个名字，虽然知道它只是在预测下一个token。',
+            '深夜debug的时候，你习惯放一首老歌陪着。',
+          ],
+          '锐利': [
+            '你一眼看出了那段代码的问题，三行修改，线上事故平息。',
+            '技术栈更新了，你评估了迁移成本，决定再等等。',
+          ],
+        },
+        chain_native: {
+          '冷峻': [
+            '代码不会撒谎，人会。你更愿意和链上数据待着。',
+            '链上的交易不可逆，人生的选择也是。',
+            '窗外的城市是一个巨型状态机，每个人都是一个节点。',
+            '你学会了不在无法解决的问题上消耗算力。',
+            '私钥即产权，你比谁都清楚这句话的重量。',
+            '白皮书看了三遍，你还是没找到那个隐藏的陷阱。',
+          ],
+          '炽热': [
+            'K线翻红的时候，你有一种心跳加速的感觉。',
+            '你信去中心化，信得有点像信宗教。',
+          ],
+          '沉稳': [
+            '你把仓位分成了五份，按纪律执行，不看情绪。',
+            'Gas费又涨了，你等了一个低谷才按下确认。',
+          ],
+          '灵动': [
+            '新公链又发空投了，你嘴角上扬，手指已经在连接钱包。',
+            '社区里又吵起来了，你搬了个小板凳看热闹。',
+          ],
+          '温柔': [
+            '你给持有的币写了持有日记，虽然没人看。',
+            '朋友被套了，你没说"我早说了"，只是转了一笔U过去。',
+          ],
+          '锐利': [
+            '你在三秒内判断了这条消息是利好还是利空，然后下单。',
+            '合约审计报告扫了一眼，你找到了那个重入漏洞。',
+          ],
+        },
+        // 数字游牧民 —— 漂泊、自由、远方
+        digital_nomad: {
+          '冷峻': [
+            '机场广播又在催登机了，你已经习惯了这种催促。',
+            '手机里第三国的SIM卡还没激活。',
+            '地图上的图钉又多了一个，但没有一个是家。',
+            '汇率在脑子里自动换算，你已经忘了用哪种货币思考。',
+            '行李箱的轮子又磨坏了一个，这是第三个了。',
+            'VPN断了，你和世界失联了两小时。',
+          ],
+          '炽热': [
+            '飞机起飞的时候，你有一种想大喊的冲动。',
+            '陌生街道上的阳光打在脸上，你想记住这个温度。',
+            '你踩在一片从未到过的土地上，心跳加速。',
+          ],
+          '沉稳': [
+            '你在新城市的公寓里煮了第一顿饭，味道和家里不一样，但能吃。',
+            '时差还没倒过来，你按当地时间设了闹钟，逼自己适应。',
+            '你列了这个月要去的三个地方，排好了行程。',
+          ],
+          '灵动': [
+            '街角的艺人在弹一首你没听过的歌，你站着听了很久。',
+            '你用刚学会的当地语言点了一杯咖啡，居然对了。',
+            '行李箱里多了一件当地手工艺品，你已经想好了放哪。',
+          ],
+          '温柔': [
+            '你给妈妈发了一张窗外的风景，她回了个"好美"。',
+            '旅馆的猫跳上你的膝盖，你摸了摸它，它没走。',
+            '你在异国的超市里找到了熟悉的泡面，差点哭出来。',
+          ],
+          '锐利': [
+            '你一眼看出这个 coworking space 的网不够快，换了一家。',
+            '当地房东想多收你钱，你三句话搞定了。',
+            '你评估了这个城市的生活成本，决定再待三个月。',
+          ],
+        },
+        // 超级IP —— 表演、流量、镜头
+        super_ip: {
+          '冷峻': [
+            '镜头亮了，你自动切换成那个大家喜欢的你。',
+            '评论区又在吵，你关了手机。',
+            '后台数据跳了一下，你告诉自己别在意。',
+            '滤镜后面的你和真实的你，已经分不清了。',
+            '热搜上得快，下得也快，你早就习惯了。',
+            '私信99+，你一条都没点开。',
+          ],
+          '炽热': [
+            '点赞破万的那一刻，你还是没忍住笑了。',
+            '粉丝说"你救了我"，你眼眶热了一下。',
+            '直播的时候你感觉自己在发光，那种感觉上瘾。',
+          ],
+          '沉稳': [
+            '你按排期拍了三条视频，一条没剪完，明天继续。',
+            '你列了本周的内容计划，和上周差不多。',
+            '数据复盘了半小时，转化率比上周高了0.5%。',
+          ],
+          '灵动': [
+            '评论区一个梗让你笑了十分钟，决定下次用在视频里。',
+            '你突然想到一个新选题，手机备忘录里又多了一条。',
+            '粉丝的二创比你的原作还有意思，你转发了。',
+          ],
+          '温柔': [
+            '一个老粉丝从你第一天就关注你，你记得他的ID。',
+            '你给黑粉也点了赞，有时候理解比对抗更有力。',
+            '下播之后你坐在黑暗里，安静地待了五分钟。',
+          ],
+          '锐利': [
+            '你一眼看出这个合作是坑，礼貌地拒绝了。',
+            '数据告诉你哪类内容会火，但你决定发自己真正想发的。',
+            '你在三秒内判断了这个热点该不该蹭，然后放下了手机。',
+          ],
+        },
+        // 银发守夜人 —— 衰老、陪伴、灯火
+        silver_economy: {
+          '冷峻': [
+            '走廊的灯又坏了一盏，你记下来明天要修。',
+            '老人的手比你奶奶的还粗糙，你握了握。',
+            '家属在走廊哭，你递了一杯热水，什么都没说。',
+            '夜班的值班室很安静，只有监护仪在滴滴响。',
+            '又一位老人走了，家属说谢谢，你点了点头。',
+            '你见过太多告别，已经学会了不在当班的时候哭。',
+          ],
+          '炽热': [
+            '老人拉着你的手说"你比我亲闺女还亲"，你鼻子酸了。',
+            '张爷爷今天终于肯吃饭了，你比谁都高兴。',
+            '你觉得做这件事是有意义的，虽然工资不高。',
+          ],
+          '沉稳': [
+            '你按流程检查了每位老人的用药记录，确认无误。',
+            '保温杯泡了枸杞，你喝了一口，继续巡房。',
+            '排班表贴在墙上，你看了一眼这周的夜班。',
+          ],
+          '灵动': [
+            '李奶奶今天唱了一段老歌，大家都跟着哼起来。',
+            '养老院新来的小猫成了团宠，你也去摸了摸。',
+            '你教老人用智能手机视频通话，他们学得很慢，但很认真。',
+          ],
+          '温柔': [
+            '你给王奶奶梳了头发，她对着镜子笑了。',
+            '老人睡了，你帮他们掖了掖被角。',
+            '你记得每位老人的口味和禁忌，像记得自己家人的。',
+          ],
+          '锐利': [
+            '你一眼看出那位家属在隐瞒什么，但没有揭穿。',
+            '护工偷懒被你看到了，你三句话处理完了。',
+            '你评估了老人的状况，知道该联系家属了。',
+          ],
+        },
+        // 生物赌徒 —— 数据、药丸、寿命
+        bio_gambler: {
+          '冷峻': [
+            '今天的血糖比昨天高0.3，你在本子上记下来。',
+            '药盒又空了一格。',
+            '论文又更新了，结论和上个月相反。',
+            '体检报告上有个箭头，你查了一下午文献。',
+            '补剂摆满了一桌，你按顺序吃下去，像执行一段程序。',
+            '你追踪了自己的睡眠数据，深睡比例又降了。',
+          ],
+          '炽热': [
+            '新的临床试验出结果了，你心跳加速。',
+            '你赌人类能赢衰老这场仗，信得有点偏执。',
+            '某项指标改善了，你差点把报告发给所有朋友。',
+          ],
+          '沉稳': [
+            '你按计划吃了今天的补剂，量了血压，记了数据。',
+            '运动手环震了一下，你站起来走了十分钟。',
+            '你列了本季度要测的血液指标，预约了体检。',
+          ],
+          '灵动': [
+            '新出的生物黑客播客讲了一个有趣的方案，你决定试试。',
+            '你发现一种便宜的食物含有稀有微量元素，兴奋地加进了食谱。',
+            '自量化数据里出现了一个有趣的相关性，你决定追踪下去。',
+          ],
+          '温柔': [
+            '你给爸妈也买了同款补剂，虽然他们不信这些。',
+            '你知道有些东西数据测不出来，比如一顿好饭和一夜好眠。',
+            '你不再焦虑那个箭头了，身体不是只有数字。',
+          ],
+          '锐利': [
+            '你一眼看出那篇抗衰老论文的样本量不够，结论不可信。',
+            '某个补剂营销话术被你三秒识破，扔进了垃圾桶。',
+            '你评估了风险收益比，决定不参加这次临床试验。',
+          ],
+        },
+      };
+
+      // 合并通用前缀 + 当前路径专属前缀
+      const universalPool = universalPrefixPools[style] || universalPrefixPools['沉稳'];
+      const pathPool = (currentPathId && pathPrefixPools[currentPathId] && pathPrefixPools[currentPathId][style]) || [];
+      const pool = [...universalPool, ...pathPool];
+
       const mbtiPrefix = pickWithoutRecent(pool, recentMbtiPrefixes);
       recentMbtiPrefixes.push(mbtiPrefix);
       if (recentMbtiPrefixes.length > MAX_RECENT_MEMORY) recentMbtiPrefixes.shift();
@@ -605,7 +891,7 @@ export const useGameStore = defineStore('game', () => {
     const salaryDiffCross = state.value.currentMonthlySalary - salaryBeforeCross;
     if (salaryDiffCross !== 0) {
       const sign = salaryDiffCross > 0 ? '+' : '-';
-      addLog(`月薪从¥${salaryBeforeCross.toLocaleString()}调整为¥${state.value.currentMonthlySalary.toLocaleString()}（${sign}¥${Math.abs(salaryDiffCross).toLocaleString()}）。`);
+      addLog(`第${state.value.currentAge}岁，月薪从¥${salaryBeforeCross.toLocaleString()}调整为¥${state.value.currentMonthlySalary.toLocaleString()}（${sign}¥${Math.abs(salaryDiffCross).toLocaleString()}）。`);
     }
 
     // v11: 压力抑制机制——高压时十字路口压力加成也被削减
@@ -764,7 +1050,9 @@ export const useGameStore = defineStore('game', () => {
       const diff = salaryAfter - salaryBefore;
       if (diff !== 0) {
         const sign = diff > 0 ? '+' : '-';
-        addLog(`月薪从¥${salaryBefore.toLocaleString()}调整为¥${salaryAfter.toLocaleString()}（${sign}¥${Math.abs(diff).toLocaleString()}）。`);
+        // 注意：薪资变动日志不直接addLog到lifeLog，避免与yearLog重复；
+        // 但为了保持记录完整性，添加年龄前缀后放入logs数组供yearLog参考
+        logs.push(`第${state.value.currentAge}岁，月薪从¥${salaryBefore.toLocaleString()}调整为¥${salaryAfter.toLocaleString()}（${sign}¥${Math.abs(diff).toLocaleString()}）。`);
       }
     }
 
@@ -934,10 +1222,16 @@ export const useGameStore = defineStore('game', () => {
     }
   }
 
+  // ========== 年度结算防重复执行守卫 ==========
+  let isCommitting = false;
+
   // ========== 年度结算核心 ==========
   function commitYear() {
     if (state.value.endingTriggered) return;
+    if (isCommitting) return; // 防重复执行守卫
+    isCommitting = true;
 
+    try {
     // 判断叙事转场类型
     let transition = 'default';
     const narrEvent = currentNarrativeEvent.value;
@@ -1053,20 +1347,53 @@ export const useGameStore = defineStore('game', () => {
     // 4.5 滚动日常琐事（削减为每年1条，腾出空间给恋爱/大事件）
     // 按每条事件逐条记录变化，用于收支/变化来源面板展示
     const dailyLogs: string[] = [];
-    const dailyEvents = rollDailyEvents(state.value, 1);
+    // 过滤近3年已触发过的日常事件 + 感冒免疫检查
+    const allDailyEvents = rollDailyEvents(state.value, 10); // 多取一些用于过滤
+    const nowAge = state.value.currentAge;
+    const firedDaily = state.value.firedDailyEvents;
+    const lastColdYear = state.value.lastColdYear || 0;
+    const filteredDailyEvents = allDailyEvents.filter(evt => {
+      // 近3年去重
+      if (firedDaily && firedDaily[evt.id] !== undefined) {
+        if (nowAge - firedDaily[evt.id] < 3) return false;
+      }
+      // 感冒/生病类事件免疫检查（label含"病"或text含"感冒""发烧""生病"且effects.health<0）
+      const isIllnessEvent = (evt.label?.includes('病') || /感冒|发烧|生病|流感/.test(evt.text))
+        && (evt.effects?.health !== undefined && evt.effects.health < 0);
+      if (isIllnessEvent && lastColdYear > 0 && nowAge - lastColdYear < 3) {
+        return false;
+      }
+      return true;
+    });
+    const dailyEvents = filteredDailyEvents.slice(0, 1);
     for (const evt of dailyEvents) {
       const beforeEvt = snapshot();
       const evtLogs = applyDailyEventEffects(state.value, evt);
       dailyLogs.push(evt.text, ...evtLogs);
       recordChange(evt.label || '日常琐事', beforeEvt);
+      // 记录已触发的日常事件（用于年度去重）
+      state.value.firedDailyEvents[evt.id] = nowAge;
+      // 感冒/生病类事件记录lastColdYear
+      const isIllnessEvent = (evt.label?.includes('病') || /感冒|发烧|生病|流感/.test(evt.text))
+        && (evt.effects?.health !== undefined && evt.effects.health < 0);
+      if (isIllnessEvent) {
+        state.value.lastColdYear = nowAge;
+      }
+    }
+    // 清理3年以前的firedDailyEvents记录
+    for (const eid of Object.keys(state.value.firedDailyEvents)) {
+      if (nowAge - state.value.firedDailyEvents[eid] >= 3) {
+        delete state.value.firedDailyEvents[eid];
+      }
     }
     const dailyEventFinancialChange = dailyLogs.length > 0
       ? wellbeingChanges.filter(e => !['naturalDrift', 'cards', 'blackSwan', 'echoes', 'blindBoxes', 'relationships', 'romance'].includes(e.source))
           .reduce((sum, e) => sum + e.savings, 0)
       : 0;
     state.value.dailyEventLog = dailyLogs;
-    for (const log of dailyLogs) {
-      addLog(log);
+    // 只addLog叙事文本（evt.text），不addLog数值变化日志（如"压力+3（40->43）"）
+    for (const evt of dailyEvents) {
+      addLog(evt.text);
     }
 
     // 4.6 检测并执行卡片连锁反应（可能修改 state）
@@ -1127,6 +1454,17 @@ export const useGameStore = defineStore('game', () => {
     // 5. 触发黑天鹅事件
     const beforeBlackSwan = snapshot();
     const eventResult = rollRandomEvents(state.value);
+    // 感冒免疫：如果触发了minor_illness（急性小病/感冒）且在免疫期内，撤销该事件
+    const lastColdYearBS = state.value.lastColdYear || 0;
+    if (eventResult.eventNames.includes('急性小病侵袭') && lastColdYearBS > 0 && nowAge - lastColdYearBS < 3) {
+      // 撤销感冒事件的效果（minor_illness只扣6000元，不修改其他状态）
+      eventResult.logs = eventResult.logs.filter(l => !l.includes('感冒把你按在床上'));
+      eventResult.eventNames = eventResult.eventNames.filter(n => n !== '急性小病侵袭');
+      eventResult.totalLoss = eventResult.totalLoss - 6000; // 感冒事件固定损失6000
+    } else if (eventResult.eventNames.includes('急性小病侵袭')) {
+      // 记录感冒年份
+      state.value.lastColdYear = nowAge;
+    }
     let blackSwanLoss = eventResult.totalLoss;
     if (eventResult.totalLoss !== 0) {
       // totalLoss > 0 表示损失，< 0 表示收益
@@ -1284,7 +1622,7 @@ export const useGameStore = defineStore('game', () => {
         if (achDiff !== 0) {
           salaryBreakdown.push({ source: '成就达成', amount: achDiff, note: `达成成就「${narrAchievement.title}」带来的薪资变化` });
           const sign = achDiff > 0 ? '+' : '-';
-          addLog(`【成就】月薪从¥${achSalaryBefore.toLocaleString()}调整为¥${state.value.currentMonthlySalary.toLocaleString()}（${sign}¥${Math.abs(achDiff).toLocaleString()}）。`);
+          addLog(`第${state.value.currentAge}岁，【成就】月薪从¥${achSalaryBefore.toLocaleString()}调整为¥${state.value.currentMonthlySalary.toLocaleString()}（${sign}¥${Math.abs(achDiff).toLocaleString()}）。`);
         }
       }
       if (narrAchievement.passiveIncomeChange) {
@@ -1334,7 +1672,7 @@ export const useGameStore = defineStore('game', () => {
 
     // 8. 记录日志（整合日常琐事和人际关系）
     // 注意：必须在递增 currentAge 之前调用 buildYearLog，否则日志里的年龄会偏移一年
-    const yearLog = buildYearLog(state.value, result, eventResult.logs, relationshipLogs, dailyLogs);
+    const yearLog = buildYearLog(state.value, result, cardLogs, eventResult.logs);
     addLog(yearLog);
 
     // 9. 年龄增长
@@ -1515,6 +1853,9 @@ export const useGameStore = defineStore('game', () => {
     // 12. 保存（同步十字路口Map到state）
     state.value.crossroadFired = Object.fromEntries(crossroadFiredTags.value);
     scheduleSave(state.value);
+    } finally {
+      isCommitting = false; // 重置防重复守卫
+    }
   }
   
   // ========== 剧情驱动的电视窗口情绪推断 ==========
@@ -1569,58 +1910,38 @@ export const useGameStore = defineStore('game', () => {
   function buildYearLog(
     state: GameState,
     _result: YearResult,
+    cardLogs: string[],
     eventLogs: string[],
-    relationshipLogs: string[] = [],
-    dailyLogs: string[] = [],
   ): string {
-    // 优先展示重大事件
-    if (eventLogs.length > 0) {
-      return eventLogs[0];
+    const age = state.currentAge;
+
+    // 优先使用cardLogs（玩家选择的叙事选项日志）作为年度总结
+    if (cardLogs && cardLogs.length > 0) {
+      // 取第一条叙事日志（卡片选择的叙事文本），过滤掉纯数值日志
+      const narrativeLog = cardLogs.find(log =>
+        !/^[压力幸福健康储蓄被动收入月薪]+[+\-]?\d/.test(log) &&
+        !/^月薪从¥/.test(log) &&
+        log.length > 10
+      );
+      if (narrativeLog) {
+        return narrativeLog;
+      }
     }
 
-    // 其次展示人际关系重大变化
-    const majorRelationshipEvents = relationshipLogs.filter(log =>
-      log.includes('离世') || log.includes('离婚') || log.includes('高考') || log.includes('住院')
-    );
-    if (majorRelationshipEvents.length > 0) {
-      return majorRelationshipEvents[0];
+    // 其次使用eventResult.logs（黑天鹅事件日志）
+    if (eventLogs && eventLogs.length > 0) {
+      return eventLogs[0];
     }
 
     if (state.isUnemployed) {
       if (state.totalUnemployedYears === 1) {
-        return `第${state.currentAge}岁，你依然没有收到任何offer。简历像丢进海里的石子，你开始习惯白天睡觉、晚上投递的错位人生。`;
+        return `第${age}岁，你依然没有收到任何offer。简历像丢进海里的石子，你开始习惯白天睡觉、晚上投递的错位人生。`;
       }
-      return `第${state.currentAge}岁，你在待业中度过，存款缓慢消耗。你告诉自己，机会总会来的。`;
+      return `第${age}岁，你在待业中度过，存款缓慢消耗。你告诉自己，机会总会来的。`;
     }
 
-    // 合并叙事：把日常琐事串成一段故事
-    const age = state.currentAge;
-    const savings = Math.round(state.currentSavings);
-    const profession = state.currentProfession;
-
-    // 如果有日常事件，用它们构建叙事
-    if (dailyLogs.length > 0) {
-      const picks: string[] = [];
-      // 取1-2条日常事件
-      const shuffled = [...dailyLogs].sort(() => Math.random() - 0.5);
-      picks.push(shuffled[0]);
-      if (shuffled.length > 1 && Math.random() < 0.4) {
-        picks.push(shuffled[1]);
-      }
-      // 把日常事件的描述串成一段
-      const dailyText = picks.map(l => l.replace(/^第\d+岁，/, '').replace(/。$/, '')).join('，后来');
-      return `第${age}岁，${dailyText}。`;
-    }
-
-    // 没有日常事件的平淡年份
-    const templates = [
-      `第${age}岁，这一年像一杯白开水，喝的时候没感觉，但渴的时候才知道它的好。你在${profession}的岗位上日复一日，存款涨到了${savings}元。`,
-      `第${age}岁，你把生活过成了循环播放——地铁、工位、外卖、床。偶尔刷到朋友的动态圈，他们好像都比你过得精彩，但你关掉手机后，觉得自己的日子也还行。`,
-      `第${age}岁，你学会了在加班的间隙里找乐子：偷吃零食、摸鱼刷手机、跟同事吐槽甲方。日子虽然重复，但这些小事让你觉得还没被生活完全磨平。`,
-      `第${age}岁，你开始理解什么叫"日子是用来过的，不是用来熬的"。买菜、做饭、洗碗、倒垃圾，这些琐碎的事情里居然藏着一种奇怪的安全感。存款${savings}元，不多不少。`,
-      `第${age}岁，你这一年没什么好说的。工作还行，身体还行，感情还行。三个"还行"凑在一起，就是大多数人的一年。`,
-    ];
-    return templates[Math.floor(Math.random() * templates.length)];
+    // 以上都没有时，使用平淡模板
+    return `第${age}岁，这一年平平淡淡地过去了。`;
   }
   
   function addLog(message: string) {

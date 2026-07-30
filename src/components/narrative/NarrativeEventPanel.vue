@@ -161,7 +161,7 @@ const skillLabels: Record<string, string> = {
       <div class="event-title-bar">
         <span v-if="currentEvent.eventType === 'crisis'" class="event-type-tag crisis">危机</span>
         <span v-else-if="currentEvent.eventType === 'milestone'" class="event-type-tag milestone">里程碑</span>
-        <span v-else-if="currentEvent.eventType === 'branch_select'" class="event-type-tag branch">分支选择</span>
+        <span v-else-if="currentEvent.eventType === 'branch_select'" class="event-type-tag branch">人生岔路</span>
         <h3 class="event-title">{{ currentEvent.title }}</h3>
       </div>
 
@@ -307,31 +307,41 @@ const skillLabels: Record<string, string> = {
 }
 
 /* ============================================================
-   技能值
+   技能值 —— 低调设计，不抢叙事视觉焦点
    ============================================================ */
 .skill-bar {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
   flex-shrink: 0;
+  opacity: 0.55;
 }
 
 .skill-chip {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  font-size: 10px;
-  color: var(--neon-green);
-  border: 1px solid rgba(0, 255, 136, 0.5);
-  border-radius: 3px;
-  background: rgba(0, 255, 136, 0.08);
-  text-shadow: 0 0 4px var(--neon-green);
+  gap: 3px;
+  padding: 1px 5px;
+  font-size: 9px;
+  color: rgba(180, 185, 200, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.03);
   font-family: 'DotGothic16', monospace;
+  letter-spacing: 0.5px;
+  transition: opacity 0.2s;
+}
+
+.skill-chip:hover {
+  opacity: 1;
+  color: rgba(220, 225, 240, 0.95);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .skill-chip strong {
-  font-size: 12px;
+  font-size: 9px;
+  font-weight: 400;
+  color: rgba(200, 210, 230, 0.6);
 }
 
 /* ============================================================
