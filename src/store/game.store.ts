@@ -2016,15 +2016,18 @@ export const useGameStore = defineStore('game', () => {
     yearMood.value = mood;
 
     // === 分镜分类：将本年度日志分到 家庭/生活/事业 三个窗口 ===
-    // 关键修复：主事件文本（年度金句）加入3次以获得足够评分权重，确保动画与年度金句匹配
+    // 关键修复1：主事件文本（年度金句）加入3次以获得足够评分权重，确保动画与年度金句匹配
+    // 关键修复2：过滤纯数值变化日志（薪资调整等），避免关键词误触发动画
+    const numericLogPattern = /^[压力幸福健康储蓄被动收入月薪]+[+\-]?\d|月薪从¥\d|被动收入[+\-]|储蓄[+\-¥]|^压力[+\-]|^幸福[+\-]|^健康[+\-]/;
+    const isNarrativeLog = (log: string) => log && log.length > 10 && !numericLogPattern.test(log);
     const allLogsForStoryboard = [
-      ...eventResult.logs,
-      ...relationshipLogs,
-      ...romanceLogs,
-      ...cardLogs,
-      ...dailyLogs,
-      ...echoLogs,
-      ...bbRevealsForMain.map(b => b.text),
+      ...eventResult.logs.filter(isNarrativeLog),
+      ...relationshipLogs.filter(isNarrativeLog),
+      ...romanceLogs.filter(isNarrativeLog),
+      ...cardLogs.filter(isNarrativeLog),
+      ...dailyLogs.filter(isNarrativeLog),
+      ...echoLogs.filter(isNarrativeLog),
+      ...bbRevealsForMain.map(b => b.text).filter(isNarrativeLog),
       workSummary,
       yearLog,
       mainEventText,  // 权重x3：年度金句应该决定动画
