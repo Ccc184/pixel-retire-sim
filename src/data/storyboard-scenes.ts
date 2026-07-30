@@ -1,1084 +1,1340 @@
 /**
- * 三分镜像素场景定义 v2 - 开罗游戏风格
+ * 像素场景定义 V12 - 最终完整版
  *
- * 核心改进：
- * - 画布 24×20 像素，实际渲染 120×100px
- * - 标准2头身Q版小人（高8像素：头3+身3+腿2），有五官有表情
- * - 每个场景2-4帧循环动画（打字/走路/举杯/跳跃等）
- * - 场景=小人+道具+背景，一眼看懂剧情
- * - 赛博朋克霓虹色调，三个分类统一调色板索引
- * - 单年播放模式：新事件替换旧场景，不累积
+ * 核心特性：
+ * - 画布 24×20 像素
+ * - 5像素宽Q版小人（高8像素：头3+身3+腿2），2头身比例
+ * - V12: happy表情用黑点嘴，无腮红
+ * - 统一语义调色板（家庭暖色/生活绿/职业蓝灰）
+ * - 多帧动画（里程碑6帧，其他4帧）
+ * - 更小的房子、汽车，适配人物比例
+ * - 关键词使用4字以上强特征组合词，移除泛词
+ * - 人物站位：站姿y=11（脚在18），坐姿y=10（椅子在16）
+ * - 深色背景用T.gold/T.hair_light头发避免看不见
+ * - 办公场景先画人再画桌子显示器，形成正确遮挡
+ * - 毕业场景用两侧立柱+顶部横幅，不框住人物
+ * - 白发用T.gray(14)不用T.white
  *
- * 统一调色板索引（三个分类共用此布局）：
- *   0: transparent  1: 深背景     2: 主题色     3: 高光
- *   4: 深主题色     5: 肤色       6: 副主题色   7: 深棕/黑发
- *   8: 金发/金黄    9: 白色      10: 青色点缀  11: 中主题色
- *  12: 深红/嘴     13: 备用      14: 极暗/灰发 15: 近黑/眼睛/阴影
+ * 语义调色板索引：
+ *   0: transparent  1: 深色头发    2: 浅色头发    3: 蓝色衣服
+ *   4: 红色衣服     5: 肤色        6: 主题色      7: 白色
+ *   8: 天蓝/紫      9: 金色        10: 棕色       11: 桃色
+ *  12: 亮红        13: 青色       14: 灰色       15: 近黑/眼睛
  */
 
 export type StoryboardCategory = 'family' | 'life' | 'career'
-
-/** 单帧像素数据 */
 type PixelFrame = number[][]
 
 export interface StoryboardScene {
   id: string
   category: StoryboardCategory
-  name: string
+  name?: string
   keywords: string[]
   palette: string[]
-  /** 多帧动画，frames[0]为起始帧 */
   frames: PixelFrame[]
-  /** 帧间隔（毫秒） */
   frameDelay: number
-  /** 入场动画 */
   animIn: 'fade' | 'rise' | 'pop' | 'slide' | 'blink' | 'shake' | 'bounce'
-  /** 优先级 */
   priority?: number
 }
 
-// ============================================================
-// 统一调色板（索引布局一致，颜色按分类主题变化）
-// ============================================================
+const W = 24, H = 20, GY = 18
 
+// 调色板
 const FAMILY_PALETTE = [
-  'transparent',  // 0
-  '#1a0a14',      // 1 深紫背景
-  '#ff8ab8',      // 2 粉主色
-  '#ffd6e7',      // 3 浅粉高光
-  '#ff3d7f',      // 4 玫红（深主题）
-  '#ffe0c2',      // 5 暖肤色（统一）
-  '#ff6b9d',      // 6 中粉（副主题）
-  '#5a3040',      // 7 棕发/暗部
-  '#ffecb3',      // 8 金发/金黄
-  '#ffffff',      // 9 白
-  '#00d4ff',      // 10 青点缀
-  '#ffb3c6',      // 11 浅粉（中主题）
-  '#cc2255',      // 12 深红/嘴
-  '#ffc4a0',      // 13 深肤色（备用）
-  '#884455',      // 14 深棕/灰发
-  '#2a1020',      // 15 阴影/眼睛
+  'transparent', '#7a4a32', '#f5a623', '#3a6bb8', '#d63031', '#fdebd0',
+  '#74b9ff', '#ffffff', '#a29bfe', '#fdcb6e', '#8b4513', '#fab1a0',
+  '#e17055', '#00b894', '#b2bec3', '#2d3436',
 ]
-
 const LIFE_PALETTE = [
-  'transparent',  // 0
-  '#080d18',      // 1 深蓝黑背景
-  '#00d4ff',      // 2 青主色
-  '#8eefff',      // 3 浅青高光
-  '#006688',      // 4 深青（深主题）
-  '#ffe0c2',      // 5 暖肤色（统一）
-  '#ff6b35',      // 6 橙（副主题）
-  '#3a2a1a',      // 7 棕发/暗部
-  '#ffd700',      // 8 金黄
-  '#ffffff',      // 9 白
-  '#c900ff',      // 10 紫点缀
-  '#0099cc',      // 11 中青（中主题）
-  '#ff4466',      // 12 红/嘴
-  '#ff8ab8',      // 13 粉点缀
-  '#004466',      // 14 暗青/灰发
-  '#203040',      // 15 阴影/眼睛
+  'transparent', '#5d4037', '#ff7675', '#0984e3', '#d63031', '#ffeaa7',
+  '#55efc4', '#ffffff', '#74b9ff', '#ffeaa7', '#5d4037', '#fab1a0',
+  '#e17055', '#00cec9', '#dfe6e9', '#2d3436',
 ]
-
 const CAREER_PALETTE = [
-  'transparent',  // 0
-  '#080f0a',      // 1 深绿黑背景
-  '#00ff88',      // 2 绿主色
-  '#a3ffcc',      // 3 浅绿高光
-  '#005533',      // 4 深绿（深主题）
-  '#ffe0c2',      // 5 暖肤色（统一）
-  '#ff6b35',      // 6 橙（副主题）
-  '#3a2a1a',      // 7 棕发/暗部
-  '#ffd700',      // 8 金黄
-  '#ffffff',      // 9 白
-  '#00d4ff',      // 10 青点缀
-  '#00cc6a',      // 11 中绿（中主题）
-  '#ff3d3d',      // 12 红/嘴
-  '#4488ff',      // 13 蓝点缀
-  '#003322',      // 14 暗绿/灰发
-  '#203028',      // 15 阴影/眼睛
+  'transparent', '#2d3436', '#fdcb6e', '#0984e3', '#d63031', '#ffeaa7',
+  '#74b9ff', '#ffffff', '#74b9ff', '#f9ca24', '#5d4037', '#fab1a0',
+  '#e17055', '#00cec9', '#95a5a6', '#1e272e',
 ]
 
-// ============================================================
-// 画布 & 常量
-// ============================================================
-const W = 24, H = 20
+// 语义别名
+const T = {
+  hair_dark: 1, hair_light: 2, cloth_blue: 3, cloth_red: 4, skin: 5,
+  theme: 6, white: 7, sky: 8, gold: 9, brown: 10, peach: 11,
+  bright_red: 12, teal: 13, gray: 14, dark: 15, purple: 8,
+} as const
 
 function emptyCanvas(): PixelFrame {
   return Array.from({ length: H }, () => Array(W).fill(0))
 }
 
-// ============================================================
-// 像素小人绘制辅助（开罗风格2头身Q版）
-// 标准小人高8像素：头(3行) + 身(3行) + 腿(2行)，宽4像素
-// ============================================================
+function S(c: PixelFrame, r: number, col: number, v: number) {
+  if (r < 0 || r >= H || col < 0 || col >= W) return
+  if (!c[r]) c[r] = Array(W).fill(0)
+  c[r][col] = v
+}
 
-/**
- * 在画布上画一个Q版小人
- * 调色板索引约定：5=肤色, 7=深棕发, 8=金发, 9=白, 12=红嘴, 14=灰发, 15=黑眼/阴影
- */
+function drawGround(c: PixelFrame, ci: number, y: number = GY) {
+  for (let col = 0; col < W; col++) S(c, y, col, ci)
+  for (let col = 0; col < W; col++) S(c, y+1, col, T.dark)
+}
+
+// V12: 更小的房子，适配人物比例
+function drawSmallHouse(c: PixelFrame, hx: number, hy: number, roofC: number, wallC: number) {
+  S(c, hy+1, hx+2, roofC); S(c, hy+1, hx+3, roofC); S(c, hy+1, hx+4, roofC); S(c, hy+1, hx+5, roofC)
+  S(c, hy+2, hx+1, roofC)
+  for (let col = hx+2; col <= hx+6; col++) S(c, hy+2, col, roofC)
+  S(c, hy+3, hx, roofC)
+  for (let col = hx+1; col <= hx+7; col++) S(c, hy+3, col, wallC)
+  S(c, hy+3, hx+8, roofC)
+  for (let col = hx; col <= hx+8; col++) { S(c, hy+4, col, wallC); S(c, hy+5, col, wallC) }
+  S(c, hy+4, hx+3, T.brown); S(c, hy+5, hx+3, T.brown); S(c, hy+4, hx+4, T.brown); S(c, hy+5, hx+4, T.brown)
+  S(c, hy+5, hx+4, T.gold)
+  S(c, hy+4, hx+2, T.sky); S(c, hy+4, hx+6, T.sky)
+  S(c, hy, hx+6, T.brown); S(c, hy+1, hx+6, T.brown)
+  S(c, hy-1, hx+6, T.gray); S(c, hy-2, hx+7, T.gray)
+}
+
+// V12: 更小的汽车
+function drawCar(c: PixelFrame, cx: number, cy: number, bodyC: number) {
+  for (let col = cx; col <= cx+7; col++) { S(c, cy+1, col, bodyC); S(c, cy+2, col, bodyC) }
+  S(c, cy, cx+2, bodyC); S(c, cy, cx+3, bodyC); S(c, cy, cx+4, bodyC); S(c, cy, cx+5, bodyC)
+  S(c, cy+1, cx+2, T.sky); S(c, cy+1, cx+3, T.sky); S(c, cy+1, cx+4, T.sky); S(c, cy+1, cx+5, T.sky)
+  S(c, cy+3, cx+1, T.dark); S(c, cy+3, cx+6, T.dark)
+  S(c, cy+2, cx, T.gold); S(c, cy+2, cx+7, T.bright_red)
+}
+
+function drawDesk(c: PixelFrame, col1: number, col2: number, y: number, topC: number, legC: number) {
+  for (let col = col1; col <= col2; col++) S(c, y, col, topC)
+  S(c, y+1, col1, legC); S(c, y+1, col2, legC)
+  S(c, y+2, col1, legC); S(c, y+2, col2, legC)
+  S(c, y+3, col1, T.dark); S(c, y+3, col2, T.dark)
+}
+
+function drawMonitor(c: PixelFrame, cx: number, cy: number, screenC: number, frameC: number = T.dark) {
+  for (let col = cx; col <= cx+4; col++) S(c, cy, col, frameC)
+  S(c, cy+1, cx, frameC); S(c, cy+1, cx+1, screenC); S(c, cy+1, cx+2, screenC); S(c, cy+1, cx+3, screenC); S(c, cy+1, cx+4, frameC)
+  S(c, cy+2, cx, frameC); S(c, cy+2, cx+1, screenC); S(c, cy+2, cx+2, screenC); S(c, cy+2, cx+3, screenC); S(c, cy+2, cx+4, frameC)
+  for (let col = cx; col <= cx+4; col++) S(c, cy+3, col, frameC)
+  S(c, cy+4, cx+2, frameC)
+}
+
+function drawSofa(c: PixelFrame, sofaC: number) {
+  for (let col = 6; col <= 18; col++) { S(c, 10, col, sofaC); S(c, 11, col, sofaC); S(c, 12, col, sofaC); S(c, 13, col, sofaC) }
+  S(c, 9, 6, sofaC); S(c, 9, 18, sofaC); S(c, 14, 6, T.dark); S(c, 14, 18, T.dark)
+  S(c, 11, 9, T.gold); S(c, 11, 15, T.gold)
+}
+
+function drawCup(c: PixelFrame, x: number, y: number, ci: number) {
+  S(c, y, x, ci); S(c, y, x+1, ci); S(c, y+1, x, ci); S(c, y+1, x+1, ci); S(c, y, x+2, ci)
+}
+
+// V12: 人物绘制 - happy用黑点嘴，无腮红；站姿y=11脚在18，坐姿y=10
 function drawPerson(
   c: PixelFrame,
   x: number, y: number,
-  color: number,
-  skin: number = 5,
-  hair: number = 7,
+  hc: number, sc: number, cc: number,
   dir: 'front'|'left'|'right'|'back' = 'front',
   mood: 'normal'|'happy'|'sad'|'surprised'|'angry' = 'normal',
-  action: 'stand'|'walk1'|'walk2'|'armsup'|'sit'|'jump'|'bow'|'cheer'|'type'|'lie' = 'stand'
+  act: 'stand'|'walk1'|'walk2'|'armsup'|'cheer'|'jump'|'sit'|'bow'|'type'|'lie' = 'stand'
 ) {
-  // 安全检查：确保行存在
-  const ensureRow = (r: number) => {
-    if (!c[r]) c[r] = Array(W).fill(0)
-  }
-
-  // 头部 (y, y+1, y+2) - 3行高
-  // 头发
-  ensureRow(y); ensureRow(y+1); ensureRow(y+2)
-  c[y][x+1] = hair; c[y][x+2] = hair
-  if (dir !== 'back') {
-    c[y+1][x] = hair; c[y+1][x+3] = hair
-  } else {
-    c[y+1][x] = hair; c[y+1][x+1] = hair; c[y+1][x+2] = hair; c[y+1][x+3] = hair
-    c[y+2][x] = hair; c[y+2][x+3] = hair
-  }
+  const ec = T.dark
+  // 头发 - 5像素宽锅盖头
+  S(c, y, x, hc); S(c, y, x+1, hc); S(c, y, x+2, hc); S(c, y, x+3, hc); S(c, y, x+4, hc)
+  S(c, y+1, x, hc); S(c, y+1, x+4, hc)
   // 脸
+  S(c, y+1, x+1, sc); S(c, y+1, x+2, sc); S(c, y+1, x+3, sc)
+  S(c, y+2, x+1, sc); S(c, y+2, x+2, sc); S(c, y+2, x+3, sc)
+  // 眼睛
+  if (dir === 'front') { S(c, y+1, x+1, ec); S(c, y+1, x+3, ec) }
+  else if (dir === 'right') { S(c, y+1, x+3, ec) }
+  else if (dir === 'left') { S(c, y+1, x+1, ec) }
+  // 嘴/表情（V12: happy用黑点嘴，无腮红）
   if (dir !== 'back') {
-    c[y+1][x+1] = skin; c[y+1][x+2] = skin
-    c[y+2][x+1] = skin; c[y+2][x+2] = skin
-    // 五官
-    if (dir === 'front') {
-      c[y+1][x+1] = 15; c[y+1][x+2] = 15  // 黑眼睛
-      switch (mood) {
-        case 'happy':
-          c[y+2][x+1] = skin; c[y+2][x+2] = skin
-          c[y+2][x+1] = 12; c[y+2][x+2] = 12  // 笑嘴（红色）
-          break
-        case 'sad':
-          c[y+2][x+1] = 15; c[y+2][x+2] = 15
-          break
-        case 'surprised':
-          c[y+2][x+1] = 9; c[y+2][x+2] = 9  // O嘴（白）
-          break
-        case 'angry':
-          c[y][x+1] = 12; c[y][x+2] = 12  // 皱眉（红）
-          c[y+2][x+1] = 12; c[y+2][x+2] = 12
-          break
-        default:
-          c[y+2][x+1] = 15; c[y+2][x+2] = 15  // 普通小嘴
-      }
-    } else if (dir === 'left') {
-      c[y+1][x+1] = 15
-      c[y+2][x+1] = 15
-    } else if (dir === 'right') {
-      c[y+1][x+2] = 15
-      c[y+2][x+2] = 15
+    switch (mood) {
+      case 'happy': S(c, y+2, x+2, ec); break
+      case 'sad': S(c, y+2, x+1, ec); S(c, y+2, x+3, ec); break
+      case 'surprised': S(c, y+2, x+2, T.white); S(c, y+2, x+2, ec); break
+      case 'angry': S(c, y, x+1, ec); S(c, y, x+3, ec); S(c, y+2, x+1, ec); S(c, y+2, x+3, ec); S(c, y+2, x+2, ec); break
+      default: S(c, y+2, x+2, ec)
     }
+  } else {
+    for (let col = x; col <= x+4; col++) { S(c, y+1, col, hc); S(c, y+2, col, hc) }
   }
-  // 身体 (y+3, y+4, y+5) - 3行
-  const sy = y + 3
-  ensureRow(sy); ensureRow(sy+1); ensureRow(sy+2); ensureRow(sy+3)
-  switch (action) {
-    case 'stand':
-      c[sy][x+1] = color; c[sy][x+2] = color
-      c[sy+1][x+1] = color; c[sy+1][x+2] = color
-      c[sy+2][x+1] = color; c[sy+2][x+2] = color
-      c[sy+1][x] = skin; c[sy+1][x+3] = skin
-      // 腿
-      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
-      break
+  const by = y + 3
+  // 身体（3行）
+  S(c, by, x+1, cc); S(c, by, x+2, cc); S(c, by, x+3, cc)
+  S(c, by+1, x+1, cc); S(c, by+1, x+2, cc); S(c, by+1, x+3, cc)
+  S(c, by+2, x+1, cc); S(c, by+2, x+2, cc); S(c, by+2, x+3, cc)
+  // 衣服扣子
+  if (cc === T.dark) {
+    S(c, by, x+2, T.white); S(c, by+1, x+2, T.white)
+  } else if (act !== 'lie' && act !== 'bow') {
+    S(c, by+1, x+2, T.white)
+  }
+  // 动作
+  switch (act) {
     case 'walk1':
-      c[sy][x+1] = color; c[sy][x+2] = color
-      c[sy+1][x+1] = color; c[sy+1][x+2] = color
-      c[sy+2][x+1] = color; c[sy+2][x+2] = color
-      c[sy][x] = skin; c[sy+2][x+3] = skin
-      c[sy+3][x+1] = 7; c[sy+3][x+3] = 7
-      break
+      S(c, by, x, sc); S(c, by, x+4, sc)
+      S(c, by+3, x, cc); S(c, by+3, x+1, cc); S(c, by+3, x+3, cc); S(c, by+3, x+4, cc)
+      S(c, by+4, x, cc); S(c, by+4, x+4, cc); break
     case 'walk2':
-      c[sy][x+1] = color; c[sy][x+2] = color
-      c[sy+1][x+1] = color; c[sy+1][x+2] = color
-      c[sy+2][x+1] = color; c[sy+2][x+2] = color
-      c[sy+2][x] = skin; c[sy][x+3] = skin
-      c[sy+3][x] = 7; c[sy+3][x+2] = 7
-      break
+      S(c, by, x, sc); S(c, by, x+4, sc)
+      S(c, by+3, x+1, cc); S(c, by+3, x+3, cc)
+      S(c, by+4, x+1, cc); S(c, by+4, x+3, cc); break
     case 'armsup':
-      c[sy][x+1] = color; c[sy][x+2] = color
-      c[sy+1][x+1] = color; c[sy+1][x+2] = color
-      c[sy+2][x+1] = color; c[sy+2][x+2] = color
-      ensureRow(sy-1)
-      c[sy-1][x] = skin; c[sy-1][x+3] = skin
-      c[sy][x] = color; c[sy][x+3] = color
-      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
-      break
+      S(c, by-1, x, cc); S(c, by-1, x+4, cc)
+      S(c, by, x, sc); S(c, by, x+4, sc)
+      S(c, by+3, x+1, cc); S(c, by+3, x+3, cc)
+      S(c, by+4, x+1, cc); S(c, by+4, x+3, cc); break
     case 'cheer':
-      c[sy][x+1] = color; c[sy][x+2] = color
-      c[sy+1][x+1] = color; c[sy+1][x+2] = color
-      c[sy+2][x+1] = color; c[sy+2][x+2] = color
-      ensureRow(sy-1)
-      c[sy-1][x+3] = skin
-      c[sy][x+3] = color
-      c[sy+1][x] = skin
-      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
-      break
+      S(c, by-1, x, cc); S(c, by-1, x+1, cc); S(c, by-1, x+3, cc); S(c, by-1, x+4, cc)
+      S(c, by, x, sc); S(c, by, x+4, sc)
+      S(c, by+3, x, cc); S(c, by+3, x+1, cc); S(c, by+3, x+3, cc); S(c, by+3, x+4, cc)
+      S(c, by+4, x, cc); S(c, by+4, x+4, cc); break
     case 'jump':
-      ensureRow(sy-1)
-      c[sy-1][x+1] = color; c[sy-1][x+2] = color
-      c[sy][x+1] = color; c[sy][x+2] = color
-      c[sy+1][x+1] = color; c[sy+1][x+2] = color
-      c[sy][x] = skin; c[sy][x+3] = skin
-      c[sy+2][x] = 7; c[sy+2][x+3] = 7
-      break
+      S(c, by, x, sc); S(c, by, x+4, sc)
+      S(c, by+3, x+1, cc); S(c, by+3, x+3, cc); break
     case 'sit':
-      c[sy][x+1] = color; c[sy][x+2] = color
-      c[sy+1][x+1] = color; c[sy+1][x+2] = color
-      c[sy+2][x] = 7; c[sy+2][x+1] = 7; c[sy+2][x+2] = 7; c[sy+2][x+3] = 7
-      c[sy+1][x] = skin
-      break
+      S(c, by+1, x, sc); S(c, by+1, x+4, sc)
+      S(c, by, x, cc); S(c, by, x+4, cc)
+      for (let col = x; col <= x+4; col++) S(c, y+6, col, T.white); break
     case 'bow':
-      c[y+2][x+1] = color; c[y+2][x+2] = color
-      c[sy][x+1] = color; c[sy][x+2] = color
-      c[sy+1][x+1] = color; c[sy+1][x+2] = color
-      c[sy+2][x+1] = color; c[sy+2][x+2] = color
-      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
-      break
+      for (let col = x; col <= x+4; col++) S(c, by+1, col, cc)
+      S(c, by+1, x+2, sc); S(c, by+1, x+1, ec); S(c, by+1, x+3, ec)
+      S(c, by+3, x+1, cc); S(c, by+3, x+3, cc)
+      S(c, by+4, x+1, cc); S(c, by+4, x+3, cc); break
     case 'type':
-      c[sy][x+1] = color; c[sy][x+2] = color
-      c[sy+1][x+1] = color; c[sy+1][x+2] = color
-      c[sy+2][x+1] = color; c[sy+2][x+2] = color
-      c[sy+1][x+3] = skin
-      ensureRow(x+4)
-      if (c[sy+1]) c[sy+1][x+4] = skin
-      c[sy+3][x+1] = 7; c[sy+3][x+2] = 7
-      break
+      S(c, by+1, x, sc); S(c, by+1, x+4, sc)
+      S(c, by, x, cc); S(c, by, x+4, cc)
+      S(c, by+2, x+4, sc)
+      S(c, by+3, x+1, cc); S(c, by+3, x+3, cc)
+      S(c, by+4, x+1, cc); S(c, by+4, x+3, cc); break
     case 'lie':
-      c[y][x+1] = hair; c[y][x+2] = hair
-      c[y+1][x+1] = skin; c[y+1][x+2] = skin
-      c[y+1][x+1] = 15; c[y+1][x+2] = 15  // 闭眼
-      ensureRow(y+2); ensureRow(y+3)
-      c[y+2][x] = color; c[y+2][x+1] = color; c[y+2][x+2] = color; c[y+2][x+3] = color
-      c[y+3][x] = color; c[y+3][x+1] = color; c[y+3][x+2] = color; c[y+3][x+3] = color
-      break
+      for (let r = y; r <= y+7; r++) for (let col = x; col <= x+4; col++) S(c, r, col, 0)
+      S(c, y+1, x, hc); S(c, y+1, x+1, hc); S(c, y+1, x+2, hc)
+      S(c, y+2, x, hc); S(c, y+2, x+3, hc)
+      S(c, y+1, x+3, sc); S(c, y+1, x+4, sc)
+      S(c, y+2, x+1, sc); S(c, y+2, x+2, sc)
+      S(c, y+1, x+3, ec)
+      for (let col = x+5; col <= x+10; col++) { S(c, y+1, col, cc); S(c, y+2, col, cc) }
+      S(c, y+3, x+8, cc); S(c, y+3, x+9, cc); break
+    default: // stand
+      S(c, by+3, x+1, cc); S(c, by+3, x+3, cc)
+      S(c, by+4, x+1, cc); S(c, by+4, x+3, cc)
   }
 }
 
-// 画地面线
-function drawGround(c: PixelFrame, color: number, y: number = H-1) {
-  if (!c[y]) c[y] = Array(W).fill(0)
-  for (let i = 0; i < W; i++) c[y][i] = color
+// V12: 爱心（size=1大爱心，size=0小爱心）
+function drawHeart(c: PixelFrame, y: number, x: number, ci: number, size?: number) {
+  if (size === undefined) size = 1
+  if (size === 1) {
+    S(c, y, x+1, ci); S(c, y, x+2, ci); S(c, y, x+4, ci); S(c, y, x+5, ci)
+    S(c, y+1, x, ci); S(c, y+1, x+3, ci); S(c, y+1, x+6, ci)
+    S(c, y+2, x+1, ci); S(c, y+2, x+5, ci)
+    S(c, y+3, x+2, ci); S(c, y+3, x+4, ci)
+    S(c, y+4, x+3, ci)
+  } else {
+    S(c, y, x+1, ci); S(c, y, x+2, ci)
+    S(c, y+1, x, ci); S(c, y+1, x+3, ci)
+    S(c, y+2, x+1, ci); S(c, y+2, x+2, ci)
+  }
 }
 
-// 画爱心
-function drawHeart(c: PixelFrame, cx: number, cy: number, color: number) {
-  for (let r = 0; r < 4; r++) if (!c[cy+r]) c[cy+r] = Array(W).fill(0)
-  c[cy][cx-1] = color; c[cy][cx] = color; c[cy][cx+1] = color; c[cy][cx+2] = color
-  c[cy+1][cx-2] = color; c[cy+1][cx-1] = color; c[cy+1][cx] = color; c[cy+1][cx+1] = color; c[cy+1][cx+2] = color; c[cy+1][cx+3] = color
-  c[cy+2][cx-1] = color; c[cy+2][cx] = color; c[cy+2][cx+1] = color; c[cy+2][cx+2] = color
-  c[cy+3][cx] = color; c[cy+3][cx+1] = color
+function drawFlower(c: PixelFrame, y: number, x: number, petalC: number) {
+  S(c, y, x, petalC); S(c, y, x+1, T.gold); S(c, y, x+2, petalC)
+  S(c, y+1, x+1, T.teal)
 }
 
-// 画房子
-function drawHouse(c: PixelFrame, x: number, y: number, wallColor: number, roofColor: number, doorColor: number, hasSmoke: boolean = false) {
-  for (let r = 0; r < 9; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  c[y][x+3] = roofColor
-  c[y+1][x+2] = roofColor; c[y+1][x+3] = roofColor; c[y+1][x+4] = roofColor
-  c[y+2][x+1] = roofColor; c[y+2][x+2] = roofColor; c[y+2][x+3] = roofColor; c[y+2][x+4] = roofColor; c[y+2][x+5] = roofColor
-  for (let r = y+3; r <= y+7; r++) {
-    for (let col = x; col <= x+6; col++) {
-      c[r][col] = wallColor
+function drawTree(c: PixelFrame, tx: number, ty: number) {
+  S(c, ty+4, tx+1, T.brown); S(c, ty+5, tx+1, T.brown)
+  S(c, ty, tx+1, T.teal); S(c, ty+1, tx, T.teal); S(c, ty+1, tx+1, T.teal); S(c, ty+1, tx+2, T.teal)
+  S(c, ty+2, tx-1, T.teal); S(c, ty+2, tx, T.teal); S(c, ty+2, tx+1, T.teal); S(c, ty+2, tx+2, T.teal); S(c, ty+2, tx+3, T.teal)
+  S(c, ty+3, tx, T.teal); S(c, ty+3, tx+1, T.teal); S(c, ty+3, tx+2, T.teal)
+}
+
+function drawCloud(c: PixelFrame, y: number, x: number, small?: boolean) {
+  if (small) {
+    S(c, y, x+1, T.white); S(c, y+1, x, T.white); S(c, y+1, x+1, T.white); S(c, y+1, x+2, T.white)
+  } else {
+    S(c, y, x+1, T.white); S(c, y, x+2, T.white)
+    S(c, y+1, x, T.white); S(c, y+1, x+1, T.white); S(c, y+1, x+2, T.white); S(c, y+1, x+3, T.white)
+  }
+}
+
+function drawBird(c: PixelFrame, y: number, x: number, frame: number) {
+  if (frame === 0) {
+    S(c, y, x, T.dark); S(c, y, x+1, T.dark); S(c, y+1, x+2, T.dark)
+  } else {
+    S(c, y+1, x, T.dark); S(c, y+1, x+1, T.dark); S(c, y, x+2, T.dark)
+  }
+}
+
+function drawDiploma(c: PixelFrame, x: number, y: number) {
+  for (let col = x; col <= x+3; col++) { S(c, y, col, T.white); S(c, y+1, col, T.white); S(c, y+2, col, T.white) }
+  S(c, y+1, x+1, T.bright_red); S(c, y+1, x+2, T.gold)
+}
+
+function drawConfetti(c: PixelFrame, i: number, colors: number[]) {
+  for (let j = 0; j < 8; j++) { S(c, 2+i+(j%2), 2+j*3, colors[(i+j)%colors.length]) }
+}
+
+// 额外辅助
+function drawBed(c: PixelFrame, bx: number, by: number, bc: number) {
+  for (let r = by; r <= by+3; r++) S(c, r, bx, T.gray)
+  for (let col = bx+1; col <= bx+18; col++) { S(c, by+2, col, bc); S(c, by+3, col, bc) }
+  S(c, by+1, bx+1, T.white); S(c, by+1, bx+2, T.white)
+  S(c, by+2, bx+1, T.white); S(c, by+2, bx+2, T.white)
+  S(c, by+4, bx, T.dark); S(c, by+4, bx+18, T.dark)
+}
+
+function drawTable(c: PixelFrame, tx: number, ty: number, topC: number, legC: number) {
+  for (let col = tx; col <= tx+16; col++) S(c, ty, col, topC)
+  S(c, ty+1, tx, legC); S(c, ty+1, tx+16, legC)
+  S(c, ty+2, tx, legC); S(c, ty+2, tx+16, legC)
+  S(c, ty+3, tx, T.dark); S(c, ty+3, tx+16, T.dark)
+}
+
+// ========== 人生里程碑事件（6帧动画） ==========
+
+// 18岁 高考（先画人再画桌子遮挡，坐姿y=10）
+function sceneGaokao(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr) => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    for (let r = 2; r <= 6; r++) for (let col = 5; col <= 18; col++) S(fr, r, col, T.dark)
+    S(fr, 4, 9, T.white); S(fr, 4, 10, T.white); S(fr, 4, 11, T.white); S(fr, 4, 12, T.white)
+    S(fr, 4, 13, T.white); S(fr, 4, 14, T.white)
+    S(fr, 1, 21, T.white); S(fr, 1, 22, T.white); S(fr, 2, 21, T.white); S(fr, 2, 22, T.white)
+    S(fr, 1, 21, T.dark)
+    drawGround(fr, T.gray)
+  })
+  // 先画人物（坐姿y=10）
+  drawPerson(f[0], 4, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawPerson(f[0], 15, 10, T.hair_light, T.skin, T.cloth_red, 'front', 'surprised', 'sit')
+  drawPerson(f[1], 4, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawPerson(f[1], 15, 10, T.hair_light, T.skin, T.cloth_red, 'front', 'surprised', 'sit')
+  drawPerson(f[2], 4, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'normal', 'sit')
+  drawPerson(f[2], 15, 10, T.hair_light, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  drawPerson(f[3], 4, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'sit')
+  drawPerson(f[3], 15, 10, T.hair_light, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  // 再画课桌（遮挡下半身）桌面y=14
+  f.forEach((fr, i) => {
+    if (i < 4) {
+      for (let col = 3; col <= 10; col++) { S(fr, 14, col, T.brown); S(fr, 15, col, T.brown) }
+      for (let col = 14; col <= 21; col++) { S(fr, 14, col, T.brown); S(fr, 15, col, T.brown) }
+      S(fr, 16, 4, T.dark); S(fr, 16, 9, T.dark); S(fr, 16, 15, T.dark); S(fr, 16, 20, T.dark)
     }
-  }
-  c[y+6][x+3] = doorColor; c[y+6][x+4] = doorColor
-  c[y+7][x+3] = doorColor; c[y+7][x+4] = doorColor
-  c[y+7][x+4] = 5  // 门把手（肤色=金属感）
-  c[y+4][x+1] = 9; c[y+4][x+5] = 9
-  c[y+5][x+1] = 9; c[y+5][x+5] = 9
-  c[y+4][x] = 15; c[y+5][x] = 15
-  c[y+4][x+6] = 15; c[y+5][x+6] = 15
-  if (hasSmoke) {
-    c[y+1][x+5] = 15; c[y+2][x+5] = 15
-  }
+  })
+  // 金榜题名（后两帧金色背景庆祝）
+  for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) { S(f[4], r, col, T.gold); S(f[5], r, col, T.gold) }
+  drawPerson(f[4], 9, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  drawPerson(f[5], 9, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'jump')
+  drawDiploma(f[4], 11, 11); drawDiploma(f[5], 11, 11)
+  S(f[4], 4, 5, T.bright_red); S(f[4], 4, 18, T.bright_red); S(f[5], 3, 7, T.bright_red); S(f[5], 5, 16, T.bright_red)
+  return f
 }
 
-// 画电脑/显示器
-function drawComputer(c: PixelFrame, x: number, y: number, screenColor: number = 3) {
-  for (let r = 0; r < 6; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  c[y][x] = 15; c[y][x+1] = 15; c[y][x+2] = 15; c[y][x+3] = 15; c[y][x+4] = 15
-  c[y+1][x] = 15; c[y+1][x+1] = screenColor; c[y+1][x+2] = screenColor; c[y+1][x+3] = screenColor; c[y+1][x+4] = 15
-  c[y+2][x] = 15; c[y+2][x+1] = screenColor; c[y+2][x+2] = screenColor; c[y+2][x+3] = screenColor; c[y+2][x+4] = 15
-  c[y+3][x] = 15; c[y+3][x+1] = 15; c[y+3][x+2] = 15; c[y+3][x+3] = 15; c[y+3][x+4] = 15
-  c[y+4][x+2] = 15
-  c[y+5][x+1] = 15; c[y+5][x+2] = 15; c[y+5][x+3] = 15
+// 22岁 大学毕业（两侧立柱+顶部横幅，不框住人物）
+function sceneGraduate(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr) => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    // 两侧校门立柱（不连横梁）
+    for (let r = 4; r <= 14; r++) { S(fr, r, 1, T.brown); S(fr, r, 2, T.brown); S(fr, r, 21, T.brown); S(fr, r, 22, T.brown) }
+    S(fr, 3, 1, T.brown); S(fr, 3, 2, T.brown); S(fr, 3, 21, T.brown); S(fr, 3, 22, T.brown)
+    // 顶部横幅（红色，在人物上方）
+    for (let col = 3; col <= 20; col++) S(fr, 3, col, T.bright_red)
+    S(fr, 3, 10, T.white); S(fr, 3, 11, T.white); S(fr, 3, 12, T.white); S(fr, 3, 13, T.white)
+    drawCloud(fr, 1, 5, true); drawCloud(fr, 2, 17, false)
+  })
+  // 人站在草地上 y=11
+  drawPerson(f[0], 9, 11, T.hair_dark, T.skin, T.dark, 'front', 'happy', 'cheer')
+  drawPerson(f[1], 9, 10, T.hair_dark, T.skin, T.dark, 'front', 'happy', 'jump')
+  drawPerson(f[2], 9, 11, T.hair_dark, T.skin, T.dark, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 9, 10, T.hair_dark, T.skin, T.dark, 'front', 'happy', 'jump')
+  drawPerson(f[4], 9, 11, T.hair_dark, T.skin, T.dark, 'front', 'happy', 'cheer')
+  drawPerson(f[5], 9, 10, T.hair_dark, T.skin, T.dark, 'front', 'happy', 'jump')
+  // 学士帽飞起来
+  S(f[0], 8, 10, T.dark); S(f[0], 8, 13, T.dark)
+  S(f[1], 6, 10, T.dark); S(f[1], 6, 13, T.dark)
+  S(f[2], 7, 9, T.dark); S(f[2], 7, 14, T.dark)
+  S(f[3], 5, 10, T.dark); S(f[3], 5, 13, T.dark)
+  S(f[4], 8, 10, T.dark); S(f[4], 8, 13, T.dark)
+  S(f[5], 6, 10, T.dark); S(f[5], 6, 13, T.dark)
+  S(f[0], 8, 11, T.bright_red); S(f[2], 7, 10, T.bright_red); S(f[4], 8, 12, T.gold)
+  drawDiploma(f[0], 9, 11); drawDiploma(f[2], 9, 11); drawDiploma(f[4], 9, 11)
+  const colors = [T.bright_red, T.gold, T.cloth_blue, T.purple]
+  f.forEach((fr, i) => drawConfetti(fr, i, colors))
+  return f
 }
 
-// 画床
-function drawBed(c: PixelFrame, x: number, y: number, blanketColor: number) {
-  for (let r = 0; r < 5; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  c[y][x] = 14; c[y+1][x] = 14; c[y+2][x] = 14
-  for (let r = y; r <= y+3; r++) {
-    for (let col = x+1; col <= x+8; col++) {
-      c[r][col] = blanketColor
-    }
-  }
-  c[y][x+1] = 9; c[y][x+2] = 9; c[y+1][x+1] = 9; c[y+1][x+2] = 9
+// 入职第一天（先画人再画桌子遮挡，坐姿y=10）
+function sceneFirstJob(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    for (let r = 2; r <= 8; r++) for (let col = 10; col <= 20; col++) S(fr, r, col, T.sky)
+    for (let col = 10; col <= 20; col++) { S(fr, 2, col, T.brown); S(fr, 8, col, T.brown) }
+    drawGround(fr, T.theme)
+  })
+  // 先画人物（坐姿y=10）
+  drawPerson(f[0], 2, 10, T.hair_dark, T.skin, T.white, 'right', 'surprised', 'sit')
+  drawPerson(f[1], 2, 10, T.hair_dark, T.skin, T.white, 'right', 'happy', 'sit')
+  drawPerson(f[2], 2, 10, T.hair_dark, T.skin, T.white, 'right', 'happy', 'type')
+  drawPerson(f[3], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'type')
+  S(f[0], 10, 6, T.gold); S(f[0], 11, 6, T.gold)
+  // 再画桌子和显示器
+  f.forEach((fr, i) => {
+    drawDesk(fr, 1, 22, 14, T.brown, T.brown)
+    drawMonitor(fr, 13, 11, i < 2 ? T.dark : (i === 2 ? T.cloth_blue : T.teal), T.dark)
+  })
+  drawCup(f[2], 8, 12, T.cloth_blue); drawCup(f[3], 8, 12, T.cloth_blue)
+  S(f[3], 6, 14, T.bright_red); S(f[3], 6, 15, T.bright_red); S(f[3], 6, 16, T.bright_red)
+  return f
 }
 
-// 画桌子
-function drawTable(c: PixelFrame, x: number, y: number, color: number = 14) {
-  for (let r = 0; r < 4; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  for (let col = x; col <= x+7; col++) c[y][col] = color
-  c[y+1][x] = color; c[y+1][x+7] = color
-  c[y+2][x] = color; c[y+2][x+7] = color
-  c[y+3][x] = 15; c[y+3][x+7] = 15
-}
-
-// 画椅子
-function drawChair(c: PixelFrame, x: number, y: number, color: number = 7) {
-  for (let r = 0; r < 4; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  c[y][x] = color; c[y][x+1] = color; c[y][x+2] = color
-  c[y+1][x] = color; c[y+1][x+2] = color
-  c[y+2][x] = color; c[y+2][x+2] = color
-  c[y+3][x] = 15; c[y+3][x+2] = 15
-}
-
-// 画酒杯/杯子
-function drawCup(c: PixelFrame, x: number, y: number, color: number = 8) {
-  for (let r = 0; r < 3; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  c[y][x] = color; c[y][x+1] = color
-  c[y+1][x] = color; c[y+1][x+1] = color
-  c[y+2][x] = 9; c[y+2][x+1] = 9
-}
-
-// 画行李箱
-function drawSuitcase(c: PixelFrame, x: number, y: number, color: number = 6) {
-  for (let r = 0; r < 4; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  c[y][x+1] = 15
-  for (let col = x; col <= x+4; col++) c[y+1][col] = color
-  for (let col = x; col <= x+4; col++) c[y+2][col] = color
-  for (let col = x; col <= x+4; col++) c[y+3][col] = color
-  c[y+2][x+2] = 8; c[y+2][x+3] = 8
-}
-
-// 画火车/地铁
-function drawTrain(c: PixelFrame, x: number, y: number) {
-  for (let r = 0; r < 5; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  for (let col = x; col <= x+12; col++) c[y][col] = 15
-  for (let col = x; col <= x+12; col++) c[y+1][col] = 2
-  c[y+1][x+2] = 3; c[y+1][x+3] = 3; c[y+1][x+4] = 3
-  c[y+1][x+8] = 3; c[y+1][x+9] = 3; c[y+1][x+10] = 3
-  for (let col = x; col <= x+12; col++) c[y+2][col] = 2
-  for (let col = x; col <= x+12; col++) c[y+3][col] = 15
-  c[y+4][x+1] = 15; c[y+4][x+2] = 15; c[y+4][x+10] = 15; c[y+4][x+11] = 15
-}
-
-// 画手机
-function drawPhone(c: PixelFrame, x: number, y: number, screenColor: number = 3) {
-  for (let r = 0; r < 4; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  c[y][x] = 15; c[y][x+1] = 15; c[y][x+2] = 15
-  c[y+1][x] = 15; c[y+1][x+1] = screenColor; c[y+1][x+2] = 15
-  c[y+2][x] = 15; c[y+2][x+1] = screenColor; c[y+2][x+2] = 15
-  c[y+3][x] = 15; c[y+3][x+1] = 15; c[y+3][x+2] = 15
-}
-
-// 画钱/钞票
-function drawMoney(c: PixelFrame, x: number, y: number, color: number = 8) {
-  for (let r = 0; r < 3; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  c[y][x] = color; c[y][x+1] = color; c[y][x+2] = color
-  c[y+1][x] = color; c[y+1][x+1] = 9; c[y+1][x+2] = color
-  c[y+2][x] = color; c[y+2][x+1] = color; c[y+2][x+2] = color
-}
-
-// 画星星/闪光
-function drawSparkle(c: PixelFrame, x: number, y: number, color: number = 8) {
-  for (let r = 0; r < 3; r++) if (!c[y+r]) c[y+r] = Array(W).fill(0)
-  c[y][x+1] = color
-  c[y+1][x] = color; c[y+1][x+1] = color; c[y+1][x+2] = color
-  c[y+2][x+1] = color
-}
-
-// ============================================================
-// 场景生成 - 家庭
-// ============================================================
-
-function sceneMarriage(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 4, 6, 4, 5, 7, 'front', 'happy', 'stand')
-  drawPerson(f1, 14, 6, 9, 5, 8, 'front', 'happy', 'stand')
-  drawPerson(f2, 4, 6, 4, 5, 7, 'front', 'happy', 'cheer')
-  drawPerson(f2, 14, 6, 9, 5, 8, 'front', 'happy', 'cheer')
-  drawHeart(f1, 10, 3, 4); drawHeart(f2, 10, 2, 4)
-  f1[1][2] = 4; f1[0][8] = 3; f1[1][18] = 4; f1[2][20] = 3
-  f2[2][2] = 4; f2[1][8] = 3; f2[0][18] = 4; f2[1][20] = 3
-  return [f1, f2]
-}
-
-function sceneHouse(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawHouse(f1, 14, 5, 11, 4, 7, true)
-  drawHouse(f2, 14, 5, 11, 4, 7, true)
-  drawPerson(f1, 4, 9, 2, 5, 7, 'right', 'happy', 'cheer')
-  drawPerson(f2, 4, 9, 2, 5, 7, 'right', 'happy', 'jump')
-  f1[10][9] = 8; f1[11][9] = 8
-  f2[8][9] = 8; f2[9][9] = 8
-  f1[3][20] = 1; f1[2][20] = 1
-  f2[4][20] = 1; f2[3][20] = 1
-  return [f1, f2]
-}
-
-function sceneBaby(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 8, 6, 2, 5, 7, 'front', 'happy', 'armsup')
-  drawPerson(f2, 8, 6, 2, 5, 7, 'front', 'happy', 'cheer')
-  f1[6][11] = 9; f1[6][12] = 9; f1[7][11] = 5; f1[7][12] = 5
-  f2[6][11] = 9; f2[6][12] = 9; f2[7][11] = 5; f2[7][12] = 5
-  f1[2][4] = 8; f1[1][18] = 8; f1[3][20] = 3
-  f2[3][4] = 8; f2[2][18] = 8; f2[1][20] = 3
-  return [f1, f2]
-}
-
-function sceneCar(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  // 车身 - 用life调色板的青色系
-  for (let col = 8; col <= 19; col++) { f1[13][col] = 2; f2[13][col] = 2 }
-  for (let col = 10; col <= 17; col++) { f1[12][col] = 2; f2[12][col] = 2 }
-  for (let col = 11; col <= 16; col++) { f1[11][col] = 3; f2[11][col] = 3 }
-  // 车轮
-  f1[14][9] = 15; f1[14][10] = 15; f1[15][9] = 15; f1[15][10] = 15
-  f1[14][17] = 15; f1[14][18] = 15; f1[15][17] = 15; f1[15][18] = 15
-  f2[14][9] = 15; f2[14][10] = 15; f2[15][9] = 15; f2[15][10] = 15
-  f2[14][17] = 15; f2[14][18] = 15; f2[15][17] = 15; f2[15][18] = 15
-  f1[13][19] = 8; f2[13][19] = 8
-  drawPerson(f1, 2, 10, 2, 5, 7, 'right', 'happy', 'jump')
-  drawPerson(f2, 3, 10, 2, 5, 7, 'right', 'happy', 'stand')
-  return [f1, f2]
-}
-
-function sceneCoupleFight(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 5, 8, 4, 5, 7, 'right', 'angry', 'armsup')
-  drawPerson(f1, 14, 8, 2, 5, 8, 'left', 'angry', 'armsup')
-  drawPerson(f2, 5, 8, 4, 5, 7, 'right', 'angry', 'stand')
-  drawPerson(f2, 14, 8, 2, 5, 8, 'left', 'angry', 'stand')
-  f1[4][11] = 8; f1[5][11] = 8; f1[5][10] = 8; f1[6][11] = 8
-  f2[3][11] = 8; f2[4][11] = 8; f2[4][10] = 8; f2[5][11] = 8
-  return [f1, f2]
-}
-
-function sceneDivorce(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 2, 9, 4, 5, 7, 'left', 'sad', 'walk1')
-  drawPerson(f1, 17, 9, 2, 5, 8, 'right', 'sad', 'walk2')
-  drawPerson(f2, 1, 9, 4, 5, 7, 'left', 'sad', 'walk2')
-  drawPerson(f2, 18, 9, 2, 5, 8, 'right', 'sad', 'walk1')
-  f1[11][10] = 12; f1[11][11] = 12; f1[12][9] = 12; f1[12][12] = 12
-  f2[11][10] = 12; f2[11][11] = 12; f2[12][9] = 12; f2[12][12] = 12
-  return [f1, f2]
-}
-
-function sceneOldCouple(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  for (let r = 13; r <= 16; r++) {
-    for (let col = 2; col <= 20; col++) { f1[r][col] = 4; f2[r][col] = 4 }
-  }
-  drawPerson(f1, 4, 7, 4, 5, 14, 'front', 'happy', 'sit')
-  drawPerson(f1, 12, 7, 2, 5, 14, 'front', 'happy', 'sit')
-  drawPerson(f2, 4, 7, 4, 5, 14, 'front', 'happy', 'sit')
-  drawPerson(f2, 12, 7, 2, 5, 14, 'front', 'happy', 'sit')
-  // 电视
-  for (let r = 2; r <= 6; r++) for (let col = 8; col <= 15; col++) { f1[r][col] = 15; f2[r][col] = 15 }
-  for (let r = 3; r <= 5; r++) for (let col = 9; col <= 14; col++) { f1[r][col] = 3; f2[r][col] = 3 }
-  f1[4][11] = 8; f1[4][12] = 8; f2[4][11] = 8; f2[4][12] = 8
-  return [f1, f2]
-}
-
-function sceneMidnightBaby(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  for (let r = 12; r <= 15; r++) for (let col = 13; col <= 21; col++) { f1[r][col] = 4; f2[r][col] = 4 }
-  f1[13][16] = 5; f1[13][17] = 5; f1[14][16] = 9; f1[14][17] = 9
-  f2[13][16] = 5; f2[13][17] = 5; f2[14][16] = 9; f2[14][17] = 9
-  drawPerson(f1, 3, 9, 2, 5, 7, 'right', 'surprised', 'sit')
-  drawPerson(f2, 3, 10, 2, 5, 7, 'right', 'sad', 'sit')
-  f1[4][19] = 9; f1[3][20] = 9; f1[2][21] = 9
-  f2[5][19] = 9; f2[4][20] = 9; f2[3][21] = 9
-  f1[1][3] = 8; f1[1][4] = 8; f1[2][3] = 8
-  f2[1][3] = 8; f2[1][4] = 8; f2[2][3] = 8
-  return [f1, f2]
-}
-
-function sceneGrandchildren(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 3, 8, 4, 5, 14, 'front', 'happy', 'sit')
-  drawPerson(f2, 3, 8, 4, 5, 14, 'front', 'happy', 'stand')
-  const cx = 13, cy = 11
-  f1[cy][cx] = 5; f1[cy][cx+1] = 5; f1[cy+1][cx] = 5; f1[cy+1][cx+1] = 5
-  f1[cy+2][cx] = 2; f1[cy+2][cx+1] = 2; f1[cy+3][cx] = 7; f1[cy+3][cx+1] = 7
-  f1[cy][cx] = 15; f1[cy][cx+1] = 15
-  f2[cy-1][cx] = 5; f2[cy-1][cx+1] = 5; f2[cy][cx] = 5; f2[cy][cx+1] = 5
-  f2[cy+1][cx] = 2; f2[cy+1][cx+1] = 2; f2[cy+2][cx] = 7; f2[cy+2][cx+1] = 7
-  f2[cy-1][cx] = 15; f2[cy-1][cx+1] = 15
-  f1[2][19] = 8; f1[3][21] = 3
-  f2[3][19] = 8; f2[2][21] = 3
-  return [f1, f2]
-}
-
-function sceneAnniversary(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 4, H-1); drawGround(f2, 4, H-1)
-  for (let col = 6; col <= 17; col++) { f1[14][col] = 9; f2[14][col] = 9 }
-  for (let col = 6; col <= 17; col++) { f1[15][col] = 15; f2[15][col] = 15 }
-  drawPerson(f1, 3, 8, 4, 5, 7, 'right', 'happy', 'sit')
-  drawPerson(f1, 16, 8, 2, 5, 8, 'left', 'happy', 'sit')
-  drawPerson(f2, 3, 8, 4, 5, 7, 'right', 'happy', 'sit')
-  drawPerson(f2, 16, 8, 2, 5, 8, 'left', 'happy', 'sit')
-  f1[12][11] = 8; f1[13][11] = 9
-  f2[11][11] = 8; f2[12][11] = 8; f2[13][11] = 9
-  drawHeart(f1, 10, 3, 4); drawHeart(f2, 10, 2, 4)
-  return [f1, f2]
-}
-
-// ============================================================
-// 场景生成 - 生活
-// ============================================================
-
-function sceneWork(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  for (let col = 5; col <= 18; col++) { f1[14][col] = 15; f2[14][col] = 15 }
-  drawComputer(f1, 9, 7); drawComputer(f2, 9, 7)
-  f1[8][10] = 3; f1[8][11] = 3; f1[8][12] = 3
-  f2[8][10] = 2; f2[8][11] = 2; f2[8][12] = 2
-  drawPerson(f1, 7, 8, 2, 5, 7, 'front', 'normal', 'type')
-  drawPerson(f2, 7, 8, 2, 5, 7, 'front', 'normal', 'type')
-  f1[12][14] = 5; f2[12][13] = 5
-  return [f1, f2]
-}
-
-function sceneFriendDrink(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  for (let col = 5; col <= 18; col++) { f1[15][col] = 14; f2[15][col] = 14 }
-  drawPerson(f1, 4, 8, 9, 5, 7, 'right', 'happy', 'sit')
-  drawPerson(f1, 13, 8, 6, 5, 8, 'left', 'happy', 'sit')
-  drawPerson(f2, 4, 8, 9, 5, 7, 'right', 'happy', 'cheer')
-  drawPerson(f2, 13, 8, 6, 5, 8, 'left', 'happy', 'cheer')
-  f1[14][9] = 8; f1[14][10] = 8
-  f2[13][9] = 8; f2[13][10] = 8
-  f2[12][17] = 8; f2[12][18] = 8
-  f1[3][7] = 3; f1[2][15] = 3
-  f2[4][7] = 3; f2[3][15] = 3
-  return [f1, f2]
-}
-
-function sceneTravel(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  f1[2][2] = 9; f1[2][3] = 9; f1[2][4] = 9; f1[3][3] = 9
-  f1[1][17] = 9; f1[1][18] = 9; f1[1][19] = 9; f1[2][18] = 9
-  f2[3][2] = 9; f2[3][3] = 9; f2[3][4] = 9; f2[4][3] = 9
-  f2[2][17] = 9; f2[2][18] = 9; f2[2][19] = 9; f2[3][18] = 9
-  f1[2][20] = 8; f1[2][21] = 8; f1[3][20] = 8; f1[3][21] = 8
-  f2[2][20] = 8; f2[2][21] = 8; f2[3][20] = 8; f2[3][21] = 8
-  drawPerson(f1, 9, 7, 2, 5, 7, 'right', 'happy', 'walk1')
-  drawPerson(f2, 10, 7, 2, 5, 7, 'right', 'happy', 'walk2')
-  f1[8][8] = 6; f1[9][8] = 6; f1[10][8] = 6
-  f2[8][9] = 6; f2[9][9] = 6; f2[10][9] = 6
-  return [f1, f2]
-}
-
-function sceneSickness(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawBed(f1, 4, 10, 4); drawBed(f2, 4, 10, 4)
-  drawPerson(f1, 6, 10, 9, 5, 7, 'front', 'sad', 'lie')
-  drawPerson(f2, 6, 10, 9, 5, 7, 'front', 'sad', 'lie')
-  f1[10][8] = 3; f1[10][9] = 3
-  f2[10][8] = 3; f2[10][9] = 3
-  f1[2][20] = 12; f1[1][20] = 12; f1[2][19] = 12; f1[2][21] = 12; f1[3][20] = 12
-  f2[2][20] = 12; f2[1][20] = 12; f2[2][19] = 12; f2[2][21] = 12; f2[3][20] = 12
-  return [f1, f2]
-}
-
-function sceneGym(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 9, 7, 6, 5, 7, 'front', 'happy', 'armsup')
-  drawPerson(f2, 9, 6, 6, 5, 7, 'front', 'happy', 'armsup')
-  f1[6][8] = 15; f1[6][9] = 15; f1[6][14] = 15; f1[6][15] = 15
-  f2[5][8] = 15; f2[5][9] = 15; f2[5][14] = 15; f2[5][15] = 15
-  f1[5][13] = 3; f1[4][14] = 3
-  f2[4][13] = 3; f2[3][14] = 3
-  return [f1, f2]
-}
-
-function sceneFishing(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  for (let col = 0; col < W; col++) { f1[16][col] = 4; f2[16][col] = 4 }
-  for (let col = 0; col < W; col++) { f1[17][col] = 4; f2[17][col] = 4 }
-  for (let col = 0; col < W; col++) { f1[18][col] = 14; f2[18][col] = 14 }
-  for (let col = 0; col < W; col++) { f1[19][col] = 1; f2[19][col] = 1 }
-  drawGround(f1, 2, 15); drawGround(f2, 2, 15)
-  drawPerson(f1, 3, 8, 2, 5, 7, 'right', 'normal', 'sit')
-  drawPerson(f2, 3, 8, 2, 5, 7, 'right', 'happy', 'sit')
-  const rod = [[9,8],[9,9],[9,10],[9,11],[9,12],[10,13],[11,14],[12,15],[13,16],[14,16]]
-  for (const [r,c] of rod) { f1[r][c] = 7; f2[r][c] = 7 }
-  f2[14][17] = 7
-  f1[17][18] = 8; f2[16][18] = 8
-  f1[16][15] = 3; f1[16][16] = 3
-  f2[16][17] = 3; f2[16][18] = 3
-  return [f1, f2]
-}
-
-function sceneSquareDance(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 4, 8, 4, 5, 7, 'front', 'happy', 'cheer')
-  drawPerson(f1, 10, 8, 2, 5, 8, 'front', 'happy', 'armsup')
-  drawPerson(f1, 16, 8, 6, 5, 7, 'front', 'happy', 'jump')
-  drawPerson(f2, 4, 8, 4, 5, 7, 'front', 'happy', 'jump')
-  drawPerson(f2, 10, 8, 2, 5, 8, 'front', 'happy', 'cheer')
-  drawPerson(f2, 16, 8, 6, 5, 7, 'front', 'happy', 'armsup')
-  f1[2][2] = 8; f1[3][10] = 8; f1[1][19] = 8
-  f2[3][2] = 8; f2[2][10] = 8; f2[2][19] = 8
-  return [f1, f2]
-}
-
-function sceneLottery(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 8, H-1); drawGround(f2, 8, H-1)
-  drawPerson(f1, 9, 8, 2, 5, 7, 'front', 'surprised', 'armsup')
-  drawPerson(f2, 9, 8, 2, 5, 7, 'front', 'happy', 'jump')
-  for (let i = 0; i < 8; i++) {
-    const x = 2 + i * 3
-    f1[2 + (i%3)][x] = 8; f1[4 + (i%2)][x+1] = 8
-    f2[3 + (i%3)][x] = 8; f2[2 + (i%2)][x+1] = 8
-  }
-  f1[5][5] = 8; f1[5][18] = 8; f2[6][5] = 8; f2[6][18] = 8
-  return [f1, f2]
-}
-
-function scenePet(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 5, 8, 2, 5, 7, 'right', 'happy', 'sit')
-  drawPerson(f2, 5, 8, 2, 5, 7, 'right', 'happy', 'sit')
-  const cx = 14, cy = 13
-  f1[cy][cx] = 6; f1[cy][cx+1] = 6; f1[cy][cx+2] = 6; f1[cy+1][cx] = 6
-  f1[cy+1][cx+1] = 6; f1[cy+1][cx+2] = 6; f1[cy+2][cx+1] = 6
-  f1[cy][cx] = 15; f1[cy][cx+2] = 15
-  f1[cy+1][cx] = 3; f1[cy+1][cx+2] = 3
-  f2[cy][cx] = 6; f2[cy][cx+1] = 6; f2[cy][cx+2] = 6; f2[cy+1][cx] = 6
-  f2[cy+1][cx+1] = 6; f2[cy+1][cx+2] = 6; f2[cy+2][cx] = 6; f2[cy+2][cx+2] = 6
-  f2[cy][cx] = 15; f2[cy][cx+2] = 15
-  f2[cy+1][cx] = 3; f2[cy+1][cx+2] = 3
-  drawHeart(f1, 16, 4, 5); drawHeart(f2, 16, 3, 5)
-  return [f1, f2]
-}
-
-function sceneReading(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 9, 8, 10, 5, 7, 'front', 'normal', 'sit')
-  drawPerson(f2, 9, 8, 10, 5, 7, 'front', 'happy', 'sit')
-  f1[13][10] = 9; f1[13][11] = 9; f1[13][12] = 9; f1[13][13] = 9
-  f2[13][10] = 9; f2[13][11] = 9; f2[13][12] = 9; f2[13][13] = 9
-  f1[6][16] = 8; f1[7][16] = 15; f1[8][16] = 15
-  f2[6][16] = 8; f2[7][16] = 15; f2[8][16] = 15
-  return [f1, f2]
-}
-
-// 恋爱/约会
-function sceneDating(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 4, H-1); drawGround(f2, 4, H-1)
-  drawTable(f1, 7, 13, 4); drawTable(f2, 7, 13, 4)
-  drawCup(f1, 9, 11, 8); drawCup(f1, 12, 11, 8)
-  drawCup(f2, 9, 11, 8); drawCup(f2, 12, 11, 8)
-  drawPerson(f1, 3, 7, 4, 5, 7, 'right', 'happy', 'sit')
-  drawPerson(f1, 16, 7, 6, 5, 8, 'left', 'happy', 'sit')
-  drawPerson(f2, 3, 7, 4, 5, 7, 'right', 'happy', 'sit')
-  drawPerson(f2, 16, 7, 6, 5, 8, 'left', 'happy', 'sit')
-  drawHeart(f1, 11, 3, 4); drawHeart(f2, 11, 2, 4)
-  f1[2][2] = 8; f1[1][20] = 8
-  f2[1][2] = 8; f2[2][20] = 8
-  return [f1, f2]
-}
-
-// 表白
-function sceneConfess(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 4, 8, 4, 5, 7, 'right', 'happy', 'bow')
-  drawPerson(f1, 15, 8, 6, 5, 8, 'left', 'surprised', 'stand')
-  drawPerson(f2, 4, 8, 4, 5, 7, 'right', 'happy', 'stand')
-  drawPerson(f2, 15, 8, 6, 5, 8, 'left', 'happy', 'stand')
-  // 鲜花
-  for (let i = 0; i < 3; i++) { f1[7+i][10+i] = 12; f2[7+i][10+i] = 12 }
-  f1[9][11] = 8; f2[8][11] = 8
-  drawHeart(f1, 18, 3, 4); drawHeart(f2, 18, 2, 4)
-  drawSparkle(f1, 1, 2, 8); drawSparkle(f1, 21, 4, 8)
-  drawSparkle(f2, 2, 1, 8); drawSparkle(f2, 20, 3, 8)
-  return [f1, f2]
-}
-
-// 恋爱分手
-function sceneBreakup(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 3, 9, 15, 5, 7, 'left', 'sad', 'walk1')
-  drawPerson(f1, 16, 9, 15, 5, 8, 'right', 'sad', 'walk2')
-  drawPerson(f2, 2, 9, 15, 5, 7, 'left', 'sad', 'walk2')
-  drawPerson(f2, 17, 9, 15, 5, 8, 'right', 'sad', 'walk1')
-  // 破碎的心
-  f1[5][10] = 12; f1[5][13] = 12
-  f1[6][9] = 12; f1[6][10] = 12; f1[6][12] = 12; f1[6][13] = 12; f1[6][14] = 12
-  f1[7][10] = 12; f1[7][11] = 12; f1[7][13] = 12
-  f1[6][11] = 1; f2[6][11] = 1
-  f2[4][10] = 12; f2[4][13] = 12
-  f2[5][9] = 12; f2[5][10] = 12; f2[5][12] = 12; f2[5][13] = 12; f2[5][14] = 12
-  f2[6][10] = 12; f2[6][11] = 12; f2[6][13] = 12
-  f2[5][11] = 1
-  return [f1, f2]
-}
-
-// 搬家/迁移城市
-function sceneMove(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawSuitcase(f1, 4, 12, 6); drawSuitcase(f1, 10, 12, 4); drawSuitcase(f1, 16, 12, 2)
-  drawSuitcase(f2, 5, 12, 6); drawSuitcase(f2, 11, 12, 4); drawSuitcase(f2, 17, 12, 2)
-  drawPerson(f1, 8, 7, 2, 5, 7, 'right', 'normal', 'walk1')
-  drawPerson(f2, 9, 7, 2, 5, 7, 'right', 'happy', 'walk2')
-  drawTrain(f1, 2, 2); drawTrain(f2, 1, 2)
-  f1[1][21] = 8; f1[0][22] = 8
-  f2[0][20] = 8; f2[1][22] = 8
-  return [f1, f2]
-}
-
-// 父母探望/回家
-function sceneParents(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawHouse(f1, 13, 5, 11, 4, 7, true)
-  drawHouse(f2, 13, 5, 11, 4, 7, true)
-  // 父母（灰发）
-  drawPerson(f1, 3, 9, 4, 5, 14, 'right', 'happy', 'stand')
-  drawPerson(f1, 8, 9, 2, 5, 14, 'right', 'happy', 'stand')
-  drawPerson(f2, 3, 9, 4, 5, 14, 'right', 'happy', 'cheer')
-  drawPerson(f2, 8, 9, 2, 5, 14, 'right', 'happy', 'cheer')
-  // 自己
-  drawPerson(f1, 14, 9, 6, 5, 7, 'left', 'happy', 'armsup')
-  drawPerson(f2, 14, 9, 6, 5, 7, 'left', 'happy', 'jump')
-  drawHeart(f1, 11, 3, 4); drawHeart(f2, 11, 2, 4)
-  return [f1, f2]
-}
-
-// 父母生病
-function sceneParentSick(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawBed(f1, 6, 9, 4); drawBed(f2, 6, 9, 4)
-  drawPerson(f1, 8, 9, 9, 5, 14, 'front', 'sad', 'lie')
-  drawPerson(f2, 8, 9, 9, 5, 14, 'front', 'sad', 'lie')
-  drawPerson(f1, 2, 9, 15, 5, 7, 'right', 'sad', 'sit')
-  drawPerson(f2, 2, 9, 15, 5, 7, 'right', 'sad', 'bow')
-  f1[2][20] = 12; f1[1][20] = 12; f1[2][19] = 12; f1[2][21] = 12; f1[3][20] = 12
-  f2[2][20] = 12; f2[1][20] = 12; f2[2][19] = 12; f2[2][21] = 12; f2[3][20] = 12
-  return [f1, f2]
-}
-
-// 朋友借钱
-function sceneLendMoney(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 4, 8, 9, 5, 7, 'right', 'normal', 'stand')
-  drawPerson(f1, 15, 8, 15, 5, 8, 'left', 'sad', 'bow')
-  drawPerson(f2, 4, 8, 9, 5, 7, 'right', 'normal', 'stand')
-  drawPerson(f2, 15, 8, 15, 5, 8, 'left', 'sad', 'bow')
-  drawMoney(f1, 10, 10, 8); drawMoney(f1, 10, 11, 8)
-  drawMoney(f2, 9, 10, 8); drawMoney(f2, 9, 11, 8); drawMoney(f2, 11, 10, 8)
-  f1[3][3] = 6; f1[4][3] = 6
-  f2[2][3] = 6; f2[3][3] = 6; f2[4][3] = 6
-  return [f1, f2]
-}
-
-// 相亲
-function sceneBlindDate(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 4, H-1); drawGround(f2, 4, H-1)
-  drawTable(f1, 7, 13, 14); drawTable(f2, 7, 13, 14)
-  drawCup(f1, 9, 11, 8); drawCup(f1, 12, 11, 8)
-  drawCup(f2, 9, 11, 8); drawCup(f2, 12, 11, 8)
-  drawPerson(f1, 3, 7, 4, 5, 7, 'right', 'surprised', 'sit')
-  drawPerson(f1, 16, 7, 6, 5, 8, 'left', 'surprised', 'sit')
-  drawPerson(f2, 3, 7, 4, 5, 7, 'right', 'normal', 'sit')
-  drawPerson(f2, 16, 7, 6, 5, 8, 'left', 'normal', 'sit')
-  // 问号
-  f1[2][11] = 8; f1[3][11] = 8; f1[4][11] = 8; f1[4][12] = 8; f1[5][12] = 8
-  f2[3][11] = 8; f2[4][11] = 8; f2[5][11] = 8; f2[5][12] = 8; f2[6][12] = 8
-  return [f1, f2]
-}
-
-// 加班
-function sceneOvertime(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  for (let r = 4; r <= 12; r++) for (let col = 6; col <= 17; col++) { f1[r][col] = 1; f2[r][col] = 1 }
-  drawComputer(f1, 9, 6, 3); drawComputer(f2, 9, 6, 12)
-  drawPerson(f1, 7, 9, 15, 5, 7, 'front', 'sad', 'type')
-  drawPerson(f2, 7, 9, 15, 5, 7, 'front', 'surprised', 'type')
-  // 月亮
-  f1[1][19] = 8; f1[1][20] = 8; f1[2][19] = 8; f1[2][20] = 8
-  f2[1][19] = 8; f2[2][18] = 8; f2[2][19] = 8; f2[2][20] = 8
-  // 咖啡杯
-  drawCup(f1, 15, 9, 4); drawCup(f2, 15, 9, 4)
-  f1[14][5] = 9; f1[13][5] = 9; f2[14][5] = 9; f2[13][5] = 9
-  return [f1, f2]
-}
-
-// 玩手机/刷手机
-function scenePhone(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawChair(f1, 9, 11, 7); drawChair(f2, 9, 11, 7)
-  drawPerson(f1, 9, 5, 2, 5, 7, 'front', 'happy', 'sit')
-  drawPerson(f2, 9, 5, 2, 5, 7, 'front', 'happy', 'sit')
-  drawPhone(f1, 11, 9, 10); drawPhone(f2, 11, 9, 6)
-  // 信号/通知
-  f1[3][3] = 10; f1[2][4] = 10; f1[3][20] = 10; f1[2][19] = 10
-  f2[4][3] = 10; f2[3][4] = 10; f2[4][20] = 10; f2[3][19] = 10
-  return [f1, f2]
-}
-
-// 陪孩子玩
-function scenePlayWithKid(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 3, 7, 2, 5, 7, 'right', 'happy', 'armsup')
-  drawPerson(f2, 3, 6, 2, 5, 7, 'right', 'happy', 'jump')
-  // 小孩
-  const kx = 12, ky = 11
-  f1[ky][kx] = 5; f1[ky][kx+1] = 5; f1[ky+1][kx] = 5; f1[ky+1][kx+1] = 5
-  f1[ky][kx] = 15; f1[ky][kx+1] = 15
-  f1[ky+2][kx] = 6; f1[ky+2][kx+1] = 6; f1[ky+3][kx] = 7; f1[ky+3][kx+1] = 7
-  f2[ky-1][kx] = 5; f2[ky-1][kx+1] = 5; f2[ky][kx] = 5; f2[ky][kx+1] = 5
-  f2[ky-1][kx] = 15; f2[ky-1][kx+1] = 15
-  f2[ky+1][kx] = 6; f2[ky+1][kx+1] = 6; f2[ky+2][kx] = 7; f2[ky+2][kx+1] = 7
-  // 球
-  f1[12][17] = 8; f1[12][18] = 8; f1[13][17] = 8; f1[13][18] = 8
-  f2[11][16] = 8; f2[11][17] = 8; f2[12][16] = 8; f2[12][17] = 8
-  drawHeart(f1, 18, 3, 4); drawHeart(f2, 18, 2, 4)
-  return [f1, f2]
-}
-
-// 跳槽/换工作
-function sceneJobHop(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 4, 9, 15, 5, 7, 'right', 'normal', 'walk1')
-  drawPerson(f2, 5, 9, 2, 5, 7, 'right', 'happy', 'walk2')
-  // 旧公司（灰暗）
-  for (let r = 5; r <= 12; r++) for (let col = 0; col <= 5; col++) f1[r][col] = 15
-  for (let r = 6; r <= 11; r++) for (let col = 1; col <= 4; col++) f1[r][col] = 1
-  // 新公司（明亮）
-  for (let r = 3; r <= 12; r++) for (let col = 16; col <= 23; col++) f2[r][col] = 11
-  for (let r = 4; r <= 11; r++) for (let col = 17; col <= 22; col++) f2[r][col] = 3
-  f1[8][10] = 8; f1[9][10] = 8; f1[10][10] = 8
-  f2[8][11] = 8; f2[9][11] = 8; f2[10][11] = 8
-  drawSparkle(f1, 19, 2, 8); drawSparkle(f2, 20, 1, 8)
-  return [f1, f2]
-}
-
-// ============================================================
-// 场景生成 - 事业
-// ============================================================
-
-function scenePromotion(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 9, 7, 2, 5, 7, 'front', 'happy', 'jump')
-  drawPerson(f2, 9, 8, 2, 5, 7, 'front', 'happy', 'cheer')
-  const stars: [number,number][] = [[3,2],[6,1],[12,0],[18,1],[20,3],[2,5],[21,6]]
-  for (const [x,y] of stars) { f1[y][x] = 5; f2[y+1][x] = 5 }
-  f1[3][10] = 5; f1[3][11] = 5; f1[3][12] = 5; f1[3][13] = 5
-  f1[2][11] = 5; f1[2][12] = 5; f1[1][12] = 5
-  f2[4][10] = 5; f2[4][11] = 5; f2[4][12] = 5; f2[4][13] = 5
-  f2[3][11] = 5; f2[3][12] = 5; f2[2][12] = 5
-  return [f1, f2]
-}
-
-function sceneStartup(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 8, H-1); drawGround(f2, 8, H-1)
-  drawComputer(f1, 7, 4, 6); drawComputer(f2, 7, 4, 8)
-  drawPerson(f1, 6, 9, 6, 5, 7, 'front', 'surprised', 'type')
-  drawPerson(f2, 6, 9, 6, 5, 7, 'front', 'surprised', 'type')
-  f1[13][13] = 5; f1[13][14] = 5
-  f2[13][12] = 5; f2[13][15] = 5
-  f1[3][5] = 6; f1[2][5] = 8; f1[3][6] = 6; f1[2][6] = 6; f1[4][5] = 6; f1[4][6] = 8
-  f2[2][5] = 6; f2[1][5] = 8; f2[2][6] = 6; f2[1][6] = 8; f2[3][5] = 8; f2[3][6] = 6
-  f1[3][18] = 6; f1[2][18] = 8; f1[3][19] = 6
-  f2[2][18] = 6; f2[1][18] = 8; f2[2][19] = 6
-  return [f1, f2]
-}
-
-function sceneFired(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 9, 8, 15, 5, 7, 'front', 'sad', 'stand')
-  drawPerson(f2, 9, 8, 15, 5, 7, 'front', 'sad', 'bow')
-  for (let r = 13; r <= 15; r++) for (let col = 9; col <= 12; col++) { f1[r][col] = 8; f2[r][col] = 8 }
-  f1[2][4] = 9; f1[4][18] = 9; f1[6][20] = 9
-  f2[3][4] = 9; f2[5][18] = 9; f2[7][20] = 9
-  return [f1, f2]
-}
-
-function sceneBankruptcy(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 9, 10, 12, 5, 7, 'front', 'sad', 'bow')
-  drawPerson(f2, 9, 10, 12, 5, 7, 'front', 'sad', 'bow')
+// 第一次发工资
+function sceneFirstSalary(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => drawGround(fr, T.gold))
+  drawPerson(f[0], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'surprised', 'cheer')
+  drawPerson(f[1], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  drawPerson(f[2], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  drawPerson(f[4], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[5], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  const moneyColors = [T.gold, T.bright_red, T.white]
   for (let i = 0; i < 6; i++) {
-    const y = 2 + i*2
-    f1[y][2+i*3] = 8; f1[y+1][2+i*3] = 5
-    f2[y+1][3+i*3] = 8; f2[y+2][3+i*3] = 5
+    const fr = f[i]
+    for (let j = 0; j < 10; j++) { S(fr, 1+i*2+j%3, 2+j*2, moneyColors[j%3]) }
+    S(fr, 10, 11, T.gold); S(fr, 10, 12, T.gold); S(fr, 11, 11, T.gold); S(fr, 11, 12, T.gold); S(fr, 9, 11, T.brown); S(fr, 9, 12, T.brown)
   }
-  return [f1, f2]
+  return f
 }
 
-function sceneRetirementParty(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 9, 7, 2, 5, 14, 'front', 'happy', 'cheer')
-  drawPerson(f2, 9, 7, 2, 5, 14, 'front', 'happy', 'armsup')
-  for (let i = 0; i < 10; i++) {
-    const x = i * 2 + 1
-    f1[1+i%3][x] = [2,3,4,6,8,10,12][i%7]
-    f2[2+i%3][x] = [2,3,4,6,8,10,12][(i+2)%7]
-  }
-  f1[5][10] = 4; f1[5][11] = 4; f1[5][12] = 4; f1[4][11] = 4
-  f2[4][10] = 4; f2[4][11] = 4; f2[4][12] = 4; f2[3][11] = 4
-  return [f1, f2]
+// 买房
+function sceneBuyHouse(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr) => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawSmallHouse(fr, 2, 5, T.cloth_red, T.skin)
+    drawTree(fr, 18, 8)
+    drawFlower(fr, 17, 6, T.bright_red); drawFlower(fr, 17, 12, T.gold)
+    drawCloud(fr, 2, 14, true)
+  })
+  drawPerson(f[0], 16, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'walk1')
+  drawPerson(f[1], 14, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'walk2')
+  drawPerson(f[2], 12, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'walk1')
+  drawPerson(f[3], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'armsup')
+  drawPerson(f[4], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'jump')
+  drawPerson(f[5], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'cheer')
+  S(f[3], 7, 13, T.gold); S(f[3], 8, 13, T.gold); S(f[3], 7, 12, T.white); S(f[3], 8, 12, T.white)
+  S(f[4], 6, 13, T.gold); S(f[4], 7, 12, T.white); S(f[4], 8, 14, T.gold)
+  S(f[5], 5, 11, T.bright_red); S(f[5], 7, 15, T.gold)
+  drawBird(f[0], 1, 10, 0); drawBird(f[1], 1, 12, 1); drawBird(f[2], 1, 14, 0); drawBird(f[3], 1, 16, 1)
+  drawBird(f[4], 2, 8, 0); drawBird(f[5], 2, 18, 1)
+  return f
 }
 
-function sceneInvestment(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawGround(f1, 2, H-1); drawGround(f2, 2, H-1)
-  drawPerson(f1, 3, 8, 2, 5, 7, 'right', 'normal', 'sit')
-  drawPerson(f2, 3, 8, 2, 5, 7, 'right', 'happy', 'sit')
-  for (let r = 4; r <= 12; r++) for (let col = 10; col <= 21; col++) { f1[r][col] = 1; f2[r][col] = 1 }
-  for (let r = 4; r <= 12; r++) { f1[r][10] = 15; f1[r][21] = 15; f2[r][10] = 15; f2[r][21] = 15 }
-  for (let col = 10; col <= 21; col++) { f1[12][col] = 15; f2[12][col] = 15; f1[4][col] = 15; f2[4][col] = 15 }
-  const bars1 = [[11,11,6],[12,9,6],[13,10,8],[14,7,6],[15,8,8],[16,6,6],[17,5,8],[18,6,6],[19,4,8]]
-  const bars2 = [[11,10,6],[12,8,8],[13,9,6],[14,8,8],[15,7,6],[16,6,8],[17,5,6],[18,4,8],[19,3,6]]
-  for (const [x,y,c] of bars1) for (let r = y; r <= 11; r++) f1[r][x] = c
-  for (const [x,y,c] of bars2) for (let r = y; r <= 11; r++) f2[r][x] = c
-  return [f1, f2]
+// 买车
+function sceneBuyCar(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr) => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.gray)
+    drawCloud(fr, 3, 4, true); drawCloud(fr, 5, 15, false)
+  })
+  drawPerson(f[0], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'surprised', 'stand')
+  drawPerson(f[1], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[2], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[3], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[4], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[5], 3, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'jump')
+  drawCar(f[0], 17, 14, T.cloth_red)
+  drawCar(f[1], 14, 14, T.cloth_red)
+  drawCar(f[2], 11, 13, T.cloth_red)
+  drawCar(f[3], 8, 13, T.cloth_red)
+  drawCar(f[4], 8, 13, T.cloth_red)
+  drawCar(f[5], 8, 13, T.cloth_red)
+  S(f[4], 5, 10, T.gold); S(f[5], 4, 9, T.bright_red); S(f[5], 6, 16, T.gold)
+  return f
 }
 
+// 结婚
+function sceneWedding(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    drawGround(fr, T.skin)
+    for (let col = 3; col <= 20; col++) S(fr, 3, col, T.bright_red)
+    for (let r = 0; r <= 3; r++) { S(fr, r, 3, T.bright_red); S(fr, r, 20, T.bright_red) }
+  })
+  const acts: [string, string][] = [['cheer','cheer'],['armsup','armsup'],['cheer','cheer'],['jump','jump'],['cheer','cheer'],['jump','jump']]
+  const ys: [number, number][] = [[11,11],[11,11],[11,11],[10,10],[11,11],[10,10]]
+  const heartPos: [number, number][] = [[5,9],[4,9],[5,9],[6,9],[5,9],[4,9]]
+  f.forEach((fr, i) => {
+    drawHeart(fr, heartPos[i][0], heartPos[i][1], i%2 ? T.gold : T.bright_red)
+    drawPerson(fr, 6, ys[i][0], T.hair_light, T.skin, T.cloth_blue, 'right', 'happy', acts[i][0] as any)
+    drawPerson(fr, 13, ys[i][1], T.hair_dark, T.skin, T.white, 'left', 'happy', acts[i][1] as any)
+  })
+  const confettiColors = [T.bright_red, T.gold, T.cloth_blue, T.purple, T.teal]
+  f.forEach((fr, i) => drawConfetti(fr, i, confettiColors))
+  return f
+}
+
+// 生子
+function sceneBaby(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawSmallHouse(fr, 8, 4, T.cloth_red, T.skin)
+  })
+  drawPerson(f[0], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[0], 18, 11, T.hair_dark, T.skin, T.purple, 'left', 'happy', 'cheer')
+  drawPerson(f[1], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[1], 18, 11, T.hair_dark, T.skin, T.purple, 'left', 'happy', 'armsup')
+  drawPerson(f[2], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'armsup')
+  drawPerson(f[2], 18, 11, T.hair_dark, T.skin, T.purple, 'left', 'happy', 'cheer')
+  drawPerson(f[3], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[3], 18, 11, T.hair_dark, T.skin, T.purple, 'left', 'happy', 'jump')
+  drawPerson(f[4], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'jump')
+  drawPerson(f[4], 18, 10, T.hair_dark, T.skin, T.purple, 'left', 'happy', 'jump')
+  drawPerson(f[5], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[5], 18, 11, T.hair_dark, T.skin, T.purple, 'left', 'happy', 'cheer')
+  const babyX = 10, babyY = 14
+  f.forEach((fr, i) => {
+    const by = i%2 === 0 ? 0 : -1
+    S(fr, babyY+by, babyX, T.hair_light); S(fr, babyY+by, babyX+1, T.hair_light)
+    S(fr, babyY+1+by, babyX, T.skin); S(fr, babyY+1+by, babyX+1, T.skin)
+    S(fr, babyY+1+by, babyX, T.dark); S(fr, babyY+1+by, babyX+1, T.dark)
+    S(fr, babyY+2+by, babyX-1, T.skin); S(fr, babyY+2+by, babyX, T.skin); S(fr, babyY+2+by, babyX+1, T.skin); S(fr, babyY+2+by, babyX+2, T.skin)
+    for (let col = babyX-2; col <= babyX+3; col++) S(fr, babyY+3+by, col, T.white)
+  })
+  drawHeart(f[0], 11, 12, T.bright_red, 0); drawHeart(f[2], 11, 12, T.gold, 0)
+  drawHeart(f[4], 10, 11, T.bright_red); drawHeart(f[5], 12, 13, T.gold, 0)
+  S(f[4], 4, 5, T.bright_red); S(f[4], 4, 18, T.gold); S(f[5], 3, 7, T.gold); S(f[5], 5, 16, T.bright_red)
+  return f
+}
+
+// 升职加薪
+function scenePromotion(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => drawGround(fr, T.bright_red))
+  drawPerson(f[0], 9, 11, T.gold, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[1], 9, 10, T.gold, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  drawPerson(f[2], 9, 11, T.gold, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 9, 10, T.gold, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  drawPerson(f[4], 9, 11, T.gold, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[5], 9, 10, T.gold, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  const colors = [T.bright_red, T.gold, T.cloth_blue, T.purple, T.teal, T.skin]
+  f.forEach((fr, i) => drawConfetti(fr, i, colors))
+  return f
+}
+
+// 退休（灰发T.gray=14）
+function sceneRetire(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < 4; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.bright_red)
+    S(fr, 2, 6, T.gold); S(fr, 2, 7, T.gold); S(fr, 2, 9, T.gold); S(fr, 2, 10, T.gold)
+    S(fr, 2, 12, T.gold); S(fr, 2, 13, T.gold); S(fr, 2, 15, T.gold); S(fr, 2, 16, T.gold)
+    drawGround(fr, T.theme)
+    drawDesk(fr, 5, 18, 14, T.brown, T.brown)
+  })
+  drawPerson(f[0], 9, 11, T.gray, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[1], 9, 10, T.gray, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  drawPerson(f[2], 9, 11, T.gray, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 9, 10, T.gray, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  drawPerson(f[4], 9, 11, T.gray, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[5], 9, 10, T.gray, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  f.forEach(fr => { drawCup(fr, 10, 12, T.cloth_blue); drawCup(fr, 13, 12, T.cloth_blue) })
+  const colors = [T.bright_red, T.gold, T.cloth_blue, T.purple, T.teal]
+  f.forEach((fr, i) => drawConfetti(fr, i, colors))
+  return f
+}
+
+// 暮年/夕阳（灰发）
+function sceneSunset(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < 4; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.bright_red)
+    for (let r = 4; r <= 9; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.gold)
+    for (let r = 4; r <= 8; r++) for (let col = 9; col <= 14; col++) S(fr, r, col, T.bright_red)
+    S(fr, 5, 10, T.gold); S(fr, 5, 13, T.gold); S(fr, 6, 11, T.skin); S(fr, 6, 12, T.skin)
+    drawGround(fr, T.gold)
+  })
+  drawPerson(f[0], 6, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[1], 6, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[2], 6, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[3], 6, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[0], 13, 11, T.gray, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  drawPerson(f[1], 13, 11, T.gray, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  drawPerson(f[2], 13, 11, T.gray, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  drawPerson(f[3], 13, 11, T.gray, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  drawHeart(f[0], 11, 9, T.bright_red, 1); drawHeart(f[2], 11, 9, T.gold, 1)
+  return f
+}
+
+// ========== 路径专属关键事件 ==========
+
+// 创业起步（车库创业，深色背景金头发）
+function sceneStartup(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.gray)
+    drawDesk(fr, 1, 11, 14, T.brown, T.brown)
+    for (let r = 2; r <= 6; r++) for (let col = 14; col <= 22; col++) S(fr, r, col, T.white)
+  })
+  // 先画人
+  drawPerson(f[0], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'surprised', 'type')
+  drawPerson(f[1], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'type')
+  drawPerson(f[2], 2, 11, T.gold, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[3], 2, 11, T.gold, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  S(f[2], 4, 18, T.bright_red); S(f[2], 3, 19, T.bright_red); S(f[2], 3, 20, T.bright_red); S(f[2], 2, 21, T.bright_red)
+  S(f[3], 4, 18, T.bright_red); S(f[3], 3, 19, T.bright_red); S(f[3], 3, 20, T.bright_red); S(f[3], 2, 21, T.bright_red)
+  S(f[3], 4, 17, T.gold); S(f[3], 5, 17, T.gold)
+  // 再画桌子和显示器
+  f.forEach((fr, i) => {
+    drawMonitor(fr, 5, 11, i < 2 ? T.dark : (i === 2 ? T.cloth_blue : T.teal), T.gray)
+  })
+  return f
+}
+
+// 创业上市敲钟
+function sceneIPO(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < 5; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.bright_red)
+    drawGround(fr, T.gold)
+  })
+  f.forEach((fr) => {
+    const cy = 7
+    S(fr, cy, 11, T.gold); S(fr, cy, 12, T.gold); S(fr, cy, 13, T.gold)
+    S(fr, cy+1, 10, T.gold); S(fr, cy+1, 11, T.gold); S(fr, cy+1, 12, T.gold); S(fr, cy+1, 13, T.gold); S(fr, cy+1, 14, T.gold)
+    S(fr, cy+2, 11, T.gold); S(fr, cy+2, 12, T.gold); S(fr, cy+2, 13, T.gold)
+    S(fr, cy+3, 12, T.brown)
+  })
+  drawPerson(f[0], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[0], 17, 11, T.hair_light, T.skin, T.white, 'left', 'happy', 'cheer')
+  drawPerson(f[1], 3, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'jump')
+  drawPerson(f[1], 17, 10, T.hair_light, T.skin, T.white, 'left', 'happy', 'jump')
+  drawPerson(f[2], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[2], 17, 11, T.hair_light, T.skin, T.white, 'left', 'happy', 'cheer')
+  drawPerson(f[3], 3, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'jump')
+  drawPerson(f[3], 17, 10, T.hair_light, T.skin, T.white, 'left', 'happy', 'jump')
+  drawPerson(f[4], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[4], 17, 11, T.hair_light, T.skin, T.white, 'left', 'happy', 'cheer')
+  drawPerson(f[5], 3, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'jump')
+  drawPerson(f[5], 17, 10, T.hair_light, T.skin, T.white, 'left', 'happy', 'jump')
+  const colors = [T.bright_red, T.gold, T.cloth_blue, T.purple, T.teal, T.skin]
+  f.forEach((fr, i) => drawConfetti(fr, i, colors))
+  return f
+}
+
+// AI数字永生（深色背景）
+function sceneDigitalImmortality(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    for (let r = 0; r < H; r++) { S(fr, r, 0, T.teal); S(fr, r, 23, T.teal) }
+    for (let col = 0; col < W; col++) { S(fr, 0, col, T.teal); S(fr, 19, col, T.teal) }
+  })
+  drawPerson(f[0], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'surprised', 'stand')
+  drawPerson(f[1], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'stand')
+  drawPerson(f[2], 9, 11, T.teal, T.skin, T.teal, 'front', 'happy', 'stand')
+  drawPerson(f[3], 9, 11, T.gold, T.skin, T.gold, 'front', 'happy', 'cheer')
+  const pts: [number[], number[], number[], number[]] = [[5,8,16],[7,6,18],[4,10,14],[6,4,20]]
+  pts.forEach((p, i) => {
+    const fr = f[i]
+    p.forEach(pp => { S(fr, 3+i, pp, T.teal); S(fr, 7+i, pp, T.gold); S(fr, 11-i, pp, T.cloth_blue) })
+  })
+  S(f[0], 2, 3, T.bright_red); S(f[0], 2, 20, T.gold)
+  S(f[1], 4, 5, T.gold); S(f[1], 4, 18, T.bright_red)
+  S(f[2], 2, 7, T.bright_red); S(f[2], 2, 16, T.gold)
+  S(f[3], 5, 3, T.gold); S(f[3], 5, 20, T.bright_red)
+  return f
+}
+
+// 财务自由FIRE（沙滩度假）
+function sceneFIRE(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr) => {
+    for (let r = 0; r < 14; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    for (let r = 14; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.gold)
+    drawGround(fr, T.theme)
+    S(fr, 14, 2, T.brown); S(fr, 15, 2, T.brown); S(fr, 16, 2, T.brown)
+    S(fr, 12, 1, T.teal); S(fr, 12, 2, T.teal); S(fr, 12, 3, T.teal); S(fr, 13, 1, T.teal); S(fr, 13, 3, T.teal)
+  })
+  drawPerson(f[0], 8, 10, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'lie')
+  drawPerson(f[1], 8, 10, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'lie')
+  drawPerson(f[2], 8, 10, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'lie')
+  drawPerson(f[3], 8, 10, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'lie')
+  drawPerson(f[4], 8, 10, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'lie')
+  drawPerson(f[5], 8, 10, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'lie')
+  f.forEach((fr, i) => {
+    const sx = 18 + (i%2 ? 1 : 0)
+    S(fr, 2, sx, T.gold); S(fr, 2, sx+1, T.gold); S(fr, 3, sx, T.gold); S(fr, 3, sx+1, T.gold)
+    S(fr, 1, sx, T.gold); S(fr, 4, sx+1, T.gold)
+  })
+  f.forEach((fr, i) => { if (i%2 === 0) drawCup(fr, 15, 12, T.cloth_blue) })
+  return f
+}
+
+// ========== 负面事件 ==========
+
+// 离婚（深色背景，背向走开）
+function sceneDivorce(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.gray)
+  })
+  drawPerson(f[0], 3, 11, T.gold, T.skin, T.cloth_blue, 'right', 'sad', 'walk1')
+  drawPerson(f[0], 18, 11, T.gold, T.skin, T.cloth_red, 'left', 'sad', 'walk1')
+  drawPerson(f[1], 2, 11, T.gold, T.skin, T.cloth_blue, 'right', 'sad', 'walk2')
+  drawPerson(f[1], 19, 11, T.gold, T.skin, T.cloth_red, 'left', 'sad', 'walk2')
+  drawPerson(f[2], 1, 11, T.gold, T.skin, T.cloth_blue, 'back', 'sad', 'walk1')
+  drawPerson(f[2], 20, 11, T.gold, T.skin, T.cloth_red, 'back', 'sad', 'walk1')
+  drawPerson(f[3], 0, 11, T.gold, T.skin, T.cloth_blue, 'back', 'sad', 'walk2')
+  drawPerson(f[3], 21, 11, T.gold, T.skin, T.cloth_red, 'back', 'sad', 'walk2')
+  S(f[2], 5, 11, T.bright_red); S(f[2], 5, 13, T.bright_red)
+  return f
+}
+
+// 分手（灰色背景，心碎）
+function sceneBreakup(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.gray)
+    drawGround(fr, T.gray)
+    S(fr, 2, 8, T.white); S(fr, 2, 9, T.white); S(fr, 3, 7, T.white); S(fr, 3, 10, T.white)
+  })
+  drawPerson(f[0], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'sad', 'stand')
+  drawPerson(f[0], 16, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'sad', 'stand')
+  drawPerson(f[1], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'sad', 'stand')
+  drawPerson(f[1], 16, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'sad', 'stand')
+  drawPerson(f[2], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'sad', 'bow')
+  drawPerson(f[2], 16, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'sad', 'bow')
+  drawPerson(f[3], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'back', 'sad', 'stand')
+  drawPerson(f[3], 16, 11, T.hair_light, T.skin, T.cloth_red, 'back', 'sad', 'stand')
+  return f
+}
+
+// 父母生病（病床边）
+function sceneParentSick(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    for (let col = 3; col <= 21; col++) { S(fr, 12, col, T.white); S(fr, 13, col, T.white) }
+    S(fr, 14, 3, T.dark); S(fr, 14, 21, T.dark)
+  })
+  f.forEach(fr => {
+    S(fr, 10, 5, T.brown); S(fr, 10, 6, T.brown); S(fr, 10, 7, T.brown)
+    S(fr, 11, 5, T.brown); S(fr, 11, 8, T.brown)
+    S(fr, 10, 8, T.skin); S(fr, 10, 9, T.skin); S(fr, 11, 6, T.skin); S(fr, 11, 7, T.skin)
+    S(fr, 10, 8, T.dark)
+    for (let col = 10; col <= 18; col++) { S(fr, 10, col, T.white); S(fr, 11, col, T.white) }
+    S(fr, 9, 8, T.gray); S(fr, 9, 9, T.gray); S(fr, 9, 10, T.gray)
+  })
+  drawPerson(f[0], 19, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'sad', 'stand')
+  drawPerson(f[1], 19, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'sad', 'stand')
+  drawPerson(f[2], 19, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'sad', 'bow')
+  drawPerson(f[3], 19, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'sad', 'bow')
+  return f
+}
+
+// 破产（深色背景，飘落的纸）
+function sceneBankruptcy(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.dark)
+  })
+  drawPerson(f[0], 9, 11, T.gold, T.skin, T.gray, 'front', 'sad', 'stand')
+  drawPerson(f[1], 9, 11, T.gold, T.skin, T.gray, 'front', 'sad', 'bow')
+  drawPerson(f[2], 9, 11, T.gold, T.skin, T.gray, 'front', 'sad', 'stand')
+  drawPerson(f[3], 9, 11, T.gold, T.skin, T.gray, 'front', 'sad', 'bow')
+  f.forEach((fr, i) => {
+    const off = i%2
+    S(fr, 15, 5+off, T.white); S(fr, 15, 6+off, T.white); S(fr, 16, 5+off, T.white)
+    S(fr, 16, 15-off, T.white); S(fr, 17, 14-off, T.white); S(fr, 17, 16-off, T.white)
+    S(fr, 4, 3+off, T.bright_red); S(fr, 5, 18+off, T.bright_red)
+  })
+  return f
+}
+
+// 搬家（搬箱子走向火车）
+function sceneMove(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr, i) => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, i%2 ? T.sky : T.white)
+    drawGround(fr, T.gray)
+  })
+  // 火车在右边
+  f.forEach((fr) => {
+    for (let col = 12; col <= 23; col++) S(fr, 10, col, T.dark)
+    for (let col = 12; col <= 23; col++) { S(fr, 11, col, T.cloth_blue); S(fr, 12, col, T.cloth_blue) }
+    S(fr, 11, 14, T.sky); S(fr, 11, 15, T.sky); S(fr, 11, 16, T.sky)
+    S(fr, 11, 19, T.sky); S(fr, 11, 20, T.sky); S(fr, 11, 21, T.sky)
+    for (let col = 12; col <= 23; col++) S(fr, 13, col, T.dark)
+    S(fr, 14, 13, T.dark); S(fr, 14, 14, T.dark); S(fr, 14, 21, T.dark); S(fr, 14, 22, T.dark)
+    S(fr, 9, 22, T.gold)
+  })
+  drawPerson(f[0], 3, 11, T.hair_dark, T.skin, T.white, 'right', 'normal', 'walk1')
+  drawPerson(f[1], 5, 11, T.hair_dark, T.skin, T.white, 'right', 'happy', 'walk2')
+  drawPerson(f[2], 7, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  drawPerson(f[3], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  // 抱箱子
+  f.forEach((fr, i) => {
+    const bx = 1+i*2
+    for (let r = 8; r <= 11; r++) for (let col = bx; col <= bx+3; col++) S(fr, r, col, T.brown)
+    S(fr, 9, bx+1, T.gold); S(fr, 10, bx+2, T.gold)
+  })
+  S(f[2], 10, 5, T.bright_red); S(f[2], 9, 6, T.bright_red); S(f[2], 10, 7, T.bright_red)
+  S(f[3], 10, 5, T.gold); S(f[3], 9, 6, T.gold); S(f[3], 10, 7, T.gold)
+  return f
+}
+
+// 中彩票
+function sceneLottery(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => drawGround(fr, T.gold))
+  drawPerson(f[0], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'surprised', 'cheer')
+  drawPerson(f[1], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  drawPerson(f[2], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  const mc = [T.gold, T.bright_red, T.white]
+  for (let i = 0; i < 4; i++) { for (let j = 0; j < 8; j++) S(f[i], 1+i+j%3, 2+j*3, mc[j%3]) }
+  S(f[3], 5, 5, T.bright_red); S(f[3], 6, 6, T.gold)
+  return f
+}
+
+// 借钱不还
+function sceneLendMoney(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr) => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    for (let col = 0; col < W; col++) { S(fr, 18, col, T.gray); S(fr, 19, col, T.dark) }
+  })
+  drawPerson(f[0], 4, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'sad', 'bow')
+  drawPerson(f[0], 15, 11, T.hair_dark, T.skin, T.cloth_red, 'left', 'sad', 'stand')
+  S(f[0], 9, 9, T.gold); S(f[0], 9, 10, T.gold); S(f[0], 10, 9, T.gold); S(f[0], 10, 10, T.gold)
+  S(f[0], 9, 9, T.dark)
+  S(f[1], 6, 13, T.dark); S(f[1], 7, 13, T.dark); S(f[1], 8, 13, T.dark); S(f[1], 8, 14, T.dark); S(f[1], 7, 15, T.dark)
+  drawPerson(f[2], 4, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[2], 15, 11, T.hair_dark, T.skin, T.cloth_red, 'left', 'sad', 'stand')
+  S(f[2], 9, 7, T.gold); S(f[2], 9, 8, T.gold)
+  drawPerson(f[3], 15, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'sad', 'stand')
+  S(f[3], 13, 13, T.skin); S(f[3], 14, 13, T.skin); S(f[3], 13, 14, T.skin); S(f[3], 14, 14, T.skin)
+  S(f[3], 13, 13, T.dark)
+  return f
+}
+
+// 倦怠期（趴在桌上，乌云雨滴）
 function sceneBurnout(): PixelFrame[] {
-  const f1 = emptyCanvas(), f2 = emptyCanvas()
-  drawPerson(f1, 7, 8, 15, 5, 7, 'front', 'sad', 'type')
-  drawPerson(f2, 7, 8, 15, 5, 7, 'front', 'surprised', 'type')
-  drawComputer(f1, 10, 5, 12); drawComputer(f2, 10, 5, 8)
-  f1[9][8] = 15; f1[9][9] = 15
-  f2[9][8] = 15; f2[9][9] = 15
-  f1[14][6] = 9; f1[13][6] = 9
-  f2[14][6] = 9; f2[13][6] = 9
-  f1[1][20] = 9; f1[1][21] = 9; f1[2][20] = 9
-  f2[1][20] = 9; f2[1][21] = 9; f2[2][20] = 9
-  return [f1, f2]
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr) => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.gray)
+    for (let col = 0; col < W; col++) { S(fr, 18, col, T.dark); S(fr, 19, col, T.dark) }
+  })
+  // 先画人（坐姿y=10）
+  drawPerson(f[0], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawPerson(f[1], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawPerson(f[2], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  drawPerson(f[3], 9, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'sad', 'sit')
+  // 再画桌子
+  f.forEach((fr) => {
+    for (let col = 5; col < 19; col++) S(fr, 14, col, T.brown)
+    for (let col = 5; col < 19; col++) S(fr, 15, col, T.brown)
+    S(fr, 15, 6, T.dark); S(fr, 15, 18, T.dark)
+    for (let r = 16; r < 18; r++) { S(fr, r, 6, T.brown); S(fr, r, 18, T.brown) }
+  })
+  // 散落文件/空咖啡杯
+  S(f[0], 13, 7, T.white); S(f[0], 13, 8, T.white); S(f[0], 12, 16, T.white)
+  S(f[0], 13, 16, T.brown); S(f[0], 13, 17, T.brown)
+  // 乌云
+  S(f[0], 2, 8, T.dark); S(f[0], 2, 9, T.dark); S(f[0], 2, 10, T.dark); S(f[0], 2, 11, T.dark); S(f[0], 3, 9, T.dark); S(f[0], 3, 10, T.dark)
+  // 雨滴
+  S(f[1], 4, 8, T.sky); S(f[1], 5, 9, T.sky); S(f[1], 4, 10, T.sky); S(f[1], 5, 11, T.sky)
+  S(f[2], 5, 8, T.sky); S(f[2], 4, 9, T.sky); S(f[2], 5, 10, T.sky); S(f[2], 4, 11, T.sky)
+  // Zzz
+  S(f[3], 4, 12, T.dark); S(f[3], 4, 13, T.dark); S(f[3], 3, 14, T.dark); S(f[3], 3, 15, T.dark)
+  return f
 }
 
-// ============================================================
-// 导出所有场景
-// ============================================================
+// ========== 日常场景 ==========
 
+// 熬夜带娃（深夜喂奶，深色背景金头发）
+function sceneMidnightBaby(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.gray, 16)
+    for (let col = 10; col <= 20; col++) S(fr, 13, col, T.white)
+    drawPerson(fr, 1, 9, T.gold, T.skin, T.cloth_blue, 'right', 'surprised', 'sit')
+  })
+  S(f[0], 13, 13, T.skin); S(f[0], 13, 14, T.skin); S(f[0], 13, 13, T.dark); S(f[0], 13, 14, T.dark)
+  S(f[1], 13, 13, T.skin); S(f[1], 13, 14, T.skin); S(f[1], 13, 13, T.dark); S(f[1], 13, 14, T.dark)
+  S(f[1], 12, 12, T.skin); S(f[1], 12, 15, T.skin)
+  S(f[0], 4, 20, T.white); S(f[1], 3, 18, T.bright_red); S(f[1], 4, 19, T.bright_red)
+  return f
+}
+
+// 日常工作（先画人再画桌子，坐姿y=10）
+function sceneWork(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+  })
+  // 先画人（坐姿y=10）
+  drawPerson(f[0], 2, 10, T.hair_dark, T.skin, T.white, 'right', 'normal', 'type')
+  drawPerson(f[1], 2, 10, T.hair_dark, T.skin, T.white, 'right', 'happy', 'type')
+  drawPerson(f[2], 2, 10, T.hair_dark, T.skin, T.white, 'right', 'normal', 'type')
+  drawPerson(f[3], 2, 10, T.hair_dark, T.skin, T.white, 'right', 'happy', 'type')
+  // 再画桌子和显示器
+  f.forEach((fr, i) => {
+    drawDesk(fr, 1, 22, 14, T.brown, T.brown)
+    drawMonitor(fr, 13, 11, [T.cloth_blue, T.teal, T.gold, T.cloth_blue][i], T.dark)
+  })
+  S(f[1], 8, 10, T.white); S(f[3], 8, 11, T.white)
+  f.forEach(fr => drawCup(fr, 8, 12, T.cloth_blue))
+  return f
+}
+
+// 加班（先画人再画桌子，坐姿y=10，深色背景金头发）
+function sceneOvertime(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.gray)
+  })
+  // 先画人
+  drawPerson(f[0], 2, 10, T.gold, T.skin, T.white, 'right', 'sad', 'type')
+  drawPerson(f[1], 2, 10, T.gold, T.skin, T.white, 'right', 'surprised', 'type')
+  drawPerson(f[2], 2, 10, T.gold, T.skin, T.white, 'right', 'sad', 'type')
+  drawPerson(f[3], 2, 10, T.gold, T.skin, T.white, 'right', 'surprised', 'type')
+  // 再画桌子和显示器
+  f.forEach((fr, i) => {
+    drawDesk(fr, 1, 22, 14, T.gray, T.gray)
+    drawMonitor(fr, 13, 11, [T.bright_red, T.gold, T.cloth_blue, T.gold][i], T.gray)
+  })
+  f.forEach(fr => drawCup(fr, 8, 12, T.cloth_blue))
+  // 星星
+  S(f[0], 2, 20, T.gold); S(f[0], 3, 20, T.gold); S(f[0], 2, 21, T.gold); S(f[0], 3, 21, T.gold)
+  S(f[0], 1, 12, T.white); S(f[0], 4, 15, T.white); S(f[0], 6, 5, T.white)
+  S(f[1], 2, 19, T.gold); S(f[1], 3, 19, T.gold); S(f[1], 2, 20, T.gold); S(f[1], 3, 20, T.gold)
+  S(f[1], 1, 8, T.white); S(f[1], 4, 6, T.white); S(f[1], 6, 16, T.white)
+  S(f[2], 2, 18, T.gold); S(f[2], 3, 18, T.gold); S(f[2], 2, 19, T.gold); S(f[2], 3, 19, T.gold)
+  S(f[2], 1, 10, T.white); S(f[2], 4, 14, T.white); S(f[2], 6, 4, T.white)
+  S(f[3], 2, 16, T.gold); S(f[3], 3, 16, T.gold); S(f[3], 2, 17, T.gold); S(f[3], 3, 17, T.gold)
+  S(f[3], 1, 4, T.white); S(f[3], 4, 20, T.white); S(f[3], 6, 12, T.white)
+  return f
+}
+
+// 做饭
+function sceneCook(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+  })
+  drawPerson(f[0], 3, 11, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'stand')
+  drawPerson(f[1], 3, 11, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'stand')
+  drawPerson(f[2], 3, 11, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'armsup')
+  drawPerson(f[3], 3, 11, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'cheer')
+  // 灶台
+  f.forEach(fr => {
+    for (let col = 8; col <= 20; col++) { S(fr, 13, col, T.brown); S(fr, 14, col, T.brown) }
+    S(fr, 12, 12, T.gray); S(fr, 12, 13, T.gray); S(fr, 12, 16, T.gray); S(fr, 12, 17, T.gray)
+    S(fr, 15, 9, T.dark); S(fr, 15, 19, T.dark)
+  })
+  // 锅
+  S(f[0], 11, 12, T.dark); S(f[0], 11, 13, T.dark)
+  S(f[1], 10, 11, T.bright_red); S(f[1], 10, 14, T.bright_red); S(f[1], 9, 12, T.bright_red); S(f[1], 9, 13, T.bright_red)
+  S(f[2], 11, 16, T.dark); S(f[2], 11, 17, T.dark)
+  S(f[3], 8, 11, T.gold); S(f[3], 9, 13, T.bright_red); S(f[3], 10, 15, T.gold)
+  return f
+}
+
+// 运动锻炼
+function sceneExercise(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+    S(fr, 4, 5, T.dark); S(fr, 4, 18, T.dark); S(fr, 5, 5, T.dark); S(fr, 5, 18, T.dark)
+    S(fr, 6, 5, T.dark); S(fr, 6, 18, T.dark); S(fr, 7, 5, T.dark); S(fr, 7, 18, T.dark)
+    for (let col = 5; col <= 18; col++) S(fr, 4, col, T.dark)
+  })
+  drawPerson(f[0], 9, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'jump')
+  drawPerson(f[1], 9, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  drawPerson(f[2], 9, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'jump')
+  drawPerson(f[3], 9, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  S(f[1], 8, 7, T.sky); S(f[1], 9, 6, T.sky); S(f[3], 8, 16, T.sky); S(f[3], 9, 17, T.sky)
+  return f
+}
+
+// 旅行
+function sceneTravel(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr) => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawTree(fr, 1, 8)
+  })
+  const sunX = 19
+  f.forEach((fr, i) => {
+    S(fr, 2, sunX, T.gold); S(fr, 2, sunX+1, T.gold); S(fr, 3, sunX, T.gold); S(fr, 3, sunX+1, T.gold)
+    if (i%2 === 0) { S(fr, 1, sunX, T.gold); S(fr, 4, sunX+1, T.gold); S(fr, 2, sunX-1, T.gold); S(fr, 3, sunX+2, T.gold) }
+  })
+  drawCloud(f[0], 4, 4, false); drawCloud(f[0], 6, 12, true)
+  drawCloud(f[1], 4, 8, false); drawCloud(f[1], 6, 16, true)
+  drawCloud(f[2], 4, 12, false); drawCloud(f[2], 6, 20, true)
+  drawCloud(f[3], 4, 16, false)
+  drawPerson(f[0], 8, 11, T.hair_light, T.skin, T.white, 'right', 'happy', 'walk1')
+  drawPerson(f[1], 10, 11, T.hair_light, T.skin, T.white, 'right', 'happy', 'walk2')
+  drawPerson(f[2], 12, 11, T.hair_light, T.skin, T.white, 'right', 'happy', 'walk1')
+  drawPerson(f[3], 14, 11, T.hair_light, T.skin, T.white, 'right', 'happy', 'walk2')
+  const so = [6, 7, 8, 9]
+  f.forEach((fr, i) => {
+    const sx = so[i]
+    S(fr, 9, sx, T.cloth_red); S(fr, 10, sx, T.cloth_red); S(fr, 11, sx, T.cloth_red); S(fr, 12, sx, T.dark)
+    S(fr, 12, sx-1, T.dark); S(fr, 12, sx+1, T.dark)
+  })
+  drawBird(f[0], 3, 10, 0); drawBird(f[1], 3, 13, 1); drawBird(f[2], 3, 16, 0); drawBird(f[3], 3, 19, 1)
+  return f
+}
+
+// 钓鱼
+function sceneFishing(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr, i) => {
+    for (let col = 0; col < W; col++) {
+      S(fr, 16, col, T.cloth_blue); S(fr, 17, col, T.cloth_blue); S(fr, 18, col, T.sky); S(fr, 19, col, T.sky)
+      if (i%2 === 0) { S(fr, 16, col+3, T.sky) } else { S(fr, 16, col+7, T.sky) }
+    }
+    drawGround(fr, T.teal, 15)
+  })
+  drawPerson(f[0], 3, 10, T.hair_dark, T.skin, T.teal, 'right', 'happy', 'sit')
+  drawPerson(f[1], 3, 10, T.hair_dark, T.skin, T.teal, 'right', 'happy', 'sit')
+  drawPerson(f[2], 3, 10, T.hair_dark, T.skin, T.teal, 'right', 'surprised', 'sit')
+  drawPerson(f[3], 3, 10, T.hair_dark, T.skin, T.teal, 'right', 'happy', 'sit')
+  for (let r = 7; r <= 14; r++) S(f[0], r, 7, T.dark)
+  S(f[1], 7, 7, T.dark); S(f[1], 8, 7, T.dark); S(f[1], 9, 8, T.dark); S(f[1], 10, 8, T.dark)
+  S(f[1], 11, 8, T.dark); S(f[1], 12, 8, T.dark); S(f[1], 13, 8, T.dark); S(f[1], 14, 8, T.dark)
+  S(f[2], 7, 7, T.dark); S(f[2], 8, 7, T.dark); S(f[2], 9, 8, T.dark); S(f[2], 10, 9, T.dark)
+  S(f[2], 11, 9, T.dark); S(f[2], 12, 9, T.dark); S(f[2], 13, 9, T.dark); S(f[2], 14, 9, T.dark)
+  S(f[3], 7, 7, T.dark); S(f[3], 8, 7, T.dark); S(f[3], 9, 8, T.dark); S(f[3], 10, 8, T.dark)
+  S(f[3], 11, 8, T.dark); S(f[3], 12, 8, T.dark); S(f[3], 13, 8, T.dark); S(f[3], 14, 8, T.dark)
+  S(f[0], 15, 7, T.bright_red); S(f[0], 15, 8, T.bright_red); S(f[0], 16, 7, T.bright_red)
+  S(f[1], 15, 8, T.bright_red); S(f[1], 15, 9, T.bright_red); S(f[1], 16, 8, T.bright_red)
+  S(f[2], 14, 9, T.bright_red); S(f[2], 15, 9, T.gold); S(f[2], 16, 9, T.gold)
+  S(f[3], 15, 8, T.bright_red); S(f[3], 15, 9, T.bright_red); S(f[3], 16, 8, T.bright_red)
+  return f
+}
+
+// 带孙/隔代亲
+function sceneGrandchild(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawSmallHouse(fr, 16, 4, T.cloth_red, T.skin)
+    drawFlower(fr, 17, 4, T.bright_red); drawFlower(fr, 17, 20, T.gold)
+  })
+  // 灰发老人 y=11
+  drawPerson(f[0], 2, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[0], 10, 12, T.hair_dark, T.skin, T.peach, 'left', 'happy', 'cheer')
+  drawPerson(f[1], 2, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[1], 10, 12, T.hair_dark, T.skin, T.peach, 'left', 'happy', 'armsup')
+  drawPerson(f[2], 2, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[2], 10, 12, T.hair_dark, T.skin, T.peach, 'left', 'happy', 'cheer')
+  drawPerson(f[3], 2, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'armsup')
+  drawPerson(f[3], 10, 12, T.hair_dark, T.skin, T.peach, 'left', 'happy', 'armsup')
+  S(f[0], 14, 7, T.bright_red); S(f[1], 14, 9, T.gold); S(f[2], 13, 11, T.cloth_blue); S(f[3], 14, 6, T.bright_red)
+  drawHeart(f[2], 11, 7, T.bright_red, 0)
+  return f
+}
+
+// 广场舞（灰发）
+function sceneSquareDance(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach((fr) => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    for (let col = 0; col < W; col++) { S(fr, 18, col, T.gray); S(fr, 19, col, T.dark) }
+    drawCloud(fr, 2, 3); drawCloud(fr, 1, 16)
+  })
+  drawPerson(f[0], 4, 11, T.gray, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  drawPerson(f[0], 10, 11, T.hair_dark, T.skin, T.peach, 'front', 'happy', 'cheer')
+  drawPerson(f[0], 16, 11, T.hair_light, T.skin, T.teal, 'front', 'happy', 'cheer')
+  drawPerson(f[1], 4, 11, T.gray, T.skin, T.cloth_red, 'front', 'happy', 'armsup')
+  drawPerson(f[1], 10, 11, T.hair_dark, T.skin, T.peach, 'front', 'happy', 'armsup')
+  drawPerson(f[1], 16, 11, T.hair_light, T.skin, T.teal, 'front', 'happy', 'armsup')
+  drawPerson(f[2], 4, 10, T.gray, T.skin, T.cloth_red, 'front', 'happy', 'jump')
+  drawPerson(f[2], 10, 10, T.hair_dark, T.skin, T.peach, 'front', 'happy', 'jump')
+  drawPerson(f[2], 16, 10, T.hair_light, T.skin, T.teal, 'front', 'happy', 'jump')
+  for (let col = 0; col < W; col++) { S(f[2], 18, col, T.gray); S(f[2], 19, col, T.dark) }
+  S(f[2], 3, 2, T.dark); S(f[2], 4, 2, T.dark); S(f[2], 4, 1, T.dark)
+  S(f[2], 3, 20, T.dark); S(f[2], 4, 20, T.dark); S(f[2], 4, 21, T.dark)
+  drawPerson(f[3], 4, 11, T.gray, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 10, 11, T.hair_dark, T.skin, T.peach, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 16, 11, T.hair_light, T.skin, T.teal, 'front', 'happy', 'cheer')
+  return f
+}
+
+// 约会（烛光晚餐）
+function sceneDate(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.brown)
+    drawDesk(fr, 4, 19, 14, T.brown, T.brown)
+    S(fr, 11, 11, T.gold); S(fr, 12, 11, T.gold); S(fr, 11, 12, T.bright_red); S(fr, 12, 12, T.bright_red)
+  })
+  drawPerson(f[0], 1, 11, T.gold, T.skin, T.white, 'right', 'happy', 'cheer')
+  drawPerson(f[0], 18, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  drawPerson(f[1], 1, 11, T.gold, T.skin, T.white, 'right', 'happy', 'sit')
+  drawPerson(f[1], 18, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  drawPerson(f[2], 1, 11, T.gold, T.skin, T.white, 'right', 'happy', 'sit')
+  drawPerson(f[2], 18, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'cheer')
+  drawPerson(f[3], 1, 11, T.gold, T.skin, T.white, 'right', 'happy', 'sit')
+  drawPerson(f[3], 18, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  f.forEach(fr => { drawCup(fr, 7, 13, T.cloth_red); drawCup(fr, 15, 13, T.cloth_red) })
+  drawHeart(f[0], 2, 10, T.bright_red); drawHeart(f[1], 1, 10, T.bright_red)
+  drawHeart(f[2], 2, 10, T.gold); drawHeart(f[3], 1, 10, T.bright_red)
+  return f
+}
+
+// 散步
+function sceneWalk(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawTree(fr, 1, 8); drawCloud(fr, 2, 4, true); drawCloud(fr, 3, 16, false)
+  })
+  drawPerson(f[0], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  drawPerson(f[1], 7, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk2')
+  drawPerson(f[2], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  drawPerson(f[3], 11, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk2')
+  drawBird(f[0], 3, 10, 0); drawBird(f[2], 2, 14, 1)
+  return f
+}
+
+// 看书
+function sceneRead(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+    drawSofa(fr, T.teal)
+    S(fr, 6, 5, T.gold); S(fr, 7, 5, T.gold); S(fr, 8, 5, T.brown); S(fr, 8, 6, T.brown); S(fr, 9, 5, T.brown)
+  })
+  drawPerson(f[0], 10, 9, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'sit')
+  drawPerson(f[1], 10, 9, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'sit')
+  drawPerson(f[2], 10, 9, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'sit')
+  drawPerson(f[3], 10, 9, T.hair_dark, T.skin, T.cloth_blue, 'front', 'happy', 'sit')
+  S(f[0], 11, 13, T.gold); S(f[0], 11, 14, T.gold); S(f[0], 12, 13, T.gold); S(f[0], 12, 14, T.gold)
+  S(f[1], 11, 12, T.white); S(f[1], 11, 13, T.gold); S(f[1], 12, 13, T.gold); S(f[1], 12, 14, T.gold)
+  S(f[2], 11, 13, T.gold); S(f[2], 11, 14, T.gold); S(f[2], 12, 13, T.gold); S(f[2], 12, 14, T.gold)
+  S(f[3], 11, 13, T.gold); S(f[3], 11, 14, T.white); S(f[3], 12, 12, T.gold); S(f[3], 12, 13, T.gold)
+  f.forEach(fr => S(fr, 5, 6, T.gold))
+  return f
+}
+
+// 看电视
+function sceneTV(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+    drawSofa(fr, T.cloth_blue)
+    // 电视
+    for (let col = 8; col <= 15; col++) { S(fr, 4, col, T.dark); S(fr, 7, col, T.dark) }
+    for (let r = 4; r <= 7; r++) { S(fr, r, 8, T.dark); S(fr, r, 15, T.dark) }
+  })
+  drawPerson(f[0], 10, 9, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  drawPerson(f[1], 10, 9, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  drawPerson(f[2], 10, 9, T.hair_dark, T.skin, T.cloth_red, 'front', 'surprised', 'sit')
+  drawPerson(f[3], 10, 9, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  S(f[0], 5, 9, T.cloth_blue); S(f[0], 5, 10, T.cloth_blue); S(f[0], 6, 9, T.cloth_blue); S(f[0], 6, 10, T.cloth_blue)
+  S(f[0], 5, 13, T.cloth_blue); S(f[0], 5, 14, T.cloth_blue); S(f[0], 6, 13, T.cloth_blue); S(f[0], 6, 14, T.cloth_blue)
+  S(f[1], 5, 10, T.gold); S(f[1], 5, 11, T.gold); S(f[1], 5, 12, T.gold); S(f[1], 6, 11, T.gold); S(f[1], 6, 12, T.gold)
+  S(f[2], 5, 9, T.bright_red); S(f[2], 5, 14, T.bright_red); S(f[2], 6, 11, T.bright_red); S(f[2], 6, 12, T.bright_red)
+  S(f[3], 5, 10, T.teal); S(f[3], 5, 11, T.teal); S(f[3], 6, 12, T.teal); S(f[3], 6, 13, T.teal)
+  return f
+}
+
+// 睡觉
+function sceneSleep(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawBed(fr, 3, 10, T.cloth_blue)
+  })
+  // 先画人（躺姿）
+  drawPerson(f[0], 5, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'lie')
+  drawPerson(f[1], 5, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'lie')
+  drawPerson(f[2], 5, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'lie')
+  drawPerson(f[3], 5, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'lie')
+  // Zzz
+  S(f[0], 6, 16, T.white); S(f[0], 7, 17, T.white); S(f[0], 7, 18, T.white)
+  S(f[1], 5, 16, T.white); S(f[1], 6, 17, T.white); S(f[1], 6, 18, T.white); S(f[1], 7, 19, T.white)
+  S(f[2], 6, 16, T.white); S(f[2], 7, 17, T.white); S(f[2], 7, 18, T.white)
+  S(f[3], 5, 16, T.white); S(f[3], 6, 17, T.white); S(f[3], 6, 18, T.white); S(f[3], 7, 19, T.white)
+  // 月亮
+  f.forEach(fr => {
+    S(fr, 2, 19, T.gold); S(fr, 2, 20, T.gold); S(fr, 3, 19, T.gold); S(fr, 3, 20, T.gold)
+    S(fr, 1, 20, T.gold); S(fr, 4, 19, T.gold)
+  })
+  return f
+}
+
+// 吃饭
+function sceneEat(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+    drawTable(fr, 4, 13, T.brown, T.brown)
+  })
+  drawPerson(f[0], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[0], 17, 10, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  drawPerson(f[1], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[1], 17, 10, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  drawPerson(f[2], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[2], 17, 10, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'cheer')
+  drawPerson(f[3], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[3], 17, 10, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  // 碗筷
+  S(f[0], 12, 10, T.white); S(f[0], 12, 11, T.white); S(f[0], 12, 12, T.white)
+  S(f[1], 12, 10, T.white); S(f[1], 12, 11, T.gold); S(f[1], 12, 12, T.white)
+  S(f[2], 12, 10, T.white); S(f[2], 12, 11, T.white); S(f[2], 12, 12, T.white)
+  S(f[3], 12, 10, T.white); S(f[3], 12, 11, T.white); S(f[3], 12, 12, T.white)
+  f.forEach(fr => { drawCup(fr, 7, 12, T.cloth_blue); drawCup(fr, 15, 12, T.cloth_red) })
+  S(f[2], 10, 9, T.bright_red); S(f[2], 11, 13, T.bright_red)
+  return f
+}
+
+// ===== 场景映射表 =====
 export const STORYBOARD_SCENES: StoryboardScene[] = [
-  // 家庭 - 核心关系事件
-  { id: 'marriage', category: 'family', name: '结婚', keywords: ['结婚','婚礼','领证','娶','嫁'], palette: FAMILY_PALETTE, frames: sceneMarriage(), frameDelay: 600, animIn: 'pop', priority: 10 },
-  { id: 'baby', category: 'family', name: '生子', keywords: ['生孩子','宝宝','婴儿','怀孕','当爸','当妈','出生'], palette: FAMILY_PALETTE, frames: sceneBaby(), frameDelay: 500, animIn: 'bounce', priority: 10 },
-  { id: 'house', category: 'family', name: '买房', keywords: ['买房','购房','房子','房贷','月供','安家'], palette: FAMILY_PALETTE, frames: sceneHouse(), frameDelay: 500, animIn: 'pop', priority: 10 },
-  { id: 'confess', category: 'family', name: '表白', keywords: ['表白','告白','喜欢','在一起','脱单','谈恋爱','恋爱','初恋'], palette: FAMILY_PALETTE, frames: sceneConfess(), frameDelay: 500, animIn: 'bounce', priority: 9 },
-  { id: 'dating', category: 'family', name: '约会', keywords: ['约会','拍拖','交往','谈恋爱','对象'], palette: FAMILY_PALETTE, frames: sceneDating(), frameDelay: 600, animIn: 'fade', priority: 8 },
-  { id: 'divorce', category: 'family', name: '离婚', keywords: ['离婚','离异'], palette: FAMILY_PALETTE, frames: sceneDivorce(), frameDelay: 500, animIn: 'fade', priority: 9 },
-  { id: 'breakup', category: 'family', name: '分手', keywords: ['分手','分开','散了','失恋','吹了'], palette: FAMILY_PALETTE, frames: sceneBreakup(), frameDelay: 600, animIn: 'shake', priority: 8 },
-  { id: 'parents', category: 'family', name: '回家探望', keywords: ['回家','看父母','探望','爸妈','回老家','探亲','团圆'], palette: FAMILY_PALETTE, frames: sceneParents(), frameDelay: 500, animIn: 'rise', priority: 8 },
-  { id: 'parent_sick', category: 'family', name: '父母生病', keywords: ['爸病','妈病','父亲病','母亲病','爸妈住院','老人病'], palette: FAMILY_PALETTE, frames: sceneParentSick(), frameDelay: 800, animIn: 'shake', priority: 9 },
-  { id: 'car', category: 'family', name: '买车', keywords: ['买车','购车','新车','提车'], palette: FAMILY_PALETTE, frames: sceneCar(), frameDelay: 400, animIn: 'slide', priority: 8 },
-  { id: 'play_kid', category: 'family', name: '陪孩子玩', keywords: ['陪孩子','带娃玩','陪娃','亲子','接孩子','送孩子'], palette: FAMILY_PALETTE, frames: scenePlayWithKid(), frameDelay: 400, animIn: 'pop', priority: 7 },
-  { id: 'couple_fight', category: 'family', name: '吵架', keywords: ['吵架','争吵','矛盾','冷战','婆媳'], palette: FAMILY_PALETTE, frames: sceneCoupleFight(), frameDelay: 400, animIn: 'shake', priority: 7 },
-  { id: 'midnight_baby', category: 'family', name: '熬夜带娃', keywords: ['夜奶','哄睡','带娃','熬夜带','孩子哭'], palette: FAMILY_PALETTE, frames: sceneMidnightBaby(), frameDelay: 700, animIn: 'fade', priority: 7 },
-  { id: 'anniversary', category: 'family', name: '纪念日', keywords: ['纪念日','烛光晚餐','周年'], palette: FAMILY_PALETTE, frames: sceneAnniversary(), frameDelay: 600, animIn: 'fade', priority: 7 },
-  { id: 'blind_date', category: 'family', name: '相亲', keywords: ['相亲','介绍对象','见一面','媒婆'], palette: FAMILY_PALETTE, frames: sceneBlindDate(), frameDelay: 600, animIn: 'fade', priority: 6 },
-  { id: 'grandchildren', category: 'family', name: '含饴弄孙', keywords: ['孙子','孙女','孙辈','抱孙'], palette: FAMILY_PALETTE, frames: sceneGrandchildren(), frameDelay: 500, animIn: 'pop', priority: 6 },
-  { id: 'old_couple_tv', category: 'family', name: '白头偕老', keywords: ['白头','老伴','金婚','晚年','退休生活','养老'], palette: FAMILY_PALETTE, frames: sceneOldCouple(), frameDelay: 800, animIn: 'fade', priority: 6 },
-
-  // 生活 - 日常事件
-  { id: 'sickness', category: 'life', name: '生病', keywords: ['生病','住院','病倒','手术','身体出','病了'], palette: LIFE_PALETTE, frames: sceneSickness(), frameDelay: 800, animIn: 'shake', priority: 8 },
-  { id: 'move', category: 'life', name: '搬家/换城市', keywords: ['搬家','换城市','去北京','去上海','去深圳','去广州','北漂','沪漂','深漂','回老家','迁移','搬去'], palette: LIFE_PALETTE, frames: sceneMove(), frameDelay: 400, animIn: 'slide', priority: 8 },
-  { id: 'lottery', category: 'life', name: '中奖', keywords: ['彩票','中奖','奖金','红包','横财'], palette: LIFE_PALETTE, frames: sceneLottery(), frameDelay: 300, animIn: 'pop', priority: 8 },
-  { id: 'lend_money', category: 'life', name: '朋友借钱', keywords: ['借钱','欠钱','催债','借点钱','周转','朋友借'], palette: LIFE_PALETTE, frames: sceneLendMoney(), frameDelay: 500, animIn: 'fade', priority: 7 },
-  { id: 'travel', category: 'life', name: '旅行', keywords: ['旅行','旅游','出游','度假','出去玩','去趟'], palette: LIFE_PALETTE, frames: sceneTravel(), frameDelay: 300, animIn: 'slide', priority: 7 },
-  { id: 'friend_drink', category: 'life', name: '朋友聚会', keywords: ['朋友','喝酒','聚餐','聚会','兄弟','闺蜜','吃酒'], palette: LIFE_PALETTE, frames: sceneFriendDrink(), frameDelay: 500, animIn: 'rise', priority: 6 },
-  { id: 'pet', category: 'life', name: '养宠物', keywords: ['养猫','养狗','宠物','猫','狗','收养'], palette: LIFE_PALETTE, frames: scenePet(), frameDelay: 700, animIn: 'pop', priority: 6 },
-  { id: 'phone', category: 'life', name: '刷手机', keywords: ['刷手机','玩手机','刷视频','追剧','刷抖音','看手机'], palette: LIFE_PALETTE, frames: scenePhone(), frameDelay: 800, animIn: 'fade', priority: 5 },
-  { id: 'gym', category: 'life', name: '健身', keywords: ['健身','锻炼','运动','跑步','健身房','撸铁'], palette: LIFE_PALETTE, frames: sceneGym(), frameDelay: 350, animIn: 'pop', priority: 5 },
-  { id: 'fishing', category: 'life', name: '钓鱼', keywords: ['钓鱼','垂钓'], palette: LIFE_PALETTE, frames: sceneFishing(), frameDelay: 600, animIn: 'fade', priority: 5 },
-  { id: 'square_dance', category: 'life', name: '广场舞', keywords: ['广场舞','跳舞','广场'], palette: LIFE_PALETTE, frames: sceneSquareDance(), frameDelay: 350, animIn: 'bounce', priority: 5 },
-  { id: 'reading', category: 'life', name: '阅读学习', keywords: ['看书','读书','学习','阅读','考','证书','考研','考公'], palette: LIFE_PALETTE, frames: sceneReading(), frameDelay: 2000, animIn: 'fade', priority: 4 },
-
-  // 事业 - 工作事件
-  { id: 'fired', category: 'career', name: '被裁', keywords: ['裁员','被裁','解雇','开除','失业','优化','毕业'], palette: CAREER_PALETTE, frames: sceneFired(), frameDelay: 800, animIn: 'shake', priority: 10 },
-  { id: 'startup', category: 'career', name: '创业', keywords: ['创业','开公司','下海','自己干','all in','allin','搏一把'], palette: CAREER_PALETTE, frames: sceneStartup(), frameDelay: 250, animIn: 'shake', priority: 10 },
-  { id: 'bankruptcy', category: 'career', name: '破产', keywords: ['破产','倒闭','赔光','血本无归','爆仓','欠债','负债'], palette: CAREER_PALETTE, frames: sceneBankruptcy(), frameDelay: 500, animIn: 'fade', priority: 10 },
-  { id: 'retirement_party', category: 'career', name: '退休', keywords: ['退休','退役','告老','还乡','不干了','退休了'], palette: CAREER_PALETTE, frames: sceneRetirementParty(), frameDelay: 400, animIn: 'bounce', priority: 10 },
-  { id: 'promotion', category: 'career', name: '升职加薪', keywords: ['升职','加薪','晋升','提拔','涨薪','升值'], palette: CAREER_PALETTE, frames: scenePromotion(), frameDelay: 400, animIn: 'bounce', priority: 9 },
-  { id: 'job_hop', category: 'career', name: '跳槽', keywords: ['跳槽','换工作','新工作','离职','辞职','裸辞','offer'], palette: CAREER_PALETTE, frames: sceneJobHop(), frameDelay: 400, animIn: 'slide', priority: 8 },
-  { id: 'bonus', category: 'career', name: '发奖金', keywords: ['奖金','年终奖','绩效','分红'], palette: CAREER_PALETTE, frames: sceneLottery(), frameDelay: 300, animIn: 'pop', priority: 8 },
-  { id: 'overtime', category: 'career', name: '加班', keywords: ['加班','熬夜','996','通宵','赶项目'], palette: CAREER_PALETTE, frames: sceneOvertime(), frameDelay: 600, animIn: 'fade', priority: 7 },
-  { id: 'investment', category: 'career', name: '投资', keywords: ['投资','炒股','股票','基金','币圈','理财','K线'], palette: CAREER_PALETTE, frames: sceneInvestment(), frameDelay: 500, animIn: 'slide', priority: 7 },
-  { id: 'burnout', category: 'career', name: '倦怠', keywords: ['burnout','倦怠','过劳','熬不动','扛不住','内卷'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 1500, animIn: 'fade', priority: 7 },
-  { id: 'work', category: 'career', name: '日常工作', keywords: ['上班','工作','搬砖','工位'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 3 },
+  // ===== 里程碑事件（priority: 10）=====
+  { id: 'retire', category: 'career', name: '退休', keywords: ['退休','荣休','退休金','退休生活','告别职场'], palette: CAREER_PALETTE, frames: sceneRetire(), frameDelay: 200, animIn: 'pop', priority: 10 },
+  { id: 'graduate', category: 'career', name: '毕业', keywords: ['毕业','大学毕业','毕业典礼','毕业证','学位'], palette: CAREER_PALETTE, frames: sceneGraduate(), frameDelay: 200, animIn: 'bounce', priority: 10 },
+  { id: 'first-job', category: 'career', name: '入职', keywords: ['入职','第一天上班','新工作','报到','初入职场'], palette: CAREER_PALETTE, frames: sceneFirstJob(), frameDelay: 300, animIn: 'fade', priority: 10 },
+  { id: 'first-salary', category: 'life', name: '第一笔工资', keywords: ['第一笔工资','第一份薪水','发工资','领到工资'], palette: LIFE_PALETTE, frames: sceneFirstSalary(), frameDelay: 180, animIn: 'bounce', priority: 10 },
+  { id: 'marry', category: 'family', name: '结婚', keywords: ['结婚','婚礼','求婚','领证','娶','嫁','我们结婚了'], palette: FAMILY_PALETTE, frames: sceneWedding(), frameDelay: 200, animIn: 'pop', priority: 10 },
+  { id: 'baby', category: 'family', name: '生子', keywords: ['宝宝出生','生孩子','当爸','当妈','新生儿','婴儿','出生'], palette: FAMILY_PALETTE, frames: sceneBaby(), frameDelay: 200, animIn: 'bounce', priority: 10 },
+  { id: 'buy-house', category: 'family', name: '买房', keywords: ['买房','交房','装修','搬进新家','房产证','买房了'], palette: FAMILY_PALETTE, frames: sceneBuyHouse(), frameDelay: 200, animIn: 'fade', priority: 10 },
+  { id: 'buy-car', category: 'life', name: '买车', keywords: ['买车','提车','新车','第一辆车','喜提'], palette: LIFE_PALETTE, frames: sceneBuyCar(), frameDelay: 200, animIn: 'slide', priority: 10 },
+  { id: 'promotion', category: 'career', name: '升职加薪', keywords: ['升职','加薪','晋升','提拔','升值','涨薪'], palette: CAREER_PALETTE, frames: scenePromotion(), frameDelay: 180, animIn: 'bounce', priority: 10 },
+  { id: 'gaokao', category: 'career', name: '高考', keywords: ['高考','高考结束','高考成绩','考上大学','录取通知书','金榜题名'], palette: CAREER_PALETTE, frames: sceneGaokao(), frameDelay: 300, animIn: 'pop', priority: 10 },
+  { id: 'startup', category: 'career', name: '创业', keywords: ['创业','开公司','下海','合伙创业','创业项目'], palette: CAREER_PALETTE, frames: sceneStartup(), frameDelay: 250, animIn: 'fade', priority: 10 },
+  { id: 'ipo', category: 'career', name: '上市', keywords: ['上市','IPO','敲钟','股票上市','公司上市'], palette: CAREER_PALETTE, frames: sceneIPO(), frameDelay: 180, animIn: 'bounce', priority: 10 },
+  { id: 'digital-immortality', category: 'career', name: '数字永生', keywords: ['数字永生','意识上传','永生','数字化','赛博永生'], palette: CAREER_PALETTE, frames: sceneDigitalImmortality(), frameDelay: 250, animIn: 'blink', priority: 10 },
+  { id: 'fire', category: 'life', name: '财务自由', keywords: ['FIRE','财务自由','提前退休','财务独立','Fire运动'], palette: LIFE_PALETTE, frames: sceneFIRE(), frameDelay: 300, animIn: 'fade', priority: 10 },
+  { id: 'lottery-win', category: 'life', name: '中彩票', keywords: ['中彩票','彩票中奖','中奖了','头奖','五百万'], palette: LIFE_PALETTE, frames: sceneLottery(), frameDelay: 180, animIn: 'bounce', priority: 10 },
+  // ===== 路径事件（priority: 10）=====
+  { id: 'date', category: 'family', name: '约会', keywords: ['约会','相亲','恋爱','表白','第一次约会','在一起'], palette: FAMILY_PALETTE, frames: sceneDate(), frameDelay: 300, animIn: 'fade', priority: 10 },
+  { id: 'move', category: 'life', name: '搬家', keywords: ['搬家','搬去','移居','迁徙','搬迁','北漂','沪漂','深漂','去外地'], palette: LIFE_PALETTE, frames: sceneMove(), frameDelay: 250, animIn: 'slide', priority: 10 },
+  // ===== 负面事件（priority: 9）=====
+  { id: 'divorce', category: 'family', name: '离婚', keywords: ['离婚','离婚了','分开','离婚协议','婚姻破裂'], palette: FAMILY_PALETTE, frames: sceneDivorce(), frameDelay: 400, animIn: 'shake', priority: 9 },
+  { id: 'breakup', category: 'family', name: '分手', keywords: ['分手','失恋','被甩','感情破裂','我们分手吧'], palette: FAMILY_PALETTE, frames: sceneBreakup(), frameDelay: 400, animIn: 'fade', priority: 9 },
+  { id: 'parent-sick', category: 'family', name: '父母生病', keywords: ['父母生病','父亲生病','母亲生病','爸妈住院','家人重病','陪床','癌症'], palette: FAMILY_PALETTE, frames: sceneParentSick(), frameDelay: 400, animIn: 'fade', priority: 9 },
+  { id: 'bankruptcy', category: 'life', name: '破产', keywords: ['破产','负债','欠债','赔光','亏钱','血本无归','倒闭'], palette: LIFE_PALETTE, frames: sceneBankruptcy(), frameDelay: 400, animIn: 'shake', priority: 9 },
+  { id: 'lend-money', category: 'life', name: '借钱不还', keywords: ['借钱','欠钱不还','讨债','朋友借钱','借出去'], palette: LIFE_PALETTE, frames: sceneLendMoney(), frameDelay: 400, animIn: 'fade', priority: 9 },
+  { id: 'burnout', category: 'career', name: '倦怠', keywords: ['倦怠','躺平','辞职','裸辞','厌班','迷茫','抑郁','情绪崩溃'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 500, animIn: 'fade', priority: 9 },
+  // ===== 日常事件（priority: 7-3）=====
+  { id: 'work', category: 'career', name: '工作', keywords: ['上班','工作','搬砖','打工','开干','干活','到公司'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 7 },
+  { id: 'overtime', category: 'career', name: '加班', keywords: ['深夜加班','加到深夜','还在加班'], palette: CAREER_PALETTE, frames: sceneOvertime(), frameDelay: 350, animIn: 'fade', priority: 7 },
+  { id: 'midnight-baby', category: 'family', name: '半夜喂奶', keywords: ['半夜喂奶','夜醒喂奶','冲奶粉','哄睡','哄孩子睡觉','夜奶'], palette: FAMILY_PALETTE, frames: sceneMidnightBaby(), frameDelay: 500, animIn: 'fade', priority: 7 },
+  { id: 'cook', category: 'family', name: '做饭', keywords: ['做饭','炒菜','下厨房','烹饪','做饭菜','烧菜'], palette: FAMILY_PALETTE, frames: sceneCook(), frameDelay: 250, animIn: 'fade', priority: 6 },
+  { id: 'exercise', category: 'life', name: '锻炼', keywords: ['锻炼','跑步','健身','运动','晨跑','晨练'], palette: LIFE_PALETTE, frames: sceneExercise(), frameDelay: 200, animIn: 'pop', priority: 5 },
+  { id: 'travel', category: 'life', name: '旅行', keywords: ['旅游','旅行','出去玩','度假','出游','出国','去旅行'], palette: LIFE_PALETTE, frames: sceneTravel(), frameDelay: 250, animIn: 'slide', priority: 7 },
+  { id: 'fishing', category: 'life', name: '钓鱼', keywords: ['钓鱼','去钓鱼','垂钓','钓到大鱼'], palette: LIFE_PALETTE, frames: sceneFishing(), frameDelay: 400, animIn: 'fade', priority: 5 },
+  { id: 'grandchild', category: 'family', name: '抱孙', keywords: ['孙子','孙女','抱孙子','带孙','隔代亲','当爷爷','当奶奶'], palette: FAMILY_PALETTE, frames: sceneGrandchild(), frameDelay: 250, animIn: 'fade', priority: 7 },
+  { id: 'square-dance', category: 'life', name: '广场舞', keywords: ['广场舞','跳广场舞','大妈跳舞'], palette: LIFE_PALETTE, frames: sceneSquareDance(), frameDelay: 200, animIn: 'bounce', priority: 5 },
+  { id: 'sunset', category: 'life', name: '夕阳晚年', keywords: ['夕阳','晚年','老了','白头偕老','一起变老','黄昏恋','暮年'], palette: LIFE_PALETTE, frames: sceneSunset(), frameDelay: 500, animIn: 'fade', priority: 7 },
+  { id: 'walk', category: 'family', name: '散步', keywords: ['散步','走路','逛街','遛弯','走走','漫步'], palette: FAMILY_PALETTE, frames: sceneWalk(), frameDelay: 300, animIn: 'fade', priority: 4 },
+  { id: 'read', category: 'life', name: '看书', keywords: ['看书','读书','阅读','学习','翻书'], palette: LIFE_PALETTE, frames: sceneRead(), frameDelay: 400, animIn: 'fade', priority: 3 },
+  { id: 'tv', category: 'family', name: '看电视', keywords: ['看电视','追剧','看剧','看节目','电视机前'], palette: FAMILY_PALETTE, frames: sceneTV(), frameDelay: 350, animIn: 'fade', priority: 3 },
+  { id: 'sleep', category: 'family', name: '睡觉', keywords: ['睡觉','入睡','晚安','睡着','睡眠'], palette: FAMILY_PALETTE, frames: sceneSleep(), frameDelay: 600, animIn: 'fade', priority: 3 },
+  { id: 'eat', category: 'family', name: '吃饭', keywords: ['吃饭','吃晚饭','吃饭了','用餐','晚饭','吃火锅'], palette: FAMILY_PALETTE, frames: sceneEat(), frameDelay: 300, animIn: 'fade', priority: 3 },
 ]
 
+/**
+ * 根据ID获取场景
+ */
 export function getSceneById(id: string): StoryboardScene | undefined {
   return STORYBOARD_SCENES.find(s => s.id === id)
 }
 
 /**
- * 从日志文本匹配场景
- * 单年模式：每个分类最多返回1个场景id（取优先级最高的），每年完全替换
+ * 根据关键词匹配最佳场景（返回单个场景对象）
  */
-export function matchStoryboardScenes(logs: string[]): {
-  family: string[]
-  life: string[]
-  career: string[]
-} {
-  const family: string[] = []
-  const life: string[] = []
-  const career: string[] = []
-  const matched = new Set<string>()
+export function matchSceneByKeywords(text: string): StoryboardScene | null {
+  if (!text) return null
+  const lower = text.toLowerCase()
+  let best: StoryboardScene | null = null
+  let bestScore = 0
+  for (const scene of STORYBOARD_SCENES) {
+    let score = 0
+    for (const kw of scene.keywords) {
+      if (lower.includes(kw.toLowerCase())) {
+        score += kw.length * (scene.priority || 5)
+      }
+    }
+    if (score > bestScore) {
+      bestScore = score
+      best = scene
+    }
+  }
+  return best
+}
 
-  // 按优先级排序
-  const sorted = [...STORYBOARD_SCENES].sort((a, b) => (b.priority || 0) - (a.priority || 0))
+/**
+ * 匹配场景并按分类返回ID列表（供游戏store使用）
+ * 返回 { family: string[], life: string[], career: string[] }
+ */
+export function matchStoryboardScenes(logs: string | string[], topN: number = 3): { family: string[]; life: string[]; career: string[] } {
+  const texts = Array.isArray(logs) ? logs : [logs]
+  const result: { family: string[]; life: string[]; career: string[] } = { family: [], life: [], career: [] }
+  const scored: { scene: StoryboardScene; score: number }[] = []
 
-  for (const log of logs) {
-    for (const scene of sorted) {
-      if (matched.has(scene.id)) continue
-      if (scene.keywords.some(kw => log.includes(kw))) {
-        if (scene.category === 'family' && family.length === 0) family.push(scene.id)
-        else if (scene.category === 'life' && life.length === 0) life.push(scene.id)
-        else if (scene.category === 'career' && career.length === 0) career.push(scene.id)
-        matched.add(scene.id)
-        // 如果三个分类都匹配到了就可以提前退出
-        if (family.length && life.length && career.length) return { family, life, career }
-        break
+  for (const text of texts) {
+    if (!text) continue
+    const lower = text.toLowerCase()
+    for (const scene of STORYBOARD_SCENES) {
+      let score = 0
+      for (const kw of scene.keywords) {
+        if (lower.includes(kw.toLowerCase())) {
+          score += kw.length * (scene.priority || 5)
+        }
+      }
+      if (score > 0) {
+        const existing = scored.find(s => s.scene.id === scene.id)
+        if (existing) {
+          existing.score += score
+        } else {
+          scored.push({ scene, score })
+        }
       }
     }
   }
 
-  return { family, life, career }
+  scored.sort((a, b) => b.score - a.score)
+  const picked = scored.slice(0, topN)
+  for (const { scene } of picked) {
+    const cat = scene.category
+    if (cat === 'family' || cat === 'life' || cat === 'career') {
+      if (!result[cat].includes(scene.id)) {
+        result[cat].push(scene.id)
+      }
+    }
+  }
+  return result
 }

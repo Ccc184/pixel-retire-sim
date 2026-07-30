@@ -55,7 +55,7 @@
           v-if="getState(win.key).prevScene && !getState(win.key).visible"
           class="sb-art-wrap sb-art-old"
         >
-          <div class="sb-art-scale">
+          <div class="sb-art-scale" :style="{ width: CANVAS_PX_W + 'px', height: CANVAS_PX_H + 'px' }">
             <div
               class="sb-art"
               :style="getFrameStyle(getState(win.key).prevScene!, 0)"
@@ -69,13 +69,16 @@
           class="sb-art-wrap"
           :class="{ 'sb-in': getState(win.key).visible, 'sb-new': getState(win.key).isNew }"
         >
-          <div class="sb-art-scale">
+          <div
+            class="sb-art-scale"
+            :class="[
+              getState(win.key).isNew ? ('sb-anim-' + getScene(win.key)!.animIn) : '',
+              sceneEffectClass(getScene(win.key))
+            ]"
+            :style="{ width: CANVAS_PX_W + 'px', height: CANVAS_PX_H + 'px' }"
+          >
             <div
               class="sb-art"
-              :class="[
-                'sb-anim-' + getScene(win.key)!.animIn,
-                sceneEffectClass(getScene(win.key))
-              ]"
               :style="getFrameStyle(getScene(win.key)!, getCurrentFrame(win.key))"
             />
             <!-- 场景特效叠加层 -->
@@ -175,6 +178,8 @@ const windows: WindowConfig[] = [
 const PIXEL_SIZE = 5
 const CANVAS_W = 24
 const CANVAS_H = 20
+const CANVAS_PX_W = CANVAS_W * PIXEL_SIZE
+const CANVAS_PX_H = CANVAS_H * PIXEL_SIZE
 
 function buildFrameShadows(frame: number[][], palette: string[]): string {
   const shadows: string[] = []
@@ -184,6 +189,7 @@ function buildFrameShadows(frame: number[][], palette: string[]): string {
       if (ci === 0) continue
       const color = palette[ci]
       if (!color || color === 'transparent') continue
+      // box-shadow相对于元素自身位置，col=0/row=0时阴影在元素正下方
       shadows.push(`${col * PIXEL_SIZE}px ${row * PIXEL_SIZE}px 0 0 ${color}`)
     }
   }
@@ -193,8 +199,8 @@ function buildFrameShadows(frame: number[][], palette: string[]): string {
 function getFrameStyle(scene: StoryboardScene, frameIndex: number) {
   const frame = scene.frames[frameIndex % scene.frames.length]
   return {
-    width: CANVAS_W * PIXEL_SIZE + 'px',
-    height: CANVAS_H * PIXEL_SIZE + 'px',
+    width: PIXEL_SIZE + 'px',
+    height: PIXEL_SIZE + 'px',
     boxShadow: buildFrameShadows(frame, scene.palette),
   }
 }
@@ -639,9 +645,9 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.5s ease;
 }
-.sb-art-wrap.sb-in { opacity: 1; }
+.sb-art-wrap.sb-in { opacity: 1; transition: opacity 0.3s ease; }
+.sb-art-wrap.sb-new { transition: none; }
 .sb-art-wrap.sb-art-old {
   z-index: 4;
   opacity: 0;
@@ -666,37 +672,35 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   transform-origin: center bottom;
 }
 .sb-art {
-  position: relative;
-  transform-origin: center bottom;
+  position: absolute;
+  left: 0;
+  top: 0;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
 
-/* 入场动画 */
-.sb-anim-fade {
+/* 入场动画 - 应用在sb-art-scale上 */
+.sb-art-scale.sb-anim-fade {
   opacity: 0;
   animation: aFade 0.7s ease-out forwards;
-  animation-delay: var(--d);
 }
 @keyframes aFade {
   to { opacity: 1; }
 }
 
-.sb-anim-rise {
+.sb-art-scale.sb-anim-rise {
   opacity: 0;
   transform: translateY(12px);
   animation: aRise 0.8s cubic-bezier(0.22,1,0.36,1) forwards;
-  animation-delay: var(--d);
 }
 @keyframes aRise {
   to { opacity: 1; transform: translateY(0); }
 }
 
-.sb-anim-pop {
+.sb-art-scale.sb-anim-pop {
   opacity: 0;
   transform: scale(0.1);
   animation: aPop 0.8s cubic-bezier(0.34,1.56,0.64,1) forwards;
-  animation-delay: var(--d);
 }
 @keyframes aPop {
   0%   { opacity: 0; transform: scale(0.1); filter: brightness(5); }
@@ -706,21 +710,19 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   100% { opacity: 1; transform: scale(1); filter: brightness(1); }
 }
 
-.sb-anim-slide {
+.sb-art-scale.sb-anim-slide {
   opacity: 0;
   transform: translateX(24px);
   animation: aSlide 0.85s cubic-bezier(0.22,1,0.36,1) forwards;
-  animation-delay: var(--d);
 }
 @keyframes aSlide {
   0%   { opacity: 0; transform: translateX(24px); filter: blur(3px); }
   100% { opacity: 1; transform: translateX(0); filter: blur(0); }
 }
 
-.sb-anim-blink {
+.sb-art-scale.sb-anim-blink {
   opacity: 0;
   animation: aBlink 0.5s steps(5) forwards;
-  animation-delay: var(--d);
 }
 @keyframes aBlink {
   0%   { opacity: 0; }
@@ -730,11 +732,10 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   100% { opacity: 1; }
 }
 
-.sb-anim-shake {
+.sb-art-scale.sb-anim-shake {
   opacity: 0;
   transform: scale(0.85);
   animation: aShakeIn 0.5s ease-out forwards, aShake 0.3s ease-in-out 0.6s 3;
-  animation-delay: var(--d);
 }
 @keyframes aShakeIn {
   0%   { opacity: 0; transform: scale(0.85); }
@@ -748,11 +749,10 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   80%     { transform: translateX(2px); }
 }
 
-.sb-anim-bounce {
+.sb-art-scale.sb-anim-bounce {
   opacity: 0;
   transform: translateY(20px) scale(0.8);
   animation: aBounce 0.9s cubic-bezier(0.34,1.56,0.64,1) forwards;
-  animation-delay: var(--d);
 }
 @keyframes aBounce {
   0%   { opacity: 0; transform: translateY(20px) scale(0.8); }
@@ -762,10 +762,10 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
-/* 持续微动效：开罗游戏经典小人弹跳+呼吸 */
-.sb-art {
+/* 持续微动效：开罗游戏经典小人弹跳+呼吸（入场动画完成后启动） */
+.sb-art-wrap.sb-in .sb-art-scale {
   animation: idleBounce 2s ease-in-out infinite;
-  animation-delay: calc(var(--d) + 1s);
+  animation-delay: 1s;
 }
 @keyframes idleBounce {
   0%,100% { transform: translateY(0) scale(1); filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 5px var(--g)) brightness(1); }
