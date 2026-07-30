@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue';
-import { shallowRef } from 'vue';
+import { ref, computed, nextTick, shallowRef } from 'vue';
 import { matchStoryboardScenes } from '../data/storyboard-scenes.js';
 import type { GameState, Profession, CityType, OriginChoices, YearResult, CrossroadEvent, NarrativeEvent, MBTIType, SalaryChangeEntry, RetirementDream } from '../types/global.d.js';
 import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth } from '../utils/math-engine.js';
@@ -356,6 +355,11 @@ export const useGameStore = defineStore('game', () => {
     crossroadFiredTags.value = new Map();
 
     addLog(`第22岁，你在${city}开始了${profession}的职业生涯，初始月薪${actualStartSalary}元。像素人生，正式开局。`);
+
+    // 开局立即触发分镜分类，让22岁就能显示匹配的场景
+    nextTick(() => {
+      classifyStoryboards([`第${state.value.currentAge}岁，你在${city}入职上班，开始了${profession}的职业生涯`]);
+    });
 
     // 路径选择阶段不抽事件，等玩家选完路径再抽
     currentNarrativeEvent.value = null;

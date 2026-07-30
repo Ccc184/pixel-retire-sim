@@ -269,6 +269,19 @@ function drawBird(c: PixelFrame, y: number, x: number, frame: number) {
   }
 }
 
+// 小狗（尾巴摇摆动画：0=尾右，1=尾摆右，2=尾上/跳）
+function drawDog(c: PixelFrame, dx: number, dy: number, ci: number, earC: number, tailWag: number) {
+  const jy = tailWag === 2 ? -1 : 0
+  const tx = tailWag === 1 ? 4 : (tailWag === 2 ? -1 : 4)
+  S(c, dy+jy, dx, ci); S(c, dy+jy, dx+1, ci); S(c, dy+jy, dx+2, ci); S(c, dy+jy, dx+3, ci)
+  S(c, dy-1+jy, dx+1, ci); S(c, dy-1+jy, dx+2, ci); S(c, dy-1+jy, dx+3, ci)
+  S(c, dy-2+jy, dx, earC); S(c, dy-2+jy, dx+3, earC)
+  S(c, dy-1+jy, dx+2, T.dark); S(c, dy-1+jy, dx+3, T.dark)
+  S(c, dy-1+jy, dx+4, T.dark)
+  S(c, dy+1+jy, dx, T.dark); S(c, dy+1+jy, dx+3, T.dark)
+  S(c, dy+jy, dx+tx, ci)
+}
+
 function drawDiploma(c: PixelFrame, x: number, y: number) {
   for (let col = x; col <= x+3; col++) { S(c, y, col, T.white); S(c, y+1, col, T.white); S(c, y+2, col, T.white) }
   S(c, y+1, x+1, T.bright_red); S(c, y+1, x+2, T.gold)
@@ -1220,50 +1233,431 @@ function sceneEat(): PixelFrame[] {
   return f
 }
 
+// ========== 新增场景函数 V12 补全 ==========
+
+// 相亲（明亮背景，两人对坐初见，从惊讶到开心）
+function sceneBlindDate(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+    drawDesk(fr, 4, 19, 14, T.brown, T.brown)
+  })
+  // 坐姿y=10（桌子在y=14遮挡）
+  drawPerson(f[0], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'surprised', 'sit')
+  drawPerson(f[0], 17, 10, T.hair_light, T.skin, T.cloth_red, 'left', 'surprised', 'sit')
+  drawPerson(f[1], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'sit')
+  drawPerson(f[1], 17, 10, T.hair_light, T.skin, T.cloth_red, 'left', 'normal', 'sit')
+  drawPerson(f[2], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[2], 17, 10, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'sit')
+  drawPerson(f[3], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[3], 17, 10, T.hair_light, T.skin, T.cloth_red, 'left', 'happy', 'cheer')
+  f.forEach(fr => { drawCup(fr, 8, 12, T.cloth_blue); drawCup(fr, 14, 12, T.cloth_red) })
+  drawHeart(f[3], 5, 10, T.bright_red, 0)
+  return f
+}
+
+// 陪孩子玩（公园/积木，两人+小孩+彩色方块）
+function scenePlayKid(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawSmallHouse(fr, 16, 4, T.cloth_red, T.skin)
+    drawFlower(fr, 17, 4, T.bright_red); drawFlower(fr, 17, 20, T.gold)
+  })
+  // 大人站姿y=11，小孩在中间偏下（y=12更矮小）
+  drawPerson(f[0], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[0], 10, 12, T.hair_dark, T.skin, T.cloth_red, 'left', 'happy', 'cheer')
+  drawPerson(f[1], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[1], 10, 12, T.hair_dark, T.skin, T.cloth_red, 'left', 'happy', 'armsup')
+  drawPerson(f[2], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[2], 10, 12, T.hair_dark, T.skin, T.cloth_red, 'left', 'happy', 'cheer')
+  drawPerson(f[3], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'armsup')
+  drawPerson(f[3], 10, 12, T.hair_dark, T.skin, T.cloth_red, 'left', 'happy', 'armsup')
+  // 彩色积木方块
+  S(f[0], 14, 7, T.bright_red); S(f[1], 14, 9, T.gold); S(f[2], 13, 11, T.cloth_blue); S(f[3], 14, 6, T.bright_red)
+  S(f[0], 15, 7, T.gold); S(f[1], 15, 9, T.bright_red); S(f[2], 14, 11, T.gold); S(f[3], 15, 6, T.teal)
+  return f
+}
+
+// 养宠物（小狗摇尾巴，草地蓝天）
+function scenePet(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawSmallHouse(fr, 16, 4, T.cloth_red, T.skin)
+    drawFlower(fr, 17, 4, T.bright_red); drawFlower(fr, 17, 9, T.gold); drawFlower(fr, 17, 20, T.purple)
+  })
+  // 主人站姿y=11，小狗在前面
+  drawPerson(f[0], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[1], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[2], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[3], 2, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'armsup')
+  // 小狗摇尾巴（从远处跑近）
+  drawDog(f[0], 6, 15, T.gold, T.brown, 0)
+  drawDog(f[1], 8, 15, T.gold, T.brown, 1)
+  drawDog(f[2], 10, 14, T.gold, T.brown, 2)
+  drawDog(f[3], 12, 15, T.gold, T.brown, 1)
+  drawHeart(f[2], 11, 7, T.bright_red, 0)
+  return f
+}
+
+// 父母探望（父母灰发走来，带食物/礼物，门口场景）
+function sceneParentVisit(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawSmallHouse(fr, 14, 4, T.cloth_red, T.skin)
+    drawTree(fr, 0, 8)
+  })
+  // 父母灰发T.gray=14，从左走过来
+  drawPerson(f[0], 0, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  drawPerson(f[0], 4, 11, T.gray, T.skin, T.cloth_red, 'right', 'happy', 'walk1')
+  drawPerson(f[0], 12, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'cheer')
+  drawPerson(f[1], 1, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'walk2')
+  drawPerson(f[1], 5, 11, T.gray, T.skin, T.cloth_red, 'right', 'happy', 'walk2')
+  drawPerson(f[1], 12, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'armsup')
+  drawPerson(f[2], 2, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  drawPerson(f[2], 6, 11, T.gray, T.skin, T.cloth_red, 'right', 'happy', 'walk1')
+  drawPerson(f[2], 12, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'cheer')
+  drawPerson(f[3], 3, 11, T.gray, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[3], 7, 11, T.gray, T.skin, T.cloth_red, 'right', 'happy', 'stand')
+  drawPerson(f[3], 12, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'cheer')
+  // 礼物/食物包（父母手上提着）
+  f.forEach((fr, i) => {
+    const bx = 1 + i
+    S(fr, 9, bx, T.brown); S(fr, 10, bx, T.brown); S(fr, 9, bx+1, T.brown); S(fr, 10, bx+1, T.brown)
+    S(fr, 9, bx, T.bright_red)
+  })
+  drawHeart(f[3], 6, 8, T.bright_red, 0)
+  return f
+}
+
+// 跳槽（拎包走+星星，自信走出旧公司）
+function sceneJobHop(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+    // 旧公司大楼在背景
+    for (let col = 10; col <= 20; col++) for (let r = 2; r <= 8; r++) S(fr, r, col, T.sky)
+    for (let col = 10; col <= 20; col++) { S(fr, 2, col, T.brown); S(fr, 8, col, T.brown) }
+  })
+  // 拎包走人，从左走到右
+  drawPerson(f[0], 3, 11, T.hair_dark, T.skin, T.white, 'right', 'normal', 'walk1')
+  drawPerson(f[1], 5, 11, T.hair_dark, T.skin, T.white, 'right', 'happy', 'walk2')
+  drawPerson(f[2], 7, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  drawPerson(f[3], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  // 公文包
+  f.forEach((fr, i) => {
+    const bx = 1 + i * 2
+    S(fr, 9, bx, T.brown); S(fr, 10, bx, T.brown); S(fr, 9, bx+1, T.brown); S(fr, 10, bx+1, T.brown)
+    S(fr, 9, bx, T.gold)
+  })
+  // 星星闪烁
+  S(f[2], 4, 5, T.bright_red); S(f[2], 5, 6, T.bright_red); S(f[2], 4, 7, T.bright_red)
+  S(f[3], 4, 5, T.gold); S(f[3], 5, 6, T.gold); S(f[3], 4, 7, T.gold)
+  return f
+}
+
+// 被裁（收拾箱子走人，深色背景+飘落纸片）
+function sceneFired(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.gray)
+  })
+  // 深色背景金头发
+  drawPerson(f[0], 9, 11, T.gold, T.skin, T.gray, 'front', 'sad', 'stand')
+  drawPerson(f[1], 9, 11, T.gold, T.skin, T.gray, 'front', 'sad', 'bow')
+  drawPerson(f[2], 9, 11, T.gold, T.skin, T.gray, 'front', 'sad', 'stand')
+  drawPerson(f[3], 9, 11, T.gold, T.skin, T.gray, 'front', 'sad', 'bow')
+  // 纸箱
+  f.forEach(fr => {
+    for (let r = 13; r <= 16; r++) for (let col = 7; col <= 11; col++) S(fr, r, col, T.brown)
+    S(fr, 14, 7, T.dark); S(fr, 14, 11, T.dark); S(fr, 15, 9, T.dark)
+  })
+  // 飘落纸片
+  S(f[1], 1, 4, T.white); S(f[1], 2, 9, T.white); S(f[1], 3, 15, T.white); S(f[1], 4, 6, T.white); S(f[1], 1, 18, T.white); S(f[1], 2, 12, T.white)
+  S(f[3], 1, 3, T.white); S(f[3], 3, 8, T.white); S(f[3], 4, 14, T.white); S(f[3], 2, 19, T.white); S(f[3], 5, 11, T.white); S(f[3], 2, 5, T.white)
+  return f
+}
+
+// 发奖金（红包/信封+金币，金色地面庆祝）
+function sceneBonus(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => drawGround(fr, T.gold))
+  drawPerson(f[0], 9, 11, T.gold, T.skin, T.cloth_blue, 'front', 'surprised', 'cheer')
+  drawPerson(f[1], 9, 10, T.gold, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  drawPerson(f[2], 9, 11, T.gold, T.skin, T.cloth_blue, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 9, 10, T.gold, T.skin, T.cloth_blue, 'front', 'happy', 'jump')
+  // 红包/信封（手中）
+  f.forEach(fr => {
+    S(fr, 10, 11, T.bright_red); S(fr, 10, 12, T.bright_red)
+    S(fr, 11, 11, T.bright_red); S(fr, 11, 12, T.bright_red)
+    S(fr, 10, 11, T.gold); S(fr, 11, 12, T.gold)
+  })
+  // 金币散落
+  const mc = [T.gold, T.bright_red, T.white]
+  for (let i = 0; i < 4; i++) { for (let j = 0; j < 8; j++) S(f[i], 2+i+j%3, 3+j*2, mc[j%3]) }
+  return f
+}
+
+// 投资炒股（K线图涨跌，电脑前坐姿）
+function sceneInvestment(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+    drawDesk(fr, 1, 22, 14, T.brown, T.brown)
+  })
+  // 先画人（坐姿y=10）
+  drawPerson(f[0], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'sit')
+  drawPerson(f[1], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[2], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'surprised', 'sit')
+  drawPerson(f[3], 2, 10, T.hair_dark, T.skin, T.cloth_blue, 'right', 'sad', 'sit')
+  // 显示器上K线图：先画屏幕白背景，再画K线
+  const kData: [number, number][] = [[T.teal, 4], [T.teal, 2], [T.gold, 5], [T.bright_red, 8]]
+  kData.forEach(([c, h], i) => {
+    const fr = f[i]
+    // 显示器外框（替代drawMonitor，直接画K线屏幕）
+    for (let col = 11; col <= 19; col++) S(fr, 10, col, T.dark)
+    for (let col = 11; col <= 19; col++) S(fr, 13, col, T.dark)
+    for (let r = 10; r <= 13; r++) { S(fr, r, 11, T.dark); S(fr, r, 19, T.dark) }
+    for (let col = 12; col <= 18; col++) { S(fr, 11, col, T.dark); S(fr, 12, col, T.dark) }
+    // K线柱
+    S(fr, 11, 12, c); S(fr, 11-h, 13, c); S(fr, 11, 14, c); S(fr, 11-h+1, 15, c); S(fr, 11, 16, c); S(fr, 10, 17, c)
+  })
+  return f
+}
+
+// 刷手机（沙发上低头+手机发光）
+function scenePhone(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+    drawSofa(fr, T.cloth_blue)
+  })
+  // 沙发坐姿y=9（和read/tv一致）
+  drawPerson(f[0], 10, 9, T.hair_dark, T.skin, T.cloth_red, 'front', 'normal', 'sit')
+  drawPerson(f[1], 10, 9, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  drawPerson(f[2], 10, 9, T.hair_dark, T.skin, T.cloth_red, 'front', 'normal', 'sit')
+  drawPerson(f[3], 10, 9, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  // 手机屏幕发光（不同颜色）
+  S(f[0], 10, 14, T.dark); S(f[0], 11, 14, T.white); S(f[0], 12, 14, T.white); S(f[0], 13, 14, T.dark)
+  S(f[1], 10, 14, T.dark); S(f[1], 11, 14, T.gold); S(f[1], 12, 14, T.gold); S(f[1], 13, 14, T.dark)
+  S(f[2], 10, 14, T.dark); S(f[2], 11, 14, T.cloth_blue); S(f[2], 12, 14, T.cloth_blue); S(f[2], 13, 14, T.dark)
+  S(f[3], 10, 14, T.dark); S(f[3], 11, 14, T.bright_red); S(f[3], 12, 14, T.bright_red); S(f[3], 13, 14, T.dark)
+  return f
+}
+
+// 生病（床上+体温计+药丸）
+function sceneSick(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    // 床头
+    for (let r = 9; r <= 14; r++) S(fr, r, 2, T.brown)
+    // 床（金色被子）
+    for (let col = 3; col <= 21; col++) { S(fr, 12, col, T.gold); S(fr, 13, col, T.gold) }
+    // 枕头
+    S(fr, 10, 3, T.white); S(fr, 10, 4, T.white); S(fr, 11, 3, T.white); S(fr, 11, 4, T.white)
+    S(fr, 14, 2, T.dark); S(fr, 14, 21, T.dark)
+  })
+  // 病人躺在床上
+  f.forEach(fr => {
+    // 头
+    S(fr, 10, 5, T.brown); S(fr, 10, 6, T.brown); S(fr, 10, 7, T.brown)
+    S(fr, 11, 5, T.brown); S(fr, 11, 8, T.brown)
+    S(fr, 10, 8, T.skin); S(fr, 10, 9, T.skin); S(fr, 11, 6, T.skin); S(fr, 11, 7, T.skin)
+    S(fr, 10, 8, T.dark); S(fr, 10, 9, T.dark) // 闭眼
+    // 被子盖身
+    for (let col = 10; col <= 20; col++) { S(fr, 10, col, T.cloth_red); S(fr, 11, col, T.cloth_red) }
+  })
+  // 体温计（颜色变化表示体温）
+  S(f[0], 11, 2, T.teal); S(f[1], 11, 2, T.gold); S(f[2], 11, 2, T.skin); S(f[3], 11, 2, T.bright_red)
+  // 红十字
+  f.forEach(fr => {
+    S(fr, 6, 1, T.bright_red); S(fr, 6, 2, T.white); S(fr, 6, 3, T.bright_red); S(fr, 5, 2, T.bright_red); S(fr, 7, 2, T.bright_red)
+  })
+  return f
+}
+
+// 手术（手术台+无影灯）
+function sceneSurgery(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    // 手术台
+    for (let col = 2; col <= 21; col++) { S(fr, 12, col, T.gray); S(fr, 13, col, T.gray) }
+    S(fr, 14, 2, T.dark); S(fr, 14, 21, T.dark)
+  })
+  // 病人躺在手术台上
+  f.forEach(fr => {
+    S(fr, 10, 4, T.brown); S(fr, 10, 5, T.brown); S(fr, 10, 6, T.brown)
+    S(fr, 11, 4, T.brown); S(fr, 11, 7, T.brown)
+    S(fr, 10, 7, T.skin); S(fr, 10, 8, T.skin); S(fr, 11, 5, T.skin); S(fr, 11, 6, T.skin)
+    S(fr, 10, 7, T.dark)
+    // 白大褂/白布盖身
+    for (let col = 9; col <= 18; col++) { S(fr, 10, col, T.white); S(fr, 11, col, T.white) }
+  })
+  // 无影灯（逐渐变亮变大）
+  S(f[0], 2, 10, T.gold); S(f[0], 2, 11, T.gold); S(f[0], 2, 12, T.gold); S(f[0], 3, 11, T.gold)
+  S(f[1], 2, 9, T.gold); S(f[1], 2, 10, T.gold); S(f[1], 2, 11, T.gold); S(f[1], 2, 12, T.gold); S(f[1], 2, 13, T.gold)
+  S(f[1], 3, 10, T.gold); S(f[1], 3, 11, T.gold); S(f[1], 3, 12, T.gold)
+  S(f[2], 2, 8, T.gold); S(f[2], 2, 9, T.gold); S(f[2], 2, 10, T.gold); S(f[2], 2, 11, T.gold); S(f[2], 2, 12, T.gold); S(f[2], 2, 13, T.gold); S(f[2], 2, 14, T.gold)
+  S(f[2], 3, 9, T.gold); S(f[2], 3, 10, T.gold); S(f[2], 3, 11, T.gold); S(f[2], 3, 12, T.gold); S(f[2], 3, 13, T.gold)
+  S(f[3], 2, 9, T.white); S(f[3], 2, 10, T.white); S(f[3], 2, 11, T.white); S(f[3], 2, 12, T.white); S(f[3], 2, 13, T.white)
+  S(f[3], 3, 10, T.white); S(f[3], 3, 11, T.white); S(f[3], 3, 12, T.white)
+  // 红十字
+  f.forEach(fr => { S(fr, 1, 1, T.bright_red); S(fr, 1, 2, T.white); S(fr, 1, 3, T.bright_red); S(fr, 0, 2, T.bright_red); S(fr, 2, 2, T.bright_red) })
+  return f
+}
+
+// 朋友聚会喝酒（举杯+啤酒杯+气泡，深色酒吧背景）
+function sceneFriendDrink(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < H; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.brown)
+    drawDesk(fr, 2, 21, 14, T.brown, T.brown)
+    S(fr, 2, 11, T.gold); S(fr, 2, 12, T.gold)
+  })
+  // 深色背景金头发，坐姿y=10（桌子在y=14遮挡）
+  drawPerson(f[0], 1, 10, T.gold, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[0], 8, 10, T.gold, T.skin, T.white, 'left', 'happy', 'sit')
+  drawPerson(f[0], 16, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  drawPerson(f[1], 1, 10, T.gold, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[1], 8, 10, T.gold, T.skin, T.white, 'left', 'happy', 'sit')
+  drawPerson(f[1], 16, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  drawPerson(f[2], 1, 10, T.gold, T.skin, T.cloth_blue, 'right', 'happy', 'cheer')
+  drawPerson(f[2], 8, 10, T.gold, T.skin, T.white, 'left', 'happy', 'cheer')
+  drawPerson(f[2], 16, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 1, 10, T.gold, T.skin, T.cloth_blue, 'right', 'happy', 'sit')
+  drawPerson(f[3], 8, 10, T.gold, T.skin, T.white, 'left', 'happy', 'sit')
+  drawPerson(f[3], 16, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  // 酒杯/啤酒杯
+  drawCup(f[0], 5, 12, T.cloth_blue); drawCup(f[0], 12, 12, T.cloth_blue); drawCup(f[0], 19, 12, T.cloth_blue)
+  drawCup(f[1], 5, 12, T.cloth_blue); drawCup(f[1], 12, 12, T.cloth_blue); drawCup(f[1], 19, 11, T.cloth_blue)
+  drawCup(f[2], 5, 11, T.cloth_blue); drawCup(f[2], 12, 11, T.cloth_blue); drawCup(f[2], 19, 11, T.cloth_blue)
+  drawCup(f[3], 5, 12, T.cloth_blue); drawCup(f[3], 12, 12, T.cloth_blue); drawCup(f[3], 19, 12, T.cloth_blue)
+  return f
+}
+
+// 购物（购物袋摆动，商场明亮场景）
+function sceneShopping(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.teal)
+    // 商场门框/货架
+    for (let r = 3; r <= 12; r++) { S(fr, r, 2, T.brown); S(fr, r, 21, T.brown) }
+    for (let col = 2; col <= 21; col++) S(fr, 3, col, T.brown)
+    S(fr, 6, 18, T.gold); S(fr, 7, 18, T.gold); S(fr, 8, 18, T.gold)
+  })
+  // 拎袋走路（从左到右）
+  drawPerson(f[0], 9, 11, T.gold, T.skin, T.cloth_red, 'right', 'happy', 'walk1')
+  drawPerson(f[1], 11, 11, T.gold, T.skin, T.cloth_red, 'right', 'happy', 'walk2')
+  drawPerson(f[2], 13, 11, T.gold, T.skin, T.cloth_red, 'right', 'happy', 'walk1')
+  drawPerson(f[3], 15, 11, T.gold, T.skin, T.cloth_red, 'right', 'happy', 'walk2')
+  // 购物袋（跟着人物位置摆动）
+  const personX = [9, 11, 13, 15]
+  f.forEach((fr, i) => {
+    const bx = personX[i] - 2
+    S(fr, 11, bx, T.cloth_red); S(fr, 12, bx, T.cloth_red); S(fr, 13, bx, T.dark)
+    S(fr, 10, bx, T.cloth_red)
+  })
+  return f
+}
+
+// 夫妻吵架（两人对骂+闪电/感叹号，灰色背景）
+function sceneCoupleFight(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.gray)
+    drawGround(fr, T.gray)
+  })
+  // 闪电
+  S(f[0], 1, 11, T.gold); S(f[0], 1, 12, T.gold)
+  S(f[1], 1, 11, T.gold); S(f[1], 1, 12, T.gold); S(f[1], 2, 12, T.gold); S(f[1], 0, 11, T.white)
+  S(f[2], 1, 11, T.bright_red); S(f[2], 1, 12, T.bright_red)
+  // 两人对立怒目
+  drawPerson(f[0], 4, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'angry', 'armsup')
+  drawPerson(f[0], 15, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'angry', 'armsup')
+  drawPerson(f[1], 4, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'angry', 'cheer')
+  drawPerson(f[1], 15, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'angry', 'cheer')
+  drawPerson(f[2], 4, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'angry', 'armsup')
+  drawPerson(f[2], 15, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'sad', 'stand')
+  drawPerson(f[3], 4, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'sad', 'stand')
+  drawPerson(f[3], 15, 11, T.hair_light, T.skin, T.cloth_red, 'left', 'sad', 'stand')
+  // 感叹号
+  S(f[1], 4, 10, T.bright_red); S(f[1], 5, 10, T.bright_red); S(f[1], 6, 10, T.bright_red)
+  S(f[1], 4, 14, T.bright_red); S(f[1], 5, 14, T.bright_red); S(f[1], 6, 14, T.bright_red)
+  return f
+}
+
 // ===== 场景映射表 =====
 export const STORYBOARD_SCENES: StoryboardScene[] = [
   // ===== 里程碑事件（priority: 10）=====
-  { id: 'retire', category: 'career', name: '退休', keywords: ['退休','荣休','退休金','退休生活','告别职场'], palette: CAREER_PALETTE, frames: sceneRetire(), frameDelay: 200, animIn: 'pop', priority: 10 },
-  { id: 'graduate', category: 'career', name: '毕业', keywords: ['毕业','大学毕业','毕业典礼','毕业证','学位'], palette: CAREER_PALETTE, frames: sceneGraduate(), frameDelay: 200, animIn: 'bounce', priority: 10 },
-  { id: 'first-job', category: 'career', name: '入职', keywords: ['入职','第一天上班','新工作','报到','初入职场'], palette: CAREER_PALETTE, frames: sceneFirstJob(), frameDelay: 300, animIn: 'fade', priority: 10 },
-  { id: 'first-salary', category: 'life', name: '第一笔工资', keywords: ['第一笔工资','第一份薪水','发工资','领到工资'], palette: LIFE_PALETTE, frames: sceneFirstSalary(), frameDelay: 180, animIn: 'bounce', priority: 10 },
-  { id: 'marry', category: 'family', name: '结婚', keywords: ['结婚','婚礼','求婚','领证','娶','嫁','我们结婚了'], palette: FAMILY_PALETTE, frames: sceneWedding(), frameDelay: 200, animIn: 'pop', priority: 10 },
-  { id: 'baby', category: 'family', name: '生子', keywords: ['宝宝出生','生孩子','当爸','当妈','新生儿','婴儿','出生'], palette: FAMILY_PALETTE, frames: sceneBaby(), frameDelay: 200, animIn: 'bounce', priority: 10 },
-  { id: 'buy-house', category: 'family', name: '买房', keywords: ['买房','交房','装修','搬进新家','房产证','买房了'], palette: FAMILY_PALETTE, frames: sceneBuyHouse(), frameDelay: 200, animIn: 'fade', priority: 10 },
-  { id: 'buy-car', category: 'life', name: '买车', keywords: ['买车','提车','新车','第一辆车','喜提'], palette: LIFE_PALETTE, frames: sceneBuyCar(), frameDelay: 200, animIn: 'slide', priority: 10 },
-  { id: 'promotion', category: 'career', name: '升职加薪', keywords: ['升职','加薪','晋升','提拔','升值','涨薪'], palette: CAREER_PALETTE, frames: scenePromotion(), frameDelay: 180, animIn: 'bounce', priority: 10 },
-  { id: 'gaokao', category: 'career', name: '高考', keywords: ['高考','高考结束','高考成绩','考上大学','录取通知书','金榜题名'], palette: CAREER_PALETTE, frames: sceneGaokao(), frameDelay: 300, animIn: 'pop', priority: 10 },
-  { id: 'startup', category: 'career', name: '创业', keywords: ['创业','开公司','下海','合伙创业','创业项目'], palette: CAREER_PALETTE, frames: sceneStartup(), frameDelay: 250, animIn: 'fade', priority: 10 },
+  { id: 'retire', category: 'career', name: '退休', keywords: ['退休','荣休','退休金','退休生活','告别职场','退休手续','退休倒计时','清理办公桌','退休计划','养老金'], palette: CAREER_PALETTE, frames: sceneRetire(), frameDelay: 200, animIn: 'pop', priority: 10 },
+  { id: 'graduate', category: 'life', name: '毕业', keywords: ['毕业','大学毕业','毕业典礼','毕业证','学位'], palette: LIFE_PALETTE, frames: sceneGraduate(), frameDelay: 200, animIn: 'bounce', priority: 10 },
+  { id: 'first-job', category: 'career', name: '入职', keywords: ['入职','第一天上班','新工作','报到','初入职场','入职第一天','崭新的工牌','职业生涯','正式开局'], palette: CAREER_PALETTE, frames: sceneFirstJob(), frameDelay: 300, animIn: 'fade', priority: 10 },
+  { id: 'first-salary', category: 'career', name: '第一笔工资', keywords: ['第一笔工资','第一份薪水','发工资','领到工资','工资到账','工资条'], palette: CAREER_PALETTE, frames: sceneFirstSalary(), frameDelay: 180, animIn: 'bounce', priority: 10 },
+  { id: 'marry', category: 'family', name: '结婚', keywords: ['结婚','婚礼','求婚','领证','娶','嫁','我们结婚了','订婚','喜帖','份子钱','红色喜帖','礼金','办婚礼','娶了','嫁了'], palette: FAMILY_PALETTE, frames: sceneWedding(), frameDelay: 200, animIn: 'pop', priority: 10 },
+  { id: 'baby', category: 'family', name: '生子', keywords: ['宝宝出生','生孩子','当爸','当妈','新生儿','婴儿','出生','怀孕','二胎','催生','当爸爸','当妈妈','孩子出生','喜得贵子','喜得千金'], palette: FAMILY_PALETTE, frames: sceneBaby(), frameDelay: 200, animIn: 'bounce', priority: 10 },
+  { id: 'buy-house', category: 'family', name: '买房', keywords: ['买房','交房','装修','搬进新家','房产证','买房了','房价','首付','月供','房贷','物业','房贷压力'], palette: FAMILY_PALETTE, frames: sceneBuyHouse(), frameDelay: 200, animIn: 'fade', priority: 10 },
+  { id: 'buy-car', category: 'life', name: '买车', keywords: ['买车','提车','新车','第一辆车','喜提','4S店','车险','保养'], palette: LIFE_PALETTE, frames: sceneBuyCar(), frameDelay: 200, animIn: 'slide', priority: 10 },
+  { id: 'promotion', category: 'career', name: '升职加薪', keywords: ['升职','加薪','晋升','提拔','升值','涨薪','涨工资','带项目','项目你来带','薪资','工资条','薪资比之前高'], palette: CAREER_PALETTE, frames: scenePromotion(), frameDelay: 180, animIn: 'bounce', priority: 10 },
+  { id: 'gaokao', category: 'life', name: '高考', keywords: ['高考','高考结束','高考成绩','考上大学','录取通知书','金榜题名'], palette: LIFE_PALETTE, frames: sceneGaokao(), frameDelay: 300, animIn: 'pop', priority: 10 },
+  { id: 'startup', category: 'career', name: '创业', keywords: ['创业','开公司','下海','合伙创业','创业项目','创业了','创业公司','拉你入伙','合伙人','风投'], palette: CAREER_PALETTE, frames: sceneStartup(), frameDelay: 250, animIn: 'fade', priority: 10 },
   { id: 'ipo', category: 'career', name: '上市', keywords: ['上市','IPO','敲钟','股票上市','公司上市'], palette: CAREER_PALETTE, frames: sceneIPO(), frameDelay: 180, animIn: 'bounce', priority: 10 },
-  { id: 'digital-immortality', category: 'career', name: '数字永生', keywords: ['数字永生','意识上传','永生','数字化','赛博永生'], palette: CAREER_PALETTE, frames: sceneDigitalImmortality(), frameDelay: 250, animIn: 'blink', priority: 10 },
-  { id: 'fire', category: 'life', name: '财务自由', keywords: ['FIRE','财务自由','提前退休','财务独立','Fire运动'], palette: LIFE_PALETTE, frames: sceneFIRE(), frameDelay: 300, animIn: 'fade', priority: 10 },
-  { id: 'lottery-win', category: 'life', name: '中彩票', keywords: ['中彩票','彩票中奖','中奖了','头奖','五百万'], palette: LIFE_PALETTE, frames: sceneLottery(), frameDelay: 180, animIn: 'bounce', priority: 10 },
-  // ===== 路径事件（priority: 10）=====
-  { id: 'date', category: 'family', name: '约会', keywords: ['约会','相亲','恋爱','表白','第一次约会','在一起'], palette: FAMILY_PALETTE, frames: sceneDate(), frameDelay: 300, animIn: 'fade', priority: 10 },
-  { id: 'move', category: 'life', name: '搬家', keywords: ['搬家','搬去','移居','迁徙','搬迁','北漂','沪漂','深漂','去外地'], palette: LIFE_PALETTE, frames: sceneMove(), frameDelay: 250, animIn: 'slide', priority: 10 },
+  { id: 'digital-immortality', category: 'career', name: '数字永生', keywords: ['数字永生','意识上传','永生','数字化','赛博永生','脑机接口','神经接口'], palette: CAREER_PALETTE, frames: sceneDigitalImmortality(), frameDelay: 250, animIn: 'blink', priority: 10 },
+  { id: 'fire', category: 'life', name: '财务自由', keywords: ['FIRE','财务自由','提前退休','财务独立','Fire运动','财务自由帖'], palette: LIFE_PALETTE, frames: sceneFIRE(), frameDelay: 300, animIn: 'fade', priority: 10 },
+  { id: 'lottery-win', category: 'life', name: '中奖', keywords: ['中奖','中奖了','头奖','五百万','彩票中奖','彩票','买了张彩票','中彩票'], palette: LIFE_PALETTE, frames: sceneLottery(), frameDelay: 180, animIn: 'bounce', priority: 10 },
   // ===== 负面事件（priority: 9）=====
-  { id: 'divorce', category: 'family', name: '离婚', keywords: ['离婚','离婚了','分开','离婚协议','婚姻破裂'], palette: FAMILY_PALETTE, frames: sceneDivorce(), frameDelay: 400, animIn: 'shake', priority: 9 },
+  { id: 'fired', category: 'career', name: '被裁', keywords: ['被裁','裁员','被公司裁员','被开除','被辞退','丢工作','被炒鱿鱼','优化裁员','行业寒冬','收拾纸箱','失业','投简历','被优化','优化','裁员风声','公司倒闭'], palette: CAREER_PALETTE, frames: sceneFired(), frameDelay: 400, animIn: 'shake', priority: 9 },
+  { id: 'divorce', category: 'family', name: '离婚', keywords: ['离婚','离婚了','分开','离婚协议','婚姻破裂','财产分割'], palette: FAMILY_PALETTE, frames: sceneDivorce(), frameDelay: 400, animIn: 'shake', priority: 9 },
   { id: 'breakup', category: 'family', name: '分手', keywords: ['分手','失恋','被甩','感情破裂','我们分手吧'], palette: FAMILY_PALETTE, frames: sceneBreakup(), frameDelay: 400, animIn: 'fade', priority: 9 },
-  { id: 'parent-sick', category: 'family', name: '父母生病', keywords: ['父母生病','父亲生病','母亲生病','爸妈住院','家人重病','陪床','癌症'], palette: FAMILY_PALETTE, frames: sceneParentSick(), frameDelay: 400, animIn: 'fade', priority: 9 },
-  { id: 'bankruptcy', category: 'life', name: '破产', keywords: ['破产','负债','欠债','赔光','亏钱','血本无归','倒闭'], palette: LIFE_PALETTE, frames: sceneBankruptcy(), frameDelay: 400, animIn: 'shake', priority: 9 },
-  { id: 'lend-money', category: 'life', name: '借钱不还', keywords: ['借钱','欠钱不还','讨债','朋友借钱','借出去'], palette: LIFE_PALETTE, frames: sceneLendMoney(), frameDelay: 400, animIn: 'fade', priority: 9 },
-  { id: 'burnout', category: 'career', name: '倦怠', keywords: ['倦怠','躺平','辞职','裸辞','厌班','迷茫','抑郁','情绪崩溃'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 500, animIn: 'fade', priority: 9 },
+  { id: 'couple-fight', category: 'family', name: '吵架', keywords: ['吵架','争吵','夫妻吵架','大吵一架','吵架摔东西','两口子吵架','激烈争吵','闹矛盾','冷战','吵了一架','分歧'], palette: FAMILY_PALETTE, frames: sceneCoupleFight(), frameDelay: 400, animIn: 'shake', priority: 9 },
+  { id: 'parent-sick', category: 'family', name: '父母生病', keywords: ['父母生病','父亲生病','母亲生病','爸妈住院','家人重病','陪床','癌症','住院','爸住院','妈住院','父亲住院','母亲住院','急诊','120','诊断书','重病','大病','手术','走了','去世','心梗','离世','养老院','陪床守夜','医院走廊'], palette: FAMILY_PALETTE, frames: sceneParentSick(), frameDelay: 400, animIn: 'fade', priority: 9 },
+  { id: 'surgery', category: 'life', name: '手术', keywords: ['手术','动手术','进手术室','开刀','外科手术','住院手术','重大手术','做手术','住院做手术'], palette: LIFE_PALETTE, frames: sceneSurgery(), frameDelay: 400, animIn: 'fade', priority: 9 },
+  { id: 'bankruptcy', category: 'life', name: '破产', keywords: ['破产','负债','欠债','赔光','亏钱','血本无归','倒闭','积蓄花光','账户蒸发','爆仓','窟窿'], palette: LIFE_PALETTE, frames: sceneBankruptcy(), frameDelay: 400, animIn: 'shake', priority: 9 },
+  { id: 'lend-money', category: 'life', name: '借钱不还', keywords: ['借钱','欠钱不还','讨债','朋友借钱','借出去','发小借钱','转了账','这钱要不回来'], palette: LIFE_PALETTE, frames: sceneLendMoney(), frameDelay: 400, animIn: 'fade', priority: 9 },
+  { id: 'burnout', category: 'career', name: '倦怠', keywords: ['倦怠','躺平','辞职','裸辞','厌班','迷茫','抑郁','情绪崩溃','焦虑','不想上班','心理阴影','辞职信'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 500, animIn: 'fade', priority: 9 },
+  { id: 'sick', category: 'life', name: '生病', keywords: ['生病','发烧','感冒','卧病在床','病倒','请病假','生病卧床','医药费','住院','体检','复查','血压','血脂','脂肪肝','颈椎病','脱发','白发','药','吃药','保健品','膏药','降压药','膝盖疼','眼药水','急诊','挂号','药店'], palette: LIFE_PALETTE, frames: sceneSick(), frameDelay: 400, animIn: 'fade', priority: 8 },
+  // ===== 路径/重要生活事件（priority: 8）=====
+  { id: 'date', category: 'family', name: '约会', keywords: ['约会','恋爱','表白','第一次约会','在一起','烛光晚餐','找对象','对象','伴侣','脱单','谈恋爱','女朋友','男朋友'], palette: FAMILY_PALETTE, frames: sceneDate(), frameDelay: 300, animIn: 'fade', priority: 8 },
+  { id: 'job-hop', category: 'career', name: '跳槽', keywords: ['跳槽','跳槽去新公司','辞职跳槽','换工作','拿到新offer','跳槽涨薪','离职入职','猎头','内推','刷招聘'], palette: CAREER_PALETTE, frames: sceneJobHop(), frameDelay: 250, animIn: 'slide', priority: 8 },
   // ===== 日常事件（priority: 7-3）=====
-  { id: 'work', category: 'career', name: '工作', keywords: ['上班','工作','搬砖','打工','开干','干活','到公司'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 7 },
-  { id: 'overtime', category: 'career', name: '加班', keywords: ['深夜加班','加到深夜','还在加班'], palette: CAREER_PALETTE, frames: sceneOvertime(), frameDelay: 350, animIn: 'fade', priority: 7 },
+  { id: 'blind-date', category: 'family', name: '相亲', keywords: ['相亲','相亲见面','媒人介绍','被安排相亲','相亲饭局','去相亲','见对象','安排了相亲','周末相亲','有房有车'], palette: FAMILY_PALETTE, frames: sceneBlindDate(), frameDelay: 300, animIn: 'fade', priority: 7 },
+  { id: 'parent-visit', category: 'family', name: '父母探望', keywords: ['父母来看我','爸妈从老家来','父母过来探望','父母到访','爸妈来看我','父母登门看望','回家','回老家','过年回家','妈妈打电话','爸妈打电话','视频电话','和爸妈视频','教爸妈用','妈在家族群'], palette: FAMILY_PALETTE, frames: sceneParentVisit(), frameDelay: 300, animIn: 'fade', priority: 7 },
+  { id: 'play-kid', category: 'family', name: '陪孩子玩', keywords: ['陪孩子玩','陪孩子玩耍','亲子时光','陪儿子玩','陪女儿玩','亲子互动','陪娃玩','带孩子去公园','玩积木','陪孩子','带孩子','陪娃','周末陪孩子','亲子','辅导作业','陪孩子写作业'], palette: FAMILY_PALETTE, frames: scenePlayKid(), frameDelay: 250, animIn: 'fade', priority: 7 },
+  { id: 'work', category: 'career', name: '工作', keywords: ['上班','工作','搬砖','打工','开干','干活','到公司','公司','工位','办公室','工牌','领导','老板','同事','下班','打卡','开会','项目','需求','社畜','简历','面试','周报','KPI'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 7 },
+  { id: 'overtime', category: 'career', name: '加班', keywords: ['深夜加班','加到深夜','还在加班','加班','通宵','凌晨','凌晨三点','凌晨两点','加班到很晚','加班到凌晨','通宵整晚','deadline','赶项目','红牛'], palette: CAREER_PALETTE, frames: sceneOvertime(), frameDelay: 350, animIn: 'fade', priority: 7 },
   { id: 'midnight-baby', category: 'family', name: '半夜喂奶', keywords: ['半夜喂奶','夜醒喂奶','冲奶粉','哄睡','哄孩子睡觉','夜奶'], palette: FAMILY_PALETTE, frames: sceneMidnightBaby(), frameDelay: 500, animIn: 'fade', priority: 7 },
-  { id: 'cook', category: 'family', name: '做饭', keywords: ['做饭','炒菜','下厨房','烹饪','做饭菜','烧菜'], palette: FAMILY_PALETTE, frames: sceneCook(), frameDelay: 250, animIn: 'fade', priority: 6 },
-  { id: 'exercise', category: 'life', name: '锻炼', keywords: ['锻炼','跑步','健身','运动','晨跑','晨练'], palette: LIFE_PALETTE, frames: sceneExercise(), frameDelay: 200, animIn: 'pop', priority: 5 },
-  { id: 'travel', category: 'life', name: '旅行', keywords: ['旅游','旅行','出去玩','度假','出游','出国','去旅行'], palette: LIFE_PALETTE, frames: sceneTravel(), frameDelay: 250, animIn: 'slide', priority: 7 },
+  { id: 'travel', category: 'life', name: '旅行', keywords: ['旅游','旅行','出去玩','度假','出游','出国','去旅行','海边','看日落','风景','碧海蓝天'], palette: LIFE_PALETTE, frames: sceneTravel(), frameDelay: 250, animIn: 'slide', priority: 7 },
+  { id: 'grandchild', category: 'family', name: '抱孙', keywords: ['孙子','孙女','抱孙子','带孙','隔代亲','当爷爷','当奶奶','带孙子','带了一天孙子'], palette: FAMILY_PALETTE, frames: sceneGrandchild(), frameDelay: 250, animIn: 'fade', priority: 7 },
+  { id: 'sunset', category: 'life', name: '夕阳晚年', keywords: ['夕阳','晚年','老了','白头偕老','一起变老','黄昏恋','暮年','退休','广场舞','太极','养生','白发','老花镜','上了年纪','老头','老太太','爬楼喘气'], palette: LIFE_PALETTE, frames: sceneSunset(), frameDelay: 500, animIn: 'fade', priority: 7 },
+  { id: 'move', category: 'life', name: '搬家', keywords: ['搬家','搬去','移居','迁徙','搬迁','北漂','沪漂','深漂','去外地','房租上涨','涨房租','房东','新租的房子','租的房子'], palette: LIFE_PALETTE, frames: sceneMove(), frameDelay: 250, animIn: 'slide', priority: 7 },
+  { id: 'bonus', category: 'career', name: '发奖金', keywords: ['发奖金','年终奖','项目奖金','年终分红','绩效奖金','发了一大笔奖金','奖金到手','年终奖到账'], palette: CAREER_PALETTE, frames: sceneBonus(), frameDelay: 200, animIn: 'bounce', priority: 7 },
+  { id: 'friend-drink', category: 'life', name: '朋友聚会', keywords: ['朋友聚会','和朋友聚餐','兄弟喝酒','闺蜜聚会','喝酒撸串','饭局举杯','老友重逢','酒吧喝酒','同事喝酒','拼酒','同学聚会','发小','老朋友','邻居','份子钱','红包','结婚请柬','聚餐','干杯'], palette: LIFE_PALETTE, frames: sceneFriendDrink(), frameDelay: 300, animIn: 'fade', priority: 6 },
+  { id: 'pet', category: 'life', name: '养宠物', keywords: ['养宠物','养了只小狗','养了只小猫','遛狗','养猫','毛孩子','宠物狗','宠物猫','铲屎','流浪猫','喂小猫','喂流浪猫','金毛','橘猫','猫','狗'], palette: LIFE_PALETTE, frames: scenePet(), frameDelay: 250, animIn: 'fade', priority: 6 },
+  { id: 'investment', category: 'career', name: '投资炒股', keywords: ['炒股','买基金','投资理财','股市涨跌','买入股票','理财收益','股票基金','币圈投资','股市','牛市','熊市','持仓','仓位','爆仓','暴跌','行情','风口','币','钱包','交易所','余额宝','记账','存款','银行App'], palette: CAREER_PALETTE, frames: sceneInvestment(), frameDelay: 300, animIn: 'fade', priority: 6 },
+  { id: 'cook', category: 'family', name: '做饭', keywords: ['做饭','炒菜','下厨房','烹饪','做饭菜','烧菜','做了顿好饭','红烧肉','煮面','烧了壶水','姜茶','外卖','外卖盒','馆子','下馆子','奶茶','咖啡'], palette: FAMILY_PALETTE, frames: sceneCook(), frameDelay: 250, animIn: 'fade', priority: 6 },
+  { id: 'shopping', category: 'life', name: '购物', keywords: ['购物','逛街','血拼','买买买','商场购物','超市采购','买东西','剁手','扫货','逛商场','快递','拆包裹','快递到了'], palette: LIFE_PALETTE, frames: sceneShopping(), frameDelay: 250, animIn: 'slide', priority: 4 },
+  { id: 'phone', category: 'life', name: '刷手机', keywords: ['刷手机','刷短视频','刷抖音','刷朋友圈','手机不离手','刷剧','窝沙发刷手机','躺着刷','刷动态圈','小红书','手机没电','截图','发动态圈','设闹钟','刷Boss'], palette: LIFE_PALETTE, frames: scenePhone(), frameDelay: 300, animIn: 'fade', priority: 4 },
+  { id: 'walk', category: 'family', name: '散步', keywords: ['散步','走路','逛街','遛弯','走走','漫步','小区散步','晚饭后散步','溜达','公园'], palette: FAMILY_PALETTE, frames: sceneWalk(), frameDelay: 300, animIn: 'fade', priority: 4 },
+  { id: 'exercise', category: 'life', name: '锻炼', keywords: ['锻炼','跑步','健身','运动','晨跑','晨练','健身房','太极','米字操','颈椎操','走路上班'], palette: LIFE_PALETTE, frames: sceneExercise(), frameDelay: 200, animIn: 'pop', priority: 5 },
   { id: 'fishing', category: 'life', name: '钓鱼', keywords: ['钓鱼','去钓鱼','垂钓','钓到大鱼'], palette: LIFE_PALETTE, frames: sceneFishing(), frameDelay: 400, animIn: 'fade', priority: 5 },
-  { id: 'grandchild', category: 'family', name: '抱孙', keywords: ['孙子','孙女','抱孙子','带孙','隔代亲','当爷爷','当奶奶'], palette: FAMILY_PALETTE, frames: sceneGrandchild(), frameDelay: 250, animIn: 'fade', priority: 7 },
-  { id: 'square-dance', category: 'life', name: '广场舞', keywords: ['广场舞','跳广场舞','大妈跳舞'], palette: LIFE_PALETTE, frames: sceneSquareDance(), frameDelay: 200, animIn: 'bounce', priority: 5 },
-  { id: 'sunset', category: 'life', name: '夕阳晚年', keywords: ['夕阳','晚年','老了','白头偕老','一起变老','黄昏恋','暮年'], palette: LIFE_PALETTE, frames: sceneSunset(), frameDelay: 500, animIn: 'fade', priority: 7 },
-  { id: 'walk', category: 'family', name: '散步', keywords: ['散步','走路','逛街','遛弯','走走','漫步'], palette: FAMILY_PALETTE, frames: sceneWalk(), frameDelay: 300, animIn: 'fade', priority: 4 },
-  { id: 'read', category: 'life', name: '看书', keywords: ['看书','读书','阅读','学习','翻书'], palette: LIFE_PALETTE, frames: sceneRead(), frameDelay: 400, animIn: 'fade', priority: 3 },
-  { id: 'tv', category: 'family', name: '看电视', keywords: ['看电视','追剧','看剧','看节目','电视机前'], palette: FAMILY_PALETTE, frames: sceneTV(), frameDelay: 350, animIn: 'fade', priority: 3 },
-  { id: 'sleep', category: 'family', name: '睡觉', keywords: ['睡觉','入睡','晚安','睡着','睡眠'], palette: FAMILY_PALETTE, frames: sceneSleep(), frameDelay: 600, animIn: 'fade', priority: 3 },
-  { id: 'eat', category: 'family', name: '吃饭', keywords: ['吃饭','吃晚饭','吃饭了','用餐','晚饭','吃火锅'], palette: FAMILY_PALETTE, frames: sceneEat(), frameDelay: 300, animIn: 'fade', priority: 3 },
+  { id: 'square-dance', category: 'life', name: '广场舞', keywords: ['广场舞','跳广场舞','大妈跳舞','广场跳广场舞'], palette: LIFE_PALETTE, frames: sceneSquareDance(), frameDelay: 200, animIn: 'bounce', priority: 5 },
+  { id: 'read', category: 'life', name: '看书', keywords: ['看书','读书','阅读','学习','翻书','书店','学习新技能','教学视频','收藏夹','论文'], palette: LIFE_PALETTE, frames: sceneRead(), frameDelay: 400, animIn: 'fade', priority: 3 },
+  { id: 'tv', category: 'family', name: '看电视', keywords: ['看电视','追剧','看剧','看节目','电视机前','窝在沙发','看电影','短视频','刷短视频'], palette: FAMILY_PALETTE, frames: sceneTV(), frameDelay: 350, animIn: 'fade', priority: 3 },
+  { id: 'sleep', category: 'family', name: '睡觉', keywords: ['睡觉','入睡','晚安','睡着','睡眠','失眠','睡过头','闹钟响了','睡了','困','深睡'], palette: FAMILY_PALETTE, frames: sceneSleep(), frameDelay: 600, animIn: 'fade', priority: 3 },
+  { id: 'eat', category: 'family', name: '吃饭', keywords: ['吃饭','吃晚饭','吃饭了','用餐','晚饭','吃火锅','早餐','午饭','外卖','聚餐','饭局','一个人吃饭'], palette: FAMILY_PALETTE, frames: sceneEat(), frameDelay: 300, animIn: 'fade', priority: 3 },
 ]
 
 /**
