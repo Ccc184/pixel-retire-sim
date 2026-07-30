@@ -30,7 +30,7 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
     tagline: '世界那么大，退休后慢慢看',
     color: '#00d4ff',
     bgGlow: 'rgba(0,212,255,0.12)',
-    targetWealth: 80_000_000,
+    targetWealth: 8_000_000,
     items: [
       {
         emoji: '✈️', title: '国际航班', unitPrice: 3000, unit: '张',

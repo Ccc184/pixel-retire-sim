@@ -81,23 +81,46 @@ const isPathSuccess = computed<boolean>(() => {
   return eid.startsWith('path_success_')
 })
 
-// 退休第一天微型场景文本
+// 退休第一天微型场景文本（按评级差异化 + 路径专属成功文本）
 const firstDayScene = computed<string>(() => {
-  switch (currentPathKey.value) {
-    case 'ai_symbiote':
-      return '你关掉了闹钟，却在6点准时醒来。窗外是晨曦，你端着咖啡坐回屏幕前——但今天，没有需求文档，没有deadline。你打开那个拖了三年没写完的开源项目，笑了。'
-    case 'chain_native':
-      return '你删掉了行情APP，注销了交易所账号。手机静得像一块砖。你走到阳台，第一次注意到楼下那棵银杏已经长到了三楼。'
-    case 'digital_nomad':
-      return '你在一个海边小城醒来，楼下是渔船的汽笛声。你打开电脑——没有会议邀请，只有一封编辑的催稿邮件，你笑着点了"稍后提醒"。'
-    case 'super_ip':
-      return '你推掉了所有商业合作，只保留了一个播客。听众问你为什么，你说："以前我想被听见，现在我想慢慢说。"'
-    case 'silver_economy':
-      return '你坐在花园里翻着老照片，秀兰的笑声从厨房飘来。保温杯里的茶还冒着热气，你想，这就是最好的抗衰药。'
-    case 'bio_gambler':
-      return isPathSuccess.value
-        ? '你的生物年龄定格在了45岁。你站在镜子前看了很久，然后给22岁的自己写了一封永远寄不出的信——信上只有四个字：我赌赢了。'
-        : '你的生物年龄停在了65岁。那些回输的细胞、注射的NAD+终究没能跑赢时间。你坐在藤椅上晒着太阳，心想：赌输了也没什么，至少我赌过。'
+  // 路径成功结局：使用路径专属的成功日文本
+  if (isPathSuccess.value) {
+    switch (currentPathKey.value) {
+      case 'ai_symbiote':
+        return '你关掉了闹钟，却在6点准时醒来。窗外是晨曦，你端着咖啡坐回屏幕前——但今天，没有需求文档，没有deadline。你打开那个拖了三年没写完的开源项目，笑了。'
+      case 'chain_native':
+        return '你删掉了行情APP，注销了交易所账号。手机静得像一块砖。你走到阳台，第一次注意到楼下那棵银杏已经长到了三楼。'
+      case 'digital_nomad':
+        return '你在一个海边小城醒来，楼下是渔船的汽笛声。你打开电脑——没有会议邀请，只有一封编辑的催稿邮件，你笑着点了"稍后提醒"。'
+      case 'super_ip':
+        return '你推掉了所有商业合作，只保留了一个播客。听众问你为什么，你说："以前我想被听见，现在我想慢慢说。"'
+      case 'silver_economy':
+        return '你坐在花园里翻着老照片，秀兰的笑声从厨房飘来。保温杯里的茶还冒着热气，你想，这就是最好的抗衰药。'
+      case 'bio_gambler':
+        return '你的生物年龄定格在了45岁。你站在镜子前看了很久，然后给22岁的自己写了一封永远寄不出的信——信上只有四个字：我赌赢了。'
+      default:
+        return '闹钟响了，你笑了——今天不用按掉它。阳光从窗帘缝里钻进来，你躺在床上发了十分钟呆，想起来今天没有任何必须要做的事。这是你第一天不用上班。'
+    }
+  }
+
+  // bio_gambler 失败有专属文本
+  if (currentPathKey.value === 'bio_gambler' && !isPathSuccess.value) {
+    return '你的生物年龄停在了65岁。那些回输的细胞、注射的NAD+终究没能跑赢时间。你坐在藤椅上晒着太阳，心想：赌输了也没什么，至少我赌过。'
+  }
+
+  // 其余结局按评级分级（包括普通结局E1-E9和非bio路径失败）
+  const grade = endingInfo.value?.grade || 'B'
+  switch (grade) {
+    case 'S':
+      return '闹钟响了，你笑了——今天不用按掉它。阳光从窗帘缝里钻进来，你躺在床上发了十分钟呆，想起来今天没有任何必须要做的事。这是你第一天不用上班。'
+    case 'A':
+      return '闹钟响了，你按掉它。窗外有鸟叫，你慢悠悠地煮了杯咖啡。手机里没有未读消息，也不需要有。'
+    case 'B':
+      return '闹钟响了，你按掉它。又是普通的一天。你煮了碗面，打开手机看新闻，日子就这样过着。'
+    case 'C':
+      return '闹钟响了，你习惯性地想按掉它，然后愣了一下——已经很久不需要闹钟了。你坐起来，盘算着这个月的开支。'
+    case 'D':
+      return '闹钟还是响了。你叹了口气起来，退休的事再说吧。'
     default:
       return '闹钟响了，你按掉它。又是普通的一天。你煮了碗面，打开手机看新闻，日子就这样过着。'
   }

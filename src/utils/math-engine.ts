@@ -1124,72 +1124,110 @@ export function getVoluntaryRetirementEnding(state: GameState): string {
 export function checkEnding(state: GameState): string | null {
   if (state.endingTriggered) return state.currentEndingId;
 
-  // 年满targetAge或严重负债
-  const reachedAge = state.currentAge >= state.targetAge;
-  const bankrupt = state.currentSavings < -300000; // 负债30万以上破产（年支出5-10万情况下，连续3-5年巨亏才会达到）
+  // 60岁为硬上限：年满60岁强制结局
+  const reachedHardCap = state.currentAge >= state.targetAge; // targetAge = 60
+  const bankrupt = state.currentSavings < -300000; // 负债30万以上破产
 
   // 严重负债随时触发破产结局
   if (bankrupt) return 'E8';
 
+  // 获取路径退休年龄（如有路径）
+  let pathRetireAge = 60;
+  if (state.retirementPath) {
+    const path = getPath(state.retirementPath);
+    if (path) pathRetireAge = path.targetRetireAge;
+  }
+
+  // 是否到达路径目标退休年龄
+  const reachedPathRetireAge = state.currentAge >= pathRetireAge;
+
   const totalWealth = calculateTotalWealth(state);
   const wealthMet = totalWealth >= state.targetWealth;
 
-  // 到达退休年龄前：不自动触发财富结局，只检查破产和重病
-  if (!reachedAge) {
-    // E4 中道崩殂：没到退休年龄但健康濒死
-    if (state.health < 20) return 'E4';
-    return null;
-  }
-
-  // ========== 以下是退休年龄后的自动结局判定 ==========
-
-  // 优先检查路径专属成功条件——玩家选了路径且满足path.checkSuccess
-  // 这样不会让普通结局(E1-E9)抢先截胡路径结局
-  if (state.retirementPath) {
-    const path = getPath(state.retirementPath);
-    if (path && path.checkSuccess(state)) {
-      return `path_success_${state.retirementPath}`;
+  // 到达路径退休年龄后：优先检查成功条件，达标则直接触发结局
+  if (reachedPathRetireAge) {
+    // 路径专属成功判定
+    if (state.retirementPath) {
+      const path = getPath(state.retirementPath);
+      if (path && path.checkSuccess(state)) {
+        return `path_success_${state.retirementPath}`;
+      }
     }
+    // 通用财富自由判定（无路径或路径未达标但财富已达标）
+    if (wealthMet) {
+      // E1 传奇自由人
+      if (!state.isMarried && state.happiness >= 70 && state.health >= 60) return 'E1';
+      // E2 温馨港湾
+      if (state.isMarried && state.hasChild && state.happiness >= 50 && state.health >= 40) return 'E2';
+      // E5 极简行者
+      if (state.usedMinimalism && state.annualBaseCost < 30000 * 0.6 && state.happiness >= 40) return 'E5';
+      // E3 平凡微光
+      if (state.happiness >= 30) return 'E3';
+      return 'E3';
+    }
+    // E6 创业者之歌（到达路径退休年龄后即可触发）
+    if (state.currentProfession === '实体创业' &&
+        state.currentSavings >= state.careerStartSalary * 12 * 20) return 'E6';
   }
 
-  // E1 传奇自由人：财富达标 + 幸福>=70 + 健康>=60 + 无伴侣
-  if (wealthMet && !state.isMarried && state.happiness >= 70 && state.health >= 60) return 'E1';
+  // 60岁硬上限：无论是否达标都强制结局
+  if (reachedHardCap) {
+    // 到达60岁，优先检查成功条件（可能路径退休年龄>60的极端情况）
+    if (state.retirementPath) {
+      const path = getPath(state.retirementPath);
+      if (path && path.checkSuccess(state)) {
+        return `path_success_${state.retirementPath}`;
+      }
+    }
+    if (wealthMet) {
+      if (!state.isMarried && state.happiness >= 70 && state.health >= 60) return 'E1';
+      if (state.isMarried && state.hasChild && state.happiness >= 50 && state.health >= 40) return 'E2';
+      if (state.usedMinimalism && state.annualBaseCost < 30000 * 0.6 && state.happiness >= 40) return 'E5';
+      if (state.happiness >= 30) return 'E3';
+      return 'E3';
+    }
+    if (state.currentProfession === '实体创业' &&
+        state.currentSavings >= state.careerStartSalary * 12 * 20) return 'E6';
+    // E7 体制内银发：60岁 + 体制内 + 幸福>=40
+    if (state.currentProfession === '体制内' && state.happiness >= 40) return 'E7';
 
-  // E2 温馨港湾：财富达标 + 幸福>=50 + 健康>=40 + 有伴侣有孩子
-  if (wealthMet && state.isMarried && state.hasChild && state.happiness >= 50 && state.health >= 40) return 'E2';
+    // 60岁未达标——判定人生质量
+    // E4 中道崩殂：真正悲惨
+    const trulyTragic = (state.totalUnemployedYears > 5 && state.hadCriticalIllness && !state.isInsured) ||
+                        state.health < 20;
+    if (trulyTragic) return 'E4';
 
-  // E6 创业者之歌
-  if (state.currentProfession === '实体创业' &&
-      state.currentSavings >= state.careerStartSalary * 12 * 20) return 'E6';
+    // E9 浮生半日闲：平凡人生
+    const decentLife = state.health >= 30 || state.happiness >= 40 ||
+                       (state.hasProperty && state.isMarried);
+    if (decentLife) return 'E9';
 
-  // E7 体制内银发：60岁 + 体制内 + 幸福>=40（不再只看钱）
-  if (state.currentProfession === '体制内' && state.currentAge >= 60 && state.happiness >= 40) return 'E7';
+    // 达到目标40%以上也算B级结局
+    if (totalWealth >= state.targetWealth * 0.4) return 'E9';
 
-  // E5 极简行者：财富达标 + 极简 + 幸福>=40
-  if (wealthMet && state.usedMinimalism &&
-      state.annualBaseCost < 30000 * 0.6 && state.happiness >= 40) return 'E5';
+    return 'E4';
+  }
 
-  // E3 平凡微光：财富达标 + 幸福>=30（身心状态一般也能达到）
-  if (wealthMet && state.happiness >= 30) return 'E3';
+  // 还没到路径退休年龄：只检查破产和重病
+  // E4 中道崩殂：没到退休年龄但健康濒死
+  if (state.health < 20) return 'E4';
+  return null;
+}
 
-  // 财富达标但身心状态较差，仍归为E3
-  if (wealthMet) return 'E3';
-
-  // 年满60但财富未达标——判定人生质量
-  // E4 中道崩殂：真正悲惨——失业>5年+重病+无保险 或 健康<20濒死
-  const trulyTragic = (state.totalUnemployedYears > 5 && state.hadCriticalIllness && !state.isInsured) ||
-                      state.health < 20;
-  if (trulyTragic) return 'E4';
-
-  // E9 浮生半日闲：平凡人生——没大富大贵，但也没彻底垮掉
-  // 条件：健康>=30 OR 幸福>=40 OR (有房有家庭)
-  const decentLife = state.health >= 30 || state.happiness >= 40 ||
-                     (state.hasProperty && state.isMarried);
-  if (decentLife) return 'E9';
-
-  // 介于两者之间：看总财富比例，达到目标40%以上也算B级结局
-  if (totalWealth >= state.targetWealth * 0.4) return 'E9';
-
-  // 真正的中道崩殂：没到退休年龄但触发了其他结局条件（如重病缠身）
-  return 'E4';
+/**
+ * 检查是否处于"延期退休"阶段
+ * 即已到达路径目标退休年龄但尚未满足退休条件（未成功），还没到60岁
+ */
+export function isDelayedRetirementPhase(state: GameState): boolean {
+  if (state.endingTriggered) return false;
+  if (state.currentAge >= state.targetAge) return false; // 已到60岁，会被强制结局
+  if (!state.retirementPath) return false;
+  const path = getPath(state.retirementPath);
+  if (!path) return false;
+  if (state.currentAge < path.targetRetireAge) return false;
+  // 到达路径退休年龄但未满足成功条件
+  if (path.checkSuccess(state)) return false;
+  const totalWealth = calculateTotalWealth(state);
+  if (totalWealth >= state.targetWealth) return false;
+  return true;
 }

@@ -287,10 +287,11 @@ function processChildren(state: GameState, logs: string[]) {
 // ============================================================
 function processFriends(state: GameState, logs: string[]) {
   for (const friend of state.friends) {
-    // 关系自然衰减
+    // 关系自然衰减（降低50%：原来每年降yearsSinceContact*2，改为降yearsSinceContact*1）
+    // 最低降到15，不会归零——代表"不常联系但还是朋友"
     const yearsSinceContact = state.currentAge - friend.lastContactAge;
     if (yearsSinceContact > 1) {
-      friend.relation = Math.max(0, friend.relation - yearsSinceContact * 2);
+      friend.relation = Math.max(15, friend.relation - yearsSinceContact * 1);
     }
 
     // 随机联系

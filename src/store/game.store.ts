@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed, nextTick, shallowRef } from 'vue';
 import { matchStoryboardScenes } from '../data/storyboard-scenes.js';
 import type { GameState, Profession, CityType, OriginChoices, YearResult, CrossroadEvent, NarrativeEvent, MBTIType, SalaryChangeEntry, RetirementDream } from '../types/global.d.js';
-import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth } from '../utils/math-engine.js';
+import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth, isDelayedRetirementPhase } from '../utils/math-engine.js';
 import { rollRandomEvents } from '../data/events.js';
 import { rollDailyEvents, applyDailyEventEffects } from '../data/daily-events.js';
 import { ENDINGS, buildEndingText } from '../utils/narrative.js';
@@ -936,6 +936,125 @@ export const useGameStore = defineStore('game', () => {
   
   // ========== 叙事事件系统（替代三卡抽卡） ==========
 
+  // 平静/休养生息年份文本池（按年龄段分配）
+  const CALM_YEAR_TEXTS: Record<string, string[]> = {
+    // 22-30岁：适应、摸索、习惯成年人节奏
+    young: [
+      '这一年没什么大事，但你开始习惯了成年人的节奏。',
+      '日子像按了快进键，周末总是来得太快。',
+      '学会了一个人吃饭，一个人去医院。',
+      '工作慢慢上手了，但也说不上喜欢，只是不那么慌了。',
+      '房租又涨了，你换了个更远的地方，每天通勤多了二十分钟。',
+      '这一年你搬了两次家，终于明白"定居"两个字有多奢侈。',
+      '朋友聚会越来越少，大家都开始忙了。',
+      '你开始记账了，虽然月底还是不知道钱花哪了。',
+      '给家里打电话的频率从一周一次变成了两周一次，你有点愧疚。',
+      '这一年你学会了很多小事：换灯泡、通下水道、跟中介砍价。',
+    ],
+    // 31-40岁：疲惫、小确幸、中年初体验
+    middle: [
+      '生活没什么惊喜也没什么意外，你开始觉得这就是幸福。',
+      '体检报告上多了两个箭头，你默默加了个早睡闹钟。',
+      '周末哪儿都不想去，在家躺着就是最好的度假。',
+      '你开始喝热水了，不用别人提醒。',
+      '发现自己熬不动夜了，十二点前必须睡。',
+      '偶尔会想起年轻时的梦想，然后摇摇头继续搬砖。',
+      '工资涨了，但快乐好像没怎么涨。',
+      '这一年去了好几次医院，不是自己就是家人。',
+      '你开始认真考虑买房的事了，虽然首付还差很远。',
+      '老同学的朋友圈从晒自拍变成了晒娃，你有点恍惚。',
+      '发现自己开始掉头发了，网购了第一瓶防脱洗发水。',
+    ],
+    // 41-50岁：平静、接受、与自己和解
+    mature: [
+      '平静是这个年纪最大的奢侈品。',
+      '不再强求什么，日子过一天是一天但也没什么不好。',
+      '老朋友越来越少，剩下的越来越重要。',
+      '你终于接受了自己是个普通人这件事。',
+      '开始喜欢在家做饭，外面的饭吃不动了。',
+      '话变少了，不是没话说，是觉得没必要说了。',
+      '身体开始各种小毛病，但你已经学会和它们共处。',
+      '看着镜子里的自己，白头发又多了几根。',
+      '对很多事都看开了，不再争强好胜。',
+      '这一年你推掉了很多应酬，回家陪家人的时间多了。',
+    ],
+    // 51-60岁：回忆、感恩、等待退休
+    senior: [
+      '开始喜欢翻旧照片了。',
+      '日子慢了下来，你开始享受这种慢。',
+      '等退休的日子里，每天都在数倒计时。',
+      '你开始整理这些年的东西，该扔的扔，该留的留。',
+      '和老同事聊天的话题从"升职"变成了"退休金"。',
+      '早上醒得越来越早，起来去公园散散步。',
+      '开始研究养生了，枸杞泡茶成了标配。',
+      '对年轻人的世界越来越看不懂了，但也不想懂了。',
+      '这一年你回了好几次老家，发现父母真的老了。',
+      '你开始想退休后要做什么，却发现想做的事其实不多。',
+      '时间过得越来越快，一年像一个月。',
+    ],
+    // 延期退休阶段专用（已过路径退休年龄但未达标）
+    delayed: [
+      '退休的目标似乎越来越近，又好像越来越远。',
+      '你告诉自己再多撑一年，就一年。',
+      '看着存款数字，你深吸一口气，继续干吧。',
+      '同龄人中有人已经退休了，你嘴上说不急，心里还是有点慌。',
+      '这一年你比以前更拼命了，时间不等人。',
+      '你开始认真考虑是不是该降低退休预期了。',
+      '身体在提醒你不年轻了，但钱包还没准备好。',
+      '又过了一年，离60岁又近了一步。',
+    ],
+  };
+
+  function getCalmYearText(age: number, delayed: boolean = false): string {
+    if (delayed) {
+      const pool = CALM_YEAR_TEXTS.delayed;
+      return `第${age}岁，${pool[Math.floor(Math.random() * pool.length)]}`;
+    }
+    let pool: string[];
+    if (age <= 30) pool = CALM_YEAR_TEXTS.young;
+    else if (age <= 40) pool = CALM_YEAR_TEXTS.middle;
+    else if (age <= 50) pool = CALM_YEAR_TEXTS.mature;
+    else pool = CALM_YEAR_TEXTS.senior;
+    return `第${age}岁，${pool[Math.floor(Math.random() * pool.length)]}`;
+  }
+
+  // 休养生息专用文本（更强调恢复、放松）
+  const REST_YEAR_TEXTS: Record<string, string[]> = {
+    young: [
+      '这一年你没有刻意追求什么。推掉了不必要的应酬，每天早睡早起，周末去公园散步。压力像退潮的海水慢慢退去，你重新感受到了生活的质感。',
+      '这一年你按下了暂停键。读了几本一直想读的书，给家人做了很多顿饭。虽然存款没怎么涨，但心里那块紧绷的弦终于松了。',
+      '休养生息的一年。你学会了对不必要的事情说"不"，把时间还给了自己。体检报告上的箭头少了几个，镜子里的自己看起来精神了不少。',
+      '这一年你刻意放慢了脚步。学会了做饭，开始跑步，周末不再宅在家里叫外卖。虽然没赚什么大钱，但状态好了很多。',
+    ],
+    middle: [
+      '这一年你学着放过自己。不再跟别人比薪资、比职位、比房子，周末带家人去郊外走走，发现幸福其实不需要那么多钱。',
+      '休养生息的一年。戒了一段时间的酒，每天饭后散步半小时，晚上十点准时睡觉。身体的各种小毛病好像都安分了一些。',
+      '这一年你减少了加班，推掉了很多无意义的饭局。晚上陪孩子写作业，周末陪老人聊聊天。日子平淡，但心里踏实。',
+      '你给自己放了个假，去了一趟一直想去的地方。回来后发现很多事情没你想的那么重要，身体才是革命的本钱。',
+    ],
+    mature: [
+      '这一年你开始真正关注自己的身体。每天晨练，饮食清淡，定期体检。有些东西是时候放下了，包括那些不必要的执念。',
+      '平静的一年。你不再勉强自己融入不喜欢的圈子，不再为了面子消费。日子简单了，反而轻松了。',
+      '休养生息的一年。种花、养鱼、听戏，你开始培养一些"没用"的爱好。朋友说你变佛系了，你笑笑不说话。',
+      '这一年你想通了很多事。工作不是生活的全部，健康地活着、陪爱的人在一起，比什么都重要。',
+    ],
+    senior: [
+      '这一年你开始为退休做准备了。调整了作息，培养了几个爱好，甚至开始研究养老金怎么领。虽然还没退，但心已经开始慢下来了。',
+      '休养生息的一年。每天早起打太极，买菜做饭，下午看报纸晒太阳。同事说你越来越像退休老头了，你说这叫未雨绸缪。',
+      '这一年你把很多事情交给了年轻人，自己只做最重要的事。不再争强好胜，身体要紧，平安是福。',
+      '你开始清理自己的社交圈，只留下最重要的几个人。其余的，随缘吧。',
+    ],
+  };
+
+  function getRestYearText(age: number): string {
+    let pool: string[];
+    if (age <= 30) pool = REST_YEAR_TEXTS.young;
+    else if (age <= 40) pool = REST_YEAR_TEXTS.middle;
+    else if (age <= 50) pool = REST_YEAR_TEXTS.mature;
+    else pool = REST_YEAR_TEXTS.senior;
+    return `第${age}岁，${pool[Math.floor(Math.random() * pool.length)]}`;
+  }
+
   /** 抽取当年的叙事事件 */
   function drawNarrativeEvent() {
     // 生成新年的心境独白
@@ -954,6 +1073,13 @@ export const useGameStore = defineStore('game', () => {
     // 没有十字路口，正常抽取叙事事件
     currentCrossroad.value = null;
     showCrossroad.value = false;
+
+    // 延期退休阶段：50%概率为平静年份（不抽事件，直接休养生息）
+    if (isDelayedRetirementPhase(state.value) && Math.random() < 0.5) {
+      currentNarrativeEvent.value = null;
+      selectedNarrativeOptionId.value = null;
+      return;
+    }
 
     const event = selectNarrativeEvent(state.value, state.value.narrativeEventFired || {});
     currentNarrativeEvent.value = event;
@@ -993,12 +1119,8 @@ export const useGameStore = defineStore('game', () => {
       state.value.stress = Math.max(0, state.value.stress - stressRelief);
       state.value.health = Math.min(100, state.value.health + healthGain);
       state.value.happiness = Math.min(100, state.value.happiness + happinessGain);
-      const restLogs = [
-        `第${state.value.currentAge}岁，这一年你没有刻意追求什么。推掉了不必要的应酬，每天早睡早起，周末去公园散步。压力像退潮的海水慢慢退去，你重新感受到了生活的质感。`,
-        `第${state.value.currentAge}岁，这一年你按下了暂停键。读了几本一直想读的书，给家人做了很多顿饭。虽然存款没怎么涨，但心里那块紧绷的弦终于松了。`,
-        `第${state.value.currentAge}岁，休养生息的一年。你学会了对不必要的事情说"不"，把时间还给了自己。体检报告上的箭头少了几个，镜子里的自己看起来精神了不少。`,
-      ];
-      const restLog = restLogs[Math.floor(Math.random() * restLogs.length)];
+      // 使用按年龄段分配的休养生息文本
+      const restLog = getRestYearText(state.value.currentAge);
       logs.push(restLog);
       // 不直接addLog，yearLog会包含它
       return { logs, totalCost, isRestYear: true, cardDetails };
@@ -1102,7 +1224,9 @@ export const useGameStore = defineStore('game', () => {
     // 记录日志（注意：option.log 通过 logs 数组传给 buildYearLog 作为年度总结，
     // 不直接 addLog，避免在 lifeLog 中与 yearLog 重复显示）
     logs.push(option.log);
-    cardDetails.push({ title: event.title, log: option.log, before: beforeOption });
+    // 兜底：如果事件标题为空，使用默认标题
+    const eventTitle = (event.title && event.title.trim()) || '日常';
+    cardDetails.push({ title: eventTitle, log: option.log, before: beforeOption });
 
     // 标记事件已触发
     if (!state.value.narrativeEventFired) state.value.narrativeEventFired = {};
@@ -1914,6 +2038,7 @@ export const useGameStore = defineStore('game', () => {
     eventLogs: string[],
   ): string {
     const age = state.currentAge;
+    const delayed = isDelayedRetirementPhase(state);
 
     // 优先使用cardLogs（玩家选择的叙事选项日志）作为年度总结
     if (cardLogs && cardLogs.length > 0) {
@@ -1940,14 +2065,19 @@ export const useGameStore = defineStore('game', () => {
       return `第${age}岁，你在待业中度过，存款缓慢消耗。你告诉自己，机会总会来的。`;
     }
 
-    // 以上都没有时，使用平淡模板
-    return `第${age}岁，这一年平平淡淡地过去了。`;
+    // 以上都没有时，使用按年龄段分配的平淡模板
+    return getCalmYearText(age, delayed);
   }
   
   function addLog(message: string) {
-    state.value.lifeLog.push(message);
-    if (state.value.lifeLog.length > 80) {
-      state.value.lifeLog.shift();
+    // 去重：如果新日志与最近一条完全相同则跳过（避免同一年份重复写入相同日志）
+    const logs = state.value.lifeLog;
+    if (logs.length > 0 && logs[logs.length - 1] === message) {
+      return;
+    }
+    logs.push(message);
+    if (logs.length > 80) {
+      logs.shift();
     }
   }
   

@@ -162,7 +162,7 @@ const skillLabels: Record<string, string> = {
         <span v-if="currentEvent.eventType === 'crisis'" class="event-type-tag crisis">危机</span>
         <span v-else-if="currentEvent.eventType === 'milestone'" class="event-type-tag milestone">里程碑</span>
         <span v-else-if="currentEvent.eventType === 'branch_select'" class="event-type-tag branch">人生岔路</span>
-        <h3 class="event-title">{{ currentEvent.title }}</h3>
+        <h3 class="event-title">{{ currentEvent.title || '日常' }}</h3>
       </div>
 
       <!-- 事件叙事文本 -->
