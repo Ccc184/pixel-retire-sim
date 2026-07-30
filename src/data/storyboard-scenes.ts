@@ -35,6 +35,17 @@ export interface StoryboardScene {
   frameDelay: number
   animIn: 'fade' | 'rise' | 'pop' | 'slide' | 'blink' | 'shake' | 'bounce'
   priority?: number
+  /** 场景前置条件：不满足则不会被匹配触发 */
+  requires?: {
+    hasChild?: boolean;       // 需要有孩子
+    married?: boolean;        // 需要已婚
+    dating?: boolean;         // 需要在约会/恋爱中(含serious)
+    single?: boolean;         // 需要单身(含divorced)
+    minAge?: number;          // 最低年龄
+    maxAge?: number;          // 最高年龄
+    employed?: boolean;       // 需要在职（非失业）
+    hasProperty?: boolean;    // 需要有房产
+  }
 }
 
 const W = 24, H = 20, GY = 18
@@ -1603,47 +1614,47 @@ function sceneCoupleFight(): PixelFrame[] {
 // ===== 场景映射表 =====
 export const STORYBOARD_SCENES: StoryboardScene[] = [
   // ===== 里程碑事件（priority: 10）=====
-  { id: 'retire', category: 'career', name: '退休', keywords: ['退休','荣休','退休金','退休生活','告别职场','退休手续','退休倒计时','清理办公桌','退休计划','养老金'], palette: CAREER_PALETTE, frames: sceneRetire(), frameDelay: 200, animIn: 'pop', priority: 10 },
-  { id: 'graduate', category: 'life', name: '毕业', keywords: ['毕业','大学毕业','毕业典礼','毕业证','学位'], palette: LIFE_PALETTE, frames: sceneGraduate(), frameDelay: 200, animIn: 'bounce', priority: 10 },
-  { id: 'first-job', category: 'career', name: '入职', keywords: ['入职','第一天上班','新工作','报到','初入职场','入职第一天','崭新的工牌','职业生涯','正式开局'], palette: CAREER_PALETTE, frames: sceneFirstJob(), frameDelay: 300, animIn: 'fade', priority: 10 },
+  { id: 'retire', category: 'career', name: '退休', keywords: ['退休','荣休','退休金','退休生活','告别职场','退休手续','退休倒计时','清理办公桌','退休计划','养老金'], palette: CAREER_PALETTE, frames: sceneRetire(), frameDelay: 200, animIn: 'pop', priority: 10, requires: { minAge: 40 } },
+  { id: 'graduate', category: 'life', name: '毕业', keywords: ['毕业','大学毕业','毕业典礼','毕业证','学位'], palette: LIFE_PALETTE, frames: sceneGraduate(), frameDelay: 200, animIn: 'bounce', priority: 10, requires: { maxAge: 24 } },
+  { id: 'first-job', category: 'career', name: '入职', keywords: ['入职','第一天上班','新工作','报到','初入职场','入职第一天','崭新的工牌','职业生涯','正式开局'], palette: CAREER_PALETTE, frames: sceneFirstJob(), frameDelay: 300, animIn: 'fade', priority: 10, requires: { maxAge: 24 } },
   { id: 'first-salary', category: 'career', name: '第一笔工资', keywords: ['第一笔工资','第一份薪水','发工资','领到工资','工资到账','工资条'], palette: CAREER_PALETTE, frames: sceneFirstSalary(), frameDelay: 180, animIn: 'bounce', priority: 10 },
-  { id: 'marry', category: 'family', name: '结婚', keywords: ['结婚','婚礼','求婚','领证','娶','嫁','我们结婚了','订婚','喜帖','份子钱','红色喜帖','礼金','办婚礼','娶了','嫁了'], palette: FAMILY_PALETTE, frames: sceneWedding(), frameDelay: 200, animIn: 'pop', priority: 10 },
-  { id: 'baby', category: 'family', name: '生子', keywords: ['宝宝出生','生孩子','当爸','当妈','新生儿','婴儿','出生','怀孕','二胎','催生','当爸爸','当妈妈','孩子出生','喜得贵子','喜得千金'], palette: FAMILY_PALETTE, frames: sceneBaby(), frameDelay: 200, animIn: 'bounce', priority: 10 },
+  { id: 'marry', category: 'family', name: '结婚', keywords: ['结婚','婚礼','求婚','领证','娶','嫁','我们结婚了','订婚','喜帖','份子钱','红色喜帖','礼金','办婚礼','娶了','嫁了'], palette: FAMILY_PALETTE, frames: sceneWedding(), frameDelay: 200, animIn: 'pop', priority: 10, requires: { dating: true } },
+  { id: 'baby', category: 'family', name: '生子', keywords: ['宝宝出生','生孩子','当爸','当妈','新生儿','婴儿','出生','怀孕','二胎','催生','当爸爸','当妈妈','孩子出生','喜得贵子','喜得千金'], palette: FAMILY_PALETTE, frames: sceneBaby(), frameDelay: 200, animIn: 'bounce', priority: 10, requires: { married: true } },
   { id: 'buy-house', category: 'family', name: '买房', keywords: ['买房','交房','装修','搬进新家','房产证','买房了','房价','首付','月供','房贷','物业','房贷压力'], palette: FAMILY_PALETTE, frames: sceneBuyHouse(), frameDelay: 200, animIn: 'fade', priority: 10 },
   { id: 'buy-car', category: 'life', name: '买车', keywords: ['买车','提车','新车','第一辆车','喜提','4S店','车险','保养'], palette: LIFE_PALETTE, frames: sceneBuyCar(), frameDelay: 200, animIn: 'slide', priority: 10 },
-  { id: 'promotion', category: 'career', name: '升职加薪', keywords: ['升职','加薪','晋升','提拔','升值','涨薪','涨工资','带项目','项目你来带','薪资','工资条','薪资比之前高'], palette: CAREER_PALETTE, frames: scenePromotion(), frameDelay: 180, animIn: 'bounce', priority: 10 },
-  { id: 'gaokao', category: 'life', name: '高考', keywords: ['高考','高考结束','高考成绩','考上大学','录取通知书','金榜题名'], palette: LIFE_PALETTE, frames: sceneGaokao(), frameDelay: 300, animIn: 'pop', priority: 10 },
+  { id: 'promotion', category: 'career', name: '升职加薪', keywords: ['升职','加薪','晋升','提拔','升值','涨薪','涨工资','带项目','项目你来带','薪资','工资条','薪资比之前高'], palette: CAREER_PALETTE, frames: scenePromotion(), frameDelay: 180, animIn: 'bounce', priority: 10, requires: { employed: true } },
+  { id: 'gaokao', category: 'life', name: '高考', keywords: ['高考','高考结束','高考成绩','考上大学','录取通知书','金榜题名'], palette: LIFE_PALETTE, frames: sceneGaokao(), frameDelay: 300, animIn: 'pop', priority: 10, requires: { maxAge: 19 } },
   { id: 'startup', category: 'career', name: '创业', keywords: ['创业','开公司','下海','合伙创业','创业项目','创业了','创业公司','拉你入伙','合伙人','风投'], palette: CAREER_PALETTE, frames: sceneStartup(), frameDelay: 250, animIn: 'fade', priority: 10 },
   { id: 'ipo', category: 'career', name: '上市', keywords: ['上市','IPO','敲钟','股票上市','公司上市'], palette: CAREER_PALETTE, frames: sceneIPO(), frameDelay: 180, animIn: 'bounce', priority: 10 },
   { id: 'digital-immortality', category: 'career', name: '数字永生', keywords: ['数字永生','意识上传','永生','数字化','赛博永生','脑机接口','神经接口'], palette: CAREER_PALETTE, frames: sceneDigitalImmortality(), frameDelay: 250, animIn: 'blink', priority: 10 },
   { id: 'fire', category: 'life', name: '财务自由', keywords: ['FIRE','财务自由','提前退休','财务独立','Fire运动','财务自由帖'], palette: LIFE_PALETTE, frames: sceneFIRE(), frameDelay: 300, animIn: 'fade', priority: 10 },
   { id: 'lottery-win', category: 'life', name: '中奖', keywords: ['中奖','中奖了','头奖','五百万','彩票中奖','彩票','买了张彩票','中彩票'], palette: LIFE_PALETTE, frames: sceneLottery(), frameDelay: 180, animIn: 'bounce', priority: 10 },
   // ===== 负面事件（priority: 9）=====
-  { id: 'fired', category: 'career', name: '被裁', keywords: ['被裁','裁员','被公司裁员','被开除','被辞退','丢工作','被炒鱿鱼','优化裁员','行业寒冬','收拾纸箱','失业','投简历','被优化','优化','裁员风声','公司倒闭'], palette: CAREER_PALETTE, frames: sceneFired(), frameDelay: 400, animIn: 'shake', priority: 9 },
-  { id: 'divorce', category: 'family', name: '离婚', keywords: ['离婚','离婚了','分开','离婚协议','婚姻破裂','财产分割'], palette: FAMILY_PALETTE, frames: sceneDivorce(), frameDelay: 400, animIn: 'shake', priority: 9 },
-  { id: 'breakup', category: 'family', name: '分手', keywords: ['分手','失恋','被甩','感情破裂','我们分手吧'], palette: FAMILY_PALETTE, frames: sceneBreakup(), frameDelay: 400, animIn: 'fade', priority: 9 },
-  { id: 'couple-fight', category: 'family', name: '吵架', keywords: ['吵架','争吵','夫妻吵架','大吵一架','吵架摔东西','两口子吵架','激烈争吵','闹矛盾','冷战','吵了一架','分歧'], palette: FAMILY_PALETTE, frames: sceneCoupleFight(), frameDelay: 400, animIn: 'shake', priority: 9 },
+  { id: 'fired', category: 'career', name: '被裁', keywords: ['被裁','裁员','被公司裁员','被开除','被辞退','丢工作','被炒鱿鱼','优化裁员','行业寒冬','收拾纸箱','失业','投简历','被优化','优化','裁员风声','公司倒闭'], palette: CAREER_PALETTE, frames: sceneFired(), frameDelay: 400, animIn: 'shake', priority: 9, requires: { employed: true } },
+  { id: 'divorce', category: 'family', name: '离婚', keywords: ['离婚','离婚了','分开','离婚协议','婚姻破裂','财产分割'], palette: FAMILY_PALETTE, frames: sceneDivorce(), frameDelay: 400, animIn: 'shake', priority: 9, requires: { married: true } },
+  { id: 'breakup', category: 'family', name: '分手', keywords: ['分手','失恋','被甩','感情破裂','我们分手吧'], palette: FAMILY_PALETTE, frames: sceneBreakup(), frameDelay: 400, animIn: 'fade', priority: 9, requires: { dating: true } },
+  { id: 'couple-fight', category: 'family', name: '吵架', keywords: ['吵架','争吵','夫妻吵架','大吵一架','吵架摔东西','两口子吵架','激烈争吵','闹矛盾','冷战','吵了一架','分歧'], palette: FAMILY_PALETTE, frames: sceneCoupleFight(), frameDelay: 400, animIn: 'shake', priority: 9, requires: { dating: true } },
   { id: 'parent-sick', category: 'family', name: '父母生病', keywords: ['父母生病','父亲生病','母亲生病','爸妈住院','家人重病','陪床','癌症','住院','爸住院','妈住院','父亲住院','母亲住院','急诊','120','诊断书','重病','大病','手术','去世','心梗','离世','养老院','陪床守夜','医院走廊','父亲走了','母亲走了','爸走了','妈走了','病逝','病危'], palette: FAMILY_PALETTE, frames: sceneParentSick(), frameDelay: 400, animIn: 'fade', priority: 9 },
   { id: 'surgery', category: 'life', name: '手术', keywords: ['手术','动手术','进手术室','开刀','外科手术','住院手术','重大手术','做手术','住院做手术'], palette: LIFE_PALETTE, frames: sceneSurgery(), frameDelay: 400, animIn: 'fade', priority: 9 },
   { id: 'bankruptcy', category: 'life', name: '破产', keywords: ['破产','负债','欠债','赔光','亏钱','血本无归','倒闭','积蓄花光','账户蒸发','爆仓','窟窿'], palette: LIFE_PALETTE, frames: sceneBankruptcy(), frameDelay: 400, animIn: 'shake', priority: 9 },
   { id: 'lend-money', category: 'life', name: '借钱不还', keywords: ['借钱','欠钱不还','讨债','朋友借钱','借出去','发小借钱','转了账','这钱要不回来'], palette: LIFE_PALETTE, frames: sceneLendMoney(), frameDelay: 400, animIn: 'fade', priority: 9 },
-  { id: 'burnout', category: 'career', name: '倦怠', keywords: ['倦怠','躺平','辞职','裸辞','厌班','迷茫','抑郁','情绪崩溃','焦虑','不想上班','心理阴影','辞职信'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 500, animIn: 'fade', priority: 9 },
+  { id: 'burnout', category: 'career', name: '倦怠', keywords: ['倦怠','躺平','辞职','裸辞','厌班','迷茫','抑郁','情绪崩溃','焦虑','不想上班','心理阴影','辞职信'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 500, animIn: 'fade', priority: 9, requires: { employed: true } },
   { id: 'sick', category: 'life', name: '生病', keywords: ['生病','发烧','感冒','卧病在床','病倒','请病假','生病卧床','医药费','住院','体检','复查','血压','血脂','脂肪肝','颈椎病','脱发','药','吃药','保健品','膏药','降压药','膝盖疼','眼药水','急诊','挂号','药店','咳嗽','胃疼','头疼','腰椎'], palette: LIFE_PALETTE, frames: sceneSick(), frameDelay: 400, animIn: 'fade', priority: 8 },
   // ===== 路径/重要生活事件（priority: 8）=====
-  { id: 'date', category: 'family', name: '约会', keywords: ['约会','恋爱','表白','第一次约会','在一起','烛光晚餐','找对象','对象','伴侣','脱单','谈恋爱','女朋友','男朋友'], palette: FAMILY_PALETTE, frames: sceneDate(), frameDelay: 300, animIn: 'fade', priority: 8 },
-  { id: 'job-hop', category: 'career', name: '跳槽', keywords: ['跳槽','跳槽去新公司','辞职跳槽','换工作','拿到新offer','跳槽涨薪','离职入职','猎头','内推','刷招聘'], palette: CAREER_PALETTE, frames: sceneJobHop(), frameDelay: 250, animIn: 'slide', priority: 8 },
+  { id: 'date', category: 'family', name: '约会', keywords: ['约会','恋爱','表白','第一次约会','在一起','烛光晚餐','找对象','对象','伴侣','脱单','谈恋爱','女朋友','男朋友'], palette: FAMILY_PALETTE, frames: sceneDate(), frameDelay: 300, animIn: 'fade', priority: 8, requires: { single: true } },
+  { id: 'job-hop', category: 'career', name: '跳槽', keywords: ['跳槽','跳槽去新公司','辞职跳槽','换工作','拿到新offer','跳槽涨薪','离职入职','猎头','内推','刷招聘'], palette: CAREER_PALETTE, frames: sceneJobHop(), frameDelay: 250, animIn: 'slide', priority: 8, requires: { employed: true } },
   // ===== 日常事件（priority: 7-3）=====
-  { id: 'blind-date', category: 'family', name: '相亲', keywords: ['相亲','相亲见面','媒人介绍','被安排相亲','相亲饭局','去相亲','见对象','安排了相亲','周末相亲','有房有车'], palette: FAMILY_PALETTE, frames: sceneBlindDate(), frameDelay: 300, animIn: 'fade', priority: 7 },
+  { id: 'blind-date', category: 'family', name: '相亲', keywords: ['相亲','相亲见面','媒人介绍','被安排相亲','相亲饭局','去相亲','见对象','安排了相亲','周末相亲','有房有车'], palette: FAMILY_PALETTE, frames: sceneBlindDate(), frameDelay: 300, animIn: 'fade', priority: 7, requires: { single: true } },
   { id: 'parent-visit', category: 'family', name: '父母探望', keywords: ['父母来看我','爸妈从老家来','父母过来探望','父母到访','爸妈来看我','父母登门看望','回家','回老家','过年回家','妈妈打电话','爸妈打电话','视频电话','和爸妈视频','教爸妈用','妈在家族群'], palette: FAMILY_PALETTE, frames: sceneParentVisit(), frameDelay: 300, animIn: 'fade', priority: 7 },
-  { id: 'play-kid', category: 'family', name: '陪孩子玩', keywords: ['陪孩子玩','陪孩子玩耍','亲子时光','陪儿子玩','陪女儿玩','亲子互动','陪娃玩','带孩子去公园','玩积木','陪孩子','带孩子','陪娃','周末陪孩子','亲子','辅导作业','陪孩子写作业'], palette: FAMILY_PALETTE, frames: scenePlayKid(), frameDelay: 250, animIn: 'fade', priority: 7 },
-  { id: 'work', category: 'career', name: '工作', keywords: ['上班','搬砖','打工','开干','干活','到公司','工位','办公室','工牌','领导','老板','同事','下班','打卡','开会','项目','需求','社畜','周报','KPI','赶需求','改bug','写代码','对接','汇报','工位上','办公桌'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 7 },
-  { id: 'overtime', category: 'career', name: '加班', keywords: ['深夜加班','加到深夜','还在加班','加班','通宵','凌晨','凌晨三点','凌晨两点','加班到很晚','加班到凌晨','通宵整晚','deadline','赶项目','红牛'], palette: CAREER_PALETTE, frames: sceneOvertime(), frameDelay: 350, animIn: 'fade', priority: 7 },
-  { id: 'midnight-baby', category: 'family', name: '半夜喂奶', keywords: ['半夜喂奶','夜醒喂奶','冲奶粉','哄睡','哄孩子睡觉','夜奶'], palette: FAMILY_PALETTE, frames: sceneMidnightBaby(), frameDelay: 500, animIn: 'fade', priority: 7 },
+  { id: 'play-kid', category: 'family', name: '陪孩子玩', keywords: ['陪孩子玩','陪孩子玩耍','亲子时光','陪儿子玩','陪女儿玩','亲子互动','陪娃玩','带孩子去公园','玩积木','陪孩子','带孩子','陪娃','周末陪孩子','亲子','辅导作业','陪孩子写作业'], palette: FAMILY_PALETTE, frames: scenePlayKid(), frameDelay: 250, animIn: 'fade', priority: 7, requires: { hasChild: true } },
+  { id: 'work', category: 'career', name: '工作', keywords: ['上班','搬砖','打工','开干','干活','到公司','工位','办公室','工牌','领导','老板','同事','下班','打卡','开会','项目','需求','社畜','周报','KPI','赶需求','改bug','写代码','对接','汇报','工位上','办公桌'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 7, requires: { employed: true } },
+  { id: 'overtime', category: 'career', name: '加班', keywords: ['深夜加班','加到深夜','还在加班','加班','通宵','凌晨','凌晨三点','凌晨两点','加班到很晚','加班到凌晨','通宵整晚','deadline','赶项目','红牛'], palette: CAREER_PALETTE, frames: sceneOvertime(), frameDelay: 350, animIn: 'fade', priority: 7, requires: { employed: true } },
+  { id: 'midnight-baby', category: 'family', name: '半夜喂奶', keywords: ['半夜喂奶','夜醒喂奶','冲奶粉','哄睡','哄孩子睡觉','夜奶'], palette: FAMILY_PALETTE, frames: sceneMidnightBaby(), frameDelay: 500, animIn: 'fade', priority: 7, requires: { hasChild: true } },
   { id: 'travel', category: 'life', name: '旅行', keywords: ['旅游','旅行','出去玩','度假','出游','出国','去旅行','海边','看日落','风景','碧海蓝天'], palette: LIFE_PALETTE, frames: sceneTravel(), frameDelay: 250, animIn: 'slide', priority: 7 },
-  { id: 'grandchild', category: 'family', name: '抱孙', keywords: ['孙子','孙女','抱孙子','带孙','隔代亲','当爷爷','当奶奶','带孙子','带了一天孙子'], palette: FAMILY_PALETTE, frames: sceneGrandchild(), frameDelay: 250, animIn: 'fade', priority: 7 },
-  { id: 'sunset', category: 'life', name: '夕阳晚年', keywords: ['夕阳','晚年','老了','白头偕老','一起变老','黄昏恋','暮年','广场舞','白发苍苍','老花镜','上了年纪','老头','老太太','爬楼喘气','含饴弄孙','颐养天年','养老','敬老院'], palette: LIFE_PALETTE, frames: sceneSunset(), frameDelay: 500, animIn: 'fade', priority: 7 },
+  { id: 'grandchild', category: 'family', name: '抱孙', keywords: ['孙子','孙女','抱孙子','带孙','隔代亲','当爷爷','当奶奶','带孙子','带了一天孙子'], palette: FAMILY_PALETTE, frames: sceneGrandchild(), frameDelay: 250, animIn: 'fade', priority: 7, requires: { minAge: 50, hasChild: true } },
+  { id: 'sunset', category: 'life', name: '夕阳晚年', keywords: ['夕阳','晚年','老了','白头偕老','一起变老','黄昏恋','暮年','广场舞','白发苍苍','老花镜','上了年纪','老头','老太太','爬楼喘气','含饴弄孙','颐养天年','养老','敬老院'], palette: LIFE_PALETTE, frames: sceneSunset(), frameDelay: 500, animIn: 'fade', priority: 7, requires: { minAge: 50 } },
   { id: 'move', category: 'life', name: '搬家', keywords: ['搬家','搬去','移居','迁徙','搬迁','北漂','沪漂','深漂','去外地','房租上涨','涨房租','房东','新租的房子','租的房子'], palette: LIFE_PALETTE, frames: sceneMove(), frameDelay: 250, animIn: 'slide', priority: 7 },
-  { id: 'bonus', category: 'career', name: '发奖金', keywords: ['发奖金','年终奖','项目奖金','年终分红','绩效奖金','发了一大笔奖金','奖金到手','年终奖到账'], palette: CAREER_PALETTE, frames: sceneBonus(), frameDelay: 200, animIn: 'bounce', priority: 7 },
+  { id: 'bonus', category: 'career', name: '发奖金', keywords: ['发奖金','年终奖','项目奖金','年终分红','绩效奖金','发了一大笔奖金','奖金到手','年终奖到账'], palette: CAREER_PALETTE, frames: sceneBonus(), frameDelay: 200, animIn: 'bounce', priority: 7, requires: { employed: true } },
   { id: 'friend-drink', category: 'life', name: '朋友聚会', keywords: ['朋友聚会','和朋友聚餐','兄弟喝酒','闺蜜聚会','喝酒撸串','饭局举杯','老友重逢','酒吧喝酒','同事喝酒','拼酒','同学聚会','发小','老朋友','邻居','份子钱','结婚请柬','聚餐','干杯','撸串','烧烤','喝啤酒','白酒'], palette: LIFE_PALETTE, frames: sceneFriendDrink(), frameDelay: 300, animIn: 'fade', priority: 6 },
   { id: 'pet', category: 'life', name: '养宠物', keywords: ['养宠物','养了只小狗','养了只小猫','遛狗','养猫','毛孩子','宠物狗','宠物猫','铲屎','流浪猫','喂小猫','喂流浪猫','金毛','橘猫','猫','狗'], palette: LIFE_PALETTE, frames: scenePet(), frameDelay: 250, animIn: 'fade', priority: 6 },
   { id: 'investment', category: 'career', name: '投资炒股', keywords: ['炒股','买基金','投资理财','股市涨跌','买入股票','理财收益','股票基金','币圈投资','股市','牛市','熊市','持仓','仓位','爆仓','暴跌','行情','风口','币','钱包','交易所','余额宝','记账','存款','银行App'], palette: CAREER_PALETTE, frames: sceneInvestment(), frameDelay: 300, animIn: 'fade', priority: 6 },
@@ -1690,11 +1701,46 @@ export function matchSceneByKeywords(text: string): StoryboardScene | null {
   return best
 }
 
+/** 场景匹配上下文（用于前置条件检查） */
+export interface SceneContext {
+  age: number;
+  hasChild: boolean;
+  isEmployed: boolean;       // 是否在职（非失业）
+  datingStage: 'single' | 'crush' | 'dating' | 'serious' | 'married' | 'divorced' | null;
+  hasProperty: boolean;      // 是否有房产
+}
+
+function sceneRequiresMet(scene: StoryboardScene, ctx: SceneContext | null): boolean {
+  if (!scene.requires || !ctx) return true // 无前置条件或无上下文，默认通过
+  const req = scene.requires
+  if (req.hasChild !== undefined && req.hasChild !== ctx.hasChild) return false
+  if (req.employed !== undefined && req.employed !== ctx.isEmployed) return false
+  if (req.hasProperty !== undefined && req.hasProperty !== ctx.hasProperty) return false
+  if (req.minAge !== undefined && ctx.age < req.minAge) return false
+  if (req.maxAge !== undefined && ctx.age > req.maxAge) return false
+  if (req.married !== undefined) {
+    const isMarried = ctx.datingStage === 'married'
+    if (req.married !== isMarried) return false
+  }
+  if (req.dating !== undefined) {
+    const isDating = ctx.datingStage !== null && ['crush','dating','serious','married'].includes(ctx.datingStage)
+    if (req.dating !== isDating) return false
+  }
+  if (req.single !== undefined) {
+    const isSingle = ctx.datingStage === null || ctx.datingStage === 'single' || ctx.datingStage === 'divorced'
+    if (req.single !== isSingle) return false
+  }
+  return true
+}
+
 /**
  * 匹配场景并按分类返回ID列表（供游戏store使用）
  * 返回 { family: string[], life: string[], career: string[] }
  */
-export function matchStoryboardScenes(logs: string | string[]): { family: string[]; life: string[]; career: string[] } {
+export function matchStoryboardScenes(
+  logs: string | string[],
+  ctx?: SceneContext | null,
+): { family: string[]; life: string[]; career: string[] } {
   const texts = Array.isArray(logs) ? logs : [logs]
   const result: { family: string[]; life: string[]; career: string[] } = { family: [], life: [], career: [] }
   const scored: { scene: StoryboardScene; score: number }[] = []
@@ -1703,6 +1749,8 @@ export function matchStoryboardScenes(logs: string | string[]): { family: string
     if (!text) continue
     const lower = text.toLowerCase()
     for (const scene of STORYBOARD_SCENES) {
+      // 前置条件检查：不满足则跳过该场景
+      if (!sceneRequiresMet(scene, ctx ?? null)) continue
       let score = 0
       for (const kw of scene.keywords) {
         if (lower.includes(kw.toLowerCase())) {

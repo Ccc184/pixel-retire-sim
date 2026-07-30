@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, computed, nextTick, shallowRef } from 'vue';
-import { matchStoryboardScenes } from '../data/storyboard-scenes.js';
+import { matchStoryboardScenes, type SceneContext } from '../data/storyboard-scenes.js';
 import type { GameState, Profession, CityType, OriginChoices, YearResult, CrossroadEvent, NarrativeEvent, MBTIType, SalaryChangeEntry, RetirementDream } from '../types/global.d.js';
 import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth, isDelayedRetirementPhase } from '../utils/math-engine.js';
 import { rollRandomEvents } from '../data/events.js';
@@ -219,9 +219,21 @@ export const useGameStore = defineStore('game', () => {
     career: [],
   });
 
+  /** 构建场景匹配上下文（从当前游戏状态） */
+  function buildSceneContext(): SceneContext {
+    const s = state.value
+    return {
+      age: s.currentAge,
+      hasChild: s.hasChild || s.children.length > 0,
+      isEmployed: !s.isUnemployed,
+      datingStage: s.partner?.datingStage ?? null,
+      hasProperty: s.propertyValue > 0,
+    }
+  }
+
   /** 将本年度日志分类到三分镜队列（单年模式：每年替换为新场景，不累积） */
   function classifyStoryboards(logs: string[]) {
-    pendingStoryboards.value = matchStoryboardScenes(logs);
+    pendingStoryboards.value = matchStoryboardScenes(logs, buildSceneContext());
   }
 
   // ========== 叙事事件系统（替代三卡） ==========
