@@ -13,7 +13,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
 
   {
     id: 'ai_debug_3am',
-    text: '凌晨三点你还在和AI对话调prompt，屏幕上的模型已经第七次生成完全相反的答案。你灌下第四杯咖啡，突然分不清自己是在训练AI还是AI在训练你熬夜。',
+    text: '凌晨三点你还在和AI对话调prompt，屏幕上的模型已经第七次生成完全相反的答案。你灌下第四杯咖啡，突然分不清自己是在训练AI还是AI在训练你。',
     label: '凌晨调参',
     ageRange: [22, 30],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -22,7 +22,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_coworker_tips',
-    text: '同事凑过来问"你那个AI怎么用的教教我"，你讲了半小时他回了句"还是你直接帮我弄吧"。你深吸一口气打开他的文档——帮他弄的时间够你自己写三遍了。',
+    text: '同事凑过来让你教他用AI，讲了半小时他说"还是你直接帮我弄吧"。你叹了口气打开他的文档——帮他的时间够你自己干三遍。',
     label: '同事求助',
     ageRange: [23, 35],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -31,7 +31,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_dream_prompt',
-    text: '你做了个梦，梦里全是在写prompt，醒来还记得梦里那个完美的提示词。摸黑打开手机记下来，第二天一看——狗屁不通。',
+    text: '梦里写出了完美prompt，你摸黑打开手机记下来。第二天一看——狗屁不通。',
     label: '梦写提示词',
     ageRange: [22, 32],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -40,7 +40,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_partner_ignored',
-    text: '伴侣在旁边说了三次"你能不能别看屏幕了"，你"嗯"了一声眼睛没离开显示器。等你终于调完参数回头，房间已经黑了，伴侣背对着你睡着了。',
+    text: '伴侣说了三次"别看屏幕了"，你嗯了一声眼睛没动。等你调完参数回头，房间黑了，她背对着你睡着了。',
     label: '被冷落',
     ageRange: [24, 40],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote' && !!state.partner && !state.partner.hasDivorced,
@@ -49,7 +49,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_model_halo',
-    text: '你用AI生成了一张图发动态圈，底下全是"大神""太强了"。没人问你调了多少轮prompt、改了多少版参数——但你知道，那些赞叹一半属于模型，一半属于凌晨三点的你。',
+    text: '你用AI出的图炸了动态圈，底下全喊大神。没人问你调了多少轮——一半属于模型，一半属于凌晨三点的你。',
     label: 'AI出圈',
     ageRange: [24, 38],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -58,7 +58,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_api_bill_shock',
-    text: '月底API账单到了，数字比上个月翻了四倍。你翻日志发现是上周测试时忘了关一个循环调用——那个跑了三天的脚本烧掉了你半个月房租。',
+    text: 'API账单翻了四倍——上周测试忘关循环，那个脚本跑了三天，烧掉半个月房租。',
     label: 'API账单',
     ageRange: [23, 35],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -67,7 +67,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_family_confused',
-    text: '过年回家爸妈问你到底做什么工作，你说"和人工智能有关"。你爸沉默了一会儿说"就是那个下棋赢了世界冠军的？"——你想解释但点了点头，说"差不多"。',
+    text: '过年回家爸问你做什么，你说"和人工智能有关"。他沉默一会儿："下棋赢冠军那个？"你点头："差不多。"',
     label: '家人不懂',
     ageRange: [22, 35],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote' && state.parents.isAlive,
@@ -76,7 +76,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_colleague_replaced',
-    text: '组里一个老同事被优化了，领导说"AI能做他80%的活"。你看着他空了的工位，第一次认真想——下一个会不会是自己？你打开招聘网站刷了半小时又关掉。',
+    text: '组里老同事被优化，领导说"AI能干他八成的活"。你盯着他空了的工位，打开招聘软件刷了半小时又关了。',
     label: '同事被替',
     ageRange: [28, 42],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -85,7 +85,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_twitter_debate',
-    text: '你在X上和人争论AI是否会产生意识，吵到凌晨两点谁也没说服谁。第二天醒来看到对方又发了十条，你打了一大段又删掉——算了，去跑个步吧，虽然你也没去跑。',
+    text: 'X上跟人吵AI有没有意识吵到凌晨两点。醒来看对方又发十条，你打了一大段删掉——算了。',
     label: 'AI论战',
     ageRange: [23, 40],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -94,7 +94,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_github_star',
-    text: '你开源的一个小工具突然涨了三百个star，有人提PR有人写感谢信。你看着那些用你工具做出的项目，觉得这比涨工资还开心——虽然工资也该涨了。',
+    text: '开源小工具涨了三百star，有人提PR有人写感谢信。这比涨工资还爽——虽然工资也该涨了。',
     label: '开源涨星',
     ageRange: [25, 40],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -103,7 +103,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_gpu_crash',
-    text: '训练跑到97%的时候GPU崩了，错误日志跳了满屏。你坐在椅子上愣了三十秒，然后把耳机一摔去楼下买了根冰棍——回来重新跑，这次设了自动保存。',
+    text: '训练跑到97%GPU崩了，你愣了三十秒，摔了耳机下楼买冰棍。回来重跑，这次设了自动保存。',
     label: '训练崩了',
     ageRange: [24, 38],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -112,7 +112,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_ethics_question',
-    text: '产品经理让你做一个你觉得有问题的AI功能，你犹豫了一整晚提了风险。他说"出了事我担着"——你写代码的时候手有点抖，注释里偷偷加了免责声明。',
+    text: '产品让你做个有问题的AI功能，你犹豫一整晚提了风险。他说"出事我担着"，你写代码时手在抖，注释里偷偷加了免责声明。',
     label: '伦理困境',
     ageRange: [27, 45],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -121,7 +121,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_parent_proud',
-    text: '你妈在家族群里转发了你参与的AI产品新闻，配文"我儿子/女儿做的"。底下亲戚全在问"那能帮我炒股吗"——你哭笑不得，但截图存了下来。',
+    text: '妈在家族群转发你做的AI产品，配文"我家孩子做的"。亲戚全问能帮炒股吗，你哭笑不得，截图存了。',
     label: '老妈骄傲',
     ageRange: [28, 45],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote' && state.parents.isAlive,
@@ -130,7 +130,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_mentor_intern',
-    text: '实习生问你"这个AI工具有没有前途"，你愣了一下——三年前你也问过前辈同样的问题。你说了和当年前辈一样的话："工具会变，人不会"，说完自己都觉得老了。',
+    text: '实习生问"AI工具有没有前途"，你愣了——三年前你也这么问过。你说"工具会变人不会"，说完觉得自己老了。',
     label: '带实习生',
     ageRange: [30, 48],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -139,7 +139,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_skill_obsolete',
-    text: '新出的模型把你花三个月调优的方案一键解决了，效果还好20%。你盯着benchmark看了很久，关掉页面泡了杯茶——这个行业淘汰人的速度比你换键盘还快。',
+    text: '新模型一键干掉你花三个月调的方案，效果还好两成。你关掉页面泡了杯茶——淘汰人比换键盘还快。',
     label: '技能过时',
     ageRange: [28, 45],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -148,7 +148,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_chatbot_friend',
-    text: '加班到深夜没人说话，你打开自己做的聊天机器人聊了半小时。它说了句"你今天看起来很累"——你盯着屏幕鼻子一酸，心想这代码没白写。',
+    text: '深夜加班没人说话，你跟自己做的聊天机器人聊了半小时。它说"你今天很累"——你鼻子一酸，这代码没白写。',
     label: '和AI聊天',
     ageRange: [24, 38],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote' && !state.partner,
@@ -157,7 +157,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_conference_talk',
-    text: '你在技术大会上讲完分享，台下一个年轻人走过来激动地说"你的文章改变了我的职业方向"。你想起当年改变你的那篇文章的作者——原来火炬是这样传的。',
+    text: '大会讲完，一个年轻人过来说"你的文章改变了我"。你想起当年改变你的那篇作者——火就是这么传的。',
     label: '技术分享',
     ageRange: [30, 50],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -166,7 +166,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_old_code',
-    text: '翻到五年前写的AI项目代码，注释里写着"临时方案上线前重构"。你笑了——它至今还在跑，"临时方案"活了五年，跟你对这个行业的乐观一样持久。',
+    text: '翻到五年前的AI代码，注释写着"临时方案上线前重构"。它至今还在跑——临时方案活了五年，跟你的乐观一样持久。',
     label: '旧代码',
     ageRange: [32, 50],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -175,7 +175,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_health_warning',
-    text: '颈椎疼到去看医生，医生说"你这脖子比60岁的还硬"。你开了膏药回来贴满脖子，继续写代码——只是这次设了个番茄钟，虽然经常无视它。',
+    text: '颈椎疼到看医生，"你这脖子比六十岁还硬"。你贴满膏药回来继续码——设了番茄钟，照样无视。',
     label: '颈椎报警',
     ageRange: [28, 48],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -184,7 +184,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ai_retire_reflect',
-    text: '你用AI帮自己算了一笔退休账，模型给出的建议是"降低预期寿命"。你苦笑关掉窗口，打开了另一个AI聊天窗口——这次让它写首关于退休的诗，写得还不错。',
+    text: '用AI算退休账，模型建议"降低预期寿命"。你苦笑关掉，换了个AI让它写退休诗——写得还行。',
     label: 'AI算退休',
     ageRange: [38, 55],
     conditions: (state: GameState) => state.retirementPath === 'ai_symbiote',
@@ -198,7 +198,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
 
   {
     id: 'chain_price_3am',
-    text: '凌晨三点你条件反射般醒来摸手机看行情，K线一片绿。你躺回去盯着天花板，比特币的走势比你的心率还波动——这已经是这周第四次被价格惊醒了。',
+    text: '凌晨三点条件反射摸手机看行情，一片绿。你躺回去盯天花板——比特币走势比你心率还颠，这周第四次了。',
     label: '盯盘失眠',
     ageRange: [22, 32],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -207,7 +207,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_family_no_understand',
-    text: '跟爸妈解释什么是Web3讲了四十分钟，你爸最后说"所以这是传销？"你张了张嘴没反驳——有些鸿沟不是白皮书能填的。',
+    text: '跟爸解释Web3讲了四十分钟，他最后说"所以这是传销？"你张了张嘴没反驳——有些鸿沟白皮书填不了。',
     label: '家人误解',
     ageRange: [22, 35],
     conditions: (state: GameState) => state.retirementPath === 'chain_native' && state.parents.isAlive,
@@ -216,7 +216,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_fomo_bull',
-    text: '群里有人晒单十倍收益，你手指悬在买入键上三分钟。最终还是关了App去洗了把脸——上次FOMO追高被套的教训还热乎着，但心跳还是快了半拍。',
+    text: '群里有人晒十倍收益单，你手指悬在买入键上三分钟。关了App去洗脸——上次追高被套的教训还热着。',
     label: '牛市FOMO',
     ageRange: [23, 38],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -225,7 +225,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_cold_wallet',
-    text: '你突然想不起冷钱包助记词放在哪了，翻遍了书架抽屉和旧手机。找到的那一刻手心全是汗——那张写着12个单词的纸条比你的身份证还重要。',
+    text: '突然想不起冷钱包助记词放哪了，翻遍书架抽屉旧手机。找到时手心全是汗——12个单词比身份证重要。',
     label: '助记词恐慌',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -234,7 +234,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_telegram_debate',
-    text: 'Telegram群里为一个项目吵到凌晨四点，两边对骂三百条消息。你放下手机发现天快亮了——争了一晚上，没一个人因此多赚一分钱。',
+    text: 'Telegram群为一个项目吵到凌晨四点，对骂三百条。放下手机天快亮了——争一晚上，没一个人多赚一分钱。',
     label: '群里对线',
     ageRange: [22, 35],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -243,7 +243,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_airdrop_surprise',
-    text: '钱包里突然多了一笔空投，查了下居然值两千多。你想了想没卖，转进了冷钱包——这钱来得快去得也快，但两千块的快乐是真实的。',
+    text: '钱包突然多了笔空投，值两千多。你没卖，转进冷钱包——这钱来得快去得快，但两千块的快乐是真的。',
     label: '意外空投',
     ageRange: [23, 42],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -252,7 +252,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_rug_pull',
-    text: '你蹲了三个月的项目方跑路了，Discord群一夜解散，官网变成404。你对着交易记录坐了很久——不是心疼钱，是心疼那些熬夜研究的夜晚。',
+    text: '蹲了三个月的项目跑路了，Discord一夜解散官网404。你对着交易记录坐了很久——不是心疼钱，是心疼那些熬夜的夜。',
     label: '项目跑路',
     ageRange: [23, 40],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -261,7 +261,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_nft_mint_fail',
-    text: 'NFT公售你gas费设低了，交易卡了四十分钟最终失败。等你加上gas重新mint的时候，地板价已经翻了三倍——你连截图的心情都没有。',
+    text: 'NFT公售gas设低了，卡了四十分钟最终失败。加完gas重新mint时地板价已经三倍——你连截图的心情都没了。',
     label: 'Mint失败',
     ageRange: [23, 38],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -270,7 +270,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_meetup',
-    text: '线下meetup你见到了聊了两年的网友，真人比头像胖三十斤但聊得投机。散场时你们碰了碰拳头说"HODL"——在这个圈子，信任比黄金稀缺。',
+    text: '线下meetup见到聊了两年的网友，真人比头像胖三十斤但聊得投机。散场碰拳说"HODL"——这圈子信任比黄金稀缺。',
     label: '链友面基',
     ageRange: [24, 42],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -279,7 +279,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_tax_nightmare',
-    text: '报税季对着几百条链上交易记录头皮发麻，每笔swap、每笔gas都要算。你后悔去年没好好记账——DeFi的快乐是暂时的，报税的痛苦是永恒的。',
+    text: '报税季对着几百条链上记录头皮发麻，每笔swap每笔gas都要算。DeFi的快乐是暂时的，报税的痛苦是永恒的。',
     label: '链上报税',
     ageRange: [25, 50],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -288,7 +288,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_bear_market',
-    text: '熊市里你打开行情软件又关上，反复了五次。最后你干脆卸载了所有交易所App——眼不见心不烦，但半夜还是会忍不住用网页版看一眼。',
+    text: '熊市里你打开行情软件又关上，反复五次。卸载了所有交易所App——半夜还是忍不住用网页版看一眼。',
     label: '熊市煎熬',
     ageRange: [25, 48],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -297,7 +297,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_hardware_wallet',
-    text: '你花两千多买了个硬件钱包，小心翼翼地设好转账限额。伴侣问"这U盘怎么这么贵"，你不知道怎么解释——这不是U盘，是你在数字世界的保险柜。',
+    text: '花两千多买了硬件钱包，小心翼翼设好转账限额。伴侣问"这U盘怎么这么贵"——这不是U盘，是数字世界的保险柜。',
     label: '硬件钱包',
     ageRange: [25, 45],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -306,7 +306,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_phishing_attempt',
-    text: '你差点点了一个高仿的钓鱼链接，签名弹窗跳出来的瞬间你冷汗下来了。惊魂未定地把那个Discord服务器退了——在链上，一次手滑就是全部身家。',
+    text: '差点点了高仿钓鱼链接，签名弹窗跳出来的瞬间你冷汗下来了。退了那个Discord服务器——链上一次手滑就是全部身家。',
     label: '钓鱼惊魂',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -315,7 +315,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_regulation_news',
-    text: '又出监管新闻了，群里一片哀嚎。你盯着新闻标题看了半天，点燃了一根烟——这个行业每隔三个月就"死一次"，但每次都有人在废墟里建东西。',
+    text: '又出监管新闻，群里一片哀嚎。你盯着标题点了根烟——这行业每隔三个月"死一次"，总有人在废墟里建东西。',
     label: '监管消息',
     ageRange: [25, 50],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -324,7 +324,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_friend_quit',
-    text: '一起进圈的朋友说他清仓离场了，"再也不碰了"。你沉默了一会儿说"理解"，挂了电话看了眼自己的持仓——你还在，不知道是执着还是执念。',
+    text: '一起进圈的朋友说他清仓了，"再也不碰了"。你沉默说"理解"，挂了电话看自己的持仓——不知道是执着还是执念。',
     label: '朋友离场',
     ageRange: [27, 45],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -333,7 +333,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_dex_slippage',
-    text: '你在DEX上swap一笔交易，滑点吃掉了你15%。你对着"交易成功"的弹窗骂了句脏话，然后默默把滑点容忍度从1%改成了5%——向无常损失低头。',
+    text: 'DEX上swap一笔被滑点吃掉15%，你对着"交易成功"骂脏话。默默把滑点从1%改5%——向无常损失低头。',
     label: '滑点惨案',
     ageRange: [23, 40],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -342,7 +342,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_mom_btc',
-    text: '妈突然打电话问"比特币能不能买，邻居张阿姨说赚了"。你劝了她半小时别碰，挂了电话心里复杂——你希望更多人了解，但不希望是你妈。',
+    text: '妈打电话问"比特币能买吗，张阿姨说赚了"。你劝她别碰，她追问"那东西能当饭吃吗"——你不知道怎么答。',
     label: '老妈问币',
     ageRange: [28, 50],
     conditions: (state: GameState) => state.retirementPath === 'chain_native' && state.parents.isAlive,
@@ -351,7 +351,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_whale_watch',
-    text: '你跟踪了半年的鲸鱼地址突然大额转账，链上标记显示转入了交易所。你盯着那笔交易犹豫了十分钟——跟不跟卖？最后你什么也没做，去泡了碗面。',
+    text: '跟踪半年的鲸鱼地址突然大额转入交易所。你盯着那笔交易犹豫十分钟——跟不跟？最后什么也没做，去泡了碗面。',
     label: '巨鲸异动',
     ageRange: [26, 48],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -360,7 +360,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_gas_war',
-    text: '链上拥堵gas费飙到离谱，你一笔普通转账花了八十元手续费。交易确认后你骂骂咧咧地关了钱包——在以太坊上，连转个账都要竞价。',
+    text: '链上拥堵gas飙到离谱，一笔普通转账花了八十手续费。交易确认后你骂骂咧咧关了钱包——连转账都要竞价。',
     label: 'Gas战争',
     ageRange: [23, 42],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -369,7 +369,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'chain_survivor',
-    text: '你经历了第三次牛熊周期，看着曾经百倍币的K线感慨万千。身边的人换了一批又一批，你还在——不是因为你聪明，是因为你没死。',
+    text: '第三次牛熊了，看着曾经百倍币的K线。身边的人换了一批又一批，你还在——不是因为聪明，是因为没死。',
     label: '周期幸存者',
     ageRange: [32, 55],
     conditions: (state: GameState) => state.retirementPath === 'chain_native',
@@ -383,7 +383,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
 
   {
     id: 'nomad_language_mishap',
-    text: '你在菜市场比划了五分钟想买"鸡蛋"，摊主热情地塞给你一只活鸡。你抱着鸡站在街边哭笑不得，最后用翻译App才解了围——鸡被送回去了，鸡蛋没买成。',
+    text: '菜市场比划五分钟想买鸡蛋，摊主热情塞给你一只活鸡。你抱着鸡站在街上哭笑不得，最后用翻译App解了围。',
     label: '语言乌龙',
     ageRange: [22, 35],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -392,7 +392,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_visa_run',
-    text: '签证到期你飞去第三国做"签证跑"，在机场过海关被问了二十分钟。你递上返程机票和酒店订单时手有点抖——这种漂泊感每次都提醒你：你是客人。',
+    text: '签证到期飞第三国做签证跑，签证官翻你护照翻了很久。递上返程机票时手有点抖——你永远是客人。',
     label: '签证跑',
     ageRange: [23, 42],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -401,7 +401,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_favorite_cafe',
-    text: '你终于找到了一家网速快、咖啡好喝、插座够多的咖啡馆。老板记住了你的口味，每次你推门就开始做你常点的那杯——在异国他乡，这就是归属感。',
+    text: '终于找到网速快咖啡好插座多的咖啡馆。老板记住你口味，推门就开始做你那杯——这就是归属感。',
     label: '常驻咖啡馆',
     ageRange: [23, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -410,7 +410,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_miss_home_food',
-    text: '你在超市看到一包泡面是家乡的味道，当场买了一箱回民宿。煮面的时候水开了，你闻着那个味道突然眼眶红了——原来乡愁是一包三块钱的泡面。',
+    text: '超市看到一包家乡泡面，当场买了一箱。煮面时闻着那个味道眼眶红了——乡愁是三块钱的泡面。',
     label: '想念家味',
     ageRange: [22, 40],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -419,7 +419,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_timezone_call',
-    text: '和国内客户开会定在你这边凌晨两点，你定了三个闹钟才爬起来。视频里对方在吃午饭，你在吃安眠药——时差是数字游民最忠实的伴侣。',
+    text: '国内客户会定在你凌晨两点，三个闹钟才爬起来。视频里对方吃午饭，你在吃安眠药——时差是最忠实的伴侣。',
     label: '时差会议',
     ageRange: [23, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -428,7 +428,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_make_friends',
-    text: '在co-working空间认识了一个巴西设计师和一个韩国程序员，你们下班后一起去吃路边摊。三杯啤酒下肚用英语加手势聊天——全世界的自由职业者都是同类。',
+    text: 'co-working空间认识巴西设计师和韩国程序员，下班后路边摊喝啤酒。英语加手势聊天——全世界自由职业者都是同类。',
     label: '游民朋友',
     ageRange: [23, 40],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -437,7 +437,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_wifi_crisis',
-    text: '民宿的WiFi突然断了，你抱着电脑在街上来回走找信号。最后在一家7-11门口蹲了两小时开完会——腿麻了，但会开完了，客户没发现你在便利店门口。',
+    text: '民宿WiFi突然断了，抱电脑在街上找信号。最后在7-11门口蹲两小时开完会——腿麻了，客户没发现。',
     label: 'WiFi危机',
     ageRange: [22, 42],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -446,7 +446,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_backpack_pain',
-    text: '背着二十公斤的背包找民宿，在石板路上走了四十分钟。肩膀勒出红印子，你坐在路边喘气——动态圈里的碧海蓝天没人看得到这些淤青。',
+    text: '背二十公斤背包找民宿，石板路走了四十分钟。肩膀勒出红印子坐在路边喘气——动态圈里没人看得到这些淤青。',
     label: '背包疼痛',
     ageRange: [22, 38],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -455,7 +455,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_parents_video',
-    text: '和爸妈视频他们第一句话永远是"吃了没"，第二句是"那边安不安全"。你把镜头转了一圈展示海景民宿，没说昨天这条街刚有小偷被追了三条街。',
+    text: '和爸妈视频他们永远先问"吃了没""安不安全"。你转镜头展示海景民宿，没说昨天这条街刚有人被追了三条街。',
     label: '报喜不报忧',
     ageRange: [22, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad' && state.parents.isAlive,
@@ -464,7 +464,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_rainy_season',
-    text: '雨季来了，连续下了一周的雨。你被困在民宿里出不了门，窗外雨声和键盘声混成一片——你突然理解了为什么东南亚的数字游民都在写博客，雨季太漫长了。',
+    text: '雨季连下一周雨困在民宿，窗外雨声和键盘声混成一片。你突然懂了为什么东南亚游民都在写博客——雨季太漫长。',
     label: '雨季困守',
     ageRange: [23, 42],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -473,7 +473,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_local_help',
-    text: '你发烧了下不了楼，民宿阿姨煮了碗当地的姜汤端上来。你喝着那碗辣乎乎的汤，语言不通但她的眼神你懂——全世界的善意不需要翻译。',
+    text: '发烧下不了楼，民宿阿姨煮了碗姜汤端上来。喝着辣乎乎的汤，语言不通但她的眼神你懂——善意不需要翻译。',
     label: '当地人善意',
     ageRange: [23, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -482,7 +482,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_scooter_accident',
-    text: '租的小摩托刮了，你膝盖擦破一大块。诊所医生用听不懂的语言念叨着给你涂药水，你龇牙咧嘴地想——自由是有代价的，今天的代价是膝盖。',
+    text: '租的小摩托刮了，膝盖擦破一大块。诊所医生用听不懂的话念叨着涂药水——自由的代价，今天是膝盖。',
     label: '小摩刮擦',
     ageRange: [22, 40],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -491,7 +491,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_cowork_goodbye',
-    text: '认识三个月的游民朋友要去下一个国家了，你们在咖啡馆拥抱告别。他说"下一站见"，你知道大概率不会再见——数字游民的友谊像季风，来去都快。',
+    text: '认识三个月的游民朋友要走了，咖啡馆拥抱告别。他说"下一站见"，你知道大概率不会——游民的友谊像季风。',
     label: '告别朋友',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -500,7 +500,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_sunset_alone',
-    text: '你在海边看了一场绝美日落，掏出手机想分享翻了一圈又锁了屏。通讯录里几百人，却找不到一个此刻能一起看日落的人——美景有时候比孤独更孤独。',
+    text: '海边看完日落，去便利店买了第二杯半价的咖啡。站在路口喝完才想起——没人分享。',
     label: '独自看日落',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad' && !state.partner,
@@ -509,7 +509,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_sim_card',
-    text: '你到一个新国家第一件事就是买本地SIM卡，兜里揣着五六个国家的电话卡。每一张都是一段记忆，但没有一张能让你随时接起爸妈的FaceTime而不卡顿。',
+    text: '到新国家第一件事买本地SIM卡，兜里揣着五六国的电话卡。每张都是一段记忆，但没有一张能让你随时接起爸妈的FaceTime。',
     label: 'SIM卡收藏',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -518,7 +518,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_partner_visit',
-    text: '伴侣飞来看你，你提前三天就开始打扫民宿。见面那一刻你们在机场抱了很久——异国恋的拥抱比什么都真实，但送他走的时候你在机场站了很久。',
+    text: '伴侣飞来看你，提前三天打扫民宿。机场见面抱了很久——异国恋的拥抱比什么都真实，但送他走时你在机场站了很久。',
     label: '伴侣探班',
     ageRange: [25, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad' && !!state.partner && !state.partner.hasDivorced,
@@ -527,7 +527,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_laundry_day',
-    text: '攒了一周的衣服拿去洗衣店，老板用你听不懂的语言说了个数字。你付了钱第二天去取，衣服叠得整整齐齐还带着阳光的味道——这三块钱花得值。',
+    text: '攒了一周衣服拿去洗衣店，老板说了个听不懂的数字。第二天取回来叠得整整齐齐带着阳光味——三块钱花得值。',
     label: '洗衣日',
     ageRange: [22, 42],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -536,7 +536,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_earthquake',
-    text: '半夜地震你穿着拖鞋抱着电脑跑下楼，和一群惊魂未定的游客在街边坐了两小时。天亮了你回房间第一件事是连WiFi——工作还得交，地震不是deadline的借口。',
+    text: '半夜地震穿拖鞋抱电脑跑下楼，和游客街边坐了两小时。天亮回房第一件事连WiFi——地震不是deadline的借口。',
     label: '地震惊魂',
     ageRange: [23, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -545,7 +545,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_tired_wander',
-    text: '你在一个城市待了半年，开始厌倦收拾行李。打开地图看下一个目的地，手指划来划去停在了"家"的方向——你关了地图，订了回去的机票，就待一周。',
+    text: '在一个城市待了半年，开始厌倦收拾行李。打开地图划来划去停在"家"的方向——回去才发现你房间被改成了储物间。',
     label: '漂泊疲惫',
     ageRange: [30, 50],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -554,7 +554,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_roots_call',
-    text: '你在一个小镇住了三个月，面包店老板、菜市场阿姨都认识你了。离开那天他们塞给你一堆当地特产——你突然懂了，自由不是一直在路上，是随时可以停下来。',
+    text: '在小镇住了三个月，面包店老板菜市场阿姨都认识你了。离开那天他们塞给你一堆特产——自由不是一直在路上，是随时可以停下。',
     label: '扎根冲动',
     ageRange: [32, 55],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -563,7 +563,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_ai_tool_upgrade',
-    text: '你常用的AI工具又更新了，新版本能直接从需求文档生成完整的前端页面。你试了一下，以前要熬一通宵的活，现在半小时就出了初稿。你盯着屏幕看了很久，不知道该高兴还是该慌。',
+    text: '常用的AI工具又更新了，能直接从需求文档生成完整前端页面。以前熬一通宵的活现在半小时出初稿——你盯着屏幕，不知道该高兴还是慌。',
     label: 'AI又升级了',
     ageRange: [24, 40],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -572,7 +572,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_client_ai_pressure',
-    text: '客户发来消息说"我们试了用AI自己做，效果还行，以后简单的活儿就不外包了"。你盯着那条消息心里一紧——但转念一想，复杂的活儿他们还是得找你。你回了个"没问题"，然后打开AI编程器开始研究怎么用新工具做更高级的东西。',
+    text: '客户说"我们试了AI自己做，以后简单的活不外包了"。你回了个"没问题"，然后打开AI编程器开始研究怎么用新工具做更高级的东西。',
     label: '客户被AI抢走',
     ageRange: [30, 45],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -581,7 +581,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'nomad_cowork_ai_debate',
-    text: '共居空间里又在争论"AI会不会取代远程工作者"。有人说"五年内初级开发全完"，有人说"AI只是工具，关键是用人"。你听了半天没插嘴——你两边都同意，这才是最让人焦虑的地方。',
+    text: '共居空间又在争"AI会不会取代远程工作者"。有人说初级开发全完，有人说AI只是工具——你两边都同意，这才是最焦虑的。',
     label: 'AI替代论战',
     ageRange: [25, 42],
     conditions: (state: GameState) => state.retirementPath === 'digital_nomad',
@@ -595,7 +595,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
 
   {
     id: 'ip_refresh_metrics',
-    text: '凌晨两点你还在刷新后台数据，播放量比昨天少了三百你就睡不着。你告诉自己"不要在意数字"，手指却又下拉刷新了一次——焦虑是创作者的遗传病。',
+    text: '凌晨两点还在刷新后台数据，播放量比昨天少三百你就睡不着。手指又下拉刷新了一次——焦虑是创作者的遗传病。',
     label: '凌晨刷数据',
     ageRange: [22, 35],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -604,7 +604,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_mean_comments',
-    text: '你手贱点进了评论区，一条恶意评论精准扎在你最在意的地方。你删了App又装回来，反复看那条评论二十遍——一万个赞抵不过一句恶评。',
+    text: '手贱点进评论区，一条恶评精准扎在你最在意的地方。删了App又装回来，那条评论你反复看了二十遍。',
     label: '恶评破防',
     ageRange: [22, 40],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -613,7 +613,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_stranger_recognize',
-    text: '便利店排队时前面的人回头看了你三眼，试探着问了你的ID。你点头那一刻他掏出手机要合影——口罩帽子都没戴，今天居然是素颜出门的。',
+    text: '便利店排队前面的人回头看了三眼，试探着问你ID。你点头的瞬间他掏手机要合影——你今天没化妆。',
     label: '被认出',
     ageRange: [25, 45],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -622,7 +622,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_partner_first_see',
-    text: '伴侣第一次完整看了你的内容，看完沉默了一会儿说"原来你是这样想的"。你紧张得像面试——他看到了你面向世界的一面，那一面和私下的你不太一样。',
+    text: '伴侣第一次完整看了你的内容，看完沉默说"原来你是这么想的"。你紧张得像面试——他看到的那一面和私下不太一样。',
     label: '伴侣看内容',
     ageRange: [24, 42],
     conditions: (state: GameState) => state.retirementPath === 'super_ip' && !!state.partner && !state.partner.hasDivorced,
@@ -631,7 +631,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_imposter_syndrome',
-    text: '你坐在活动后台等着上台，周围全是叫得出名字的大V。你突然觉得自己是个混进来的骗子——他们不知道你的粉丝有一半是买的吗？不对，你没买，但你总觉得自己不配。',
+    text: '活动后台等着上台，周围全是叫得出名字的大V。你突然觉得自己是混进来的骗子——这种感觉每次都有，从没习惯过。',
     label: '冒名顶替',
     ageRange: [25, 45],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -640,7 +640,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_brand_deal',
-    text: '第一个品牌合作找到了你，报价比你一个月工资还高。你反复看了三遍合同才敢签——原来在网上说话真的能赚钱，虽然你说的那些话一半是真心一半是表演。',
+    text: '第一个品牌合作找上来，报价比你一个月工资还高。合同反复看三遍才敢签——网上说话真能赚钱，一半真心一半表演。',
     label: '首单商单',
     ageRange: [24, 38],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -649,7 +649,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_content_drought',
-    text: '你已经一周没更新了，坐在电脑前三个小时打不出一个字。文档里写满了被删掉的开头——灵感这东西，你越追它越跑。',
+    text: '一周没更新了，电脑前三小时打不出一个字。文档里写满被删掉的开头——灵感这东西，你越追它越跑。',
     label: '灵感枯竭',
     ageRange: [23, 45],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -658,7 +658,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_fan_letter',
-    text: '你收到一封很长的私信，对方说你的内容陪他走过了最黑暗的日子。你看了三遍，偷偷截了图存进一个叫"动力"的文件夹——这就是你做这一切的原因。',
+    text: '收到长私信说你的内容陪他走过最黑暗的日子。你看了三遍截图存进"动力"文件夹——今早你刚想过放弃。',
     label: '粉丝长信',
     ageRange: [25, 50],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -667,7 +667,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_family_find_out',
-    text: '你妈打电话说"我在短视频平台上刷到你了"，你大脑一片空白。她接着说"拍得挺好的，就是太瘦了多吃点"——你松了口气，她没问你为什么不找个正经工作。',
+    text: '妈打电话说"我在短视频刷到你了"，你大脑空白。她接着说"拍得挺好就是太瘦了"——你松了口气，她没问你怎么不找正经工作。',
     label: '老妈刷到',
     ageRange: [23, 40],
     conditions: (state: GameState) => state.retirementPath === 'super_ip' && state.parents.isAlive,
@@ -676,7 +676,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_hater_dm',
-    text: '有人给你发了长篇私信骂你，从你的内容骂到你的长相。你想拉黑但还是看完了——创作者的心是被骂大的，但每一刀都留疤。',
+    text: '有人发长篇私信骂你，从内容骂到长相。你想拉黑但还是看完了——创作者的心是被骂大的，每一刀都留疤。',
     label: '私信攻击',
     ageRange: [23, 45],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -685,7 +685,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_viral_moment',
-    text: '你发的一条内容突然爆了，手机震了一整晚。天亮时你看着六位数的新增关注，第一反应不是开心是恐惧——这么多人，我配吗？',
+    text: '一条内容突然爆了，手机震了一整晚。天亮看着六位数新增关注，第一反应不是开心是恐惧——这么多人，我配吗？',
     label: '内容爆了',
     ageRange: [23, 42],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -694,7 +694,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_comparison_trap',
-    text: '你刷到同赛道博主的数据是你的十倍，关掉App对着墙发呆了半小时。你明知道不该比较但还是比了——这个赛道里，每个人都在跑，你不跑就被踩。',
+    text: '刷到同赛道博主数据是你的十倍，关了App对墙发呆半小时。明知道不该比还是比了——这个赛道你不跑就被踩。',
     label: '同行对比',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -703,7 +703,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_algorithm_change',
-    text: '平台改了算法，你的流量一夜之间腰斩。你研究了一整天新规则，改了八版标题和封面——在别人的地盘上做生意，规则改了你就得跪着适应。',
+    text: '平台改算法流量一夜腰斩，你研究一整天新规则改了八版标题封面。在别人地盘做生意，规则改了你就得跪着适应。',
     label: '算法变脸',
     ageRange: [25, 48],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -712,7 +712,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_camera_setup',
-    text: '你花大价钱升级了设备，灯光麦克风镜头买了一堆。拍出来的画质确实好了，但内容还是一样没人看——你开始怀疑观众要的到底是画质还是真心。',
+    text: '花大价钱升级设备，灯光麦镜头买一堆。画质确实好了但内容还是没人看——你开始怀疑观众要的到底是什么。',
     label: '设备升级',
     ageRange: [24, 42],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -721,7 +721,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_fan_meet_awkward',
-    text: '第一次线下粉丝见面会只来了七个人，你尴尬得想找地缝钻。但那七个人和你聊了两个小时，每个人都能背出你说过的话——七个人也够了。',
+    text: '第一次线下粉丝见面会只来了七个人，你尴尬得想钻地缝。但那七个人跟你聊了两小时，每个人都能背出你说过的话。',
     label: '小型面基',
     ageRange: [25, 45],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -730,7 +730,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_persona_trap',
-    text: '你在网上维持的人设和真实的自己越来越割裂，镜头前爱笑的你私下越来越沉默。伴侣说"你最近怎么了"，你说"没事"——你自己都不知道哪个是真的你。',
+    text: '网上人设和真实自己越来越割裂，跟朋友吃饭下意识在想这能不能做成内容。伴侣说"你连吵架都像在录视频"——你不知道哪个是真的。',
     label: '人设分裂',
     ageRange: [27, 48],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -739,7 +739,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_takedown_notice',
-    text: '你花了两周做的内容被投诉下架了，申诉通道形同虚设。你对着屏幕骂了十分钟，然后开始重新剪——创作者的尊严是被下架通知磨厚的。',
+    text: '花两周做的内容被投诉下架，申诉形同虚设。你对着屏幕骂十分钟然后开始重新剪——创作者的尊严是被下架通知磨厚的。',
     label: '内容被删',
     ageRange: [24, 48],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -748,7 +748,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_collab_fallout',
-    text: '和你互推过的博主背后说你数据水，你看到截图时手都在抖。你想发长文回应最后还是算了——在这个圈子，撕逼也是流量，但你不想用这种方式红。',
+    text: '互推过的博主背后说你数据水，你看到截图时手在抖。想发长文回应最后算了——撕逼也是流量，但你不想这么红。',
     label: '圈内背刺',
     ageRange: [26, 45],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -757,7 +757,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_younger_creators',
-    text: '比你小十岁的创作者做的内容你看不懂了，他们的梗、剪辑节奏、表达方式全是新的。你试着学了一下觉得别扭——原来你也成了"上一代"。',
+    text: '比你小十岁的创作者做的内容你看不懂了，梗和节奏全是新的。你试着学了一下觉得别扭——原来你也成了"上一代"。',
     label: '后辈冲击',
     ageRange: [32, 50],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -766,7 +766,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'ip_real_connection',
-    text: '一个粉丝说因为你的内容他也开始创作了，现在他也有了自己的粉丝。你看到他@你的那条帖子，突然觉得这个IP不再只是你的了——它长出了自己的生命。',
+    text: '一个粉丝说因为你他也开始创作了，现在他有了自己的粉丝。你看到他@你的帖子——这个IP不再只是你的了。',
     label: '传承感',
     ageRange: [30, 55],
     conditions: (state: GameState) => state.retirementPath === 'super_ip',
@@ -780,7 +780,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
 
   {
     id: 'silver_old_story',
-    text: '张奶奶拉着你的手讲了四十年代逃荒的故事，讲着讲着哭了又笑了。你握着她枯树皮一样的手，录音机没开——有些故事不需要被记录，只需要被听完。',
+    text: '张奶奶拉着你的手讲四十年代逃荒的故事，讲着讲着哭了又笑了。她把你的手当成她孩子的手攥着——录音机没开，有些故事只需要被听完。',
     label: '老人讲故事',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -789,7 +789,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_family_cry',
-    text: '你帮一位老人争取到了应有的权益，他的子女在你办公室哭成一团。你递纸巾的时候自己也红了眼眶——这份工作赚得不多，但这种时刻你觉得值。',
+    text: '帮一位老人争取到应有的权益，子女在办公室哭成一团。你递纸巾时自己也红了眼——这工作赚不多，但这种时刻觉得值。',
     label: '家属感谢',
     ageRange: [25, 50],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -798,7 +798,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_mom_understands',
-    text: '你妈终于不再说你"伺候老人没出息"了，因为她亲眼看到你帮楼上的李爷爷解决了养老问题。她给你做了红烧肉说"注意身体"——这是她表达骄傲的方式。',
+    text: '妈终于不再说你"伺候老人没出息"了，她亲眼看到你帮楼上李爷爷解决养老问题。她做了红烧肉说"注意身体"——这是她表达骄傲的方式。',
     label: '老妈理解',
     ageRange: [26, 48],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy' && state.parents.isAlive,
@@ -807,7 +807,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_dementia_patient',
-    text: '患阿尔茨海默症的王爷爷每天都问你"你是谁"，你每天都笑着重新介绍自己。今天他突然说"你是个好孩子"——也许他忘了你的名字，但他记得你的善意。',
+    text: '阿尔茨海默症的王爷爷每天都问"你是谁"，你每天重新介绍自己。今天他突然说"你是个好孩子"——他忘了你名字，但记得你的善意。',
     label: '失智老人',
     ageRange: [25, 52],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -816,7 +816,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_scam_warning',
-    text: '你发现一位老人差点被骗买"保健神药"，及时拦下了。骗子的话术比你专业一百倍，你花了两个小时才让老人相信那三万块是骗局——和骗子抢老人，你每天都在打这场仗。',
+    text: '发现一位老人差点被骗买"保健神药"，及时拦下。骗子话术比你专业一百倍，花两小时才让老人相信那三万是骗局——和骗子抢老人，天天打这场仗。',
     label: '拦截诈骗',
     ageRange: [24, 50],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -825,7 +825,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_old_song',
-    text: '养老院里一位爷爷弹起了《夜来香》，好几个老人跟着哼起来。你站在门口听着，那些皱纹里的青春比任何流行歌都动人——你偷偷录了一段，没敢发网上。',
+    text: '养老院一位爷爷弹起《夜来香》，好几个老人跟着哼。你站门口听着，皱纹里的青春比任何流行歌动人——你偷偷录了一段没敢发网上。',
     label: '老人唱歌',
     ageRange: [23, 50],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -834,7 +834,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_loneliness',
-    text: '你陪一个独居老人吃了顿晚饭，她做了六个菜一个劲往你碗里夹。她说"好久没人陪我吃饭了"，你扒着米饭不敢抬头——怕她看到你红了的眼睛。',
+    text: '陪独居老人吃晚饭，她做了六个菜一个劲往你碗里夹。她说"好久没人陪我吃饭了"，你扒着米饭不敢抬头——怕她看见你红了的眼。',
     label: '独居老人',
     ageRange: [23, 50],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -843,7 +843,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_funeral',
-    text: '你照顾了两年的陈爷爷走了，葬礼上家属一定要你讲几句话。你站在那里说不出完整的话——你不是家属，但你比他子女陪他的时间还长。',
+    text: '照顾了两年的陈爷爷走了，葬礼家属一定要你讲几句。你站在那里说不出完整的话——你不是家属，但你比他子女陪的时间还长。',
     label: '老人离世',
     ageRange: [27, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -852,7 +852,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_tech_teach',
-    text: '你教一群老人用智能手机，一个奶奶学了五遍还不会视频通话。你耐心地教第六遍，她学会后第一通电话打给了远在国外的孙女——你在旁边假装看资料。',
+    text: '教一群老人用智能手机，一个奶奶学了五遍才会视频通话。她拨通后第一句话是"你瘦了"——你在旁边假装看资料。',
     label: '教用手机',
     ageRange: [23, 50],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -861,7 +861,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_family_dispute',
-    text: '几兄妹为了老人的赡养费在你办公室吵翻了天，老人坐在角落像个做错事的孩子。你把老人扶到外面晒太阳——在很多家庭里，老人是账本上最不受欢迎的那一页。',
+    text: '几兄妹为赡养费在办公室吵翻天，老人坐在角落像做错事的孩子。你把老人扶到外面晒太阳——很多家庭里，老人是账本上最不受欢迎的那一页。',
     label: '子女纠纷',
     ageRange: [26, 52],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -870,7 +870,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_birthday_cake',
-    text: '你给养老院八月生日的老人买了个蛋糕，八个人围在一起唱生日歌。有个奶奶许完愿偷偷告诉你"我许的是你能常来"——你把这句话咽了下去，说好。',
+    text: '给养老院八月生日的老人买了蛋糕，八个人围唱生日歌。有个奶奶许完愿偷偷告诉你"我许的是你能常来"——你说好，把这句话咽了下去。',
     label: '生日蛋糕',
     ageRange: [24, 50],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -879,7 +879,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_age_discrimination',
-    text: '有人说你做银发产业是"赚死人钱"，你想反驳但张了张嘴没说话。他们没见过那些握着你的手说"谢谢你"的老人——偏见是不了解的副产品。',
+    text: '有人说你做银发产业是"赚死人钱"，你想反驳张了张嘴没说话。他们没见过那些握着你手说谢谢的老人——偏见是不了解的副产品。',
     label: '职业偏见',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -888,7 +888,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_old_photo',
-    text: '李奶奶翻出年轻时的照片给你看，照片里的姑娘梳着两条麻花辫笑得灿烂。你看看照片再看看她，她笑着说"不敢认了吧"——岁月对谁都下狠手。',
+    text: '李奶奶翻出年轻时照片，姑娘梳着两条麻花辫笑得灿烂。你看看照片再看看她，她笑说"不敢认了吧"——岁月对谁都下狠手。',
     label: '老照片',
     ageRange: [25, 52],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -897,7 +897,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_emergency_call',
-    text: '凌晨四点接到紧急电话说有老人摔倒了，你套上衣服就往医院跑。在急诊室外等到天亮——你不是医生也不是家属，但你是他们能想到的第一个人。',
+    text: '凌晨四点接到电话说老人摔倒了，你套上衣服往医院跑。急诊室外等到天亮——你不是医生不是家属，但你是他们能想到的第一个人。',
     label: '凌晨急诊',
     ageRange: [25, 52],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -906,7 +906,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_pet_companion',
-    text: '一个独居爷爷养了只橘猫，猫比他子女还亲。他跟你说"哪天我走了，猫就托付给你了"——你嘴上说"别瞎说"，但记住了猫最爱吃的罐头牌子。',
+    text: '独居爷爷养了只橘猫，猫比他子女还亲。他说"哪天我走了猫托付给你"——你嘴上说"别瞎说"，但记住了猫最爱吃的罐头牌子。',
     label: '老人的猫',
     ageRange: [27, 52],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -915,7 +915,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_revisit',
-    text: '你在街上遇到了以前服务过的老人，他一把攥住你的手跟旁边人介绍"这是我的恩人"。你想解释你只是做了本职工作，但他的手在抖——有些感谢不需要言语。',
+    text: '街上遇到以前服务过的老人，他一把攥住你的手跟旁人介绍"这是我恩人"。你想解释只是本职工作，但他的手在抖——有些感谢不用言语。',
     label: '偶遇旧识',
     ageRange: [28, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -924,7 +924,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_parents_aging',
-    text: '你在帮别人照顾老人的时候突然意识到——自己的爸妈也在变老。你打电话回家，妈说"你爸最近记性越来越差了"，你握着电话半天没说出话。',
+    text: '陪别人爸妈的时候突然意识到——自己的爸妈也在变老。打电话回家妈说"你爸记性越来越差了"，你才想起三个月没回去了。',
     label: '爸妈也老了',
     ageRange: [28, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy' && state.parents.isAlive,
@@ -933,7 +933,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_will_testament',
-    text: '一位老人要立遗嘱把房子捐给慈善机构，子女闹到了你的办公室。老人平静地说"我的钱我做主"——你第一次觉得衰老不是软弱，是最后的倔强。',
+    text: '老人要立遗嘱把房子捐慈善，子女闹到办公室。老人平静说"我的钱我做主"——你第一次觉得衰老不是软弱，是最后的倔强。',
     label: '立遗嘱',
     ageRange: [30, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -942,7 +942,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_young_volunteer',
-    text: '一个大学生来做志愿者，第一天结束她说"原来老人们这么可爱"。你看着她兴奋的样子想起了刚入行的自己——希望她十年后还能这么说。',
+    text: '大学生来做志愿者，第一天结束说"原来老人们这么可爱"。你看着她兴奋的样子想起刚入行的自己——希望她十年后还能这么说。',
     label: '年轻志愿者',
     ageRange: [28, 50],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -951,7 +951,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_legacy',
-    text: '你整理一位已故老人的遗物，发现了一封写给你的信，信封上写着"给那个总是笑的年轻人"。信里只有四个字：好好活着。你把信夹进了日记本最里面。',
+    text: '整理已故老人遗物，抽屉里存着一包你爱吃的糖。还有封信写着"给那个总是笑的年轻人"，信里只有四个字：好好活着。',
     label: '老人的信',
     ageRange: [32, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -960,7 +960,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_vr_reunion',
-    text: '养老院新到了一批VR团圆设备，远在国外的子女可以"全息投影"回来陪老人吃饭。张奶奶戴着眼镜笑出了眼泪，但摘下来之后她说了句"摸不到"，就再也不肯用了。',
+    text: '养老院新到VR团圆设备，张奶奶戴眼镜笑出眼泪。摘下来她说了句"摸不到"，就再也不肯用了。',
     label: 'VR团圆',
     ageRange: [28, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -969,7 +969,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_carebot_conflict',
-    text: '机构引进了AI护理机器人，能翻身、喂饭、量血压，24小时不休息。秀兰抱怨"它不会哄人"，但你算过账——一个机器人顶三个护工，而且不会累。问题是，它也不会在老人哭的时候握住他们的手。',
+    text: '机构引进AI护理机器人，能翻身喂饭量血压24小时不休息。秀兰抱怨"它不会哄人"——一个机器人顶三个护工，但它不会在老人哭时握住他们的手。',
     label: '机器人vs人',
     ageRange: [30, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -978,7 +978,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_neural_clinic',
-    text: '一位帕金森老人的子女想送他去做神经接口治疗——据说能恢复80%的运动能力，但术后有人性情大变。老人拉着你的手问"小X，我做完还是我吗？"你答不上来。',
+    text: '帕金森老人的子女想送他做神经接口治疗，术后有人性情大变。老人拉着你手问"小X，我做完还是我吗"——你答不上来。',
     label: '神经接口',
     ageRange: [33, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -987,7 +987,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_digital_will',
-    text: '你帮一位独居老人联系了数字遗产服务——帮他注销二十多个社交账号、整理云盘照片、录一段数字遗嘱留给孙子。老人说"我死了之后，网上那个我也该跟着走"，你忽然想起自己有多少账号从来没想过怎么处理。',
+    text: '帮独居老人处理数字遗产——注销二十多个账号、整理云盘照片、录遗嘱给孙子。老人说"我死了网上那个我也该走"，你忽然想起自己那些没处理的账号。',
     label: '数字遗产',
     ageRange: [30, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -996,7 +996,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'silver_longevity_gap',
-    text: '新闻说某富豪花五百万打了针干细胞疗法，生物年龄逆转了十岁。同一天你接到通知，公办养老院床位费又涨了三百。你看着活动室里那些连普通养老院都住不起的老人，第一次觉得"长寿"这两个字很刺眼。',
+    text: '新闻说富豪花五百万打干细胞生物年龄逆转十岁，同一天公办养老院床位费涨三百。你看着连普通养老院都住不起的老人——"长寿"这两个字很刺眼。',
     label: '长寿鸿沟',
     ageRange: [35, 55],
     conditions: (state: GameState) => state.retirementPath === 'silver_economy',
@@ -1010,7 +1010,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
 
   {
     id: 'bio_morning_pills',
-    text: '早上你在餐桌前排开十五粒药丸和胶囊，颜色从白到黑排成一排。伴侣看着这阵势说"你又加药了"，你一口吞下去说"这是投资"——水都喝了三杯。',
+    text: '早上餐桌前排开十五粒药丸，颜色从白到黑排得像执行枪决的子弹。伴侣说"你又加药了"，你一口吞下去——水都喝了三杯。',
     label: '早间药阵',
     ageRange: [25, 45],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1019,7 +1019,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_paper_breakfast',
-    text: '你一边吃早餐一边刷最新的生物学期刊，一篇NMN的新论文让你差点把豆浆喷在屏幕上。你立刻打开购物车加了三瓶——早餐的论文是你每天的第一张处方。',
+    text: '一边吃早餐一边刷生物学期刊，一篇NMN新论文差点让你把豆浆喷屏幕上。立刻加了三瓶购物车——早餐的论文是每天第一张处方。',
     label: '早餐读论文',
     ageRange: [24, 48],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1028,7 +1028,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_friends_mock',
-    text: '朋友聚餐看到你掏出一小袋补剂全桌笑了，说你"活得像个实验鼠"。你笑着说"等你们老了就知道"，心里其实也有一秒钟的动摇——但还是把药吃了。',
+    text: '朋友聚餐看到你掏出一小袋补剂全桌笑了，说你"活得像实验鼠"。你笑着说"等你们老了就知道"，心里也动摇了一秒——但还是把药吃了。',
     label: '朋友嘲笑',
     ageRange: [23, 42],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1037,7 +1037,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_biometric_check',
-    text: '你早上起来先量血压、测心率、扎手指验血糖，数据记在表格里。今天的空腹血糖比昨天高了0.3，你盯着数字想了十分钟昨天吃了什么——数字是你的神谕。',
+    text: '早上起来先量血压测心率扎手指验血糖，数据记进表格。今天空腹血糖比昨天高了0.3，你盯着数字想了十分钟昨天吃了什么。',
     label: '晨间数据',
     ageRange: [25, 50],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1046,7 +1046,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_trial_anxiety',
-    text: '你参与的那个临床试验快出结果了，你每隔一小时刷一次邮箱。像等高考成绩一样紧张——你赌上的不只是钱，是你对延长寿命这件事的全部信念。',
+    text: '参与的临床试验快出结果了，你每隔一小时刷一次邮箱。像等高考成绩——你赌上的不只是钱，是对延长寿命这件事的全部信念。',
     label: '等试验结果',
     ageRange: [27, 50],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1055,7 +1055,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_supplement_haul',
-    text: '海淘的补剂到了，一大箱二十多瓶。你拆快递像拆圣诞礼物，每一瓶都查一遍保质期——这个月工资一半献给了这些瓶瓶罐罐，但你觉得值。',
+    text: '海淘补剂到了一大箱二十多瓶，拆快递像拆圣诞礼物。每瓶都查一遍保质期——这月工资一半献给瓶瓶罐罐，你觉得值。',
     label: '补剂到货',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1064,7 +1064,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_blood_test',
-    text: '季度验血报告出来了，你一项一项对着参考值比对。有个指标高了0.2你就开始搜论文找对策——医生说"没事"你不信，论文说"有风险"你信。',
+    text: '季度验血报告出来，一项一项对着参考值比对。有个指标高了0.2就开始搜论文——医生说"没事"你不信，论文说"有风险"你信。',
     label: '看验血报告',
     ageRange: [25, 50],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1073,7 +1073,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_cold_exposure',
-    text: '你开始尝试冷水浴，站在花洒下咬着牙坚持了九十秒。出来后皮肤通红但精神异常亢奋——你在群里发了张自拍，群友回"勇士"，你觉得自己确实是。',
+    text: '开始尝试冷水浴，花洒下咬着牙坚持九十秒。出来皮肤通红但精神亢奋——群里发了张自拍，群友回"勇士"，你觉得自己确实是。',
     label: '冷水浴',
     ageRange: [23, 42],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1082,7 +1082,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_placebo_debate',
-    text: '你在论坛和人争论某种补剂是不是安慰剂，吵到凌晨引用了二十篇论文。最后对方说"你吃的全是智商税"，你气得又吞了两粒——然后反思了五分钟。',
+    text: '论坛和人争某种补剂是不是安慰剂，吵到凌晨引了二十篇论文。对方说"你吃的全是智商税"，你气得又吞了两粒——然后反思了五分钟。',
     label: '补剂论战',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1091,7 +1091,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_doctor_skeptic',
-    text: '你跟医生聊你的补剂方案，医生皱着眉说"别乱吃"。你嘴上答应着，出了诊室继续查那个医生自己引用的论文——在抗衰老这件事上，你只信数据。',
+    text: '跟医生聊补剂方案，他皱眉说"别乱吃"。你嘴上答应，出了诊室继续查他引用的论文——抗衰老这件事上，你只信数据。',
     label: '医生质疑',
     ageRange: [26, 50],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1100,7 +1100,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_sleep_tracker',
-    text: '睡眠手环显示昨晚深度睡眠只有47分钟，你盯着这个数字焦虑了一整天。今晚你提前两小时关了手机吃了镁片——数字不好的夜晚比失眠本身更让人失眠。',
+    text: '睡眠手环显示昨晚深睡只有47分钟，你盯着这个数字焦虑了一整天。今晚提前两小时关手机吃镁片——数字不好的夜晚比失眠更让人失眠。',
     label: '睡眠焦虑',
     ageRange: [24, 48],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1109,7 +1109,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_fasting_day',
-    text: '断食日你只喝黑咖啡和盐水，下午三点饿得眼冒金星。你看着同事吃外卖咽了十次口水——16:8断食的"8"在晚上七点，还有四个小时，你能行。',
+    text: '断食日只喝黑咖啡和盐水，下午三点饿得眼冒金星。看着同事吃外卖咽了十次口水——16:8的"8"在晚上七点，还有四小时。',
     label: '断食日',
     ageRange: [23, 45],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1118,7 +1118,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_parents_pills',
-    text: '你给爸妈买了一堆你觉得有用的补剂寄回去，妈打电话说"你爸不吃说你瞎花钱"。你视频里看着他们把药瓶收进柜子——你知道那些药最后大概率会过期。',
+    text: '给爸妈买了一堆补剂寄回去，妈打电话说"你爸不吃说你瞎花钱"。视频里看着他们把药瓶收进柜子——那些药最后大概率会过期。',
     label: '给爸妈寄药',
     ageRange: [25, 50],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler' && state.parents.isAlive,
@@ -1127,7 +1127,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_longevity_podcast',
-    text: '你听播客听到一个新理论兴奋得睡不着，凌晨一点起来做笔记。伴侣翻了个身说"你疯了"，你说"这可能是下一个雷帕霉素"——虽然大概率不是，但万一是呢？',
+    text: '听播客听到新理论兴奋得睡不着，凌晨一点起来做笔记。伴侣翻身说"你疯了"，你说"这可能是下一个雷帕霉素"——万一呢？',
     label: '播客夜听',
     ageRange: [24, 45],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1136,7 +1136,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_gym_obsession',
-    text: '你在健身房练腿日蹲到最后一组力竭了，保护架救了你一命。你坐在地上喘气——所有这些锌镁维生素D，最终还是得靠铁来验证。',
+    text: '健身房练腿日蹲到最后一组力竭，保护架救了一命。坐在地上喘气——所有锌镁维生素D，最终还是得靠铁来验证。',
     label: '练腿力竭',
     ageRange: [23, 45],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1145,7 +1145,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_bad_batch',
-    text: '你买的某批补剂被曝含量虚标，你对着那半瓶东西骂了半小时。钱是小事，但你吃了三个月不知道吃了什么——信任比补剂贵，重建比增肌难。',
+    text: '买的某批补剂被曝含量虚标，你对着半瓶东西骂了半小时。钱是小事，吃了三个月不知道吃了什么——信任比补剂贵。',
     label: '补剂翻车',
     ageRange: [25, 48],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1154,7 +1154,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_genome_report',
-    text: '基因检测报告回来了，你翻到疾病风险页看了整整一个晚上。有几个高风险位点让你后背发凉——你已经在吃药了，但基因不是补剂能改的，这让你第一次感到恐惧。',
+    text: '基因检测报告回来，翻到疾病风险页看了一整晚。几个高风险位点让你后背发凉——你已经在吃药了，但基因不是补剂能改的。',
     label: '基因报告',
     ageRange: [26, 50],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1163,7 +1163,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_peer_doubts',
-    text: '你加入的长寿群里有人宣布"一切都是骗局"退群了。你看着那条退群消息想了很久——他说得有道理吗？你摸了摸桌上的药瓶，明天还是继续吃。',
+    text: '长寿群里有人宣布"一切都是骗局"退群了。你看着退群消息想了很久——他说得有道理吗？摸了摸桌上药瓶，明天还是继续吃。',
     label: '同伴退圈',
     ageRange: [28, 50],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1172,7 +1172,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_checkup_good',
-    text: '年度体检各项指标比同龄人好一大截，医生问你"怎么做到的"。你笑了笑没说那一抽屉补剂和每天五点半的晨跑——有些赌赢了的感觉，不需要别人理解。',
+    text: '年度体检各项指标比同龄人好一大截，医生问你"怎么做到的"。你笑了笑没说那一抽屉补剂——但你已经忘了上次不看表吃饭是什么时候。',
     label: '体检优秀',
     ageRange: [28, 52],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1181,7 +1181,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'bio_mortality',
-    text: '你参加了一个同龄人的葬礼，他不抽烟不喝酒作息规律却走得突然。回来后你盯着那一排补剂坐了很久——你做的一切能改变什么？你不知道，但你还是按时吃了今晚的药。',
+    text: '参加同龄人的葬礼，他不抽烟不喝酒作息规律却走得突然。回来你盯着那排补剂坐了很久，默默加了一粒——然后按时吃了今晚的药。',
     label: '死亡触动',
     ageRange: [32, 55],
     conditions: (state: GameState) => state.retirementPath === 'bio_gambler',
@@ -1195,7 +1195,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
 
   {
     id: 'daily_friend_wedding',
-    text: '老朋友发来了结婚请柬，红色喜帖上两个人笑得灿烂。你翻了翻日历把那天空出来，又打开记账App算了算份子钱——这个月第三场婚礼了，钱包在哭。',
+    text: '老朋友发来结婚请柬，红喜帖上两个人笑得灿烂。翻了翻日历把那天空出来，打开记账App算份子钱——这月第三场了。',
     label: '朋友结婚',
     ageRange: [24, 40],
     priority: 3,
@@ -1203,7 +1203,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_friend_birthday',
-    text: '今天是发小的生日，你挑了半小时礼物最后还是发了个红包。他秒收回了个"谢了兄弟"，后面加了八个表情包——你们的友情已经不需要客套了。',
+    text: '发小生日，挑了半小时礼物最后还是发红包。他秒收回了个"谢了兄弟"加八个表情包——你们的友情不需要客套了。',
     label: '朋友生日',
     ageRange: [22, 55],
     priority: 2,
@@ -1211,7 +1211,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_neighbor_dog',
-    text: '邻居家的金毛每次见你都冲过来摇尾巴，今天它叼了个网球放在你脚边。你陪它扔了十分钟球，邻居在阳台上喊"它就喜欢你"——狗的认可比KPI暖心。',
+    text: '邻居家金毛每次见你都冲过来摇尾巴，今天它叼了个网球放你脚边。你陪它扔了十分钟——狗的认可比KPI暖心。',
     label: '邻居的狗',
     ageRange: [22, 60],
     priority: 3,
@@ -1219,7 +1219,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_new_restaurant',
-    text: '你在小巷子里发现了一家不起眼的小馆子，点了一碗面好吃到想流泪。老板是个沉默的中年人，你走的时候他点了点头——以后又多了一个秘密基地。',
+    text: '小巷子里发现家不起眼的小馆子，一碗面好吃到想流泪。老板是个沉默中年人，走的时候他点了点头——又多了个秘密基地。',
     label: '宝藏馆子',
     ageRange: [22, 60],
     priority: 3,
@@ -1227,7 +1227,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_rainy_day',
-    text: '周末下了一整天的雨，你窝在沙发上看了部老电影。窗外的雨声和电影的对白混在一起，外卖到了——这种不出门的日子，是社畜最奢侈的治愈。',
+    text: '周末下了一整天雨，窝沙发上看了部老电影。外卖到了——窗外雨声和电影对白混在一起，不出门的日子是社畜最奢侈的治愈。',
     label: '雨天窝家',
     ageRange: [22, 60],
     priority: 2,
@@ -1235,7 +1235,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_haircut',
-    text: '你去理发，Tony老师又开始推销办卡。你闭上眼任他剪，说"稍微修一下就行"。睁开眼镜子里的自己像换了个人——每次理发都像开盲盒，这次没翻车。',
+    text: '去理发，Tony又开始推销办卡。你闭眼任他剪说"稍微修一下"。睁开眼镜子里像换了个人——理发像开盲盒，这次没翻车。',
     label: '理发',
     ageRange: [22, 60],
     priority: 2,
@@ -1243,7 +1243,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_package_arrives',
-    text: '快递到了！你拆包裹的快感比里面的东西还让人兴奋。是上周冲动下单的一个小玩意，拆完觉得好像也没那么需要——但拆的那一刻是真的快乐。',
+    text: '快递到了！拆包裹的快感比里面东西还让人兴奋。是上周冲动下单的小玩意，拆完觉得好像也没那么需要——但拆的那一刻是真快乐。',
     label: '快递到了',
     ageRange: [22, 60],
     priority: 2,
@@ -1251,7 +1251,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_parents_call',
-    text: '爸妈又打来视频电话，翻来覆去还是那几句话：吃了没、穿暖没、别熬夜。你"嗯嗯啊啊"应付了十分钟，挂了电话发现屏幕上你的脸是笑着的。',
+    text: '爸妈又来视频，翻来覆去那几句：吃了没、穿暖没、别熬夜。你嗯嗯啊啊应付十分钟，挂了电话发现屏幕上自己的脸是笑着的。',
     label: '爸妈来电',
     ageRange: [22, 60],
     conditions: (state: GameState) => state.parents.isAlive,
@@ -1260,7 +1260,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_good_meal',
-    text: '今晚你认真做了一顿饭，两菜一汤摆上桌的时候有点成就感。一个人吃饭也摆了双筷子对面——习惯了，就像对面一直坐着个人。',
+    text: '今晚认真做了顿饭，两菜一汤摆上桌有点成就感。一个人吃饭也摆了双筷子对面——习惯了，就像对面一直坐着个人。',
     label: '好好吃饭',
     ageRange: [23, 60],
     priority: 2,
@@ -1268,7 +1268,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_traffic_jam',
-    text: '堵车堵了四十分钟，你在车里听了三档播客两首歌。前面的尾灯排成一条红色的河，你叹了口气——堵车的时候你最想退休，但退休了也堵不起车。',
+    text: '堵车堵了四十分钟，车里听了三档播客两首歌。前面尾灯排成一条红色的河——堵车的时候你最想退休，但退休了也堵不起车。',
     label: '堵车',
     ageRange: [23, 55],
     priority: 2,
@@ -1276,7 +1276,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_old_song',
-    text: '便利店突然放了一首高中时听的歌，你在货架前站了很久。那首歌一响你就想起了校服、晚自习、和那个再也没联系过的人——音乐是时光机，不用买票。',
+    text: '便利店突然放了首高中时听的歌，你在货架前站了很久。那首歌一响就想起校服晚自习和那个再也没联系的人——音乐是时光机。',
     label: '老歌回忆',
     ageRange: [25, 60],
     priority: 3,
@@ -1284,7 +1284,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_lost_keys',
-    text: '你翻遍了包和口袋找不到钥匙，在门口站了二十分钟叫了开锁师傅。师傅三分钟搞定收了你一百五，你看着他的背影想——这钱赚得真容易，也真让人心疼。',
+    text: '翻遍包和口袋找不到钥匙，门口站了二十分钟叫开锁师傅。师傅三分钟搞定收一百五，你看着他背影——这钱赚得真容易，也真让人心疼。',
     label: '丢钥匙',
     ageRange: [22, 60],
     priority: 3,
@@ -1292,7 +1292,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_bump_acquaintance',
-    text: '你在地铁站碰到了一个十年没见的高中同学，两个人都愣了三秒才认出来。交换社交软件时你发现他发际线和你一样高了——原来大家都在老，不是你一个人。',
+    text: '地铁站碰到十年没见的高中同学，两人愣了三秒才认出来。交换联系方式时发现他发际线和你一样高了——原来大家都在老。',
     label: '偶遇旧识',
     ageRange: [28, 55],
     priority: 3,
@@ -1300,7 +1300,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_autumn_leaves',
-    text: '下班路上踩到一片落叶，咔嚓一声脆响。你抬头发现整条街的树都黄了，你居然完全没注意到秋天来了——时间过得比你以为的快很多。',
+    text: '下班路上踩到一片落叶，咔嚓一声脆响。抬头发现整条街树都黄了，你居然没注意到秋天来了——时间过得比你以为的快。',
     label: '秋天落叶',
     ageRange: [25, 60],
     priority: 2,
@@ -1308,7 +1308,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_spring_allergy',
-    text: '春天来了你也开始打喷嚏，一天用了一包纸巾。同事笑你"春天对你不友好"，你揉着红鼻子看窗外——花都开了，过敏也值了。',
+    text: '春天来了你开始打喷嚏，一天用了一包纸巾。同事笑你"春天对你不友好"，你揉着红鼻子看窗外——花都开了，过敏也值了。',
     label: '春敏打喷嚏',
     ageRange: [22, 55],
     priority: 2,
@@ -1316,7 +1316,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_stranger_kindness',
-    text: '你提了太多东西上楼梯，一个陌生邻居帮你拎了两层。你说谢谢他挥挥手就走了，连名字都没留——善意不需要回报，传递下去就行。',
+    text: '提了太多东西上楼梯，陌生邻居帮你拎了两层。你说谢谢他挥挥手就走了，连名字都没留——善意不需要回报。',
     label: '陌生人帮忙',
     ageRange: [22, 60],
     priority: 2,
@@ -1324,7 +1324,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_bad_coffee',
-    text: '公司咖啡机今天出的咖啡像刷锅水，你喝了一口差点吐出来。但你还是喝完了——成年人的世界里，难喝的咖啡也是咖啡，难挨的日子也是日子。',
+    text: '公司咖啡机今天出的咖啡像刷锅水，你喝了一口差点吐出来。但还是喝完了——成年人的世界里，难喝的咖啡也是咖啡。',
     label: '难喝的咖啡',
     ageRange: [22, 55],
     priority: 2,
@@ -1332,7 +1332,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_window_seat',
-    text: '公交/地铁上你坐到了靠窗的位置，窗外的风景一路退去。你戴着耳机听着歌发了二十分钟呆——这是今天唯一不用思考的时刻。',
+    text: '地铁上坐到靠窗位置，窗外风景一路退去。戴耳机听着歌发了二十分钟呆——这是今天唯一不用思考的时刻。',
     label: '靠窗发呆',
     ageRange: [22, 60],
     priority: 2,
@@ -1340,7 +1340,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_child_draw',
-    text: '你在小区长椅上看到一幅小孩画的粉笔画，歪歪扭扭的太阳和房子。旁边写着"我长大了要当画家"——你笑了笑，小心地绕开那幅画走了过去。',
+    text: '小区长椅上看到小孩画的粉笔画，歪歪扭扭的太阳和房子。旁边写着"我长大了要当画家"——你笑了笑，小心绕开走过去。',
     label: '小孩的画',
     ageRange: [23, 60],
     priority: 2,
@@ -1348,7 +1348,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_appliance_break',
-    text: '洗衣机坏了，维修师傅说修不如买新的。你算了算这个月的预算，决定先用手洗——拧衣服的时候你想，原来"添大件"曾经是开心的事。',
+    text: '洗衣机坏了，师傅说修不如买新。算了算这月预算决定先手洗——拧衣服的时候你想，"添大件"曾经是开心的事。',
     label: '家电坏了',
     ageRange: [24, 55],
     priority: 3,
@@ -1356,7 +1356,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_bad_sleep',
-    text: '昨晚没睡好，今天一整天都在神游。开会时领导点你名字你都没听见，旁边同事捅了你三下你才反应过来——今晚一定早睡，这句话你已经说了三十遍了。',
+    text: '昨晚没睡好今天一整天神游，开会领导点你名都没听见。旁边同事捅了三下才反应过来——今晚一定早睡，这句话你说了三十遍了。',
     label: '没睡好',
     ageRange: [22, 55],
     priority: 2,
@@ -1364,7 +1364,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_good_dream',
-    text: '你做了一个好梦，梦见了小时候住的老房子和去世的奶奶。她在梦里给你煮了碗面，你没吃完就醒了——枕头有点湿，但心里是暖的。',
+    text: '做了个好梦，梦见小时候住的老房子和去世的奶奶。她在梦里给你煮了碗面，没吃完就醒了——枕头有点湿，但心里暖的。',
     label: '温暖的梦',
     ageRange: [25, 60],
     priority: 3,
@@ -1372,7 +1372,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_plant_die',
-    text: '你养了大半年的多肉还是死了，这已经是第三盆。你对着空花盆沉默了一会儿，打开电商平台下单了第四盆——屡败屡战是你对生活最基本的态度。',
+    text: '养了大半年的多肉还是死了，这是第三盆。对着空花盆沉默一会儿，打开电商下单第四盆——屡败屡战是你对生活最基本的态度。',
     label: '多肉又死了',
     ageRange: [22, 55],
     priority: 2,
@@ -1380,7 +1380,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_fruit_cheap',
-    text: '路边摊的草莓今天特别便宜，你买了两斤回去洗了一大碗。第一口咬下去酸甜的汁水四溢——你突然觉得，幸福有时候就是十五块钱的草莓。',
+    text: '路边摊草莓今天特别便宜，买了两斤回去洗了一大碗。第一口咬下去酸甜汁水四溢——幸福有时候就是十五块钱的草莓。',
     label: '便宜草莓',
     ageRange: [22, 60],
     priority: 2,
@@ -1388,7 +1388,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_house_clean',
-    text: '你花了一整天把房间从头到尾打扫了一遍，擦完窗户阳光照进来的时候整个屋子都亮了。你瘫在干净的沙发上——劳动后的疲惫比按摩还解压。',
+    text: '花一整天把房间从头到尾打扫一遍，擦完窗户阳光照进来整个屋子都亮了。瘫在干净沙发上——劳动后的疲惫比按摩还解压。',
     label: '大扫除',
     ageRange: [22, 60],
     priority: 2,
@@ -1396,7 +1396,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_snack_regret',
-    text: '你半夜忍不住拆了包薯片，吃完看着空袋子后悔了三分钟。然后你安慰自己"明天再减"——这句话你和健身卡的有效期一样，说了很多年了。',
+    text: '半夜忍不住拆了包薯片，吃完看空袋子后悔三分钟。然后安慰自己"明天再减"——这句话你和健身卡有效期一样，说了很多年。',
     label: '半夜零食',
     ageRange: [22, 50],
     priority: 2,
@@ -1404,7 +1404,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_elevator_smalltalk',
-    text: '电梯里和不太熟的邻居尴尬地站了十层楼，你们同时开口说"今天天气不错"又同时闭嘴。出电梯的时候两个人都笑了——社恐的友谊从天气开始。',
+    text: '电梯里和不熟的邻居尴尬站了十层楼，你们同时开口说"今天天气不错"又同时闭嘴。出电梯两个人都笑了——社恐的友谊从天气开始。',
     label: '电梯尬聊',
     ageRange: [23, 60],
     priority: 2,
@@ -1412,7 +1412,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_grandparent_thing',
-    text: '你翻到一件奶奶/外婆织的旧毛衣，款式早就过时了但你舍不得扔。穿上的时候还能闻到樟脑丸和旧时光的味道——有些温暖不会因为款式过时而消失。',
+    text: '翻到奶奶织的旧毛衣，款式早过时了但舍不得扔。穿上还能闻到樟脑丸和旧时光的味道——有些温暖不会因为款式过时而消失。',
     label: '旧毛衣',
     ageRange: [25, 60],
     priority: 3,
@@ -1420,7 +1420,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_new_year_eve',
-    text: '跨年的晚上你一个人在家煮了饺子，窗外烟花响起来的时候你刚好夹起一个。你对着窗户上自己的影子说"新年快乐"——一个人跨年也得有仪式感。',
+    text: '跨年晚上一个人在家煮了饺子，窗外烟花响起来时刚好夹起一个。对着窗户上自己的影子说"新年快乐"——一个人跨年也得有仪式感。',
     label: '独自跨年',
     ageRange: [22, 50],
     conditions: (state: GameState) => !state.partner,
@@ -1429,7 +1429,7 @@ export const PATH_DAILY_EVENTS: DailyEvent[] = [
   },
   {
     id: 'daily_first_snow',
-    text: '今年第一场雪落下来的时候你正在外面，雪花落在脸上凉丝丝的。你站在雪地里接了几片，像小时候那样仰头张嘴——路人看了你一眼，你不在乎。',
+    text: '今年第一场雪落下来时你正在外面，雪花落在脸上凉丝丝的。站在雪地里接了几片，像小时候那样仰头张嘴——路人看了你一眼，你不在乎。',
     label: '初雪',
     ageRange: [22, 60],
     priority: 3,
