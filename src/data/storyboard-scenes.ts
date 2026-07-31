@@ -2147,6 +2147,393 @@ function sceneConvenienceStore(): PixelFrame[] {
   return f
 }
 
+// ========== V13: 卡片选择新场景 ==========
+
+// 辞职/递辞职信
+function sceneResign(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.gray)
+    // 窗户
+    for (let r = 2; r <= 7; r++) for (let col = 16; col <= 22; col++) S(fr, r, col, T.sky)
+    S(fr, 2, 16, T.brown); S(fr, 7, 16, T.brown)
+  })
+  // 你从递信到转身离开
+  drawPerson(f[0], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'stand')
+  drawPerson(f[1], 5, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'armsup')
+  drawPerson(f[2], 5, 11, T.hair_dark, T.skin, T.cloth_red, 'left', 'happy', 'walk2')
+  drawPerson(f[3], 3, 11, T.hair_dark, T.skin, T.cloth_red, 'left', 'happy', 'walk1')
+  // 辞职信信封（白色+红封条），递出→放下→人走了信留在桌上
+  f.forEach(fr => {
+    // 桌子（右侧）
+    for (let col = 13; col <= 22; col++) S(fr, 14, col, T.brown)
+    S(fr, 15, 14, T.brown); S(fr, 15, 21, T.brown); S(fr, 16, 14, T.dark); S(fr, 16, 21, T.dark)
+  })
+  S(f[0], 10, 8, T.white); S(f[0], 11, 8, T.white); S(f[0], 10, 9, T.white); S(f[0], 11, 9, T.white)
+  S(f[1], 12, 9, T.white); S(f[1], 13, 9, T.white); S(f[1], 12, 10, T.white); S(f[1], 13, 10, T.white); S(f[1], 12, 9, T.bright_red)
+  S(f[2], 13, 16, T.white); S(f[2], 13, 17, T.white); S(f[2], 13, 18, T.white); S(f[2], 13, 16, T.bright_red)
+  S(f[3], 13, 16, T.white); S(f[3], 13, 17, T.white); S(f[3], 13, 18, T.white); S(f[3], 13, 16, T.bright_red)
+  // 自由小鸟飞出
+  drawBird(f[2], 3, 2, 0); drawBird(f[3], 2, 6, 1)
+  // 门（左侧，第3、4帧你走出门）
+  S(f[2], 4, 0, T.brown); for (let r = 5; r <= 16; r++) S(f[2], r, 0, T.brown); S(f[2], 10, 1, T.gold)
+  S(f[3], 4, 0, T.sky); for (let r = 5; r <= 16; r++) S(f[3], r, 0, T.sky) // 门开了
+  return f
+}
+
+// 体检/医院
+function sceneHealthCheck(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.theme)
+    // 医院十字标志（右上角）
+    S(fr, 1, 20, T.bright_red); S(fr, 2, 20, T.bright_red); S(fr, 3, 20, T.bright_red)
+    S(fr, 2, 19, T.bright_red); S(fr, 2, 21, T.bright_red)
+  })
+  // 医生坐在诊桌后（先画人）
+  drawPerson(f[0], 15, 10, T.hair_dark, T.skin, T.white, 'left', 'normal', 'sit')
+  drawPerson(f[1], 15, 10, T.hair_dark, T.skin, T.white, 'left', 'happy', 'sit')
+  drawPerson(f[2], 15, 10, T.hair_dark, T.skin, T.white, 'left', 'happy', 'sit')
+  drawPerson(f[3], 15, 10, T.hair_dark, T.skin, T.white, 'left', 'happy', 'sit')
+  // 你从紧张到开心，体检完离开
+  drawPerson(f[0], 4, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'stand')
+  drawPerson(f[1], 4, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'surprised', 'stand')
+  drawPerson(f[2], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'left', 'happy', 'walk2')
+  drawPerson(f[3], 1, 11, T.hair_dark, T.skin, T.cloth_red, 'left', 'happy', 'walk1')
+  // 诊桌（画在人前面遮挡）
+  f.forEach((fr, i) => {
+    for (let col = 9; col <= 22; col++) { S(fr, 13, col, T.brown); S(fr, 14, col, T.brown) }
+    S(fr, 15, 10, T.brown); S(fr, 15, 21, T.brown); S(fr, 16, 10, T.dark); S(fr, 16, 21, T.dark)
+    // 体检表
+    for (let col = 11; col <= 14; col++) { S(fr, 12, col, T.white) }
+    if (i >= 2) S(fr, 12, 13, T.teal) // 勾选标记
+    // 听诊器
+    S(fr, 12, 16, T.teal); S(fr, 12, 17, T.teal)
+  })
+  return f
+}
+
+// 心理咨询/治疗
+function sceneTherapy(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.peach)
+    drawGround(fr, T.brown)
+    // 咨询师沙发（左）
+    for (let col = 1; col <= 8; col++) { S(fr, 10, col, T.teal); S(fr, 11, col, T.teal); S(fr, 12, col, T.teal) }
+    S(fr, 9, 1, T.teal); S(fr, 9, 8, T.teal)
+    // 来访者沙发（右）
+    for (let col = 15; col <= 22; col++) { S(fr, 10, col, T.cloth_blue); S(fr, 11, col, T.cloth_blue); S(fr, 12, col, T.cloth_blue) }
+    S(fr, 9, 15, T.cloth_blue); S(fr, 9, 22, T.cloth_blue)
+    // 中间小茶几
+    for (let col = 10; col <= 13; col++) S(fr, 12, col, T.brown)
+    S(fr, 13, 10, T.brown); S(fr, 13, 13, T.brown); S(fr, 14, 10, T.dark); S(fr, 14, 13, T.dark)
+    // 纸巾盒
+    S(fr, 11, 11, T.white); S(fr, 11, 12, T.white); S(fr, 10, 11, T.white); S(fr, 10, 12, T.white)
+  })
+  // 咨询师（戴眼镜=额外点，坐左侧沙发）
+  drawPerson(f[0], 3, 8, T.hair_dark, T.skin, T.teal, 'right', 'normal', 'sit')
+  drawPerson(f[1], 3, 8, T.hair_dark, T.skin, T.teal, 'right', 'happy', 'sit')
+  drawPerson(f[2], 3, 8, T.hair_dark, T.skin, T.teal, 'right', 'happy', 'sit')
+  drawPerson(f[3], 3, 8, T.hair_dark, T.skin, T.teal, 'right', 'happy', 'sit')
+  // 来访者（从难过到释然）
+  drawPerson(f[0], 17, 8, T.hair_light, T.skin, T.cloth_blue, 'left', 'sad', 'sit')
+  drawPerson(f[1], 17, 8, T.hair_light, T.skin, T.cloth_blue, 'left', 'sad', 'sit')
+  drawPerson(f[2], 17, 8, T.hair_light, T.skin, T.cloth_blue, 'left', 'normal', 'sit')
+  drawPerson(f[3], 17, 8, T.hair_light, T.skin, T.cloth_blue, 'left', 'happy', 'sit')
+  // 对话气泡
+  S(f[1], 7, 8, T.white); S(f[1], 7, 9, T.white); S(f[1], 7, 10, T.white)
+  S(f[2], 6, 16, T.white); S(f[2], 6, 17, T.white); S(f[2], 6, 18, T.white)
+  // 爱心/释然
+  drawHeart(f[3], 5, 18, T.bright_red, 0)
+  return f
+}
+
+// 外卖骑手/骑电动车送餐
+function sceneRider(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.gray)
+    // 路边建筑
+    for (let r = 4; r <= 16; r++) for (let col = 0; col <= 4; col++) S(fr, r, col, T.theme)
+    for (let r = 6; r <= 14; r++) { S(fr, r, 1, T.sky); S(fr, r, 3, T.sky) }
+    // 路灯
+    S(fr, 3, 20, T.gold); for (let r = 4; r <= 15; r++) S(fr, r, 20, T.gray)
+  })
+  // 先画外卖箱（在人后面），再画骑手，再画电动车车身覆盖腿部
+  f.forEach((fr, i) => {
+    const bx = 3 + i * 3
+    const px = bx + 1
+    // 外卖箱（后座蓝色，在人后面）
+    S(fr, 11, bx, T.cloth_blue); S(fr, 12, bx, T.cloth_blue); S(fr, 11, bx+1, T.cloth_blue); S(fr, 12, bx+1, T.cloth_blue)
+    S(fr, 11, bx, T.gold) // logo
+    // 骑手
+    drawPerson(fr, px, 10, T.bright_red, T.skin, T.bright_red, 'right', 'happy', 'sit')
+    // 电动车车身（画在人前面，覆盖腿部和椅子白色）
+    for (let col = bx; col <= bx+6; col++) { S(fr, 13, col, T.dark); S(fr, 14, col, T.dark); S(fr, 15, col, T.dark) }
+    S(fr, 16, bx+1, T.dark); S(fr, 16, bx+5, T.dark) // 轮子
+    // 车把（在人前方）
+    S(fr, 11, bx+5, T.dark); S(fr, 11, bx+6, T.dark); S(fr, 12, bx+6, T.dark)
+  })
+  // 速度线
+  S(f[1], 10, 2, T.white); S(f[1], 12, 1, T.white)
+  S(f[2], 10, 4, T.white); S(f[2], 12, 3, T.white); S(f[3], 10, 7, T.white); S(f[3], 12, 6, T.white)
+  return f
+}
+
+// 摆摊/小摊贩
+function sceneVendor(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.dark)
+    // 路灯
+    S(fr, 2, 2, T.gold); for (let r = 3; r <= 15; r++) S(fr, r, 2, T.gray)
+    S(fr, 2, 21, T.gold); for (let r = 3; r <= 15; r++) S(fr, r, 21, T.gray)
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+      if (dr*dr + dc*dc <= 4) { S(fr, 2+dr, 2+dc, T.gold); S(fr, 2+dr, 21+dc, T.gold) }
+    }
+  })
+  // 摊主站在摊后（先画人，再画摊位遮挡）
+  drawPerson(f[0], 9, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'stand')
+  drawPerson(f[1], 9, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'armsup')
+  drawPerson(f[2], 9, 11, T.hair_dark, T.skin, T.white, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 9, 11, T.hair_dark, T.skin, T.white, 'front', 'happy', 'cheer')
+  // 小摊车（画在人前面遮挡下半身）
+  f.forEach(fr => {
+    // 顶棚条纹（红白）
+    S(fr, 7, 5, T.bright_red); S(fr, 7, 6, T.white); S(fr, 7, 7, T.bright_red); S(fr, 7, 8, T.white)
+    S(fr, 7, 9, T.bright_red); S(fr, 7, 10, T.white); S(fr, 7, 11, T.bright_red); S(fr, 7, 12, T.white)
+    S(fr, 7, 13, T.bright_red); S(fr, 7, 14, T.white); S(fr, 7, 15, T.bright_red); S(fr, 7, 16, T.white)
+    S(fr, 7, 17, T.bright_red); S(fr, 7, 18, T.white)
+    // 支柱
+    S(fr, 8, 5, T.brown); S(fr, 9, 5, T.brown); S(fr, 10, 5, T.brown)
+    S(fr, 8, 18, T.brown); S(fr, 9, 18, T.brown); S(fr, 10, 18, T.brown)
+    // 摊位台面
+    for (let col = 4; col <= 19; col++) { S(fr, 13, col, T.brown); S(fr, 14, col, T.brown) }
+    // 食物（烤肠=金色）
+    S(fr, 12, 9, T.gold); S(fr, 12, 10, T.gold); S(fr, 12, 11, T.gold); S(fr, 12, 12, T.gold); S(fr, 12, 13, T.gold); S(fr, 12, 14, T.gold)
+    S(fr, 11, 10, T.bright_red); S(fr, 11, 13, T.bright_red) // 热气/香气
+    // 轮子
+    S(fr, 15, 6, T.dark); S(fr, 15, 17, T.dark); S(fr, 16, 6, T.dark); S(fr, 16, 17, T.dark)
+  })
+  // 顾客从右边走来
+  drawPerson(f[0], 20, 11, T.hair_light, T.skin, T.cloth_blue, 'left', 'normal', 'stand')
+  drawPerson(f[1], 19, 11, T.hair_light, T.skin, T.cloth_blue, 'left', 'happy', 'walk2')
+  drawPerson(f[2], 18, 11, T.hair_light, T.skin, T.cloth_blue, 'left', 'happy', 'walk1')
+  // 顾客拿到食物开心离开（第3帧顾客在左边走远）
+  drawPerson(f[3], 2, 11, T.hair_light, T.skin, T.cloth_blue, 'right', 'happy', 'walk2')
+  // 金币/交易
+  S(f[2], 12, 17, T.gold); S(f[3], 12, 17, T.gold); S(f[3], 11, 17, T.gold)
+  return f
+}
+
+// 考公/备考/书桌前学习
+function sceneStudyExam(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.brown)
+    // 书桌
+    for (let col = 3; col <= 18; col++) S(fr, 13, col, T.brown)
+    S(fr, 14, 4, T.brown); S(fr, 14, 17, T.brown); S(fr, 15, 4, T.dark); S(fr, 15, 17, T.dark)
+    // 台灯（右侧）
+    S(fr, 9, 16, T.gold); S(fr, 10, 16, T.brown); S(fr, 11, 16, T.brown); S(fr, 12, 16, T.brown)
+    for (let dr = -1; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+      if (dr*dr + dc*dc <= 4) S(fr, 9+dr, 16+dc, T.gold)
+    }
+    S(fr, 9, 16, T.gold)
+    // 窗外月亮（表示熬夜）
+    S(fr, 2, 2, T.gold); S(fr, 2, 3, T.gold); S(fr, 1, 2, T.gold); S(fr, 3, 2, T.gold)
+  })
+  // 人物坐姿看书（先画人再画桌子遮挡）
+  drawPerson(f[0], 8, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'normal', 'sit')
+  drawPerson(f[1], 8, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'normal', 'sit')
+  drawPerson(f[2], 8, 10, T.hair_dark, T.skin, T.cloth_blue, 'front', 'normal', 'type')
+  drawPerson(f[3], 8, 10, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  // 书本/试卷（在桌上）
+  f.forEach((fr, i) => {
+    for (let col = 7; col <= 12; col++) { S(fr, 12, col, T.white); S(fr, 11, col, T.white) }
+    S(fr, 11, 8, T.dark); S(fr, 11, 10, T.dark); S(fr, 12, 9, T.dark) // 字
+    if (i >= 2) {
+      S(fr, 11, 13, T.white); S(fr, 11, 14, T.white); S(fr, 12, 13, T.white); S(fr, 12, 14, T.white)
+      S(fr, 11, 13, T.dark)
+    }
+  })
+  // 咖啡杯
+  f.forEach(fr => drawCup(fr, 14, 11, T.brown))
+  // 最后一帧打勾（通过了！）
+  S(f[3], 10, 10, T.teal); S(f[3], 9, 11, T.teal); drawConfetti(f[3], 1, [T.bright_red, T.gold, T.cloth_blue, T.teal])
+  return f
+}
+
+// 直播/拍视频/自媒体
+function sceneStreaming(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.dark)
+    drawGround(fr, T.dark)
+    // 补光灯（左右）
+    for (let dr = -2; dr <= 2; dr++) for (let dc = -2; dc <= 2; dc++) {
+      if (dr*dr + dc*dc <= 4) { S(fr, 5+dr, 2+dc, T.gold); S(fr, 5+dr, 21+dc, T.gold) }
+    }
+    S(fr, 5, 2, T.white); S(fr, 5, 21, T.white)
+    for (let r = 7; r <= 14; r++) { S(fr, r, 2, T.gray); S(fr, r, 21, T.gray) }
+  })
+  // 人物坐在手机前（手机在三角架上）
+  drawPerson(f[0], 9, 10, T.hair_light, T.skin, T.cloth_red, 'front', 'happy', 'sit')
+  drawPerson(f[1], 9, 10, T.hair_light, T.skin, T.cloth_red, 'front', 'happy', 'armsup')
+  drawPerson(f[2], 9, 10, T.hair_light, T.skin, T.peach, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 9, 10, T.hair_light, T.skin, T.peach, 'front', 'happy', 'cheer')
+  // 手机/直播画面（三脚架上）
+  f.forEach(fr => {
+    S(fr, 8, 13, T.gray); S(fr, 9, 13, T.gray); S(fr, 10, 13, T.gray); S(fr, 11, 13, T.gray)
+    for (let col = 14; col <= 17; col++) { S(fr, 8, col, T.dark); S(fr, 9, col, T.sky); S(fr, 10, col, T.sky); S(fr, 11, col, T.dark) }
+    S(fr, 9, 15, T.skin); S(fr, 9, 16, T.cloth_red) // 屏幕里的小人
+    S(fr, 12, 15, T.gray); S(fr, 13, 15, T.gray)
+  })
+  // 直播数据/爱心弹幕
+  S(f[1], 3, 5, T.bright_red); S(f[1], 4, 19, T.gold)
+  drawHeart(f[2], 2, 6, T.bright_red, 0); drawHeart(f[2], 3, 18, T.gold, 0)
+  drawHeart(f[3], 2, 4, T.bright_red, 1); drawHeart(f[3], 4, 17, T.gold, 1); S(f[3], 6, 10, T.gold)
+  return f
+}
+
+// 做义工/志愿/帮助他人
+function sceneVolunteer(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawCloud(fr, 2, 3, false); drawCloud(fr, 3, 16, true)
+    drawTree(fr, 0, 7); drawTree(fr, 0, 20)
+    // 社区中心/房子（背景）
+    drawSmallHouse(fr, 14, 7, T.bright_red, T.white)
+  })
+  // 志愿者（穿红马甲=cloth_red over cloth_blue? 用cloth_red）
+  drawPerson(f[0], 5, 11, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'stand')
+  drawPerson(f[1], 7, 11, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'walk1')
+  drawPerson(f[2], 9, 11, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'walk2')
+  drawPerson(f[3], 10, 11, T.hair_dark, T.skin, T.cloth_red, 'right', 'happy', 'stand')
+  // 老人（白发=gray，接受帮助）
+  drawPerson(f[0], 16, 11, T.gray, T.skin, T.brown, 'left', 'normal', 'stand')
+  drawPerson(f[1], 15, 11, T.gray, T.skin, T.brown, 'left', 'happy', 'stand')
+  drawPerson(f[2], 14, 11, T.gray, T.skin, T.brown, 'left', 'happy', 'stand')
+  drawPerson(f[3], 13, 11, T.gray, T.skin, T.brown, 'left', 'happy', 'stand')
+  // 爱心在两人之间
+  drawHeart(f[2], 8, 11, T.bright_red, 0)
+  drawHeart(f[3], 6, 10, T.bright_red, 1)
+  // 志愿袖标/袋子
+  S(f[0], 12, 6, T.bright_red); S(f[1], 12, 8, T.bright_red); S(f[2], 12, 10, T.bright_red); S(f[3], 12, 11, T.white)
+  return f
+}
+
+// 拆快递/包裹
+function scenePackage(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.white)
+    drawGround(fr, T.brown)
+    // 门口/玄关
+    for (let col = 0; col <= 23; col++) S(fr, 16, col, T.brown)
+    S(fr, 5, 0, T.brown); S(fr, 5, 1, T.brown)
+  })
+  // 人物站着拆快递
+  drawPerson(f[0], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'normal', 'stand')
+  drawPerson(f[1], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'stand')
+  drawPerson(f[2], 3, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'armsup')
+  drawPerson(f[3], 3, 11, T.hair_dark, T.skin, T.peach, 'right', 'happy', 'cheer')
+  // 快递盒（棕色纸箱）从完整到打开
+  S(f[0], 13, 10, T.brown); S(f[0], 14, 10, T.brown); S(f[0], 13, 11, T.brown); S(f[0], 14, 11, T.brown)
+  S(f[0], 13, 12, T.brown); S(f[0], 14, 12, T.brown); S(f[0], 13, 13, T.brown); S(f[0], 14, 13, T.brown)
+  S(f[0], 12, 10, T.brown); S(f[0], 12, 11, T.brown); S(f[0], 12, 12, T.brown); S(f[0], 12, 13, T.brown)
+  S(f[0], 12, 11, T.bright_red) // 封条
+  // 第二帧：正在拆
+  S(f[1], 12, 10, T.brown); S(f[1], 12, 11, T.brown); S(f[1], 12, 12, T.brown); S(f[1], 12, 13, T.brown)
+  for (let col = 10; col <= 13; col++) { S(f[1], 13, col, T.brown); S(f[1], 14, col, T.brown) }
+  S(f[1], 12, 11, T.bright_red)
+  S(f[1], 11, 9, T.gray) // 剪刀
+  // 第三帧：打开了
+  for (let col = 10; col <= 14; col++) { S(f[2], 13, col, T.brown); S(f[2], 14, col, T.brown) }
+  S(f[2], 12, 10, T.brown); S(f[2], 12, 14, T.brown)
+  S(f[2], 11, 11, T.gold); S(f[2], 11, 12, T.gold); S(f[2], 11, 13, T.gold) // 金色物品露出
+  // 第四帧：物品取出，闪亮
+  for (let col = 10; col <= 14; col++) { S(f[3], 13, col, T.brown); S(f[3], 14, col, T.brown) }
+  S(f[3], 12, 10, T.brown); S(f[3], 12, 14, T.brown)
+  S(f[3], 9, 11, T.gold); S(f[3], 9, 12, T.gold); S(f[3], 9, 13, T.gold)
+  S(f[3], 10, 11, T.gold); S(f[3], 10, 12, T.gold); S(f[3], 10, 13, T.gold)
+  drawConfetti(f[3], 1, [T.gold, T.bright_red, T.teal, T.cloth_blue])
+  // 剪刀（手上）
+  S(f[0], 11, 7, T.gray); S(f[1], 11, 8, T.gray); S(f[2], 10, 7, T.gray); S(f[3], 11, 6, T.gray)
+  return f
+}
+
+// 健身房撸铁/举哑铃
+function sceneGym(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.gray)
+    drawGround(fr, T.dark)
+    // 镜子墙（右侧，白色反光）
+    for (let r = 3; r <= 15; r++) for (let col = 17; col <= 22; col++) S(fr, r, col, T.sky)
+    S(fr, 16, 17, T.dark); S(fr, 16, 22, T.dark)
+    // 瑜伽球（左后方）
+    S(fr, 12, 2, T.teal); S(fr, 11, 2, T.teal); S(fr, 11, 3, T.teal); S(fr, 12, 3, T.teal); S(fr, 13, 2, T.teal); S(fr, 13, 3, T.teal)
+  })
+  // 人物举哑铃（cheer动作=双手举起，从stand到cheer循环）
+  drawPerson(f[0], 10, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'normal', 'stand')
+  drawPerson(f[1], 10, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'normal', 'armsup')
+  drawPerson(f[2], 10, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  drawPerson(f[3], 10, 11, T.hair_dark, T.skin, T.cloth_red, 'front', 'happy', 'cheer')
+  // 哑铃（黑色+银色杆）
+  f.forEach((fr, i) => {
+    const dy = i <= 1 ? 13 : 8
+    S(fr, dy, 8, T.dark); S(fr, dy, 9, T.dark); S(fr, dy, 10, T.gray); S(fr, dy, 11, T.gray)
+    S(fr, dy, 14, T.gray); S(fr, dy, 15, T.gray); S(fr, dy, 15, T.dark); S(fr, dy, 16, T.dark)
+  })
+  // 汗水（第2、3帧）
+  S(f[1], 8, 13, T.sky); S(f[2], 7, 13, T.sky); S(f[2], 9, 8, T.sky); S(f[3], 7, 9, T.sky); S(f[3], 8, 14, T.sky)
+  // 肌肉/星星
+  S(f[3], 3, 5, T.gold); S(f[3], 4, 18, T.gold)
+  return f
+}
+
+// 带父母/孝敬父母（陪父母旅游/吃饭）
+function sceneTreatParents(): PixelFrame[] {
+  const f: PixelFrame[] = [emptyCanvas(), emptyCanvas(), emptyCanvas(), emptyCanvas()]
+  f.forEach(fr => {
+    for (let r = 0; r < GY; r++) for (let col = 0; col < W; col++) S(fr, r, col, T.sky)
+    drawGround(fr, T.theme)
+    drawTree(fr, 1, 2); drawCloud(fr, 2, 18, false)
+    // 远处山
+    S(fr, 14, 10, T.gray); S(fr, 13, 11, T.gray); S(fr, 14, 11, T.gray); S(fr, 13, 12, T.gray)
+    S(fr, 14, 12, T.gray); S(fr, 14, 13, T.gray); S(fr, 15, 13, T.gray)
+  })
+  // 三人同行：你（中间年轻）扶着两边父母
+  // 父亲（左，白发）
+  drawPerson(f[0], 3, 11, T.gray, T.skin, T.brown, 'right', 'happy', 'walk1')
+  drawPerson(f[1], 4, 11, T.gray, T.skin, T.brown, 'right', 'happy', 'walk2')
+  drawPerson(f[2], 5, 11, T.gray, T.skin, T.brown, 'right', 'happy', 'walk1')
+  drawPerson(f[3], 6, 11, T.gray, T.skin, T.brown, 'right', 'happy', 'walk2')
+  // 你（中间，年轻人，搀扶姿态）
+  drawPerson(f[0], 8, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk2')
+  drawPerson(f[1], 9, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  drawPerson(f[2], 10, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk2')
+  drawPerson(f[3], 11, 11, T.hair_dark, T.skin, T.cloth_blue, 'right', 'happy', 'walk1')
+  // 母亲（右，花白发=hair_light+gray，穿红色）
+  drawPerson(f[0], 13, 11, T.hair_light, T.skin, T.cloth_red, 'right', 'happy', 'walk2')
+  drawPerson(f[1], 14, 11, T.hair_light, T.skin, T.cloth_red, 'right', 'happy', 'walk1')
+  drawPerson(f[2], 15, 11, T.hair_light, T.skin, T.cloth_red, 'right', 'happy', 'walk2')
+  drawPerson(f[3], 16, 11, T.hair_light, T.skin, T.cloth_red, 'right', 'happy', 'walk1')
+  // 爱心/花朵
+  drawFlower(f[0], 16, 1, T.bright_red); drawFlower(f[1], 15, 1, T.gold)
+  drawHeart(f[2], 6, 9, T.bright_red, 0); drawHeart(f[3], 5, 12, T.bright_red, 1)
+  return f
+}
+
 // ===== 场景映射表 =====
 export const STORYBOARD_SCENES: StoryboardScene[] = [
   // ===== 里程碑事件（priority: 10）=====
@@ -2156,7 +2543,7 @@ export const STORYBOARD_SCENES: StoryboardScene[] = [
   { id: 'first-salary', category: 'career', name: '第一笔工资', keywords: ['第一笔工资','第一份薪水','发工资','领到工资','工资到账','工资条','固定工资','工资入账','第一次发工资','第一个月工资','第一份工资'], palette: CAREER_PALETTE, frames: sceneFirstSalary(), frameDelay: 180, animIn: 'bounce', priority: 10 },
   { id: 'marry', category: 'family', name: '结婚', keywords: ['求婚','领证','领了证','我们结婚了','订婚','办婚礼','嫁给我吧','准备了戒指','掏出了戒指','我愿意','你怎么才问','第一次约会的地方','跨年夜烟花','看日出','结婚证','登记','拍登记照','彩礼','婚礼上你看着','你和TA结婚了','你们结婚了','娶你','嫁给你','结婚吧','你结婚了','就结婚了','你娶了','你嫁了','娶了她','嫁给他','娶了TA','嫁给TA','单膝跪地','两个人的日子'], palette: FAMILY_PALETTE, frames: sceneWedding(), frameDelay: 200, animIn: 'pop', priority: 10, requires: { dating: true, married: false } },
   { id: 'baby', category: 'family', name: '生子', keywords: ['宝宝出生','生孩子','当爸','当妈','新生儿','婴儿','出生','孩子降生','降生','怀孕','二胎','当爸爸','当妈妈','孩子出生','喜得贵子','喜得千金','第一次叫出','叫爸爸','叫妈妈','孩子第一次叫','一声啼哭','世界多了一个软肋'], palette: FAMILY_PALETTE, frames: sceneBaby(), frameDelay: 200, animIn: 'bounce', priority: 10, requires: { married: true } },
-  { id: 'buy-house', category: 'family', name: '买房', keywords: ['交房','装修','搬进新家','房产证','买房了','签完那叠厚厚的贷款合同','钥匙冰凉','自己的几十平米','有你一盏灯','房贷合同','贷款合同','买了房','买一套房','买了一套','房贷','月供','还房贷','交房贷','房贷月供','二套房','第二套房','买了第二套房','商铺','买商铺','自己的房子','自己的阳台','买房前','房价跌了','小区的挂牌价','签了一套小户型','总价50万','交了首付','付了首付','首付交了','首付付了'], palette: FAMILY_PALETTE, frames: sceneBuyHouse(), frameDelay: 200, animIn: 'fade', priority: 10 },
+  { id: 'buy-house', category: 'family', name: '买房', keywords: ['交房','装修','搬进新家','房产证','买房了','签完那叠厚厚的贷款合同','钥匙冰凉','自己的几十平米','有你一盏灯','房贷合同','贷款合同','买了房','买一套房','买了一套','房贷','月供','还房贷','交房贷','房贷月供','二套房','第二套房','买了第二套房','商铺','买商铺','自己的房子','自己的阳台','签了一套小户型','总价50万','交了首付','付了首付','首付交了','首付付了'], palette: FAMILY_PALETTE, frames: sceneBuyHouse(), frameDelay: 200, animIn: 'fade', priority: 10 },
   { id: 'buy-car', category: 'life', name: '买车', keywords: ['提车','新车','第一辆车','喜提','提回一辆','开回一辆','提了一辆','轿车落地','代步车','买了经济代步车','买了中级轿车','买了豪车','开走B级车','买车了','第一次开车','自己开车','关上车门','4S店','二手车','把车卖了','卖了车','手里多了一笔现金','试驾','订车','买了车','买了一辆车'], palette: LIFE_PALETTE, frames: sceneBuyCar(), frameDelay: 200, animIn: 'slide', priority: 10 },
   { id: 'promotion', category: 'career', name: '升职加薪', keywords: ['晋升','提拔','升值','带项目','项目你来带','升职了','加了薪','推广给全部门','X总','给护理员涨工资','主动提出续约','提拔你','升你为主管','成为部门负责人','升了职','提拔为','晋升为','升职加薪','涨了薪','加薪了','晋升了','被提拔','得到提拔','升任','升迁','升职通知'], palette: CAREER_PALETTE, frames: scenePromotion(), frameDelay: 180, animIn: 'bounce', priority: 10, requires: { employed: true } },
   { id: 'gaokao', category: 'life', name: '高考', keywords: ['高考','高考结束','高考成绩','考上大学','录取通知书','金榜题名'], palette: LIFE_PALETTE, frames: sceneGaokao(), frameDelay: 300, animIn: 'pop', priority: 10, requires: { maxAge: 19 } },
@@ -2174,7 +2561,7 @@ export const STORYBOARD_SCENES: StoryboardScene[] = [
   { id: 'surgery', category: 'life', name: '手术', keywords: ['动手术','进手术室','开刀','外科手术','住院手术','重大手术','住院做手术','手术同意书','手术很成功','推上手术台','做了手术','做完手术','需要手术','安排手术'], palette: LIFE_PALETTE, frames: sceneSurgery(), frameDelay: 400, animIn: 'fade', priority: 9 },
   { id: 'bankruptcy', category: 'life', name: '破产', keywords: ['破产','负债','欠债','赔光','亏钱','血本无归','倒闭','积蓄花光','账户蒸发','爆仓','窟窿','归零','期货爆仓','账户归零','交易软件','期货群','亏了','赔了','跑路','项目跑路','打了水漂','时间和金钱好像打了水漂','存款往下掉','余额往下掉','账户瞬间蒸发','化为一串冰冷'], palette: LIFE_PALETTE, frames: sceneBankruptcy(), frameDelay: 400, animIn: 'shake', priority: 9 },
   { id: 'lend-money', category: 'life', name: '借钱不还', keywords: ['借钱','欠钱不还','讨债','朋友借钱','借出去','发小借钱','转了账','这钱要不回来','借钱的亲戚','怕借钱','没要回来','不回消息','转了五万'], palette: LIFE_PALETTE, frames: sceneLendMoney(), frameDelay: 400, animIn: 'fade', priority: 9 },
-  { id: 'burnout', category: 'career', name: '倦怠', keywords: ['倦怠','躺平','裸辞','厌班','抑郁','情绪崩溃','不想上班','心理阴影','心理咨询','心理咨询室','心理医生','咨询室','约咨询','咨询师','情绪低落','焦虑','喘不过气','心理','压力','心理医生','走进心理咨询室','空得发慌','快乐面具','裂开了一道缝','笑不出来','心里空','撑不住了'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 500, animIn: 'fade', priority: 9, requires: { employed: true } },
+  { id: 'burnout', category: 'career', name: '倦怠', keywords: ['倦怠','躺平','厌班','抑郁','情绪崩溃','不想上班','心理阴影','情绪低落','焦虑','喘不过气','压力太大','空得发慌','快乐面具','裂开了一道缝','笑不出来','心里空','撑不住了','身心俱疲','累到','不想动','什么都不想做'], palette: CAREER_PALETTE, frames: sceneBurnout(), frameDelay: 500, animIn: 'fade', priority: 9, requires: { employed: true } },
   { id: 'sick', category: 'life', name: '生病', keywords: ['生病','发烧','感冒','卧病在床','病倒','请病假','生病卧床','医药费','住院','体检','复查','血压','血脂','脂肪肝','颈椎病','脱发','吃药','膏药','降压药','膝盖疼','眼药水','急诊','挂号','药店','咳嗽','胃疼','头疼','腰椎','腰酸','背痛','肩膀疼','手腕疼','干眼症','关节痛','酸痛','腰疼','扭伤','腰酸背痛','不舒服','卧床','食物中毒','打点滴','躺在病床上','上吐下泻','腰椎间盘','腰突','理疗','天旋地转','眼前一黑','救护车','脑梗','病床上','躺在异国','偏头痛','心悸','挂了急诊','过度刺激','补剂','健康','诊断书','自费部分','营养费','误工费','感冒把你按在床上','医药费像水','生病住院','保费','保险','退保','交保费','重疾险','保险合约','临床试验','双盲试验','受试者','生物年龄','长寿研究','抗衰','抗衰老','基因检测','走出医院','阳光照在脸上','颈椎','腰椎','身体发出警告','被迫放慢脚步','受伤','心脏检查','异常','保修','身体的保修期','心肌梗死','追悼会','去世','享年','走了','离开了'], palette: LIFE_PALETTE, frames: sceneSick(), frameDelay: 400, animIn: 'fade', priority: 8 },
   // ===== 路径专属场景（priority: 6-9）=====
   { id: 'write', category: 'career', name: '写作创作', keywords: ['写书','写文章','写教程','写课程','写专栏','写BP','写文档','写报告','写PPT','写方案','写代码审查工具','开源了一个','开源项目','写了一本书','畅销书','签售会','出版','出版社','写文案','创作','内容创作','写脚本','拍视频','录课','做课程','做内容','写公众号','写博客','写长文','写日记','写回忆录','写信','写公开信','提笔','下笔','码字','撰稿','笔耕','写作','写了一篇','写了本','写了门课','录了一门','录课程','知识付费','卖课','做讲师','开讲座','演讲','商业演讲','演讲邀约','签售','读书会','作者','专栏作家','撰稿人','写了一本专著','思想领袖','讲师孵化营','课程','学员','开课','招生','课程收入','做一门课','年更一门课','精品课','9800','私享圈','星球','社群运营'], palette: CAREER_PALETTE, frames: sceneRead(), frameDelay: 300, animIn: 'fade', priority: 6 },
@@ -2204,7 +2591,7 @@ export const STORYBOARD_SCENES: StoryboardScene[] = [
   { id: 'blind-date', category: 'family', name: '相亲', keywords: ['相亲','相亲见面','媒人介绍','被安排相亲','相亲饭局','去相亲','见对象','安排了相亲','周末相亲','有房有车'], palette: FAMILY_PALETTE, frames: sceneBlindDate(), frameDelay: 300, animIn: 'fade', priority: 7, requires: { single: true } },
   { id: 'parent-visit', category: 'family', name: '父母探望', keywords: ['父母来看我','爸妈从老家来','父母过来探望','父母到访','爸妈来看我','父母登门看望','回老家','过年回家','妈妈打电话','爸妈打电话','视频电话','和爸妈视频','教爸妈用','妈在家族群','带父母去','带爸妈去','你妈在电话里哭了','爸拍照的时候手抖','妈笑得像个孩子','给你做饭','我爸','我妈','不跟你说话','回老家整理旧物','翻出','妈妈颤抖的手','听她讲了一下午年轻时的故事','好好说说话','准备告别','延长寿命的终极意义','陪陈爷爷聊了会儿','讲他年轻时的事','下次来多坐会儿','AI助手提醒你','三周没联系家人了','拨通了家里的电话','什么时候回来','快了','挂掉电话你哭了一场','爸妈从老家来看你'], palette: FAMILY_PALETTE, frames: sceneParentVisit(), frameDelay: 300, animIn: 'fade', priority: 7 },
   { id: 'play-kid', category: 'family', name: '陪孩子玩', keywords: ['陪孩子玩','陪孩子玩耍','亲子时光','陪儿子玩','陪女儿玩','亲子互动','陪娃玩','带孩子去公园','玩积木','陪孩子','带孩子','陪娃','周末陪孩子','亲子','辅导作业','陪孩子写作业','孩子上幼儿园','孩子第一次写作文','孩子叛逆','课外班','奥数班','接送','等课','交费','报了课外班','给孩子报','写作业','削了个苹果','书桌上','起跑线','接送孩子','孩子开始叛逆了','幼儿园','孩子叫出了爸爸','孩子第一次叫'], palette: FAMILY_PALETTE, frames: scenePlayKid(), frameDelay: 250, animIn: 'fade', priority: 7, requires: { hasChild: true } },
-  { id: 'work', category: 'career', name: '工作', keywords: ['上班','搬砖','打工','开干','干活','到公司','工位','办公室','工牌','下班','打卡','社畜','周报','KPI','赶需求','改bug','写代码','对接','汇报','工位上','办公桌','远程工作','在公司','会议室','带新人','自由职业','数字游民','接一些小活','接单','处理邮件','回邮件','搞AI','AI工具','搞副业','晚上搞副业','摆摊','朝九晚五','考公','公务员','写脚本','拍视频','剪视频','商务','续约','完播率','互动率','写提案','做顾问','共享空间','在任何地方都能做','AI模型','提示词','和AI共舞','提示词方法论','交付周期','开源项目','咨询','SaaS','订阅收入','MRR','ARR','独立开发者','出海','跨境','地理套利','Notion','Zapier','异步沟通','远程助理','雇人','SOP','公司运营','签合同','报价','proposal','交付物','咨询公司','德勤','排他协议','限时排他','差异化定位','商业咨询','知识变现','独立产品','一人公司','小而美','盈亏平衡','月流水','付费墙','转化率','裂变'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 7, requires: { employed: true } },
+  { id: 'work', category: 'career', name: '工作', keywords: ['上班','搬砖','打工','开干','干活','到公司','工位','办公室','工牌','下班','打卡','社畜','周报','KPI','赶需求','改bug','写代码','对接','汇报','工位上','办公桌','远程工作','在公司','会议室','自由职业','数字游民','接一些小活','接单','处理邮件','回邮件','搞AI','AI工具','晚上搞副业','朝九晚五','写脚本','拍视频','剪视频','商务','续约','完播率','互动率','写提案','做顾问','共享空间','在任何地方都能做','AI模型','提示词','和AI共舞','提示词方法论','交付周期','开源项目','咨询','SaaS','订阅收入','MRR','ARR','独立开发者','出海','跨境','地理套利','Notion','Zapier','异步沟通','远程助理','雇人','SOP','公司运营','签合同','报价','proposal','交付物','咨询公司','德勤','排他协议','限时排他','差异化定位','商业咨询','知识变现','独立产品','一人公司','小而美','盈亏平衡','月流水','付费墙','转化率','裂变'], palette: CAREER_PALETTE, frames: sceneWork(), frameDelay: 300, animIn: 'fade', priority: 4, requires: { employed: true } },
   { id: 'overtime', category: 'career', name: '加班', keywords: ['深夜加班','加到深夜','还在加班','加班','通宵','加班到很晚','加班到凌晨','通宵整晚','deadline','赶项目','红牛','加班到深夜','总是加班到深夜','凌晨两点前睡过觉','熬夜写代码','熬夜赶','通宵加班'], palette: CAREER_PALETTE, frames: sceneOvertime(), frameDelay: 350, animIn: 'fade', priority: 7, requires: { employed: true } },
   { id: 'midnight-baby', category: 'family', name: '半夜喂奶', keywords: ['半夜喂奶','夜醒喂奶','冲奶粉','哄睡','哄孩子睡觉','夜奶'], palette: FAMILY_PALETTE, frames: sceneMidnightBaby(), frameDelay: 500, animIn: 'fade', priority: 7, requires: { hasChild: true } },
   { id: 'travel', category: 'life', name: '旅行', keywords: ['旅游','旅行','出去玩','度假','出游','出国','去旅行','海边度假','碧海蓝天','风景照','打卡景点','一个人旅行','旅行回来','旅行的照片','翻照片','长途旅行','去了郊外','清迈','里斯本','大理','洱海','越南','夜市','海边','带爸妈去了','带父母去了','路上遇到了一个人','一起看了长城','星空下跳舞','机场告别','拥抱告别','陌生的机场','办电话卡','找公寓','试新餐馆','又一次降落','在路上','游牧路上','曼谷','丽江','厦门','昆明','重庆','素万那普机场','登机口','候机','机票','飞到了一个','落地那天','陌生的街道','登机箱','下一张机票','旅行艳遇','异地恋','视频维系','距离','重逢','机场哭','去了曼谷','在曼谷待了','去迪拜','在巴西','在东南亚','街头','双条车','芒果糯米饭','farang','泰语','点菜砍价','AI翻译耳机','英语工作','地理套利','数字游民','Discord','游民生存指南','换了新的城市','搬到','新城市不适应','找不到好吃的馆子','听不懂方言','交不到新朋友','想念以前的城市','回家的距离','地图APP'], palette: LIFE_PALETTE, frames: sceneTravel(), frameDelay: 250, animIn: 'slide', priority: 7 },
@@ -2215,17 +2602,29 @@ export const STORYBOARD_SCENES: StoryboardScene[] = [
   { id: 'friend-drink', category: 'life', name: '朋友聚会', keywords: ['朋友聚会','和朋友聚餐','兄弟喝酒','闺蜜聚会','喝酒撸串','饭局举杯','老友重逢','酒吧喝酒','同事喝酒','拼酒','同学聚会','份子钱','结婚请柬','聚餐','干杯','撸串','烧烤','喝啤酒','白酒','喝了一晚上啤酒','喝了两杯酒','默默喝了两杯','喝了很多','醉得不省人事','Chang啤酒','喝着','路边摊','吃了一碗面','和朋友','和巴西人','约你聚会','请几个朋友吃了饭','朋友约你','忘年交','喝了顿酒','聊行业','约前辈喝酒','一起骂','小酒馆','酒馆','喝到凌晨','老友喝','矫情了一把'], palette: LIFE_PALETTE, frames: sceneFriendDrink(), frameDelay: 300, animIn: 'fade', priority: 6 },
   { id: 'pet', category: 'life', name: '养宠物', keywords: ['养宠物','养了只小狗','养了只小猫','遛狗','养猫','毛孩子','宠物狗','宠物猫','铲屎','领养','收养','宠物医院','抱回家','带回家养'], palette: LIFE_PALETTE, frames: scenePet(), frameDelay: 250, animIn: 'fade', priority: 6 },
   { id: 'investment', category: 'career', name: '投资炒股', keywords: ['炒股','买基金','投资理财','股市涨跌','买入股票','理财收益','股票基金','币圈投资','股市','牛市','熊市','持仓','仓位','爆仓','暴跌','行情','币圈','交易所','K线','炒币','比特币','加密货币','基金','定投','绿成草原','腰斩','加仓','暴涨','币跌','TVL','DeFi','DAO','治理代币','钱包数零','基金大涨','基金腰斩','对冲','期权','基金账户','股票账户','账户缩水','账户浮盈','正收益','负收益','价值投资','被套的韭菜','期货','期货账户','期货市场','开户','区块链项目','投10万','翻五倍','项目跑路','炒币赚了','生物科技','临床失败','股价跌了','数据造假','重仓','币翻了十倍','收益截图','信我者得永生','指数基金','存进了定期','理财','银行理财','对冲期权','期权费','炒期货','商铺','租金按时到账','租客','收租','好租客','入账通知','开了期货账户','股灾','黄金','止损','止盈','盯盘','交易所被墙','割肉','死扛','抄底','追高','纸上富贵','回调','金店','回收价','买了黄金','去中心化钱包','硬件钱包','助记词','在血流成河的市场','别人恐惧时贪婪','按下了买入键','暴富故事','无人问津时','天天盯盘','账户里的数字翻了倍','金价','金条','黄金涨了','横盘','卖又觉得亏','定期存款','三年期定期','银行柜员','利率','余额宝','年化收益','系统维护中','提币通道','链上','智能合约投资','DeFi协议','巨鲸','巨鲸追踪','链上数据','监控面板','巨鲸跟随者','聪明钱','胜率','交易系统','交易记录','交易前辈','扳回来','离岸信托','税务架构','结构化安排','资产配置','跨司法辖区','主权个人','第二身份','海外银行账户','HODL','钻石手','退出计划','每涨50%卖','白皮书','Solidity','加密友好国家','签证','合规申报','架构重组','维权群','私钥','多签','跨链','零知识证明','ZK','黑客松','赏金','漏洞','套利者','薅走','协议','fork','迭代速度','冷启动','共创者','链上身份'], palette: CAREER_PALETTE, frames: sceneInvestment(), frameDelay: 300, animIn: 'fade', priority: 6 },
-  { id: 'cook', category: 'family', name: '做饭', keywords: ['做饭','炒菜','下厨房','烹饪','做饭菜','烧菜','做了顿好饭','红烧肉','煮面','炖汤','煲汤','厨艺','菜谱','围裙','家常菜','下厨','学做饭','炒糊了','外卖APP消失','给自己吃','体重轻了','做的菜','做了一桌子菜','你妈每天给你做饭','做了一大桌子菜','请爸妈吃了顿好的','请爸妈吃','筷子没停','他们嘴上嫌贵'], palette: FAMILY_PALETTE, frames: sceneCook(), frameDelay: 250, animIn: 'fade', priority: 6 },
-  { id: 'shopping', category: 'life', name: '购物', keywords: ['购物','逛街','血拼','买买买','商场购物','超市采购','剁手','扫货','逛商场','快递','拆包裹','快递到了','网购','下单','取快递','购物车','电商平台','报复性消费','省下来的','超市','价签','纸币','拆包装','多巴胺分泌','快乐消退','买了XX','新手机','换了新手机','买了新手机','分期付款','大几千块','记账','省钱','拿铁因子','隐形消费','记账的习惯','每月只花1000块','省钱挑战','方便面吃到','新装备','换了新装备','快乐维持了大约两天'], palette: LIFE_PALETTE, frames: sceneShopping(), frameDelay: 250, animIn: 'slide', priority: 4 },
+  { id: 'cook', category: 'family', name: '做饭', keywords: ['做饭','炒菜','下厨房','烹饪','做饭菜','烧菜','做了顿好饭','红烧肉','煮面','炖汤','煲汤','厨艺','菜谱','围裙','家常菜','下厨','学做饭','炒糊了','外卖APP消失','给自己吃','体重轻了','做的菜','做了一桌子菜','你妈每天给你做饭','做了一大桌子菜'], palette: FAMILY_PALETTE, frames: sceneCook(), frameDelay: 250, animIn: 'fade', priority: 6 },
+  { id: 'shopping', category: 'life', name: '购物', keywords: ['逛街','血拼','买买买','商场购物','超市采购','剁手','扫货','逛商场','购物车','电商平台','报复性消费','超市','价签','纸币','大几千块','记账','拿铁因子','隐形消费','记账的习惯'], palette: LIFE_PALETTE, frames: sceneShopping(), frameDelay: 250, animIn: 'slide', priority: 4 },
   { id: 'phone', category: 'life', name: '刷手机', keywords: ['刷手机','刷短视频','刷抖音','刷朋友圈','手机不离手','刷剧','窝沙发刷手机','躺着刷','刷动态圈','小红书','手机没电','截图','发动态圈','设闹钟','刷微博','刷B站','刷手机到深夜','玩手机','打开手机','打开银行App','打开贝壳','打开APP','打开后台','看MRR曲线','打开电商','打开机票App','翻看相册','手机撑不住','电池一天要充三次','打开APP要等十秒','旧手机','新手机','拿起手机','手机屏幕','AI助手弹出','弹出一条消息','翻了翻通讯录','打开招聘App','打开二手平台','刷到','小红书上刷到','放下手机','手机塞进抽屉','关掉手机','退出了所有','群聊','你死死盯着屏幕','Discord','私信','群里','社区','开发者论坛','评论区','发了条动态圈','关掉动态圈','注销了所有账号','消失了半年','全新身份','网暴','舆论','舆论分化','录音','被录音','转发','大V转发','上了热搜','负面评论','恶评','差评','口碑','退群断舍离','断舍离','清净了','退群','钱包和手机都清净'], palette: LIFE_PALETTE, frames: scenePhone(), frameDelay: 300, animIn: 'fade', priority: 4 },
   { id: 'walk', category: 'family', name: '散步', keywords: ['散步','走路','遛弯','走走','漫步','小区散步','晚饭后散步','溜达','公园散步','饭后散步','江边散步','散步回来','走十分钟','公园长椅','傍晚的风','发呆','看书、散步'], palette: FAMILY_PALETTE, frames: sceneWalk(), frameDelay: 300, animIn: 'fade', priority: 4 },
-  { id: 'exercise', category: 'life', name: '锻炼', keywords: ['锻炼','跑步','健身','运动','晨跑','晨练','健身房','太极','米字操','颈椎操','走路上班','瑜伽','游泳','打球','篮球','羽毛球','马拉松','撸铁','骑行','骑车','动感单车','跑步机','普拉提','练瑜伽','坚持健身','看到腹肌','五公里','跑步成为解压方式','公园跑步','去公园跑步','腹肌','两块半','镜子里','健身房镜子前','自拍','跑步成了','解压方式','半马','跑完了','冲过终点','跑完','跑完今年的第二个半马','比去年快了两分钟'], palette: LIFE_PALETTE, frames: sceneExercise(), frameDelay: 200, animIn: 'pop', priority: 5 },
+  { id: 'exercise', category: 'life', name: '锻炼', keywords: ['锻炼','跑步','运动','晨跑','晨练','太极','米字操','颈椎操','走路上班','瑜伽','游泳','打球','篮球','羽毛球','马拉松','骑行','骑车','动感单车','跑步机','普拉提','练瑜伽','坚持健身','五公里','跑步成为解压方式','公园跑步','去公园跑步','两块半','镜子里','跑步成了','解压方式','半马','跑完了','冲过终点','跑完','跑完今年的第二个半马','比去年快了两分钟'], palette: LIFE_PALETTE, frames: sceneExercise(), frameDelay: 200, animIn: 'pop', priority: 4 },
   { id: 'fishing', category: 'life', name: '钓鱼', keywords: ['钓鱼','去钓鱼','垂钓','钓到大鱼'], palette: LIFE_PALETTE, frames: sceneFishing(), frameDelay: 400, animIn: 'fade', priority: 5 },
   { id: 'square-dance', category: 'life', name: '广场舞', keywords: ['广场舞','跳广场舞','大妈跳舞','广场跳广场舞'], palette: LIFE_PALETTE, frames: sceneSquareDance(), frameDelay: 200, animIn: 'bounce', priority: 5 },
   { id: 'read', category: 'life', name: '看书', keywords: ['看书','读书','阅读','翻书','书店','学习新技能','教学视频','收藏夹','论文','备考','考研','考证','书架','图书馆','借书','写东西','在网上写','写的东西','写了一篇','文章','发表了','阅读量','出书','出版社','出版社编辑','写作','继续写下去','记录本身','每天花两小时看书','下午看书','公交上看书','学的东西','兴趣班','学画画','学弹琴','烘焙','新技能','学做饭','周末都有了一件值得期待的事','白皮书','读了三十多份白皮书','研究','复盘','学习新技术','学最新的技术','技术底层重新学了一遍','椭圆曲线加密','零知识证明','共识机制','状态通道','学泰语','学语言','学弹琴','学烘焙','学做','学了','学最新的','研究透','研究了','花一周研究到通透','把每个方法论都拿去实战','被证伪','删掉重写','公开课','免费课程','三十讲','衰老科学公开课'], palette: LIFE_PALETTE, frames: sceneRead(), frameDelay: 400, animIn: 'fade', priority: 3 },
   { id: 'tv', category: 'family', name: '看电视', keywords: ['看电视','追剧','看剧','看节目','电视机前','窝在沙发','看电影','看电视连续剧','综艺','频道','遥控器','沙发看电视'], palette: FAMILY_PALETTE, frames: sceneTV(), frameDelay: 350, animIn: 'fade', priority: 3 },
   { id: 'sleep', category: 'family', name: '睡觉', keywords: ['睡觉','入睡','晚安','睡着','睡眠','失眠','睡过头','闹钟响了','睡了','困','深睡','一觉睡到天亮','睡个好觉','自然醒','睡到自然醒','睡懒觉','失眠了'], palette: FAMILY_PALETTE, frames: sceneSleep(), frameDelay: 600, animIn: 'fade', priority: 3 },
   { id: 'eat', category: 'family', name: '吃饭', keywords: ['吃饭','吃晚饭','吃饭了','用餐','晚饭','吃火锅','早餐','午饭','外卖','聚餐','饭局','一个人吃饭','下馆子','吃外卖','宵夜','吃米线','吃东西','一起吃','吃了一碗面','筷子没停过','喝了两杯酒','出来吃挺好','做了顿','煮了碗面','方便面','吃到第15天'], palette: FAMILY_PALETTE, frames: sceneEat(), frameDelay: 300, animIn: 'fade', priority: 3 },
+  // ===== V13: 卡片选择新场景（priority: 7-8）=====
+  { id: 'resign', category: 'career', name: '辞职', keywords: ['递交辞职信','向老板递交辞职信','辞职信放在老板桌上','辞职信放在','辞职信轻轻放在','递了辞职信','递出辞职信','拥抱自由','把时间买了回来','把时间买回了自己手里','头也不回地走出写字楼','收拾工位','走出写字楼那一刻','你走出写字楼','裸辞','辞职报告','把辞职信','辞职信'], palette: CAREER_PALETTE, frames: sceneResign(), frameDelay: 250, animIn: 'fade', priority: 8, requires: { employed: true } },
+  { id: 'health-check', category: 'life', name: '体检', keywords: ['全面体检','牙科检查','体检加牙科','做了一次全面体检','做了体检','体检中心','去做了体检','冰冷的仪器','抽了五管血','做了三个CT','洗完牙','体检报告','飘红','未见异常','医生说总体还行','医生推了推眼镜','牙医让你张大嘴','牙科钻头'], palette: LIFE_PALETTE, frames: sceneHealthCheck(), frameDelay: 300, animIn: 'fade', priority: 8 },
+  { id: 'therapy', category: 'life', name: '心理咨询', keywords: ['心理咨询师','看心理咨询师','做冥想','心理咨询室','第一次走进心理咨询室','咨询师说','说了很多平时不敢说的话','凌晨三点还在刷手机','天空好像蓝了一点','去找了心理咨询师'], palette: LIFE_PALETTE, frames: sceneTherapy(), frameDelay: 400, animIn: 'fade', priority: 8 },
+  { id: 'rider', category: 'career', name: '骑手', keywords: ['全职骑手','成为全职骑手','外卖骑手','骑手APP','跑了十二单','等餐时蹲在路边','风里雨里','注册成为全职','送外卖','跑外卖','外卖箱','成为骑手','开始跑外卖'], palette: CAREER_PALETTE, frames: sceneRider(), frameDelay: 180, animIn: 'slide', priority: 8 },
+  { id: 'vendor', category: 'career', name: '摆摊', keywords: ['摆摊卖烤肠','支起烤肠摊','租借简陋档口摆摊','开始摆摊','摆摊','推着小推车去摆摊','隔壁大哥','你得吆喝','憋了半天喊出声','卖的不是烤肠','街头创业','卖烤肠','卖了三根烤肠','摊位','档口'], palette: CAREER_PALETTE, frames: sceneVendor(), frameDelay: 250, animIn: 'fade', priority: 8 },
+  { id: 'study-exam', category: 'career', name: '备考学习', keywords: ['备战考公','考公','考公考上了','公示名单','公考教材','报了培训班','千军万马过独木桥','笔试差0.5分','进面','你居然真的考上了','考上了','朝九晚五不用担惊受怕','把教材塞进柜子','每天学到凌晨两点','头发一把一把掉','在职读研','在职研究生','在职读MBA','架构师进阶班','硬核技术架构进阶训练营','合上最后一本教材','证书到手的那一刻','啃下一本本技术砖头','训练营里你年纪最大','连续三个月周末泡在培训班','发际线又退了一厘米','刷题','夜以继日地复习','看书看到凌晨','备考'], palette: CAREER_PALETTE, frames: sceneStudyExam(), frameDelay: 300, animIn: 'fade', priority: 7 },
+  { id: 'gym-workout', category: 'life', name: '健身房撸铁', keywords: ['报健身年卡','办了张健身卡','办了健身卡','健身房挥汗如雨','健身房','在健身房','肌肉猛男','跑步机上','撸铁','举哑铃','看到腹肌','健身房镜子前','跑步机上耳机','哑铃','杠铃','健身卡'], palette: LIFE_PALETTE, frames: sceneGym(), frameDelay: 200, animIn: 'pop', priority: 8 },
+  { id: 'streaming', category: 'career', name: '自媒体直播', keywords: ['做自媒体','开始在网上写','开始在网上分享','火了','广告收入','35岁被裁后的自救指南','开直播','拍视频','录视频','对着镜头','主播','自媒体','写回忆录','35岁才明白的事','评论区有人说写的就是我','每条动态都有人等','直播带货','开了直播','直播间','你开始拍'], palette: CAREER_PALETTE, frames: sceneStreaming(), frameDelay: 250, animIn: 'fade', priority: 7 },
+  { id: 'volunteer', category: 'life', name: '做义工', keywords: ['你周末去了','你去做义工','做义工','帮助别人的快乐','被需要也是一种快乐','橘猫在你腿上趴了一下午','你周末去做义工','流浪动物救助站做义工','养老院做义工','社区图书馆做义工'], palette: LIFE_PALETTE, frames: sceneVolunteer(), frameDelay: 300, animIn: 'fade', priority: 8 },
+  { id: 'package', category: 'life', name: '拆快递', keywords: ['拆快递','拆包裹','快递到了','取快递','拆包装','拆新手机包装','拆开新手机包装','快递盒','包裹到了','拆快递的快感','网购','下单买了'], palette: LIFE_PALETTE, frames: scenePackage(), frameDelay: 200, animIn: 'pop', priority: 7 },
+  { id: 'treat-parents', category: 'family', name: '孝敬父母', keywords: ['带爸妈去了','带父母去了','带爸妈出去旅游','带父母出去旅游','带父母出去旅游一趟','带爸妈去吃','带父母去吃','请爸妈吃了顿好的','你妈嘴上说太贵了','你妈嘴上说太贵了太贵了','筷子没停','我爸临走偷偷打包','爸默默喝了两杯酒','出来吃挺好的','爸拍照的时候手抖','妈笑得像个孩子','你爸拍照手抖','你妈每到景点就找垃圾桶','在他们身后看着这两个渐渐老去的背影','带父母去','带爸妈去'], palette: FAMILY_PALETTE, frames: sceneTreatParents(), frameDelay: 300, animIn: 'fade', priority: 8 },
 ]
 
 /**
