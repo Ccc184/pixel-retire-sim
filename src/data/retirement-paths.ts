@@ -6,7 +6,7 @@
  * 戏剧性来自赌注本身、中途的信念动摇、以及情感线的冲突。
  */
 import type { GameState, RetirementPathId } from '../types/global.d.js';
-import { switchCity, CITY_CONFIGS } from '../utils/math-engine.js';
+import { switchCity, CITY_CONFIGS, applyChainHoldingScale } from '../utils/math-engine.js';
 
 // ============================================================
 // 路径接口定义
@@ -123,13 +123,26 @@ const aiSymbiote: RetirementPath = {
       '猎头开三倍工资挖你，你拒绝了——不想再帮别人造船。',
       'AI像水电一样无处不在了，你不再为模型升级失眠。',
     ]},
-    { ageRange: [46, 60], texts: [
+    { ageRange: [46, 50], texts: [
       'AI不再是新东西了，翻出22岁第一个prompt，哭笑不得。',
-      '学生问学什么不会被取代，你说"学怎么提出好问题"。',
       '和Discord老友线下聚，头发白了一半，聊debug眼还亮。',
       '你不怎么写代码了，花更多时间想AI该往哪里走。',
+      '内部团队请你当顾问，看他们演示像看十年前的自己，你只补了句"先想清楚要解决什么"。',
+      '你开始写一本讲"人和机器怎么分工"的书，写到一半删了重写，觉得时机没到。',
+    ]},
+    { ageRange: [51, 55], texts: [
+      '学生问学什么不会被取代，你说"学怎么提出好问题"。',
+      '你发了个开源库一周两千star，评论区有人喊老师，你回"是同行"。',
+      '大厂请你讲AI伦理，你讲完下台，名片收了，没扫。',
+      '老同事转行卖AI课年入百万，你点开目录看了一眼，没往下看。',
+      '你不再追每个新模型了，愿意等一个真正改变规则的东西。',
+    ]},
+    { ageRange: [56, 60], texts: [
       '孙女让你教她用AI做作业，你更想教她什么时候关掉它。',
       '偶尔想如果22岁没选这条路会怎样，没答案也不需要了。',
+      '你把最早那个prompt裱起来挂书房，小孙子问是什么，你说"起跑线"。',
+      '你关掉所有付费资讯那晚，反而第一次看清AI十年后会变成什么。',
+      '带徒弟去爬山，半山腰他问AI会不会取代我们，你说"它替我们算，我们替它想"。',
     ]},
   ],
 
@@ -171,11 +184,11 @@ const aiSymbiote: RetirementPath = {
   ],
 
   checkSuccess: (state) => {
-    // 成功条件：总财富(存款+被动收入×20) >= 年支出×22 且 信念值>=50 且 年龄>=36
+    // 成功条件（v16.3）：总财富(存款+被动收入×20) >= 年支出×32 且 信念值>=50 且 年龄>=36
     const annualExpense = state.annualBaseCost + (state.currentMortgageCost || 0);
     const passiveCapitalized = (state.passiveIncome || 0) * 20;
     const totalWealth = state.currentSavings + passiveCapitalized;
-    return totalWealth >= annualExpense * 22 && state.pathFaith >= 50 && state.currentAge >= 36;
+    return totalWealth >= annualExpense * 32 && state.pathFaith >= 50 && state.currentAge >= 36;
   },
 
   successTitle: '浪潮之上',
@@ -263,13 +276,26 @@ const chainNative: RetirementPath = {
       '身边有人靠meme币翻百倍有人爆仓欠债，你默默多存了一份备份。',
       '给父母买了套房用法币，爸收到转账沉默十秒说"注意安全"。',
     ]},
-    { ageRange: [46, 60], texts: [
+    { ageRange: [46, 50], texts: [
       '三轮牛熊了，年轻人问这次有什么不同，你说"每次都一样又不一样"。',
       '资产配了国债和指数基金，不是背叛，是让信仰和安稳并存。',
-      '助记词刻在钢板上和遗嘱放一起，告诉孩子这24个词比房子值钱。',
+      '你开始把"守富"当主业，终于学会在行情好的时候也能睡着。',
+      '和一个老矿工吃饭，他还在挖，你说够了吧，他说停不下来。',
+      '第一次劝年轻人别All In，说完自己愣住——你当年也没听劝。',
+    ]},
+    { ageRange: [51, 55], texts: [
       'Twitter粉丝几十万但发推越来越少，不再跟人争比特币是不是骗局。',
       '参加早期币友的葬礼，TA的几百个BTC私钥没人找得到。',
+      '助记词刻在钢板上和遗嘱放一起，告诉孩子这24个词比房子值钱。',
+      '你给孙子开个钱包转了一枚BTC，说"这是爷爷没靠别人赚的"。',
+      '链上生日提醒你，你的地址已经活了整整二十年，比很多公司久。',
+    ]},
+    { ageRange: [56, 60], texts: [
       '打开最早的交易所账户，零碎代币有的翻百倍有的归零，你没动它们。',
+      '年轻时骂你疯的表哥来问比特币还能不能买，你说"问自己能不能拿十年"。',
+      '你翻出一条2017年的推文"我下注了"，底下没人理你，你也没删。',
+      '侄子复制了一份你的助记词，你让他抄三遍背下来，他嫌你啰嗦。',
+      '午夜你打开最早的区块浏览器，看那笔十几年前的转账，像看自己的墓志铭。',
     ]},
   ],
 
@@ -313,8 +339,10 @@ const chainNative: RetirementPath = {
   checkSuccess: (state) => {
     const chainHoldings = (state as any).chainHoldings || 0;
     const annualExpense = state.annualBaseCost + (state.currentMortgageCost || 0);
-    // 成功（v15收紧）：链上资产>=年支出×18 且 信念值>=45 且 年龄>=35
-    return chainHoldings >= annualExpense * 18 && state.pathFaith >= 45 && state.currentAge >= 35;
+    // 成功（v18放宽）：链上资产>=年支出×12 且 信念值>=40 且 年龄>=35
+    // 此前 v15 的 ×18 门槛叠加每年 5% 归零概率，导致胜率仅 3.5%，绝大多数玩家注定失败。
+    // 放宽门槛并配合"链上认知"软性护栏（降低归零概率），让这条路既有高波动的刺激感，又具备可达成性。
+    return chainHoldings >= annualExpense * 12 && state.pathFaith >= 40 && state.currentAge >= 35;
   },
 
   successTitle: '链上自由',
@@ -425,13 +453,26 @@ const digitalNomad: RetirementPath = {
       '不再亲自写每一行代码，花更多时间维护关系判断方向。',
       '带父母去了你住三年的东南亚小镇，妈摸了摸墙说"原来你真在这里生活"。',
     ]},
-    { ageRange: [46, 60], texts: [
+    { ageRange: [46, 50], texts: [
       '搬到了二十岁根本不会考虑的城市，安静便宜有好医院，开始追日落不追时区。',
       '以前的游牧朋友群里，话题从"下一站去哪"变成了"血压多少"。',
       '做游民mentor告诉年轻人最重要的不是找客户，是漂泊中不丢了自己。',
+      '你买了个小院子种菜，浇水时想起二十年前在清迈天台晾衣服。',
+      '远程会议里年轻同事问你在哪，你说"家"——停顿了一下，你居然真的说了"家"。',
+    ]},
+    { ageRange: [51, 55], texts: [
       '翻开旧护照，褪色入境章像旧伤口，有些城市忘了名字但留下了什么。',
       '孩子在两国长大会三种语言，TA问家在哪你说"wherever we are together"。',
+      '你带早年那些游民朋友回家吃饭，一屋子人操着六种口音夹同一个锅里的菜。',
+      '镇上邮局的大姐认得你，每次都问"娃上学去啦"，你答"回啦"。',
+      '你不再更新游民攻略了，老读者私信，你回"去找个地方住下来吧"。',
+    ]},
+    { ageRange: [56, 60], texts: [
       '阳台喝本地咖啡，杯子里的脸比第一份合同时老了二十岁，眼神一样。',
+      '孩子问"你年轻时候为什么老搬家"，你说"因为那时候家是问出来的"。',
+      '你给当年帮你修过行李箱轮子的店主寄了张明信片，那个地址你还记得。',
+      '旅游杂志采访你，标题写"游民老头"，你笑，随他们去。',
+      '你数了数护照上的入境章，一百多个，最值钱的那个是"回家"那天盖的。',
     ]},
   ],
 
@@ -447,8 +488,8 @@ const digitalNomad: RetirementPath = {
     // 实际年支出 = baseCost × 城市系数 + 房贷
     const cityMult = CITY_CONFIGS[state.currentCity]?.costMultiplier || 1.0;
     const actualAnnualExpense = state.annualBaseCost * cityMult + (state.currentMortgageCost || 0);
-    // 成功：被动收入>=实际年支出（完全覆盖），信念>=50，年龄>=36
-    return state.passiveIncome >= actualAnnualExpense && state.pathFaith >= 50 && state.currentAge >= 36;
+    // 成功：被动收入>=实际年支出×1.6（需有足够缓冲），信念>=50，年龄>=36
+    return state.passiveIncome >= actualAnnualExpense * 1.6 && state.pathFaith >= 50 && state.currentAge >= 36;
   },
 
   successTitle: '地球居民',
@@ -532,13 +573,26 @@ const superIP: RetirementPath = {
       '开始理解"慢"，年轻时追热点拼频率，现在花一个月打磨一期。',
       '粉丝发长私信说你陪TA走过最难的一年，你坐在电脑前沉默很久。',
     ]},
-    { ageRange: [46, 60], texts: [
+    { ageRange: [46, 50], texts: [
       '很久没看后台数据了，发内容因为有话想说不是讨好算法。',
       '年轻博主问怎么涨粉，你说"想你能给别人什么"，他们失望了。',
+      '你更新得慢了，但每一条都有人回"你还在，真好"。',
+      '一个老粉留言说把你当树洞听了十年，你回了句"我也是"。',
+      '你删掉了过去所有"爆款标题"的笔记，留着的是半本真话。',
+    ]},
+    { ageRange: [51, 55], texts: [
       '评论区出现"从小看你视频长大"，第一批粉丝已经为人父母。',
       '开始写书不是为卖，是整理那些年踩过的坑见过的人想通的事。',
+      '一场线下分享会，两百人的厅坐满了，你讲完问答环节没人问怎么涨粉。',
+      '你第一次做付费社群，不是为钱，是想让真正懂的人聚在一起。',
+      '有人翻到你十年前的观点截图打你脸，你转发说"年轻气盛，见谅"。',
+    ]},
+    { ageRange: [56, 60], texts: [
       '翻到最早的视频，出租屋里补光灯前的年轻人，你想对TA说别怕。',
       '风格变了很多次，从激进到温和，但你还在说话还在表达。',
+      '你录了一期"我退休了"的视频，没有告别，只是说以后想聊点真正要紧的。',
+      '你给年轻创作者留了言，只写了句"慢慢来，别把热爱熬成KPI"。',
+      '你关掉打赏，把最后一个平台的简介改成"还在说话的人"。',
     ]},
   ],
 
@@ -581,8 +635,8 @@ const superIP: RetirementPath = {
 
   checkSuccess: (state) => {
     const annualExpense = state.annualBaseCost + (state.currentMortgageCost || 0);
-    // 成功（v15收紧）：被动收入>=年支出×1.0 且 声誉>=50 且 年龄>=34
-    return state.passiveIncome >= annualExpense * 1.0 && (state as any).ipReputation >= 50 && state.currentAge >= 34;
+    // 成功（v16.4放宽声誉门槛：50→45，提14%→目标20%）：被动收入>=年支出×1.0 且 声誉>=45 且 年龄>=34
+    return state.passiveIncome >= annualExpense * 1.0 && (state as any).ipReputation >= 45 && state.currentAge >= 34;
   },
 
   successTitle: '自成一派',
@@ -693,13 +747,26 @@ const silverEconomy: RetirementPath = {
       '锦旗挂不下只能叠着放，你不觉得是荣誉是沉甸甸的信任。',
       '自己也有白头发了，量血压时意识到服务的这群人是三十年后的你。',
     ]},
-    { ageRange: [46, 60], texts: [
+    { ageRange: [46, 50], texts: [
       '企业交给职业经理人每周只去两天，需要体系不是你一个人。',
-      '母亲住进你自己的养老院，一个月后她说"你做的事是对的"。',
       '写行业白皮书把踩过的坑记下来，希望后来人不用从零开始。',
+      '你开始招年轻院长，面试时问的不是能力，是"能不能坐得住"。',
+      '一个床位一个床位地数，你终于明白最好的扩张是让老人安心睡。',
+      '行业大会上你不再讲商业模式，讲的是那个总爱坐窗边的老人。',
+    ]},
+    { ageRange: [51, 55], texts: [
+      '母亲住进你自己的养老院，一个月后她说"你做的事是对的"。',
       '当年骂你没出息的亲戚托关系送老人来，你按标准流程安排。',
+      '陪你最早的护工阿姨退休了，你给她办了个体面的退休礼。',
+      '你推着九十岁的张奶奶散步，她问"你几岁啦"，你说"五十多"，她说"还小"。',
+      '你建了张"最后课程表"：教手机、教写遗嘱、教怎么好好告别。',
+    ]},
+    { ageRange: [56, 60], texts: [
       '推百岁老人晒太阳，TA握你手说"谢谢你"，每一次都像第一次。',
       '坐养老院长椅看老人下棋聊天发呆，想等你老了也住这样一个地方。',
+      '你给自己留了个床位，靠窗，阳光好，护士说你"未雨绸缪"。',
+      '当年说她"伺候人的活"的亲戚住进来了，你路过他房门口，没停。',
+      '你给所有员工立了条规矩：老人走的那天，谁值班都要在。',
     ]},
   ],
 
@@ -713,8 +780,9 @@ const silverEconomy: RetirementPath = {
 
   checkSuccess: (state) => {
     const business = (state as any).silverBusiness;
-    // 成功：月营收>=5万 且 声誉>=60 且 年龄>=38（口碑复利+实体生意，较慢但稳）
-    return business && business.monthlyRevenue >= 50000 && business.reputation >= 60 && state.currentAge >= 38;
+    // 成功（v16.4：门槛从3万调到3.2万，压39%→目标30%）
+    // 月营收>=3.2万 且 声誉>=50 且 年龄>=35
+    return business && business.monthlyRevenue >= 32000 && business.reputation >= 50 && state.currentAge >= 35;
   },
 
   successTitle: '老有所依',
@@ -804,13 +872,26 @@ const bioGambler: RetirementPath = {
       '基因编辑公司二期临床股价月涨三倍没卖，你买的是通往未来的船票。',
       '开始认真练力量不只是有氧，在健身房举铁觉得在和时间拔河。',
     ]},
-    { ageRange: [46, 60], texts: [
+    { ageRange: [46, 50], texts: [
       '第一批抗衰老疗法来了，不是仙丹是衰老细胞清除和基因编辑。',
       '生物年龄小12岁，50岁身体38岁血管35岁心肺，那些冷水澡也许值了。',
+      '你注册了第一个临床试验，填表时手有点抖，护士说"你看起来不像需要"。',
+      '你开始规律的跑马拉松，不是比赛，是给这个"年轻的身体"交作业。',
+      '你清掉了大部分补剂，留下的只有睡眠、运动和少吃的铁律。',
+    ]},
+    { ageRange: [51, 55], texts: [
       '从追求"活多久"转向"活多好"，卧病在床三十年不是你要的。',
       '孩子问需不需要吃补剂，你说好好吃饭睡觉运动少焦虑比什么都强。',
+      '你的抗衰社群办到第十年，有人退休了，有人还在，你来者不拒。',
+      '体检医生看着你的报告自言自语"这个年龄不该有这种数据"，你笑了笑。',
+      '你开始写"如何老去"的日记，不是给后代，是给未来的自己。',
+    ]},
+    { ageRange: [56, 60], texts: [
       '长寿论坛线下聚会当年聊NMN的年轻人都五六十了，看起来年轻十到十五岁。',
       '如果真活150岁多出来的岁月怎么过？答案在变但不虚度。',
+      '孙子出生那天你决定戒烟戒酒，虽然你早就不沾了，但仪式感得有。',
+      '你站在镜子前，遗憾自己没更早开始，也庆幸自己开始得不算太晚。',
+      '你学会了一件事：延长的是生命的长度，但宽度得自己填。',
     ]},
   ],
 
@@ -853,9 +934,9 @@ const bioGambler: RetirementPath = {
 
   checkSuccess: (state) => {
     const bioPortfolio = (state as any).bioPortfolio || 0;
-    // 成功（v15回调）：生物投资>=150万 且 健康>=45 且 信念>=40 且 年龄>=38
-    // 120万太易（60%成功率），提到150万
-    return bioPortfolio >= 1500000 && state.health >= 45 && state.pathFaith >= 40 && state.currentAge >= 38;
+    // 成功（v16回调：从150万降到120万，健康门槛45保持）
+    // 生物投资>=120万 且 健康>=45 且 信念>=40 且 年龄>=36
+    return bioPortfolio >= 1200000 && state.health >= 45 && state.pathFaith >= 40 && state.currentAge >= 36;
   },
 
   successTitle: '明日世界',
@@ -987,7 +1068,10 @@ export function canAllIn(state: GameState): boolean {
   if (state.currentAge < 27) return false; // 至少积累5年副业经验
   if (state.isUnemployed) return false; // 失业状态下不触发All In（叙事上"辞职"不成立）
 
-  // 信念条件（阈值90：需要长期正向积累，但不要求极端信念值）
+  // 信念条件（阈值90：与 narrative-allin.ts 文档一致。
+  // 此前误设为95，而实际游戏中信念值长期积累多卡在90附近，导致副业为主的
+  // 安全路径（AI/IP/游牧/银发）几乎无法触发All In，解锁不了大额突破事件，
+  // 成功率被压到11-15%，而链上/生物因自有资产增长反而更高，平衡倒挂。）
   if (state.pathFaith >= 90) return true;
 
   // 副业收入条件（需要明显超过主业，而非仅仅持平）
@@ -1043,8 +1127,8 @@ export function applyAllIn(state: GameState): void {
       state.currentProfession = '自由职业';
       state.currentMonthlySalary = Math.max(Math.round(sideIncome * 1.2), minGuarantee, 3000);
       state.careerStartSalary = state.currentMonthlySalary;
-      // All In被动收入跃升：AI工具授权/咨询收入（v15平衡：降低防止85%成功率）
-      state.passiveIncome = (state.passiveIncome || 0) + 10000;
+      // All In被动收入跃升（v16平衡：10000→5000，防止过高的×20资本化导致85%成功率）
+      state.passiveIncome = (state.passiveIncome || 0) + 5000;
       break;
     }
     case 'chain_native': {
@@ -1052,7 +1136,9 @@ export function applyAllIn(state: GameState): void {
       state.currentMonthlySalary = Math.max(sideIncome, minGuarantee, 2000);
       state.careerStartSalary = state.currentMonthlySalary;
       // 加密资产不靠被动收入，全职后更专注交易，持仓自然增长
-      (state as any).chainHoldings = Math.round(((state as any).chainHoldings || 0) * 1.3);
+      // 规模递减效应：持仓越大，All In带来的边际提升越小
+      const curHoldings = (state as any).chainHoldings || 0;
+      (state as any).chainHoldings = applyChainHoldingScale(curHoldings, 1.3);
       break;
     }
     case 'digital_nomad': {
@@ -1063,8 +1149,8 @@ export function applyAllIn(state: GameState): void {
       state.careerStartSalary = state.currentMonthlySalary;
       state.currentCity = '海外低成本';
       state.isGeoArbitrage = true;
-      // All In被动收入跃升：全职接远程客户，retainer合同增加
-      state.passiveIncome = (state.passiveIncome || 0) + 10000;
+      // All In被动收入跃升（v16平衡：10000→6000，配合门槛×1.5）
+      state.passiveIncome = (state.passiveIncome || 0) + 6000;
       break;
     }
     case 'super_ip': {
@@ -1085,6 +1171,7 @@ export function applyAllIn(state: GameState): void {
       switchCity(state, '避风低洼地');
       // 养老是实体生意，走营收：全职投入后客户增长（同步更新silverBusiness.monthlyRevenue以影响checkSuccess）
       const silverRev = (state as any).silverMonthlyRevenue || (biz ? biz.monthlyRevenue : 0);
+      // v16.2：All In加成从0.6+6500回调到0.5+5000，抑制银发过快成功
       const silverBonus = Math.round(silverRev * 0.5 + 5000);
       (state as any).silverMonthlyRevenue = silverRev + silverBonus;
       if (biz) {
@@ -1098,9 +1185,9 @@ export function applyAllIn(state: GameState): void {
       state.careerStartSalary = state.currentMonthlySalary;
       // All In被动收入跃升：抗衰咨询/科普写作
       state.passiveIncome = (state.passiveIncome || 0) + 8000;
-      // 全职研究后投资组合跃升（×2.0+2万：全职投入+信息优势+人脉网络）
+      // 全职研究后投资组合跃升（v16：×2.0+2万 → ×2.2+3万，助力120万门槛）
       const bioPort = (state as any).bioPortfolio || 0;
-      (state as any).bioPortfolio = Math.round(bioPort * 2.0 + 20000);
+      (state as any).bioPortfolio = Math.round(bioPort * 2.2 + 30000);
       break;
     }
   }

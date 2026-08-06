@@ -88,7 +88,7 @@ const E9_SKELETON = `你没攒够那个数字。和身边大多数人一样，�
 
 但你站在阳台晒着太阳的时候，忽然觉得这一辈子也不算白活。你熬过了所有没杀死你的坎，养大了孩子（如果有的话），送走了父母，和伴侣吵过架也和过好。你的存款不够环游世界，但够每天买得起菜、看得起病。你没有成为传奇，没有改变世界，但你活着，并且还愿意继续活着。
 
-那些关于"500万"的豪言壮语，此刻听起来像年轻时做过的一场大梦。梦醒了，锅里的粥还热着。平凡不是失败，平凡本身，就是一种了不起的成就。`;
+那些关于"{TARGET_AMOUNT}"的豪言壮语，此刻听起来像年轻时做过的一场大梦。梦醒了，锅里的粥还热着。平凡不是失败，平凡本身，就是一种了不起的成就。`;
 
 export const ENDINGS: Ending[] = [
   { id: 'E1', title: '传奇自由人', grade: 'S', name: '游侠列传', skeleton: E1_SKELETON, condition: () => false },
@@ -107,11 +107,24 @@ export const ENDINGS: Ending[] = [
 // 不再硬塞三段通用引言，而是在结尾加一句个性化回响
 // ============================================================
 
-export function buildEndingText(endingId: string, choices: OriginChoices): string {
+export function buildEndingText(endingId: string, choices: OriginChoices, targetWealth?: number): string {
   const ending = ENDINGS.find(e => e.id === endingId);
   if (!ending) return '未知结局。';
   const echo = getEcho(choices);
-  return `${ending.skeleton}\n\n${echo}`;
+  let skeleton = ending.skeleton;
+  // E9（平凡结局）的"豪言壮语"引用玩家开局设定的目标资产，避免硬编码金额与玩家实际目标不符
+  if (endingId === 'E9') {
+    skeleton = skeleton.replace('{TARGET_AMOUNT}', targetWealth ? formatTargetAmount(targetWealth) : '那个数字');
+  }
+  return `${skeleton}\n\n${echo}`;
+}
+
+/** 把目标资产格式化为"300万/1.2亿"样式（无小数、无¥符号，适合叙事文案） */
+function formatTargetAmount(n: number): string {
+  const abs = Math.abs(n);
+  if (abs >= 100000000) return `${+(abs / 100000000).toFixed(2)}亿`;
+  if (abs >= 10000) return `${Math.round(abs / 10000)}万`;
+  return Math.round(abs).toLocaleString('zh-CN');
 }
 
 // ============================================================

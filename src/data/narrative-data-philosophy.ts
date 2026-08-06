@@ -30,10 +30,10 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_soul_ai',
     title: '图灵之问',
-    narrative: '深夜，你盯着屏幕上自己训练的AI模型。它刚刚写了一段话，比你写得更好——更温柔，更深刻，更像"你"。\n你突然意识到一个让你脊背发凉的问题：如果它比你更懂如何表达你的感受，那"你的感受"到底是谁的？是你感受到的，还是它替你感受的？\n你关掉屏幕，但那个问题还亮着。',
+    narrative: '深夜，你盯着自己训练的AI模型。它刚写了一段话，比你写得更好——更温柔，更像"你"。\n如果它比你更懂如何表达你的感受，那"你的感受"到底是谁的？你关掉屏幕，但那个问题还亮着。',
     pathId: 'ai_symbiote',
     ageRange: [30, 40],
-    priority: 9,
+    priority: 10,
     oncePerGame: true,
     eventType: 'normal',
     sceneTag: 'breakthrough',
@@ -76,10 +76,10 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_soul_chain',
     title: '赌徒的真面目',
-    narrative: '今天是暴跌的第三天。你的持仓缩水了40%。\n群里的老张已经割肉了，发了一句"认赌服输"就退了群。小李在喊"抄底"，但他的声音你能听出在发抖。\n你盯着K线图，突然看清了一件事：这一刻你做的选择，会定义你到底是谁——不是你告诉别人的那个你，而是真正的你。市场不在乎你怎么想，它只逼出你真正的样子。',
+    narrative: '今天是暴跌的第三天，你的持仓缩水了40%。群里老张割肉退了群，小李喊"抄底"，声音在发抖。\n你盯着K线图看清了一件事：这一刻的抉择，会逼出真正的你。市场不在乎你怎么想，它只逼出你真正的样子。',
     pathId: 'chain_native',
     ageRange: [27, 38],
-    priority: 9,
+    priority: 10,
     oncePerGame: true,
     eventType: 'crisis',
     sceneTag: 'crisis',
@@ -119,10 +119,10 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_soul_nomad',
     title: '行李箱里的家',
-    narrative: '你又一次在打包行李。这已经是过去三年的第七个城市了。\n房东问你："你到底在找什么？"你愣了一下——不是因为问题意外，而是因为你发现自己答不上来。\n你想起每次离开一个城市时的感觉：不是不舍，而是一种模糊的"还不是这里"。但"这里"到底是什么？你不知道。行李箱越来越轻，你的胃却越来越沉。',
+    narrative: '你又一次在打包行李，这是过去三年的第七个城市。\n房东问："你到底在找什么？"你愣了一下——你发现自己答不上来。离开时你总有一种模糊的"还不是这里"，可"这里"到底是什么，你不知道。行李箱越来越轻，你的胃却越来越沉。',
     pathId: 'digital_nomad',
     ageRange: [30, 42],
-    priority: 9,
+    priority: 10,
     oncePerGame: true,
     eventType: 'normal',
     options: [
@@ -162,10 +162,10 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_soul_ip',
     title: '镜中人',
-    narrative: '你的粉丝数突破十万那天，一条评论让你停下了庆祝。\n"你以前写的东西更有意思，现在全是广告和套路。你是不是变了？"\n你想反驳，但手指停在键盘上。你翻出三年前的第一篇内容——青涩、粗糙，但有一种你现在写不出来的东西。你把它叫做"真"，但你知道那个"真"已经不在了。\n十万人在看一个已经不是你的人。',
+    narrative: '你的粉丝数突破十万那天，一条评论让你停下庆祝："你以前写的东西更有意思，现在全是广告和套路，你是不是变了？"\n你想反驳，手指却停在键盘上。你翻出三年前的第一篇内容——青涩粗糙，但有一种你现在写不出来的东西。十万人在看一个已经不是你的人。',
     pathId: 'super_ip',
     ageRange: [28, 40],
-    priority: 9,
+    priority: 10,
     oncePerGame: true,
     eventType: 'normal',
     conditions: (s) => (s.pathSkills?.brandSkill || s.pathSkills?.audienceSkill || 0) >= 30,
@@ -208,10 +208,10 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_soul_silver',
     title: '谁照顾照顾者',
-    narrative: '王奶奶今早走了。你照顾了她两年三个月。\n她的女儿从国外打来电话，说"谢谢你"，然后问押金什么时候退。你挂了电话，坐在空了的房间里，闻着残留的膏药味。\n你想起入行时说的话："我要让老人有尊严地老去。"现在你做到了——但谁来让你有尊严地老去？你才三十多岁，腰椎已经不行了。',
+    narrative: '王奶奶今早走了。你照顾了她两年三个月。\n她的女儿从国外打来电话，说"谢谢你"，然后问押金什么时候退。你坐在空了的房间里，闻着残留的膏药味。你做到了"让老人有尊严地老去"——但谁来让你有尊严地老去？你才三十多岁，腰椎已经不行了。',
     pathId: 'silver_economy',
     ageRange: [32, 45],
-    priority: 9,
+    priority: 10,
     oncePerGame: true,
     eventType: 'normal',
     options: [
@@ -252,10 +252,10 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_soul_bio',
     title: '永生的代价',
-    narrative: '实验室的老周把一份报告拍在你面前：你投资的基因疗法三期临床数据出来了——寿命延长指标显著。\n但你注意到一个老周没说的数字：延长的不是"健康寿命"，只是"寿命"。多出来的十年，可能是躺在床上清醒地感受身体腐朽的十年。\n老周问你投不投下一轮。你想起了你为什么要投资这个领域——你怕死。但此刻你突然不确定：你怕的到底是死，还是活着？',
+    narrative: '实验室的老周把一份报告拍在你面前：基因疗法三期数据出来了，寿命延长指标显著。\n但老周没说的数字是：延长的不是"健康寿命"，只是"寿命"。多出来的十年，可能是躺在床上清醒地感受自己腐朽的十年。老周问你投不投下一轮——你怕的到底是死，还是活着？',
     pathId: 'bio_gambler',
     ageRange: [33, 45],
-    priority: 9,
+    priority: 10,
     oncePerGame: true,
     eventType: 'normal',
     options: [
@@ -299,11 +299,11 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_time_30',
     title: '三十',
-    narrative: '生日蛋糕上的蜡烛数量突然变得刺眼了。\n刚毕业那年对着招聘网站刷到凌晨三点时，你以为三十岁应该已经"成了"——有房有车有方向。现在你站在这个数字面前，发现"成了"是一个永远在退后的终点线。\n手机里弹了一条推送："30岁，你的人生进度条已过半。"你笑了——不是觉得好笑，是觉得残忍。谁在帮我倒计时？',
+    narrative: '生日蛋糕上的蜡烛数量突然变得刺眼了。\n刚毕业那年盯着招聘网站刷到凌晨三点时，你以为三十岁应该已经"成了"——有房有车有方向。现在你站在这个数字面前，发现"成了"是一个永远在退后的终点线。手机弹出推送："30岁，你的人生进度条已过半。"谁在帮我倒计时？',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [30, 30],
-    priority: 9,
+    priority: 10,
     oncePerGame: true,
     eventType: 'milestone',
     options: [
@@ -342,7 +342,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_time_40',
     title: '不惑',
-    narrative: '孔子说四十不惑。你今年四十了，惑得比任何时候都厉害。\n你开始注意到一些以前不会注意的事：楼下煎饼摊的大叔头发全白了；你最后一次见大学室友已经是五年前；你妈妈打电话时开始重复同一件事说两遍。\n时间不是在你身上流过——它在你身上沉积。你能感觉到它的重量，像一层层看不见的灰尘。',
+    narrative: '孔子说四十不惑。你今年四十，惑得比任何时候都厉害。\n你开始注意到以前不会注意的事：楼下煎饼摊大叔头发全白了，最后一次见大学室友已是五年前，你妈打电话时开始重复同一件事说两遍。时间不是在你身上流过——它在你身上沉积，像一层层看不见的灰尘。',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [40, 40],
@@ -386,11 +386,11 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_time_echo',
     title: '旧信',
-    narrative: '搬家时从箱底翻出一封信。信封上写着"30岁打开"。\n你认出了自己的字迹——这是22岁时写给未来的自己的。你早就过了三十了，迟了好几年。\n你拆开信，里面的第一行是："你还在做自己想做的事吗？"\n你把信读完了。然后你发现，最让你难受的不是答案——而是你已经忘了22岁时"想做的事"是什么。',
+    narrative: '搬家时从箱底翻出一封写着"30岁打开"的信——你22岁写给未来自己的。你早就过了三十，迟了好几年。\n你拆开信，第一行是："你还在做自己想做的事吗？"真正让你难受的不是答案——而是你已经忘了22岁时"想做的事"是什么。',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [33, 45],
-    priority: 9,
+    priority: 10,
     oncePerGame: true,
     eventType: 'normal',
     options: [
@@ -429,7 +429,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_time_50',
     title: '知天命',
-    narrative: '孔子说五十知天命。你今年五十了，你确实知道了一些以前不知道的事。\n你知道了父母会突然变老——不是慢慢变老，是某一天你打电话回去，你妈的声音变了，你爸开始重复同一句话。那种变化没有过渡。\n你知道了身体会开始记账——二十岁熬的夜、三十岁省的餐、四十岁憋的气，到了五十岁一起寄来了账单。\n但你也知道了一件奇怪的事：你比年轻时更不怕死了。倒不是看开了，而是该在意的东西变少了。年轻时什么都想要，现在你知道哪些东西就算没拿到，也无所谓。',
+    narrative: '孔子说五十知天命。今年你五十，确实知道了一些以前不知道的事。\n你知道了父母会突然变老，不是慢慢变老，是某一天打电话回去，你妈的声音变了，你爸开始重复同一句话。你知道了身体会开始记账——二十岁熬的夜、三十岁省的餐、四十岁憋的气，到了五十岁一起寄来账单。\n但你也知道了：你比年轻时更不怕死了。该在意的东西变少了，有些东西就算没拿到，也无所谓。',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [50, 50],
@@ -472,7 +472,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_irony_ai',
     title: '替代者',
-    narrative: '你开发的AI助手月活突破百万。投资人竖起大拇指说"你改变了人与技术的关系"。\n但今天，你的伴侣跟你坦白：TA更愿意跟你的AI聊天，而不是跟你。"它比你更耐心，更懂我，而且——它不会累。"\n你花五年时间教会机器理解人类情感，结果它先替代了你的情感。你创造了更好的"你"，然后被它淘汰了。',
+    narrative: '你开发的AI助手月活突破百万。投资人竖起大拇指说"你改变了人与技术的关系"。\n但今天你的伴侣坦白：TA更愿意跟你的AI聊天，而不是跟你。"它比你更耐心，更懂我，而且它不会累。"\n你花五年教会机器理解人类情感，结果它先替代了你的情感。你创造了更好的"你"，然后被它淘汰了。',
     pathId: 'ai_symbiote',
     ageRange: [35, 48],
     priority: 7,
@@ -519,7 +519,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_irony_nomad',
     title: '自由的牢笼',
-    narrative: '你终于实现了"在任何地方工作"的自由。但今天你发现一个事实：你可以在任何地方工作，意味着你在每个地方都在工作。\n你的朋友说"你好自由"，但他们不知道你上个月在洱海边开了七次会，在雪山脚下回了三百封邮件。你拥有了一切城市，但没有一座城市拥有你。\n自由不是逃离，但你已经逃了太久了。',
+    narrative: '你终于实现了"在任何地方工作"的自由。但你发现：能在任何地方工作，意味着你在每个地方都在工作。\n朋友说"你好自由"，但他们不知道你上个月在洱海边开了七次会，在雪山脚下回了三百封邮件。你拥有了一切城市，但没有一座城市拥有你。',
     pathId: 'digital_nomad',
     ageRange: [33, 45],
     priority: 7,
@@ -562,7 +562,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_irony_silver',
     title: '无人照顾',
-    narrative: '你的养老社区终于盈利了。账面上的数字很好看。\n但今天你体检发现甲状腺结节，医生说"需要进一步检查"。你拿着报告走出医院，想找个人说说，翻了翻通讯录——里面全是客户、员工、供应商。\n你花了十年照顾别人的晚年，却忘了给自己存一个可以打电话的人。',
+    narrative: '你的养老社区终于盈利了，账面上数字很好看。\n但今天体检发现甲状腺结节，医生说"需要进一步检查"。你拿着报告走出医院，想找个人说说，翻了翻通讯录——里面全是客户、员工、供应商。你花了十年照顾别人的晚年，却忘了给自己存一个可以打电话的人。',
     pathId: 'silver_economy',
     ageRange: [38, 50],
     priority: 7,
@@ -605,7 +605,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_irony_chain',
     title: '去中心化的孤独',
-    narrative: '你的链上资产终于让你实现了"不用依赖任何人"的财务自由。你用私钥掌控着一笔足以生活十年的财富，没有银行，没有雇主，没有中间人。\n但今天你发烧到39度，独自躺在出租屋里。你想叫外卖，但没人送；你想找人陪你去看病，翻了200个联系人——一半是交易群里的ID，一半是已经半年没说过话的名字。\n你花五年时间去掉所有中心化依赖，现在你发现：你确实不依赖任何人了——但也没有任何人依赖你。',
+    narrative: '你的链上资产让你实现了"不用依赖任何人"的财务自由——没有银行，没有雇主，没有中间人。\n但今天你发烧39度，独自躺在出租屋。想叫外卖没人送，想找人陪你看病，翻了200个联系人——一半是交易群ID，一半是半年没说过话的名字。你确实不依赖任何人了，但也没有任何人依赖你。',
     pathId: 'chain_native',
     ageRange: [33, 48],
     priority: 7,
@@ -651,7 +651,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_irony_ip',
     title: '比你更像你',
-    narrative: '你的个人IP做成了。现在全网有200万人认识"你"——那个你在镜头前精心构建的人设：永远积极，永远有答案，永远在成长。\n但今天一个粉丝在评论区说："你是我的精神导师，你改变了我的人生。"你盯着这句话看了很久，然后低头看了看自己：三天没洗的头，外卖盒堆了半张桌子，信用卡账单还没还。\n你花了三年时间打造一个"更好的自己"给200万人看，但那个自己不是你。真正的你在镜头后面，活得比任何一个粉丝都狼狈。',
+    narrative: '你的个人IP做成了，全网200万人认识"你"——那个永远积极、永远有答案、永远在成长的人设。\n但今天一个粉丝说："你是我的精神导师，你改变了我的人生。"你低头看了看自己：三天没洗的头，外卖盒堆了半张桌子，信用卡账单还没还。你花三年打造的"更好的自己"给200万人看，但那个自己不是你。',
     pathId: 'super_ip',
     ageRange: [30, 45],
     priority: 7,
@@ -697,7 +697,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_irony_bio',
     title: '延长的等待',
-    narrative: '你的生科投资组合涨了40%。分析师说，你投的那款抗衰药距离上市只差最后一步临床。\n你算了一笔账：如果它成功上市，人类的健康寿命可能延长15年。也就是说，你现在四十出头，也许能健康地活到90岁——多出来的15年，足够你做任何事。\n但你突然意识到一个讽刺：你把这十年最好的年华用来赌"未来的时间"，而赌注本身就是"现在的时间"。你每天盯盘、读论文、跑数据——你用真实的、不可逆的现在，去赌一个可能的、延后的未来。\n如果药成功了，你多了15年——但你已经花掉了10年。如果药失败了，你既没有10年，也没有15年。',
+    narrative: '你的生科组合涨了40%。分析师说，那款抗衰药离上市只差一步，人类的健康寿命可能延长15年。\n但你算了一笔账：你把这十年最好的年华用来赌"未来的时间"，而赌注本身就是"现在的时间"。你每天盯盘、读论文、跑数据，用真实不可逆的现在，去赌一个可能延后的未来。',
     pathId: 'bio_gambler',
     ageRange: [38, 50],
     priority: 7,
@@ -747,7 +747,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_void_stranger',
     title: '深夜便利店',
-    narrative: '凌晨三点，你在便利店买泡面。收银员是个看起来五十多岁的女人，她扫完码突然说了一句话：\n"你看起来像是在跑的人。"\n你愣住了。她没有解释，继续擦柜台。你拿着泡面站在那里，想问她怎么知道的，但这个问题似乎不重要。重要的是——她是对的吗？你在跑吗？从什么？向哪里？\n泡面的热气模糊了你的眼镜。你没有问她。你走了。',
+    narrative: '凌晨三点，你在便利店买泡面。收银员是个五十多岁的女人，她扫完码突然说："你看起来像是在跑的人。"\n你愣住了。她没有解释，继续擦柜台。重要的是——她是对的吗？你在跑吗？从什么？向哪里？泡面的热气模糊了你的眼镜。你没有问她。',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [28, 50],
@@ -791,7 +791,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_void_question',
     title: '孩子的问题',
-    narrative: '你的孩子（或者朋友的孩子）今年五岁。TA蹲在路边看蚂蚁搬家，看了很久。\n然后TA抬起头问了你一个问题："人活着是为什么？"\n你张了张嘴，发现自己没有任何可以说出口的答案。你想说"为了快乐"，但你最近不怎么快乐。你想说"为了成功"，但你不确定什么算成功。你想说"因为你长大了就知道了"，但你自己也不知道。\n孩子等着你回答。蚂蚁继续搬家。',
+    narrative: '你的孩子（或朋友的孩子）今年五岁。TA蹲在路边看蚂蚁搬家，看了很久，然后抬起头问："人活着是为什么？"\n你张了张嘴，没有任何可以说出口的答案。"为了快乐"？你最近不怎么快乐。"为了成功"？你不确定什么算成功。孩子等着你回答。蚂蚁继续搬家。',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [30, 50],
@@ -840,11 +840,11 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_npc_mentor',
     title: '退休的前辈',
-    narrative: '你在行业活动上遇到了一位退休的前辈。他六十多岁，头发花白，手里端着一杯红酒。\n"你多大了？"他问。你说了一个数字。他笑了："我像你这么大的时候，也觉得退休是终点。后来我发现，退休不是终点——是你终于停下来的时候，发现身后空无一物。"\n他举起杯子："我攒了一辈子的人脉、存款、房子。退休那天我才发现，这些东西不会陪你喝酒。"\n你看着他，像看着一面镜子——一面让你看到四十后的镜子。',
+    narrative: '行业活动上你遇到一位退休的前辈。他六十多岁，头发花白，端着一杯红酒。"我像你这么大时，也觉得退休是终点。后来才发现，退休是你终于停下来时，发现身后空无一物。我攒了一辈子的人脉、存款、房子——它们不会陪你喝酒。"\n你看着他，像看着一面四十岁后的镜子。',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [32, 50],
-    priority: 9,
+    priority: 10,
     oncePerGame: true,
     eventType: 'normal',
     options: [
@@ -884,7 +884,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_npc_mirror',
     title: '地铁里的陌生人',
-    narrative: '加班到深夜，你挤上了最后一班地铁。车厢里只有你和对面一个人。\n那个人穿着和你类似的衣服，拎着类似的公文包，脸上带着类似的疲惫。你们对视了一秒，然后各自移开目光。\n你突然有一种奇怪的感觉：对面那个人，会不会是另一个版本的你？一个做了不同选择的你？TA现在在想什么？TA后悔吗？TA也觉得自己的人生有什么地方不对吗？\n地铁到站了。TA站起来，走向车门。你们再也没有说过一句话，但那个对视让你一路沉默到家。',
+    narrative: '加班到深夜，你挤上最后一班地铁。车厢里只有你和对面一个人——穿着类似的衣服，拎着类似的公文包，脸上带着类似的疲惫。你们对视一秒，各自移开目光。\n你突然想：对面那个人，会不会是做了不同选择的另一个你？TA后悔吗？地铁到站，TA站起来走向车门。那个对视让你一路沉默到家。',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [28, 48],
@@ -920,6 +920,227 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
         stateEffect: (s: GameState) => { s.stress = clamp(s.stress - 2, 0, 100); },
         skillGains: { selfAwareness: 12 },
         log: '你闭上眼。地铁的震动像摇篮。你想起了很多事——小时候想成为的人，大学时的迷茫，第一份工作的兴奋，现在的疲惫。你不确定自己走到了哪里，但你知道你还在走。地铁到站时你睁开眼，对面已经空了。你站起来，走向你的人生。',
+      },
+    ],
+  },
+
+  // ============================================================
+  // 策略7：人生下半场——40岁以后的深度思考事件
+  // 填补40岁后内容空洞，让"中年"不再是重复的日子
+  // ============================================================
+
+  // 40岁：不惑之年——人生的清算
+  {
+    id: 'phil_midlife_40',
+    title: '不惑',
+    narrative: '四十岁生日那天，你在车里坐了十分钟才上楼。不是不想回家，是需要这十分钟——从"员工""父母""子女"这些身份里，暂时把自己捞出来喘口气。\n你没有成为二十岁时想成为的那个人，但你也没有变成自己讨厌的人。这中间的差距叫什么？蜡烛在蛋糕上，你许了一个愿——不是暴富，不是升职，是"就这样吧，但别再糟了"。',
+    pathId: 'ai_symbiote',
+    crossPath: true,
+    ageRange: [40, 40],
+    priority: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    options: [
+      {
+        id: 'phil_midlife_40_a',
+        label: '接受——就这样也挺好',
+        description: '不跟自己较劲了。平凡不是失败，是大多数人的人生。',
+        hint: '幸福+8，压力-5，自我觉察+10',
+        hintColor: 'positive',
+        stateEffect: (s: GameState) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+        },
+        skillGains: { selfAwareness: 10 },
+        log: '四十岁，你学会了一个词叫"算了"。不是认输，是知道了自己的边界。你不再跟二十岁的自己较劲，不再想"如果当初"。你拥有的不多，但都是真的。这样的人生，你认了。',
+      },
+      {
+        id: 'phil_midlife_40_b',
+        label: '不甘心——下半辈子要换个活法',
+        description: '四十岁不是终点，是中场休息。下半场换个打法。',
+        hint: '信念+8，压力+5，幸福+3',
+        hintColor: 'danger',
+        stateEffect: (s: GameState) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+        },
+        log: '吹蜡烛的时候你想：去他的"四十不惑"，我才刚活明白一半。前半辈子为别人活，后半辈子要为自己活。你打开手机，给那个想了很久但一直没敢做的项目，按下了"新建文件夹"。',
+      },
+      {
+        id: 'phil_midlife_40_c',
+        label: '不去想——忙起来就没时间矫情了',
+        description: '中年人的矫情都是闲出来的。该干嘛干嘛。',
+        hint: '压力+3，幸福-2，存款+5000',
+        hintColor: 'negative',
+        stateEffect: (s: GameState) => {
+          s.stress = clamp(s.stress + 3, 0, 100);
+          s.happiness = clamp(s.happiness - 2, 0, 100);
+        },
+        savingsChange: 5000,
+        log: '你在车里坐了三分钟就上去了——想那么多干嘛，房贷还没还完，孩子辅导班费该交了，父母体检报告还没取。四十岁的人，没资格矫情。你推开车门，拎着蛋糕上楼，脸上挂好了微笑。',
+      },
+    ],
+  },
+
+  // 45岁：上有老下有小——夹心一代
+  {
+    id: 'phil_sandwich_45',
+    title: '夹心',
+    narrative: '四十五岁，你真正理解了"上有老下有小"这六个字的重量。\n左边是医院——你爸做手术，你在手术室外坐了六个小时，签字时手抖了。右边是学校——孩子升学，你跑了八所学校，喝了不知道多少杯"您多费心"的茶。中间是你——凌晨三点失眠，看见镜子里的自己，白头发又多了几根。你不敢病，不敢歇，不敢垮，因为两边都靠着你。',
+    pathId: 'ai_symbiote',
+    crossPath: true,
+    ageRange: [44, 47],
+    priority: 9,
+    oncePerGame: true,
+    eventType: 'crisis',
+    conditions: (s) => s.parents.isAlive || (s.children && s.children.length > 0),
+    options: [
+      {
+        id: 'phil_sandwich_a',
+        label: '扛着——这是我的责任',
+        description: '中年人没有资格说"我撑不住了"。撑住。',
+        hint: '压力+10，健康-3，自我觉察+8',
+        hintColor: 'danger',
+        stateEffect: (s: GameState) => {
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.health = clamp(s.health - 3, 0, 100);
+        },
+        skillGains: { selfAwareness: 8 },
+        log: '四十五岁，你成了家里的顶梁柱。老的小的都看着你，你不能倒。你学会了在车里抽烟再上楼，学会了报喜不报忧，学会了把崩溃藏在厕所里。你很累，但你知道——你撑住了，这个家就撑住了。',
+      },
+      {
+        id: 'phil_sandwich_b',
+        label: '放下一部分——我不是万能的',
+        description: '承认自己的局限，接受不完美的解决方案。',
+        hint: '压力-5，幸福+5，存款-10000',
+        hintColor: 'neutral',
+        stateEffect: (s: GameState) => {
+          s.stress = clamp(s.stress - 5, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+        },
+        savingsChange: -10000,
+        log: '你给爸请了个护工，给孩子报了寄宿学校——不是最好的选择，是你能做到的选择。你不再追求"完美"，因为你明白了——一个人的精力是有限的，你不能同时是最好的子女、最好的父母、最好的员工。你只能是你，一个尽力了的普通人。',
+      },
+      {
+        id: 'phil_sandwich_c',
+        label: '更努力赚钱——钱能解决大部分问题',
+        description: '中年人的焦虑，十有八九能用钱解决。那就去赚。',
+        hint: '存款+15000，压力+8，健康-5',
+        hintColor: 'danger',
+        stateEffect: (s: GameState) => {
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.health = clamp(s.health - 5, 0, 100);
+        },
+        savingsChange: 15000,
+        log: '你接了更多的活，加更多的班，睡眠时间又少了一小时。你知道这样不健康，但你更知道——没钱的话，老人住不了好医院，孩子上不了好学校。中年人的世界，钱就是底气。你拿健康换底气，不知道划不划算，但你没得选。',
+      },
+    ],
+  },
+
+  // 50岁：知天命——人生的答案
+  {
+    id: 'phil_50_destiny',
+    title: '知天命',
+    narrative: '五十岁，你突然懂了孔子说的"五十而知天命"——不是知道了自己的命运，而是终于接受了。接受自己是个普通人，但这个普通人的一生也不是没有意义的。\n你不再跟年轻人比精力，不再跟同龄人比成就，开始修剪自己的生活——剪掉不必要的应酬，删掉不喜欢的社交，把时间留给真正重要的人和事。五十岁不是老了，是终于活明白了。',
+    pathId: 'ai_symbiote',
+    crossPath: true,
+    ageRange: [50, 51],
+    priority: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    options: [
+      {
+        id: 'phil_50_a',
+        label: '活明白了——剩下的日子为自己活',
+        description: '前半辈子为别人活，后半辈子做自己。',
+        hint: '幸福+12，压力-8，自我觉察+15',
+        hintColor: 'positive',
+        stateEffect: (s: GameState) => {
+          s.happiness = clamp(s.happiness + 12, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+        },
+        skillGains: { selfAwareness: 15 },
+        log: '五十岁，你给自己买了第一份"奢侈"的礼物——不是表，不是车，是"我不在乎了"的勇气。不在乎别人怎么看，不在乎输赢，不在乎有没有达到谁的期待。你剩下的日子，要按自己的节奏过。',
+      },
+      {
+        id: 'phil_50_b',
+        label: '传承——把我会的教给下一代',
+        description: '人生的意义不在你得到了什么，而在你留下了什么。',
+        hint: '幸福+10，信念+8，存款-5000',
+        hintColor: 'positive',
+        stateEffect: (s: GameState) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        savingsChange: -5000,
+        log: '五十岁，你开始带徒弟。不是公司安排的，是你主动的——你想把这三十年踩过的坑、摸出来的门道，传给那些眼睛里还有光的年轻人。你教他们的不只是技能，是你用半辈子悟出来的那些道理。教着教着你发现——你不是在给予，你是在被滋养。',
+      },
+      {
+        id: 'phil_50_c',
+        label: '不服老——我还能再战十年',
+        description: '五十岁怎么了？人生才过半。',
+        hint: '信念+10，健康+3，压力+5',
+        hintColor: 'danger',
+        stateEffect: (s: GameState) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.health = clamp(s.health + 3, 0, 100);
+          s.stress = clamp(s.stress + 5, 0, 100);
+        },
+        log: '五十岁生日你去跑了个五公里，比十年前慢了八分钟，但你跑完了。你看着镜子里的自己——头发白了一半，但眼睛还亮着。你想：五十岁算什么？那些二十多岁的小屁孩懂个屁。老子的下半场，才刚开始。',
+      },
+    ],
+  },
+
+  // 55岁：退休倒计时——你准备好了吗
+  {
+    id: 'phil_retirement_countdown',
+    title: '倒计时',
+    narrative: '五十五岁，你开始认真想退休这件事。不是遥不可及的未来，是再过几年就要面对的现实。\n你算了算账，看了看病历，然后发现一个可怕的事实：工作了三十年，你的身份、价值、社交圈几乎都跟工作绑在一起。如果不工作了，你是谁？你甚至想不起来，上次不是因为工作而熬夜，是因为什么。',
+    pathId: 'ai_symbiote',
+    crossPath: true,
+    ageRange: [54, 57],
+    priority: 9,
+    oncePerGame: true,
+    eventType: 'normal',
+    options: [
+      {
+        id: 'phil_retire_a',
+        label: '现在开始培养爱好——再不开始就晚了',
+        description: '退休不是结束，是另一段人生的开始。得提前准备。',
+        hint: '幸福+8，存款-8000，健康+3',
+        hintColor: 'positive',
+        stateEffect: (s: GameState) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.health = clamp(s.health + 3, 0, 100);
+        },
+        savingsChange: -8000,
+        log: '你报了个书法班，又买了套钓鱼装备，还把年轻时的吉他找出来重新调了弦。一开始很笨拙——你太久没有"不为什么而做一件事"了。但慢慢的，你找到了那种纯粹的快乐。退休不是结束，是你终于有时间做回那个因为工作而丢掉的自己。',
+      },
+      {
+        id: 'phil_retire_b',
+        label: '返聘/继续干——我还不想停',
+        description: '工作不是负担，是存在感。停下来反而不知道怎么活。',
+        hint: '信念+5，月薪+10%，健康-3',
+        hintColor: 'neutral',
+        stateEffect: (s: GameState) => {
+          s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
+          s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 1.1);
+          s.health = clamp(s.health - 3, 0, 100);
+        },
+        log: '你跟公司说：我不退休，返聘吧。钱不重要，重要的是——每天早上起来有地方去，有人跟你说话，有事情需要你。你怕的不是退休，是被遗忘。只要还在做事，你就还活着。',
+      },
+      {
+        id: 'phil_retire_c',
+        label: '带孙子/帮忙照顾家庭——天伦之乐',
+        description: '把时间留给家人，享受被需要的感觉。',
+        hint: '幸福+10，压力-5',
+        hintColor: 'positive',
+        stateEffect: (s: GameState) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+        },
+        log: '你开始每天去孩子家帮忙带孙子。很累——比上班还累。但那个小东西第一次叫出"爷爷/奶奶"的时候，你眼泪差点掉下来。你突然明白了父母当年为什么那么爱你——不是因为你有多优秀，只是因为你是你。这种天伦之乐，是多少钱都买不来的。',
       },
     ],
   },

@@ -170,21 +170,32 @@ function getAcademicLabel(val: number): string {
   return '较差';
 }
 
-const relSummary = computed(() => {
-  const parts: string[] = [];
-  if (parentsAlive.value) parts.push('父母健在');
-  else if (parents.value) parts.push('父母已故');
+// 伴侣状态摘要（独立片段，与父母状态分开，避免歧义）
+const relPartnerSummary = computed(() => {
   if (hasPartner.value && !isDivorced.value) {
-    if (partner.value!.datingStage === 'married') parts.push('已婚');
-    else if (partner.value!.datingStage === 'serious') parts.push('热恋');
-    else if (partner.value!.datingStage === 'dating') parts.push('约会中');
-    else if (partner.value!.datingStage === 'crush') parts.push('暧昧中');
-    else parts.push('有对象');
+    if (partner.value!.datingStage === 'married') return '已婚';
+    if (partner.value!.datingStage === 'serious') return '热恋中';
+    if (partner.value!.datingStage === 'dating') return '约会中';
+    if (partner.value!.datingStage === 'crush') return '暧昧中';
+    return '有对象';
   }
-  else if (isDivorced.value) parts.push('离异');
+  if (isDivorced.value) return '离异';
+  return '单身';
+});
+
+// 父母状态摘要（独立片段）
+const relParentSummary = computed(() => {
+  if (parentsAlive.value) return '父母健在';
+  if (parents.value) return '父母已故';
+  return '';
+});
+
+// 子女 / 朋友数量摘要（独立片段）
+const relKinshipSummary = computed(() => {
+  const parts: string[] = [];
   if (children.value.length > 0) parts.push(`${children.value.length}子`);
   if (friends.value.length > 0) parts.push(`${friends.value.length}友`);
-  return parts.length > 0 ? parts.join(' · ') : '孤身一人';
+  return parts.length > 0 ? parts.join(' · ') : '';
 });
 
 // ================================================================
@@ -588,7 +599,7 @@ const relOpen = ref(false);
       <div class="path-desc">{{ currentPath.description }}</div>
       <div class="skill-chips">
         <span class="skill-chip">{{ currentPath.subtitle }}</span>
-        <span class="skill-chip">◎ {{ currentPath.targetRetireAge }}岁退休</span>
+        <span class="skill-chip">◎ 退休由你决定</span>
       </div>
       <div class="faith-row">
         <span class="faith-label">信念</span>
@@ -617,7 +628,11 @@ const relOpen = ref(false);
         @click="relOpen = !relOpen"
       >
         <span class="toggle-text">人际关系</span>
-        <span class="toggle-summary">{{ relSummary }}</span>
+        <span class="toggle-summary">
+          <span v-if="relParentSummary" class="sum-parent"><span class="sum-emoji">👴</span>{{ relParentSummary }}</span>
+          <span class="sum-partner"><span class="sum-emoji">💑</span>{{ relPartnerSummary }}</span>
+          <span v-if="relKinshipSummary" class="sum-kinship">{{ relKinshipSummary }}</span>
+        </span>
         <span class="toggle-arrow" :class="{ open: relOpen }">▾</span>
       </button>
       <div class="collapse-body rel-body" :class="{ open: relOpen }">
@@ -765,7 +780,6 @@ const relOpen = ref(false);
 
 <style scoped>
 .stats-panel {
-  --neon-blue: #00d4ff;
   font-family: 'DotGothic16', monospace;
   color: #f4f4f4;
   display: flex;
@@ -1363,45 +1377,114 @@ const relOpen = ref(false);
 /* ── 人际关系折叠面板 ── */
 .panel-title.is-toggle {
   width: 100%;
-  background: transparent;
-  border: none;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.28);
+  border-radius: 4px;
   cursor: pointer;
-  padding: 0;
+  padding: 6px 8px;
   margin-bottom: 0;
   text-align: left;
   font-family: 'DotGothic16', monospace;
-  font-size: 9px;
-  color: #6a6a8a;
+  font-size: 10px;
+  color: #b8d8ff;
   letter-spacing: 2px;
   text-transform: uppercase;
+  transition: all 0.2s ease;
+}
+
+.panel-title.is-toggle:hover {
+  background: rgba(0, 212, 255, 0.16);
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 10px rgba(0, 212, 255, 0.45);
+  color: #ffffff;
+}
+
+.panel-title.is-toggle:active {
+  transform: translateY(1px);
 }
 
 .panel-title.is-toggle .toggle-text {
-  color: #6a6a8a;
+  color: #b8d8ff;
+  font-weight: bold;
+  letter-spacing: 2px;
+  transition: color 0.2s ease;
+}
+
+.panel-title.is-toggle:hover .toggle-text {
+  color: #ffffff;
 }
 
 .toggle-summary {
   margin-left: auto;
   font-size: 9px;
-  color: #6a6a8a;
+  color: #7f8fae;
   letter-spacing: 0.5px;
   text-transform: none;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 55%;
+  max-width: 60%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.panel-title.is-toggle:hover .toggle-summary {
+  color: #cfe6ff;
+}
+
+/* 摘要片段：父母 / 伴侣 / 子女友 各自独立着色，避免误读 */
+.toggle-summary .sum-emoji {
+  font-size: 10px;
+  margin-right: 2px;
+}
+
+.toggle-summary .sum-parent {
+  color: #7cd69a;
+  display: inline-flex;
+  align-items: center;
+}
+
+.toggle-summary .sum-partner {
+  color: #ff9ec7;
+  display: inline-flex;
+  align-items: center;
+}
+
+.toggle-summary .sum-kinship {
+  color: #8fb8ff;
+  display: inline-flex;
+  align-items: center;
 }
 
 .toggle-arrow {
   color: var(--neon-blue);
-  font-size: 9px;
+  font-size: 12px;
   flex-shrink: 0;
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   transform: rotate(-90deg);
+  text-shadow: 0 0 5px rgba(0, 212, 255, 0.6);
+}
+
+/* 收起状态：箭头脉冲，暗示可点击展开 */
+.toggle-arrow:not(.open) {
+  animation: relArrowPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes relArrowPulse {
+  0%, 100% {
+    opacity: 0.55;
+    transform: rotate(-90deg) translateX(0);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(-90deg) translateX(2px);
+  }
 }
 
 .toggle-arrow.open {
   transform: rotate(0deg);
+  animation: none;
 }
 
 .rel-body {

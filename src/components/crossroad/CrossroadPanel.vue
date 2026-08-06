@@ -11,6 +11,13 @@ const s = store.state
 
 const event = computed<CrossroadEvent | null>(() => store.currentCrossroad)
 
+// 解析叙事文本：将 {age} 占位符替换为当前实际年龄，避免硬编码年龄与触发年龄错位
+const resolvedNarrative = computed<string>(() => {
+  const e = event.value
+  if (!e) return ''
+  return e.narrative.replace(/\{age\}/g, String(store.state.currentAge))
+})
+
 const optionLetters: Record<number, string> = {
   0: 'A',
   1: 'B',
@@ -94,7 +101,7 @@ function handleSelect(optionId: string, option: any): void {
       <div class="crossroad-narrative">
         <div class="narrative-bar" aria-hidden="true" />
         <div class="narrative-text">
-          <p v-for="(line, idx) in event.narrative.split('\n')" :key="idx">{{ line }}</p>
+          <p v-for="(line, idx) in resolvedNarrative.split('\n')" :key="idx">{{ line }}</p>
         </div>
       </div>
 
@@ -132,7 +139,7 @@ function handleSelect(optionId: string, option: any): void {
       </div>
 
       <!-- 选项区 -->
-      <div class="crossroad-options">
+      <div class="crossroad-options" :class="'opts-' + event.options.length">
         <button
           v-for="(option, idx) in event.options"
           :key="option.id"
@@ -167,13 +174,15 @@ function handleSelect(optionId: string, option: any): void {
   position: fixed;
   inset: 0;
   z-index: 200;
+  /* 用子元素 margin:auto 实现垂直居中，避免 align-items:center 在内容超高时
+     导致顶部/底部溢出不可滚动（经典 flex 居中 bug） */
   display: flex;
-  align-items: center;
   justify-content: center;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  padding: 20px;
+  padding: 16px;
+  overflow-y: auto;
   animation: crossroadFadeIn 0.35s ease-out;
 }
 
@@ -191,14 +200,13 @@ function handleSelect(optionId: string, option: any): void {
    ============================================================ */
 .crossroad-panel {
   position: relative;
-  width: min(700px, 100%);
-  max-height: 90vh;
-  overflow-y: auto;
-  overflow-x: hidden;
+  width: min(680px, 100%);
+  /* margin:auto 让面板在遮罩层内垂直居中，超高时也能完整滚动到顶部/底部 */
+  margin: auto;
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 32px 28px;
+  gap: 14px;
+  padding: 24px 24px;
   background: #0d0e1a;
 
   /* 外层紫色霓虹 */
@@ -431,6 +439,19 @@ function handleSelect(optionId: string, option: any): void {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* 4个选项时改用2×2网格，压缩纵向高度，避免底部选项被截断 */
+.crossroad-options.opts-4 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 560px) {
+  .crossroad-options.opts-4 {
+    grid-template-columns: 1fr;
+  }
 }
 
 .crossroad-option-btn {

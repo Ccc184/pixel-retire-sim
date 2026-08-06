@@ -89,7 +89,7 @@ defineExpose({ open, close });
   box-shadow:
     0 0 20px rgba(255, 45, 120, 0.4),
     inset 0 0 20px rgba(255, 45, 120, 0.05);
-  font-family: 'Courier New', 'DotGothic16', monospace;
+  font-family: 'DotGothic16', monospace;
 }
 
 .cyber-confirm-header {

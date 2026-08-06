@@ -32,6 +32,7 @@
  */
 
 import type { GameState } from '../types/global.d.js';
+import { applyChainHoldingScale } from '../utils/math-engine.js';
 
 // ========== 情感标签类型 ==========
 export type BlindBoxEmotion =
@@ -1767,7 +1768,7 @@ export const BLIND_BOX_OUTCOMES: BlindBoxOutcome[] = [
     getText: (s) => `第${s.currentAge}岁，你两年前重仓的那个项目发了空投，代币翻了五倍。你看着账户里的数字，手有点抖。你想起第一次买入时那个深夜，窗外的路灯和你犹豫的手指。你没卖——你告诉自己这只是开始。但你下楼买了一碗最贵的泡面，加了两根肠。`,
     applyEffect: (s) => {
       const holdings = (s as any).chainHoldings || 0;
-      (s as any).chainHoldings = Math.round(holdings * 3);
+      (s as any).chainHoldings = applyChainHoldingScale(holdings, 3);
       s.happiness = Math.min(100, s.happiness + 15);
       s.pathFaith = Math.min(100, s.pathFaith + 10);
     },
@@ -1783,7 +1784,7 @@ export const BLIND_BOX_OUTCOMES: BlindBoxOutcome[] = [
     getText: (s) => `第${s.currentAge}岁，市场回来了。你两年前在暴跌中没有卖出的那些币，现在不仅回本了，还涨了30%。你翻出当时在群里发的那句"HODL"，有人截图回了你："还在？"你回了一个字："在。"这个字比任何技术分析都有力量。`,
     applyEffect: (s) => {
       const holdings = (s as any).chainHoldings || 0;
-      (s as any).chainHoldings = Math.round(holdings * 1.5);
+      (s as any).chainHoldings = applyChainHoldingScale(holdings, 1.5);
       s.pathFaith = Math.min(100, s.pathFaith + 12);
       s.happiness = Math.min(100, s.happiness + 10);
       s.stress = Math.max(0, s.stress - 10);

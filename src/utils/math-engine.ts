@@ -51,6 +51,86 @@ export function randomRange(min: number, max: number): number {
   return Math.random() * (max - min) + min;
 }
 
+/**
+ * 链上持仓规模递减因子：持仓越大，正向缩放的边际效果越小
+ * 模拟真实加密市场规律：小资金灵活，大资金体量本身就是收益率的敌人
+ *
+ *   - 100万以下：100%效果（小资金船小好调头）
+ *   - 100万~500万：75%（资金量开始影响进出速度）
+ *   - 500万~2000万：55%（千万级资金，收益率自然收窄）
+ *   - 2000万~1亿：30%（大资金，年化30%已经是神话）
+ *   - 1亿~3亿：12%（亿级资金，跑赢指数就是胜利）
+ *   - 3亿以上：5%（巨型资金，市场容量本身就是天花板）
+ *
+ * 仅对 multiplier > 1 的正向缩放生效（收益递减）
+ * 负向缩放（亏损）不受规模递减影响
+ */
+export function getChainScaleDampeningFactor(holdings: number, multiplier: number): number {
+  if (multiplier <= 1.0) return 1.0;
+  if (holdings <= 1000000) return 1.0;
+  if (holdings <= 5000000) return 0.75;
+  if (holdings <= 20000000) return 0.55;
+  if (holdings <= 100000000) return 0.30;
+  if (holdings <= 300000000) return 0.12;
+  return 0.05;
+}
+
+/**
+ * 链上持仓绝对上限：防止后期复利数值无界爆炸（单年+数百万导致数值失真）
+ * 5000万已远超任何路径的退休门槛（约年支出×12≈200-240万），对胜率无影响，
+ * 仅约束极端幸运局把持仓滚到上亿的数值失真问题。
+ */
+export const MAX_CHAIN_HOLDINGS = 50000000;
+
+/**
+ * 生物科技持仓绝对上限：与 MAX_CHAIN_HOLDINGS 配套。
+ * 生物赌徒的持仓通过"年化16%复利 + 突破事件12×/20×放大"，后期若不设上限会滚到上亿，
+ * 单年击穿退休目标，稀释长期经营与规划感。5000万已远超任何路径退休门槛，仅约束极端幸运局。
+ */
+export const MAX_BIO_PORTFOLIO = 50000000;
+
+/**
+ * 投资复利收益递减因子：存款规模越大，非固收渠道（基金/股票/黄金/投机）的
+ * 收益率边际越小。模拟真实市场"大资金收益率自然收窄"的规律，
+ * 并从根源上抑制 AI共生者等路径后期单年存款跳变数百万的数值爆炸。
+ *
+ *   - 存款 500万以下：100%（普通家庭，资金小收益可观）
+ *   - 500万~1000万：80%（资金量开始影响进出节奏）
+ *   - 1000万~3000万：55%（千万级组合，收益率自然收窄）
+ *   - 3000万~1亿：30%（大资金，追求稳健为主）
+ *   - 1亿以上：15%（巨型组合，跑赢大盘即是胜利）
+ */
+export function getInvestmentReturnDampeningFactor(savings: number): number {
+  if (savings <= 5000000) return 1.0;
+  if (savings <= 10000000) return 0.8;
+  if (savings <= 30000000) return 0.55;
+  if (savings <= 100000000) return 0.30;
+  return 0.15;
+}
+
+/**
+ * 应用带规模递减的链上持仓缩放
+ * @returns 实际应用后的新持仓值
+ */
+export function applyChainHoldingScale(holdings: number, multiplier: number): number {
+  const damp = getChainScaleDampeningFactor(holdings, multiplier);
+  const actualMultiplier = 1.0 + (multiplier - 1.0) * damp;
+  return Math.min(MAX_CHAIN_HOLDINGS, Math.max(0, Math.round(holdings * actualMultiplier)));
+}
+
+/**
+ * 突破事件单次收益上限（含现金化/套现收益）
+ * 链上/生物路径的突破事件用"年支出×N"或"当前持仓×M"硬放大，后期持仓巨大时
+ * 会在单年内产生 2-4 倍于退休目标的爆炸式跳变（如2000万/1300万）。
+ * 上限 = 最多一次填满退休目标（targetWealth）：保留"一次突破=退休自由"的爽感，
+ * 但杜绝单事件远超目标的多倍复用。
+ */
+export function capBreakthroughGain(amount: number, state: GameState): number {
+  const annualExpense = state.annualBaseCost + (state.currentMortgageCost || 0);
+  const ceiling = Math.max(state.targetWealth, annualExpense * 3);
+  return Math.max(0, Math.min(Math.round(amount), Math.round(ceiling)));
+}
+
 // ========== 年度调薪逻辑（重新设计：更像真实人生）==========
 //
 // 设计原则：
@@ -297,6 +377,60 @@ export function applySalaryRaise(state: GameState): SalaryChangeEntry[] {
     }
   }
 
+  // ========== 年度职场意外（v12新增：让财务曲线有真实起伏）==========
+  // 非体制内职业每年有概率遇到职场意外事件——好的坏的都有
+  // 模拟真实人生中：跳槽、被挖角、公司变动、行业黑天鹅等
+  if (!state.isAllInPath && state.currentProfession !== '体制内' && !state.isUnemployed) {
+    const surpriseRoll = Math.random();
+    let surpriseLabel = '';
+    let surpriseNote = '';
+    let surpriseRate = 0; // 薪资变化比例（正=涨，负=降）
+
+    if (surpriseRoll < 0.08) {
+      // 8%：被挖角/跳槽大涨薪
+      surpriseRate = 0.15 + Math.random() * 0.15; // +15%~+30%
+      surpriseLabel = '跳槽涨薪';
+      surpriseNote = '猎头挖你去竞品公司，开出了一个你无法拒绝的价码';
+    } else if (surpriseRoll < 0.16) {
+      // 8%：升职/内部晋升
+      surpriseRate = 0.08 + Math.random() * 0.08; // +8%~+16%
+      surpriseLabel = '升职加薪';
+      surpriseNote = '你被提拔到了更高的岗位，薪资水涨船高';
+    } else if (surpriseRoll < 0.22) {
+      // 6%：公司发了大额年终奖/项目奖金
+      surpriseRate = 0.05 + Math.random() * 0.08; // +5%~+13%
+      surpriseLabel = '意外奖金';
+      surpriseNote = '今年公司效益特别好，发了一大笔奖金，相当于涨了月薪';
+    } else if (surpriseRoll < 0.30) {
+      // 8%：公司效益不好，降薪
+      surpriseRate = -0.05 - Math.random() * 0.10; // -5%~-15%
+      surpriseLabel = '效益下滑';
+      surpriseNote = '公司今年效益不好，全员降薪，你也没能幸免';
+    } else if (surpriseRoll < 0.35) {
+      // 5%：被边缘化/调岗
+      surpriseRate = -0.10 - Math.random() * 0.10; // -10%~-20%
+      surpriseLabel = '明升暗降';
+      surpriseNote = '公司调整架构，你被调到了一个不重要的岗位，薪资降了一截';
+    } else if (surpriseRoll < 0.38 && state.currentAge >= 35) {
+      // 3%（35岁以上才触发）：职场歧视/大龄优化
+      surpriseRate = -0.15 - Math.random() * 0.15; // -15%~-30%
+      surpriseLabel = '年龄危机';
+      surpriseNote = '公司在优化"性价比低"的老员工，你要么接受降薪，要么走人';
+    }
+    // 其余62-65%：没有意外，正常上班
+
+    if (surpriseRate !== 0) {
+      const beforeSurprise = newSalary;
+      newSalary = Math.round(newSalary * (1 + surpriseRate));
+      // 注意：意外涨薪不受封顶限制（跳槽/升职可以突破天花板）
+      // 但意外降薪也不受底部保护
+      const surpriseDelta = newSalary - beforeSurprise;
+      if (Math.abs(surpriseDelta) >= 1) {
+        breakdown.push({ source: surpriseLabel, amount: surpriseDelta, note: surpriseNote });
+      }
+    }
+  }
+
   state.currentMonthlySalary = newSalary;
   return breakdown;
 }
@@ -476,7 +610,7 @@ export function calculateYearlySettlement(state: GameState): YearResult {
       result.livingCost += adjustment;
       // 把消费升级的25%固化到baseCost中（大部分升级是暂时的，小部分持久化）
       const baseAdjustment = Math.round(adjustment / cityConfig.costMultiplier);
-      state.annualBaseCost += baseAdjustment * 0.25;
+      state.annualBaseCost += Math.round(baseAdjustment * 0.25);
     } else if (targetLivingCost < currentLivingBeforeAdjust * 0.85) {
       // 收入下降：较快速下调生活水平（勒紧裤腰带快，消费升级慢）
       const adjustment = Math.round((currentLivingBeforeAdjust - targetLivingCost) * 0.30);
@@ -485,7 +619,7 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   }
   
   // 通胀复利：3%（v5从2.5%提升：真实通胀+消费升级，长期理财必须跑赢通胀）
-  state.annualBaseCost = state.annualBaseCost * 1.03;
+  state.annualBaseCost = Math.round(state.annualBaseCost * 1.03);
 
   // ========== 保护逻辑：All In/有公司/自雇职业的玩家不能被设为失业（自己当老板/没有固定雇主）==========
   // 任何事件如果错误地将这些玩家设为失业，在此纠正
@@ -616,6 +750,8 @@ export function calculateYearlySettlement(state: GameState): YearResult {
 
   // ========== 步骤3：存款分布理财收益计算 ==========
   const savings = state.currentSavings;
+  // 投资复利收益递减：存款规模越大，非固收收益率边际越小（抑制后期数值爆炸）
+  const investDamp = getInvestmentReturnDampeningFactor(savings);
 
   // 1. 余额宝（活期）收益 - 1.5%固定
   result.bankGain = Math.round(savings * (state.bankDepositPct / 100) * 0.015);
@@ -624,12 +760,12 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   result.fixedDepositGain = Math.round(savings * (state.fixedDepositPct / 100) * 0.03);
 
   // 3. 指数基金收益 - 年化-10%~+20%
-  const fundReturnRate = -0.1 + Math.random() * 0.3;
+  const fundReturnRate = (-0.1 + Math.random() * 0.3) * investDamp;
   result.fundGain = Math.round(savings * (state.indexFundPct / 100) * fundReturnRate);
 
   // 4. 股票收益 - 年化-30%~+40%
   // 生物赌徒的生科投资通过 bioPortfolioGain 独立计算，不走 stockGain（避免双重计算）
-  const stockReturnRate = -0.3 + Math.random() * 0.7;
+  const stockReturnRate = (-0.3 + Math.random() * 0.7) * investDamp;
   if (state.retirementPath === 'bio_gambler') {
     result.stockGain = 0; // 生科投资收益走 bioPortfolioGain
   } else {
@@ -639,17 +775,17 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   // 5. 黄金收益 - 通胀年+8%，萧条年+15%，平稳年0~2%
   let goldReturnRate: number;
   if (state.economicCycle === 0) { // 繁荣
-    goldReturnRate = -0.02 + Math.random() * 0.04; // -2%~+2%
+    goldReturnRate = (-0.02 + Math.random() * 0.04) * investDamp; // -2%~+2%
   } else if (state.economicCycle === 2) { // 萧条
-    goldReturnRate = 0.08 + Math.random() * 0.14; // +8%~+22%
+    goldReturnRate = (0.08 + Math.random() * 0.14) * investDamp; // +8%~+22%
   } else { // 平稳
-    goldReturnRate = Math.random() * 0.04; // 0%~+4%
+    goldReturnRate = Math.random() * 0.04 * investDamp; // 0%~+4%
   }
   result.goldGain = Math.round(savings * (state.goldPct / 100) * goldReturnRate);
 
   // 6. 比特币/投机收益 - 年化-80%~+200%（极端波动）
   // 链上原住民的加密资产通过 chainHoldingsGain 独立计算，不走 specGain（避免双重计算）
-  const btcReturnRate = -0.8 + Math.random() * 2.8;
+  const btcReturnRate = (-0.8 + Math.random() * 2.8) * investDamp;
   if (state.retirementPath === 'chain_native') {
     result.specGain = 0; // 加密资产收益走 chainHoldingsGain
   } else {
@@ -666,38 +802,51 @@ export function calculateYearlySettlement(state: GameState): YearResult {
     const roll = Math.random();
     let chainReturnRate: number;
 
-    if (roll < 0.05) {
-      // 5% 概率：归零或接近归零（交易所跑路 / 杠杆爆仓 / 项目 rug pull / 监管打击）
-      chainReturnRate = -1.0;
-    } else if (roll < 0.22) {
-      // 17% 概率：熊市深跌 -50% ~ -20%
+    // 信念软性护栏：pathFaith 越高，越懂风险控制，归零/深熊概率越低。
+    // 此前固定 5% 归零概率，25 年内约 72% 的链上玩家至少遭遇一次总归零，是胜率仅 3.5% 的主因。
+    // 信念 40 时归零概率降至 3%，信念 80 时仅 1%。
+    const crashProb = Math.max(0.01, 0.05 - state.pathFaith * 0.0005);
+    if (roll < crashProb) {
+      // 归零或接近归零（交易所跑路 / 杠杆爆仓 / 项目 rug pull / 监管打击）
+      // 不再是 -100% 彻底清零，而是 -90%：留一寸生机，玩家仍可煎熬回本或转向，避免"一局报废"
+      chainReturnRate = -0.9;
+    } else if (roll < 0.25) {
+      // 22% 概率：深熊 -50% ~ -20%
       chainReturnRate = -0.5 + Math.random() * 0.3;
-    } else if (roll < 0.62) {
-      // 40% 概率：常态波动 -25% ~ +50%（横盘或小涨小跌）
-      chainReturnRate = -0.25 + Math.random() * 0.75;
+    } else if (roll < 0.65) {
+      // 40% 概率：横盘/小跌 -20% ~ +15%（真实加密市场多数年份并不普涨）
+      chainReturnRate = -0.2 + Math.random() * 0.35;
     } else if (roll < 0.85) {
-      // 23% 概率：牛市上涨 +50% ~ +150%
-      chainReturnRate = 0.5 + Math.random() * 1.0;
-    } else if (roll < 0.96) {
-      // 11% 概率：大牛市 +150% ~ +300%（周期顶点级别）
-      chainReturnRate = 1.5 + Math.random() * 1.5;
+      // 20% 概率：小牛 +15% ~ +60%
+      chainReturnRate = 0.15 + Math.random() * 0.45;
+    } else if (roll < 0.97) {
+      // 12% 概率：大牛 +60% ~ +120%
+      chainReturnRate = 0.6 + Math.random() * 0.6;
     } else {
-      // 4% 概率：极端行情 +300% ~ +600%（极小概率的年度神话）
-      chainReturnRate = 3.0 + Math.random() * 3.0;
+      // 3% 概率：极端行情 +120% ~ +180%（罕见的年度神话，取代此前最高+400%）
+      chainReturnRate = 1.2 + Math.random() * 0.6;
     }
 
     // 经济周期修正：繁荣年整体偏多，萧条年偏空
     if (state.economicCycle === 0) chainReturnRate += 0.15;
     else if (state.economicCycle === 2) {
       chainReturnRate -= 0.2;
-      if (Math.random() < 0.03) chainReturnRate = -1.0; // 萧条期额外3%归零风险
+      if (Math.random() < 0.03) chainReturnRate = -0.9; // 萧条期额外3%接近归零风险
     }
 
-    // 下限 -100%
-    chainReturnRate = Math.max(-1.0, chainReturnRate);
+    // 下限 -90%
+    chainReturnRate = Math.max(-0.9, chainReturnRate);
+
+    // 规模递减效应：持仓越大，正向收益率的边际效果越小
+    // 模拟真实市场：小资金可以灵活翻几倍，大资金体量本身就是收益率的敌人
+    if (chainReturnRate > 0) {
+      const dampFactor = getChainScaleDampeningFactor(chainHoldings, 1 + chainReturnRate);
+      chainReturnRate *= dampFactor;
+    }
 
     const beforeHoldings = chainHoldings;
-    const afterHoldings = Math.max(0, Math.round(beforeHoldings * (1 + chainReturnRate)));
+    // 复利上限：持仓受 MAX_CHAIN_HOLDINGS 约束，杜绝后期无界爆炸
+    const afterHoldings = Math.min(MAX_CHAIN_HOLDINGS, Math.max(0, Math.round(beforeHoldings * (1 + chainReturnRate))));
     result.chainHoldingsGain = afterHoldings - beforeHoldings;
     (state as any).chainHoldings = afterHoldings;
   }
@@ -717,7 +866,7 @@ export function calculateYearlySettlement(state: GameState): YearResult {
       bioReturnRate = bioReturnRate < 0 ? bioReturnRate * 0.5 : bioReturnRate * 1.1;
     }
     const beforeBio = bioPortfolio;
-    const afterBio = Math.max(0, Math.round(beforeBio * (1 + bioReturnRate)));
+    const afterBio = Math.max(0, Math.min(MAX_BIO_PORTFOLIO, Math.round(beforeBio * (1 + bioReturnRate))));
     result.bioPortfolioGain = afterBio - beforeBio;
     (state as any).bioPortfolio = afterBio;
   }
@@ -813,12 +962,18 @@ export function calculateYearlySettlement(state: GameState): YearResult {
       if (!state.isAllInPath && !state.isUnemployed && state.currentMonthlySalary > 0) {
         minNewInvestment = Math.round(state.currentMonthlySalary * 12 * 0.08);
       }
-      (state as any).bioPortfolio = Math.max(grown, bioPort + minNewInvestment);
+      (state as any).bioPortfolio = Math.min(MAX_BIO_PORTFOLIO, Math.max(grown, bioPort + minNewInvestment));
     }
     // 链上原住民：持仓随加密市场长期趋势增长（每年+4%长期趋势，短期波动已在上面计算）
     if (state.retirementPath === 'chain_native') {
       const holdings = (state as any).chainHoldings || 0;
-      let grown = Math.round(holdings * 1.04);
+      // 长期趋势增长也受规模递减约束：大体量的4%年化不现实
+      let trendRate = 0.04;
+      if (holdings > 500000000) trendRate = 0.008;      // 5亿以上：0.8%
+      else if (holdings > 100000000) trendRate = 0.012; // 1-5亿：1.2%
+      else if (holdings > 20000000) trendRate = 0.02;   // 2000万-1亿：2%
+      else if (holdings > 5000000) trendRate = 0.03;    // 500-2000万：3%
+      let grown = Math.round(holdings * (1 + trendRate));
       // All In前：每年从工资中拿5%定投加仓（工资定投，囤币）
       if (!state.isAllInPath && !state.isUnemployed && state.currentMonthlySalary > 0) {
         const dca = Math.round(state.currentMonthlySalary * 12 * 0.05);
@@ -1009,7 +1164,7 @@ export function calculateYearlySettlement(state: GameState): YearResult {
     if (biz && biz.monthlyRevenue > 0) {
       // 月薪取月度营收，但有保底（不低于careerStartSalary的60%）
       const floor = Math.round(state.careerStartSalary * 0.6);
-      state.currentMonthlySalary = Math.max(floor, biz.monthlyRevenue);
+      state.currentMonthlySalary = Math.max(floor, Math.round(biz.monthlyRevenue));
     }
   }
   // 数字游牧民All In后：地理套利的副业收入变化同步到月薪
@@ -1020,7 +1175,23 @@ export function calculateYearlySettlement(state: GameState): YearResult {
       (state.pathSkills?.languageSkill || 0) * 35 +
       (state.pathSkills?.crossCulturalSkill || 0) * 25 + 1000
     );
-    state.currentMonthlySalary = Math.max(state.careerStartSalary * 0.7, Math.round(nomadSideIncome * 1.2));
+    state.currentMonthlySalary = Math.max(Math.round(state.careerStartSalary * 0.7), Math.round(nomadSideIncome * 1.2));
+  }
+
+  // 防御式兜底：确保独立资产不会因任何边界情况变为负数
+  if ((state as any).bioPortfolio !== undefined && (state as any).bioPortfolio < 0) {
+    (state as any).bioPortfolio = 0;
+  }
+  if ((state as any).chainHoldings !== undefined && (state as any).chainHoldings < 0) {
+    (state as any).chainHoldings = 0;
+  }
+  // 复利上限：链上持仓不得超过 MAX_CHAIN_HOLDINGS，杜绝事件/盲盒叠加导致的无界爆炸
+  if ((state as any).chainHoldings !== undefined && (state as any).chainHoldings > MAX_CHAIN_HOLDINGS) {
+    (state as any).chainHoldings = MAX_CHAIN_HOLDINGS;
+  }
+  // 复利上限：生物持仓不得超过 MAX_BIO_PORTFOLIO，杜绝事件/盲盒叠加导致的无界爆炸
+  if ((state as any).bioPortfolio !== undefined && (state as any).bioPortfolio > MAX_BIO_PORTFOLIO) {
+    (state as any).bioPortfolio = MAX_BIO_PORTFOLIO;
   }
 
   return result;
@@ -1031,15 +1202,20 @@ export function switchCity(state: GameState, newCity: CityType): void {
   const oldConfig = CITY_CONFIGS[state.currentCity];
   const newConfig = CITY_CONFIGS[newCity];
   
-  // 按城市薪资水平比例折算月薪：搬家意味着你进入了新城市的就业市场
-  const salaryRatio = newConfig.salaryMultiplier / oldConfig.salaryMultiplier;
-  if (state.currentMonthlySalary > 0) {
-    state.currentMonthlySalary = Math.round(state.currentMonthlySalary * salaryRatio);
-  }
-  // careerStartSalary（薪资上限的计算基准）也按同比例调整，
-  // 保证搬家后薪资天花板随市场水平移动，不会出现"搬去大城市立刻碰顶"或"搬去小城市永远涨不上去"
-  if (state.careerStartSalary > 0) {
-    state.careerStartSalary = Math.round(state.careerStartSalary * salaryRatio);
+  // 数字游牧民 All In 后为远程工作者：收入锚定在发达市场，不随当地薪资水平波动，
+  // 搬家只改变生活成本，不降薪（修复黑箱测试 P2"薪资跳变不连贯"：避免远程收入被城市系数打折）
+  const isRemoteWorker = state.retirementPath === 'digital_nomad' && state.isAllInPath;
+  if (!isRemoteWorker) {
+    // 按城市薪资水平比例折算月薪：搬家意味着你进入了新城市的就业市场
+    const salaryRatio = newConfig.salaryMultiplier / oldConfig.salaryMultiplier;
+    if (state.currentMonthlySalary > 0) {
+      state.currentMonthlySalary = Math.round(state.currentMonthlySalary * salaryRatio);
+    }
+    // careerStartSalary（薪资上限的计算基准）也按同比例调整，
+    // 保证搬家后薪资天花板随市场水平移动，不会出现"搬去大城市立刻碰顶"或"搬去小城市永远涨不上去"
+    if (state.careerStartSalary > 0) {
+      state.careerStartSalary = Math.round(state.careerStartSalary * salaryRatio);
+    }
   }
   
   state.currentCity = newCity;
@@ -1068,12 +1244,7 @@ export function checkCanRetire(state: GameState): boolean {
   if (state.endingTriggered) return false;
   const totalWealth = calculateTotalWealth(state);
   const wealthMet = totalWealth >= state.targetWealth;
-  // 路径成功判定
-  if (state.retirementPath) {
-    const path = getPath(state.retirementPath);
-    if (path && path.checkSuccess(state)) return true;
-  }
-  // 普通财富自由判定
+  // 退休与否由玩家自主决定，退休质量的唯一标准是预设金额(targetWealth)是否达标
   if (wealthMet) return true;
   // 实体创业特殊判定
   if (state.currentProfession === '实体创业' && state.currentSavings >= state.careerStartSalary * 12 * 20) return true;
@@ -1087,12 +1258,10 @@ export function getVoluntaryRetirementEnding(state: GameState): string {
   const totalWealth = calculateTotalWealth(state);
   const wealthMet = totalWealth >= state.targetWealth;
 
-  // 路径成功结局
-  if (state.retirementPath) {
-    const path = getPath(state.retirementPath);
-    if (path && path.checkSuccess(state)) {
-      return `path_success_${state.retirementPath}`;
-    }
+  // 路径结局：达到预设金额(targetWealth) + 走了对应路径 → 该路径成功结局
+  // 退休质量的唯一标准是预设金额，不再设置路径成功门槛
+  if (wealthMet && state.retirementPath) {
+    return `path_success_${state.retirementPath}`;
   }
 
   // 财富达标的各种结局
@@ -1121,63 +1290,37 @@ export function getVoluntaryRetirementEnding(state: GameState): string {
   return 'E4';
 }
 
+/**
+ * 计算可变现净资产（现金 + 房产 + 链上持仓 + 生物组合 + 店铺）
+ * 用于破产判定：链上持仓等资产可覆盖负债，不应只看现金
+ */
+export function calculateLiquidWealth(state: GameState): number {
+  return (state.currentSavings || 0)
+    + (state.propertyValue || 0)
+    + ((state as any).chainHoldings || 0)
+    + ((state as any).bioPortfolio || 0)
+    + (state.shopValue || 0);
+}
+
 export function checkEnding(state: GameState): string | null {
   if (state.endingTriggered) return state.currentEndingId;
 
   // 60岁为硬上限：年满60岁强制结局
   const reachedHardCap = state.currentAge >= state.targetAge; // targetAge = 60
-  const bankrupt = state.currentSavings < -300000; // 负债30万以上破产
+  // 破产判定：看可变现净资产（含链上持仓等资产），负债30万以上且资产无法覆盖才破产
+  const bankrupt = calculateLiquidWealth(state) < -300000;
 
   // 严重负债随时触发破产结局
   if (bankrupt) return 'E8';
 
-  // 获取路径退休年龄（如有路径）
-  let pathRetireAge = 60;
-  if (state.retirementPath) {
-    const path = getPath(state.retirementPath);
-    if (path) pathRetireAge = path.targetRetireAge;
-  }
-
-  // 是否到达路径目标退休年龄
-  const reachedPathRetireAge = state.currentAge >= pathRetireAge;
-
   const totalWealth = calculateTotalWealth(state);
   const wealthMet = totalWealth >= state.targetWealth;
 
-  // 到达路径退休年龄后：优先检查成功条件，达标则直接触发结局
-  if (reachedPathRetireAge) {
-    // 路径专属成功判定
-    if (state.retirementPath) {
-      const path = getPath(state.retirementPath);
-      if (path && path.checkSuccess(state)) {
-        return `path_success_${state.retirementPath}`;
-      }
-    }
-    // 通用财富自由判定（无路径或路径未达标但财富已达标）
-    if (wealthMet) {
-      // E1 传奇自由人
-      if (!state.isMarried && state.happiness >= 70 && state.health >= 60) return 'E1';
-      // E2 温馨港湾
-      if (state.isMarried && state.hasChild && state.happiness >= 50 && state.health >= 40) return 'E2';
-      // E5 极简行者
-      if (state.usedMinimalism && state.annualBaseCost < 30000 * 0.6 && state.happiness >= 40) return 'E5';
-      // E3 平凡微光
-      if (state.happiness >= 30) return 'E3';
-      return 'E3';
-    }
-    // E6 创业者之歌（到达路径退休年龄后即可触发）
-    if (state.currentProfession === '实体创业' &&
-        state.currentSavings >= state.careerStartSalary * 12 * 20) return 'E6';
-  }
-
   // 60岁硬上限：无论是否达标都强制结局
   if (reachedHardCap) {
-    // 到达60岁，优先检查成功条件（可能路径退休年龄>60的极端情况）
-    if (state.retirementPath) {
-      const path = getPath(state.retirementPath);
-      if (path && path.checkSuccess(state)) {
-        return `path_success_${state.retirementPath}`;
-      }
+    // 到达60岁：达到预设金额(targetWealth) + 走了对应路径 → 该路径成功结局
+    if (wealthMet && state.retirementPath) {
+      return `path_success_${state.retirementPath}`;
     }
     if (wealthMet) {
       if (!state.isMarried && state.happiness >= 70 && state.health >= 60) return 'E1';
@@ -1225,8 +1368,7 @@ export function isDelayedRetirementPhase(state: GameState): boolean {
   const path = getPath(state.retirementPath);
   if (!path) return false;
   if (state.currentAge < path.targetRetireAge) return false;
-  // 到达路径退休年龄但未满足成功条件
-  if (path.checkSuccess(state)) return false;
+  // 到达路径退休年龄但尚未达到预设金额(targetWealth) → 延期退休阶段
   const totalWealth = calculateTotalWealth(state);
   if (totalWealth >= state.targetWealth) return false;
   return true;

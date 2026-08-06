@@ -10,6 +10,8 @@ const store = useGameStore()
 
 const currentEvent = computed(() => store.currentNarrativeEvent)
 const selectedOptionId = computed(() => store.selectedNarrativeOptionId)
+// 岔路口是否激活：激活时下层面板不应显示"平静的一年"占位（P0-4修复）
+const isCrossroadActive = computed(() => store.showCrossroad)
 
 function isOptionAvailable(option: NarrativeOption): boolean {
   if (!option.prerequisites) return true
@@ -209,13 +211,22 @@ const skillLabels: Record<string, string> = {
       </div>
     </div>
 
-    <!-- 无事件时显示休养生息 -->
-    <div v-else class="no-event-container">
+    <!-- 无事件时显示休养生息（岔路口激活时不显示） -->
+    <div v-else-if="!isCrossroadActive" class="no-event-container">
       <div class="no-event-icon">🌙</div>
       <h3 class="no-event-title">平静的一年</h3>
       <p class="no-event-desc">
         没有特别的事情发生。你可以选择休养生息，让身心自然恢复。<br>
         有时候，不折腾就是最好的选择。
+      </p>
+    </div>
+
+    <!-- 岔路口激活时的占位提示 -->
+    <div v-else class="no-event-container crossroad-pending">
+      <div class="no-event-icon">⚡</div>
+      <h3 class="no-event-title crossroad-pending-title">命运岔路口</h3>
+      <p class="no-event-desc">
+        一个重要的抉择正摆在你的面前。你的回答，将改变之后的走向。
       </p>
     </div>
 
@@ -225,7 +236,8 @@ const skillLabels: Record<string, string> = {
       <div class="action-hint">
         <template v-if="currentEvent && !selectedOptionId">▸ 请先选择一个选项</template>
         <template v-else-if="currentEvent && selectedOptionId">▸ 已选择，可以推进</template>
-        <template v-else>▸ 平静的一年</template>
+        <template v-else-if="!isCrossroadActive">▸ 平静的一年</template>
+        <template v-else>▸ 命运岔路口</template>
       </div>
 
       <!-- 右侧：退休按钮（次要，左） -->
@@ -636,6 +648,12 @@ const skillLabels: Record<string, string> = {
   color: var(--neon-blue);
   margin: 0;
   text-shadow: 0 0 6px var(--neon-blue);
+}
+
+/* 岔路口激活占位标题（橙色霓虹，与"平静的一年"区分） */
+.crossroad-pending-title {
+  color: var(--neon-orange);
+  text-shadow: 0 0 6px var(--neon-orange);
 }
 
 .no-event-desc {

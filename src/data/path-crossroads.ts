@@ -1,5 +1,39 @@
 import type { CrossroadEvent, GameState } from '../types/global.d.js';
 
+/**
+ * 子女状态同步：确保有孩子时伴侣/婚姻状态一致。
+ * 当玩家选择生育/领养但当前无伴侣时，补建一位共同抚养的伴侣并置为已婚，
+ * 避免"有孩子但未婚且无伴侣"的状态矛盾（黑箱测试报告 P2）。
+ * 若已有伴侣但未婚，则置为已婚（共同生育即事实婚姻）。
+ */
+function ensureChildParentPartner(s: GameState): void {
+  if (s.partner) {
+    if (!s.isMarried && !s.partner.hasDivorced && s.partner.datingStage !== 'divorced' && s.partner.datingStage !== 'single') {
+      s.isMarried = true;
+      s.partner.datingStage = 'married';
+      s.partner.marriedYear = s.currentAge;
+    }
+    return;
+  }
+  // 无伴侣：补建共同抚养的伴侣
+  const gender = Math.random() > 0.5 ? '男' : '女';
+  s.partner = {
+    name: gender === '男' ? '阿哲' : '小满',
+    age: s.currentAge - 2,
+    affection: 70,
+    trust: 65,
+    marriedYear: s.currentAge,
+    hasDivorced: false,
+    personality: '温柔型',
+    datingStage: 'married',
+    meetYear: s.currentAge - 1,
+    trait: '踏实顾家，把孩子看得比什么都重',
+    memories: [{ age: s.currentAge, event: '一起迎接新生命', emoji: '👶' }],
+    crushFrom: 'work',
+  };
+  s.isMarried = true;
+}
+
 // ========== 路径专属十字路口事件 ==========
 // 每个退休路径3个重大人生岔路口，构成该路径的戏剧弧线
 // 优先级8-10确保打断正常卡牌流，cooldown=999保证只触发一次
@@ -24,8 +58,8 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'ai_skill_devaluation',
     title: '跃迁之殇',
-    narrative: '28岁这年，AI模型完成了一次你没预料到的跃迁。\n你赖以吃饭的提示工程和模型调优技能，在新版本面前突然变得像十年前的五笔打字——不是没用，是不再值钱了。\n你看着招聘网站上"AI辅助开发"变成了"AI原生开发"，JD里熟悉的框架和工具链一夜之间全换了名字。\n公司新来的应届生用自然语言就能写出你熬三天才能调通的模块。主管看你的眼神开始变了，那种"你是不是已经被淘汰了"的眼神。\n深夜你坐在出租屋里，屏幕上是最新的模型论文，你第一次感到自己在和机器赛跑，而跑道正在你脚下消失。',
-    ageRange: [25, 29],
+    narrative: '{age}岁这年，AI模型完成了一次你没预料到的跃迁。\n你赖以吃饭的提示工程和模型调优技能，在新版本面前突然变得像十年前的五笔打字——不是没用，是不再值钱了。\n你看着招聘网站上"AI辅助开发"变成了"AI原生开发"，JD里熟悉的框架和工具链一夜之间全换了名字。\n公司新来的应届生用自然语言就能写出你熬三天才能调通的模块。主管看你的眼神开始变了，那种"你是不是已经被淘汰了"的眼神。\n深夜你坐在出租屋里，屏幕上是最新的模型论文，你第一次感到自己在和机器赛跑，而跑道正在你脚下消失。',
+    ageRange: [24, 27],
     priority: 10,
     cooldown: 999,
     tag: 'ai_crisis_1',
@@ -101,12 +135,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'ai_all_in_product',
     title: '造物主的诱惑',
-    narrative: '32岁，你站在一个产品方向的岔路口。\n你团队做的AI工具已经有了第一批用户，但你清楚——如果只是做一个"好用的小工具"，天花板很快就会到。你需要选择一个真正能规模化的方向。\n\n垂直领域的AI产品想法在你脑子里转了三个月。你知道现有方案的所有缺陷，你知道用户在抱怨什么，你甚至知道怎么用一半的成本做到两倍的效果。\n\n但要做出来，你需要做出一个重大决定：是继续做小而美的工具，还是赌一把做平台？是面向企业收大单，还是面向个人做订阅？是坚持独立做，还是接受大厂的战略投资？\n\n你算了一笔账：如果选对了方向并做成了，35岁前可能真的自由；如果选错了，你会浪费最宝贵的两年窗口期。\n身边有人支持你All in产品，也有人劝你"先活着再说"。你站在阳台抽烟到凌晨三点，烟盒空了，天快亮了。',
-    ageRange: [31, 34],
+    narrative: '{age}岁，你站在一个产品方向的岔路口。\n你团队做的AI工具已经有了第一批用户，但你清楚——如果只是做一个"好用的小工具"，天花板很快就会到。你需要选择一个真正能规模化的方向。\n\n垂直领域的AI产品想法在你脑子里转了三个月。你知道现有方案的所有缺陷，你知道用户在抱怨什么，你甚至知道怎么用一半的成本做到两倍的效果。\n\n但要做出来，你需要做出一个重大决定：是继续做小而美的工具，还是赌一把做平台？是面向企业收大单，还是面向个人做订阅？是坚持独立做，还是接受大厂的战略投资？\n\n你算了一笔账：如果选对了方向并做成了，再过几年可能真的自由；如果选错了，你会浪费最宝贵的两年窗口期。\n身边有人支持你All in产品，也有人劝你"先活着再说"。你站在阳台抽烟到凌晨三点，烟盒空了，天快亮了。',
+    ageRange: [34, 40],
     priority: 9,
     cooldown: 999,
     tag: 'ai_all_in',
-    conditions: (s: GameState) => s.retirementPath === 'ai_symbiote' && !s.isAllInPath && !s.crossroadFired['ai_all_in'],
+    conditions: (s: GameState) => s.retirementPath === 'ai_symbiote' && s.isAllInPath && !s.crossroadFired['ai_all_in'],
     options: [
       {
         id: 'ai2_full_send',
@@ -219,12 +253,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'ai_ethics_dilemma',
     title: '对齐的代价',
-    narrative: '35岁，你已经是AI领域的资深从业者了。\n公司接到一个大订单——某政府部门要用你团队开发的模型做社会信用评分系统，报酬是你们全年营收的三倍。\n你知道这个模型一旦部署，会被用来监控普通人的行为、预测"犯罪倾向"、自动生成信用评级。技术上完全可行，甚至可以说这是最能发挥模型能力的场景之一。\n团队里有人兴奋，有人沉默，有人私下找你说"老大，这个我们不能做"。老板的态度很明确：不做？有的是公司愿意做。你不接这个单子，竞争对手接，结果是一样的，只是钱不是你赚。\n合同摆在你桌上，笔在旁边。你想起当初入行时说过的"AI应该让人更自由"。窗外是灰蒙蒙的天。',
-    ageRange: [34, 37],
+    narrative: '{age}岁，你已经是AI领域的资深从业者了。\n公司接到一个大订单——某政府部门要用你团队开发的模型做社会信用评分系统，报酬是你们全年营收的三倍。\n你知道这个模型一旦部署，会被用来监控普通人的行为、预测"犯罪倾向"、自动生成信用评级。技术上完全可行，甚至可以说这是最能发挥模型能力的场景之一。\n团队里有人兴奋，有人沉默，有人私下找你说"老大，这个我们不能做"。老板的态度很明确：不做？有的是公司愿意做。你不接这个单子，竞争对手接，结果是一样的，只是钱不是你赚。\n合同摆在你桌上，笔在旁边。你想起当初入行时说过的"AI应该让人更自由"。窗外是灰蒙蒙的天。',
+    ageRange: [38, 48],
     priority: 9,
     cooldown: 999,
     tag: 'ai_ethics',
-    conditions: (s: GameState) => s.retirementPath === 'ai_symbiote' && !s.isAllInPath && !s.crossroadFired['ai_ethics'],
+    conditions: (s: GameState) => s.retirementPath === 'ai_symbiote' && s.isAllInPath && !s.crossroadFired['ai_ethics'],
     options: [
       {
         id: 'ai3_refuse',
@@ -312,7 +346,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     id: 'chain_exchange_crash',
     title: '交易所的讣告',
     narrative: '27岁的某个深夜，你手机疯狂震动。\n你常用的那家交易所——那个你存了80%资产、每天都要刷十几次的平台——发了一条公告：暂停提币，等待进一步通知。\n电报群和推特瞬间炸了。有人截图显示交易所钱包里的资金在链上被大额转出，有人说创始人已经在机场了。你打开APP，页面还在加载，但数字已经定格了——那些你以为是"你的"币，现在只是一串数据库里的记录。\n你算了一下，里面有你这几年攒的工资、牛市赚的钱、还有上个月刚打进去准备抄底的子弹。手指发凉，你想起那句老话：Not your keys, not your coins。你以前觉得这是极端主义者的口号，现在你觉得这是你这辈子最贵的一堂课。\n天快亮了，群里还在刷消息，有人组织维权，有人已经开始写"我是怎么亏掉xxx万的"复盘帖。',
-    ageRange: [26, 29],
+    ageRange: [24, 27],
     priority: 10,
     cooldown: 999,
     tag: 'chain_crash',
@@ -399,12 +433,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'chain_bear_market',
     title: '凛冬已至',
-    narrative: '30岁，加密市场进入了第三个深熊年头。\n比特币从高点跌了80%，山寨币更是尸横遍野。你的持仓缩水到巅峰时的十分之一，如果按人民币计价，你这三年等于白干还倒贴。\n身边的人陆续走了。那个天天喊"比特币到20万"的大V开始卖课了，一起挖矿的朋友去开网约车了，你常去的线下Meetup从每月五十人变成了三个人凑一桌吃火锅。\n更要命的是现实压力——你三十了，同龄人开始买房结婚，你爸妈不知道你在搞什么但总觉得你"不务正业"。女朋友没明说但你知道她在等一个交代。\n链上一片死寂，但你的硬件钱包里还有币。你可以卖掉它们回归正常生活，也可以继续等待——但等多久？会不会永远等不到下一个牛市？你盯着K线图，那条向下的曲线像一把刀，悬在你所有的信念之上。',
-    ageRange: [29, 32],
+    narrative: '{age}岁，加密市场进入了第三个深熊年头。\n比特币从高点跌了80%，山寨币更是尸横遍野。你的持仓缩水到巅峰时的十分之一，如果按人民币计价，你这三年等于白干还倒贴。\n身边的人陆续走了。那个天天喊"比特币到20万"的大V开始卖课了，一起挖矿的朋友去开网约车了，你常去的线下Meetup从每月五十人变成了三个人凑一桌吃火锅。\n更要命的是现实压力——你不年轻了，同龄人开始买房结婚，你爸妈不知道你在搞什么但总觉得你"不务正业"。女朋友没明说但你知道她在等一个交代。\n链上一片死寂，但你的硬件钱包里还有币。你可以卖掉它们回归正常生活，也可以继续等待——但等多久？会不会永远等不到下一个牛市？你盯着K线图，那条向下的曲线像一把刀，悬在你所有的信念之上。',
+    ageRange: [35, 42],
     priority: 9,
     cooldown: 999,
     tag: 'chain_bear',
-    conditions: (s: GameState) => s.retirementPath === 'chain_native' && !s.isAllInPath && !s.crossroadFired['chain_bear'],
+    conditions: (s: GameState) => s.retirementPath === 'chain_native' && s.isAllInPath && !s.crossroadFired['chain_bear'],
     options: [
       {
         id: 'ch2_hold_diamond',
@@ -485,12 +519,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'chain_regulation_crackdown',
     title: '达摩克利斯之剑',
-    narrative: '33岁，一纸文件下来，你所在的司法管辖区宣布全面清退加密货币业务。\n交易所关停、OTC被禁、矿场断电、社交媒体上的币圈大V集体失声。银行账户如果被监测到和加密平台有资金往来，可能被冻结甚至面临法律风险。\n你不是没想过这一天会来，但你以为还远。现在你的硬件钱包里有七位数的数字资产，但在你生活的这片土地上，它们正在变成"赃物"——持有不算违法，但变现通道正在一条条被堵死。\n有人在群里分享"肉身翻墙"的攻略，有人在研究去中心化交易所和跨链桥的新路径，有人说这只是暂时的严打很快会过去。\n你站在阳台上，手机里是刚收到的交易所清退通知，楼下是你住了五年的小区。走还是留？你的资产在链上，但你的生活在这里。',
-    ageRange: [32, 35],
+    narrative: '{age}岁，一纸文件下来，你所在的司法管辖区宣布全面清退加密货币业务。\n交易所关停、OTC被禁、矿场断电、社交媒体上的币圈大V集体失声。银行账户如果被监测到和加密平台有资金往来，可能被冻结甚至面临法律风险。\n你不是没想过这一天会来，但你以为还远。现在你的硬件钱包里有七位数的数字资产，但在你生活的这片土地上，它们正在变成"赃物"——持有不算违法，但变现通道正在一条条被堵死。\n有人在群里分享"肉身翻墙"的攻略，有人在研究去中心化交易所和跨链桥的新路径，有人说这只是暂时的严打很快会过去。\n你站在阳台上，手机里是刚收到的交易所清退通知，楼下是你住了五年的小区。走还是留？你的资产在链上，但你的生活在这里。',
+    ageRange: [40, 50],
     priority: 9,
     cooldown: 999,
     tag: 'chain_regulation',
-    conditions: (s: GameState) => s.retirementPath === 'chain_native' && !s.isAllInPath && !s.crossroadFired['chain_regulation'],
+    conditions: (s: GameState) => s.retirementPath === 'chain_native' && s.isAllInPath && !s.crossroadFired['chain_regulation'],
     options: [
       {
         id: 'ch3_emigrate',
@@ -574,7 +608,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     id: 'nomad_visa_crackdown',
     title: '城市的门槛',
     narrative: '28岁，你正在大理的咖啡馆里写代码，手机弹出一条推送：你目前所在的旅居城市短租政策收紧了。\n不是一座城市的问题——多个热门旅居城市开始整顿短租市场，居住证审查变严，违规短租被查到将面临高额罚款甚至被清退。你常去的 co-working space 里有人被有关部门带走了，传言是房东举报的。\n你翻了翻身份证，上面的暂住登记办了一个又一个，但没有一座城市给你真正的归属感。你是"数字游民"——这是你博客上的自我介绍，但此刻你意识到，数字游民的另一个意思是：哪里都不是你的家。\n机票搜索页面开着，你可以去另一个还没收紧的城市继续游牧，也可以选择办一张需要花钱的"长期居住证"，或者——回来。\n咖啡馆外的暴雨倾盆而下，你桌上的冰咖啡已经不冰了。',
-    ageRange: [27, 30],
+    ageRange: [25, 28],
     priority: 10,
     cooldown: 999,
     tag: 'nomad_visa',
@@ -660,12 +694,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'nomad_partner_settle',
     title: '停留的理由',
-    narrative: '31岁，你在丽江认识了TA。\n一开始只是旅途中的邂逅——你们在同一个骑行团，在同一个cafe办公，在同一片湖边看日落。但不知道从什么时候开始，你们的行程开始同步，机票买同一个目的地，短租平台订两居室而不是两个单间。\n现在TA说："我想停下来了。"\nTA不是游牧民，TA有积蓄，想在大理或者成都买个小房子，过有花园的生活。TA说："你也可以settle down啊，我们远程工作不影响赚钱，但我不想一辈子住酒店。"\n你理解TA——你自己也有过厌倦打包行李的时刻。但"定居"这两个字让你本能地想逃。你选择这条路就是为了不被任何地方拴住，而现在有一个你在乎的人，请求你为TA停留。\n晚餐桌上蜡烛在摇曳，TA在等你的回答。',
-    ageRange: [30, 33],
+    narrative: '{age}岁，你在丽江认识了TA。\n一开始只是旅途中的邂逅——你们在同一个骑行团，在同一个cafe办公，在同一片湖边看日落。但不知道从什么时候开始，你们的行程开始同步，机票买同一个目的地，短租平台订两居室而不是两个单间。\n现在TA说："我想停下来了。"\nTA不是游牧民，TA有积蓄，想在大理或者成都买个小房子，过有花园的生活。TA说："你也可以settle down啊，我们远程工作不影响赚钱，但我不想一辈子住酒店。"\n你理解TA——你自己也有过厌倦打包行李的时刻。但"定居"这两个字让你本能地想逃。你选择这条路就是为了不被任何地方拴住，而现在有一个你在乎的人，请求你为TA停留。\n晚餐桌上蜡烛在摇曳，TA在等你的回答。',
+    ageRange: [35, 42],
     priority: 9,
     cooldown: 999,
     tag: 'nomad_settle',
-    conditions: (s: GameState) => s.retirementPath === 'digital_nomad' && !s.isAllInPath && !s.crossroadFired['nomad_settle'],
+    conditions: (s: GameState) => s.retirementPath === 'digital_nomad' && s.isAllInPath && !s.crossroadFired['nomad_settle'],
     options: [
       {
         id: 'nm2_settle_together',
@@ -798,7 +832,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     priority: 9,
     cooldown: 999,
     tag: 'nomad_tax',
-    conditions: (s: GameState) => s.retirementPath === 'digital_nomad' && !s.isAllInPath && !s.crossroadFired['nomad_tax'],
+    conditions: (s: GameState) => s.retirementPath === 'digital_nomad' && s.isAllInPath && !s.crossroadFired['nomad_tax'],
     options: [
       {
         id: 'nm3_pay_up',
@@ -992,7 +1026,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     priority: 9,
     cooldown: 999,
     tag: 'ip_ad_dilemma',
-    conditions: (s: GameState) => s.retirementPath === 'super_ip' && !s.isAllInPath && !s.crossroadFired['ip_ad_dilemma'],
+    conditions: (s: GameState) => s.retirementPath === 'super_ip' && s.isAllInPath && !s.crossroadFired['ip_ad_dilemma'],
     options: [
       {
         id: 'ip2_refuse',
@@ -1076,12 +1110,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'ip_cancel_culture',
     title: '社死时刻',
-    narrative: '34岁，你已经是一个有影响力的大IP了。但你没想到，最致命的一刀来自十年前。\n有人扒出了你大学时期在社交媒体上的发言——那时候你还不是公众人物，你说过一些现在看来政治不正确的话、开过一些不合时宜的玩笑、表达过一些已经改变的观点。这些言论被截图、拼凑、加上"细思极恐"的解读，一夜之间传遍了全网。\n#某某某塌房#冲上热搜第一。这一次比第一次危机严重得多——因为你"人设崩塌"了，那个"三观正""独立思考"的公众形象和十年前那个口无遮拦的年轻人形成了"反差"。曾经捧你的人开始踩你，"脱粉回踩"比单纯的黑粉更伤人。合作方纷纷解约，平台开始限流，你的名字后面被加上了"（已塌房）"。\n你盯着那些截图，有些你已经完全不记得自己说过，有些被断章取义了，但也有一些——你不得不承认——放在今天的语境下确实不妥。你想说"那时候我才二十出头"，但你知道互联网不接受成长叙事。\n窗外的天黑了，你的手机在静音，但你能想象它在怎么震动。',
-    ageRange: [33, 36],
+    narrative: '{age}岁，你已经是一个有影响力的大IP了。但你没想到，最致命的一刀来自你青涩的大学时代。\n有人扒出了你大学时期在社交媒体上的发言——那时候你还不是公众人物，你说过一些现在看来政治不正确的话、开过一些不合时宜的玩笑、表达过一些已经改变的观点。这些言论被截图、拼凑、加上"细思极恐"的解读，一夜之间传遍了全网。\n#某某某塌房#冲上热搜第一。这一次比第一次危机严重得多——因为你"人设崩塌"了，那个"三观正""独立思考"的公众形象和当年那个口无遮拦的年轻人形成了"反差"。曾经捧你的人开始踩你，"脱粉回踩"比单纯的黑粉更伤人。合作方纷纷解约，平台开始限流，你的名字后面被加上了"（已塌房）"。\n你盯着那些截图，有些你已经完全不记得自己说过，有些被断章取义了，但也有一些——你不得不承认——放在今天的语境下确实不妥。你想说"那时候我才二十出头"，但你知道互联网不接受成长叙事。\n窗外的天黑了，你的手机在静音，但你能想象它在怎么震动。',
+    ageRange: [38, 45],
     priority: 9,
     cooldown: 999,
     tag: 'ip_cancel',
-    conditions: (s: GameState) => s.retirementPath === 'super_ip' && !s.isAllInPath && !s.crossroadFired['ip_cancel'],
+    conditions: (s: GameState) => s.retirementPath === 'super_ip' && s.isAllInPath && !s.crossroadFired['ip_cancel'],
     options: [
       {
         id: 'ip3_full_apology',
@@ -1186,7 +1220,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     id: 'silver_giants_entry',
     title: '鲨鱼入水',
     narrative: '30岁，你在银发产业里深耕了几年，刚摸到了一点门道，巨头来了。\n不是小打小闹——是那些你在新闻里才看到的互联网大厂、保险巨头、地产上市公司。他们带着百亿资金、政府关系、流量入口和地推铁军，高调宣布"All in银发经济"。\n你做的社区养老驿站旁边，下个月要开一家央企背景的养老服务中心，补贴后价格是你的三分之一。你服务了两年的老客户被各种免费体检、免费鸡蛋拉去参加"推介会"。你维护了很久的社区关系，在巨头的银弹攻势下不堪一击。\n更可怕的是他们的数据能力——他们有老人的健康档案、消费记录、子女信息。你有的只是一腔热情和几张熟面孔。\n你站在自己的小店里，看着对面正在装修的"银发综合体"，觉得自己像一条小鱼，看着鲨鱼游进了自己的池塘。',
-    ageRange: [29, 32],
+    ageRange: [27, 30],
     priority: 10,
     cooldown: 999,
     tag: 'silver_giants',
@@ -1288,12 +1322,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'silver_parent_illness',
     title: '角色反转',
-    narrative: '33岁，你在银发行业摸爬滚打，服务过几百个老人，以为自己已经看惯了生老病死。\n直到你自己的父亲/母亲倒下了——脑梗，半边身子不能动，需要24小时有人陪护。\n你突然从"养老从业者"变成了"病人家属"。你给客户讲过一百遍"要尽早做康复训练""要注意压疮""要关注老人心理"，但当那个人是你妈的时候，你的专业知识全部失灵了。你扶她走路的时候手抖，你给她喂饭的时候鼻子酸，你在医院走廊里看到账单的时候才意识到——你每天帮别人规划的养老，就是你自己正在面对的现实。\n护工不好找，好的护工比白领工资还高；兄弟姐妹在分摊费用上有了分歧；你的工作也受影响——合伙人暗示你"最近心思不在业务上"。\n你在医院的长椅上坐了一整夜，听着病房里的鼾声和监护仪的滴滴声。你服务了那么多老人，现在轮到你了。',
-    ageRange: [32, 35],
+    narrative: '{age}岁，你在银发行业摸爬滚打，服务过几百个老人，以为自己已经看惯了生老病死。\n直到你自己的父亲/母亲倒下了——脑梗，半边身子不能动，需要24小时有人陪护。\n你突然从"养老从业者"变成了"病人家属"。你给客户讲过一百遍"要尽早做康复训练""要注意压疮""要关注老人心理"，但当那个人是你妈的时候，你的专业知识全部失灵了。你扶她走路的时候手抖，你给她喂饭的时候鼻子酸，你在医院走廊里看到账单的时候才意识到——你每天帮别人规划的养老，就是你自己正在面对的现实。\n护工不好找，好的护工比白领工资还高；兄弟姐妹在分摊费用上有了分歧；你的工作也受影响——合伙人暗示你"最近心思不在业务上"。\n你在医院的长椅上坐了一整夜，听着病房里的鼾声和监护仪的滴滴声。你服务了那么多老人，现在轮到你了。',
+    ageRange: [38, 45],
     priority: 9,
     cooldown: 999,
     tag: 'silver_parent_care',
-    conditions: (s: GameState) => s.retirementPath === 'silver_economy' && !s.isAllInPath && s.parents.isAlive && !s.crossroadFired['silver_parent_care'],
+    conditions: (s: GameState) => s.retirementPath === 'silver_economy' && s.isAllInPath && s.parents.isAlive && !s.crossroadFired['silver_parent_care'],
     options: [
       {
         id: 'sv2_personal_care',
@@ -1381,12 +1415,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'silver_policy_change',
     title: '风向转变',
-    narrative: '36岁，行业突然变了天。\n国家出台了新的养老产业监管政策——提高了准入门槛、规范了预付费模式、限制了养老金融产品的销售、加强了对民办养老机构的资质审查。\n你的店在新规下需要重新申请资质，消防要改造、人员要持证、预收费要纳入监管账户。你算了一笔账，合规成本至少需要五十万，而且你之前卖过的一些养老理财类产品现在被定性为"不合规"，可能面临客户投诉和退款。\n同行里有人拍手叫好说"终于要洗牌了"，有人在群里骂"这是要逼死小机构"，有人已经开始转让店面准备离场。\n你在这个行业干了快十年，经历了野蛮生长的草莽时代，现在游戏规则突然变了。你桌上放着两份文件：一份是合规整改通知书，一份是连锁机构发来的收购邀约。\n窗外是老年活动广场，一群爷爷奶奶在跳广场舞。他们不知道这个行业正在地震，他们只关心谁能给他们一碗热饭、一张干净的床。',
-    ageRange: [35, 38],
+    narrative: '{age}岁，行业突然变了天。\n国家出台了新的养老产业监管政策——提高了准入门槛、规范了预付费模式、限制了养老金融产品的销售、加强了对民办养老机构的资质审查。\n你的店在新规下需要重新申请资质，消防要改造、人员要持证、预收费要纳入监管账户。你算了一笔账，合规成本至少需要五十万，而且你之前卖过的一些养老理财类产品现在被定性为"不合规"，可能面临客户投诉和退款。\n同行里有人拍手叫好说"终于要洗牌了"，有人在群里骂"这是要逼死小机构"，有人已经开始转让店面准备离场。\n你在这个行业深耕了很多年，经历了野蛮生长的草莽时代，现在游戏规则突然变了。你桌上放着两份文件：一份是合规整改通知书，一份是连锁机构发来的收购邀约。\n窗外是老年活动广场，一群爷爷奶奶在跳广场舞。他们不知道这个行业正在地震，他们只关心谁能给他们一碗热饭、一张干净的床。',
+    ageRange: [42, 52],
     priority: 9,
     cooldown: 999,
     tag: 'silver_policy',
-    conditions: (s: GameState) => s.retirementPath === 'silver_economy' && !s.isAllInPath && !s.crossroadFired['silver_policy'],
+    conditions: (s: GameState) => s.retirementPath === 'silver_economy' && s.isAllInPath && !s.crossroadFired['silver_policy'],
     options: [
       {
         id: 'sv3_comply_upgrade',
@@ -1477,7 +1511,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
     id: 'bio_clinical_failure',
     title: '数据崩塌',
     narrative: '29岁，你All in的那家生物科技公司宣布了三期临床数据。\n你盯着屏幕上的新闻通稿，逐字逐句地读——"未达到主要临床终点""无统计学差异""将评估下一步战略"。这些词翻译成人话就是：失败了。\n你不仅把积蓄押在了这家公司的股票/期权上，你还辞掉了工作全职参与，你甚至说服了两个朋友一起投钱。你曾经那么相信这个靶点、这个团队、这个诺贝尔奖得主的科学顾问。你在脑海里推演过无数次成功的场景——药物上市、患者得救、你财富自由。\n现在盘前股价跌了90%，你手机里是朋友发来的"怎么回事"，邮箱里是HR的"团队优化"通知。你坐在电脑前，屏幕的蓝光映在你脸上，你觉得自己像一个输光了筹码的赌徒——只不过你赌的不是牌，是科学，而科学没有义务让你赢。\n窗外面是早晨，你一夜没睡，新的一天开始了，但你的世界刚刚塌了。',
-    ageRange: [28, 31],
+    ageRange: [26, 29],
     priority: 10,
     cooldown: 999,
     tag: 'bio_clinic_fail',
@@ -1577,12 +1611,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'bio_supplement_damage',
     title: '反噬',
-    narrative: '32岁，你为了抗衰老和保持精力，长期服用一堆补剂——NMN、白藜芦醇、辅酶Q10、PQQ、各种肽类，还有你从海外海淘的"研究级化学物"。你信奉"生物黑客"哲学：你的身体是一个系统，通过精准输入可以优化它。\n直到一次体检，你的转氨酶指标亮了红灯——药物性肝损伤。医生说你的肝脏负荷过重，那些"纯天然""抗衰老"的补剂大部分要经过肝脏代谢，叠加在一起就是在伤肝。你停掉所有补剂后指标恢复了一些，但医生说你已经比同龄人的肝脏老了五到十岁。\n更讽刺的是，你一直在吃的几种"抗衰老神药"，最新的大型临床研究显示不仅无效，长期服用还可能增加某些疾病风险。你花了那么多钱、那么多精力优化自己的身体，结果反而把它搞坏了。\n你看着桌上那一堆瓶瓶罐罐——有些一瓶就几千块，有些是你托人从国外带回来的。你曾经那么相信科学的力量，但你忘了科学也包括"不知道"和"可能错了"。\n右上腹隐隐作痛，不知道是心理作用还是真的有问题。',
-    ageRange: [31, 34],
+    narrative: '{age}岁，你为了抗衰老和保持精力，长期服用一堆补剂——NMN、白藜芦醇、辅酶Q10、PQQ、各种肽类，还有你从海外海淘的"研究级化学物"。你信奉"生物黑客"哲学：你的身体是一个系统，通过精准输入可以优化它。\n直到一次体检，你的转氨酶指标亮了红灯——药物性肝损伤。医生说你的肝脏负荷过重，那些"纯天然""抗衰老"的补剂大部分要经过肝脏代谢，叠加在一起就是在伤肝。你停掉所有补剂后指标恢复了一些，但医生说你已经比同龄人的肝脏老了五到十岁。\n更讽刺的是，你一直在吃的几种"抗衰老神药"，最新的大型临床研究显示不仅无效，长期服用还可能增加某些疾病风险。你花了那么多钱、那么多精力优化自己的身体，结果反而把它搞坏了。\n你看着桌上那一堆瓶瓶罐罐——有些一瓶就几千块，有些是你托人从国外带回来的。你曾经那么相信科学的力量，但你忘了科学也包括"不知道"和"可能错了"。\n右上腹隐隐作痛，不知道是心理作用还是真的有问题。',
+    ageRange: [36, 43],
     priority: 9,
     cooldown: 999,
     tag: 'bio_liver',
-    conditions: (s: GameState) => s.retirementPath === 'bio_gambler' && !s.isAllInPath && !s.crossroadFired['bio_liver'],
+    conditions: (s: GameState) => s.retirementPath === 'bio_gambler' && s.isAllInPath && !s.crossroadFired['bio_liver'],
     options: [
       {
         id: 'bio2_quit_all',
@@ -1664,12 +1698,12 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'bio_have_child_decision',
     title: '永生者的困境',
-    narrative: '35岁，你在生物科技领域深耕多年，看到了普通人看不到的东西。\n你跟踪的几个长寿技术方向正在突破——基因编辑、senolytics（清理剂）、细胞重编程、器官克隆。你的行业判断告诉你：如果这些技术按目前的速度发展，你这一代人有可能活到120岁甚至更长，而且不是在病床上躺到120岁，是健康寿命大幅延长。\n这个认知改变了你的时间观。如果你的生命将是一百年甚至更长，那"三十多岁要孩子"是不是太早了？你还有六七十年的职业生涯、六七十年的探索和自由。但另一方面，如果你真的能活那么久，没有一个延续你基因和记忆的人，会不会在一百年后感到彻底的孤独？\n你的伴侣（如果有的话）在等你的决定。你父母在催。你的理性在告诉你"等技术成熟了再说"，但你的生物本能在说"不要错过窗口期"。更现实的是：如果长寿技术真的来了，你的孩子可能活150岁——你真的有权把一个人带到这么长的生命里吗？\n深夜你读着最新的论文，屏幕的光映在你脸上。',
-    ageRange: [34, 37],
+    narrative: '{age}岁，你在生物科技领域深耕多年，看到了普通人看不到的东西。\n你跟踪的几个长寿技术方向正在突破——基因编辑、senolytics（清理剂）、细胞重编程、器官克隆。你的行业判断告诉你：如果这些技术按目前的速度发展，你这一代人有可能活到120岁甚至更长，而且不是在病床上躺到120岁，是健康寿命大幅延长。\n这个认知改变了你的时间观。如果你的生命将是一百年甚至更长，那"现在就要孩子"是不是太早了？你还有六七十年的职业生涯、六七十年的探索和自由。但另一方面，如果你真的能活那么久，没有一个延续你基因和记忆的人，会不会在一百年后感到彻底的孤独？\n你的伴侣（如果有的话）在等你的决定。你父母在催。你的理性在告诉你"等技术成熟了再说"，但你的生物本能在说"不要错过窗口期"。更现实的是：如果长寿技术真的来了，你的孩子可能活150岁——你真的有权把一个人带到这么长的生命里吗？\n深夜你读着最新的论文，屏幕的光映在你脸上。',
+    ageRange: [40, 48],
     priority: 9,
     cooldown: 999,
     tag: 'bio_child',
-    conditions: (s: GameState) => s.retirementPath === 'bio_gambler' && !s.isAllInPath && !s.crossroadFired['bio_child'],
+    conditions: (s: GameState) => s.retirementPath === 'bio_gambler' && s.isAllInPath && !s.crossroadFired['bio_child'],
     options: [
       {
         id: 'bio3_have_child_now',
@@ -1692,9 +1726,8 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
             rebelliousness: 0,
             monthlyExpense: 2000,
           });
-          if (!s.isMarried && s.partner) {
-            s.isMarried = true;
-          }
+          // 状态同步：有孩子时确保伴侣/婚姻状态一致
+          ensureChildParentPartner(s);
           return { log: '孩子出生了，小小的，皱巴巴的，握着你的手指不放。你在产房里哭了——不是因为激动，是因为你突然意识到：不管未来人类能活多久，这一刻是真实的。这个小生命的未来可能是150年，也可能是医学突破之前的普通长度，但你决定给他/她最好的开始。夜里你起来喂奶，看着窗外的星空，想：也许长寿最大的意义不是活多久，而是你在有限的时间里爱过谁。', cost: 30000 };
         },
       },
@@ -1750,6 +1783,8 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
             rebelliousness: 0,
             monthlyExpense: 3000,
           });
+          // 状态同步：有孩子时确保伴侣/婚姻状态一致
+          ensureChildParentPartner(s);
           s.happiness = Math.min(100, s.happiness + 15);
 
           const roll = Math.random();

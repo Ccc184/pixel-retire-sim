@@ -1194,7 +1194,7 @@ function handleContinue(): void {
   font-size: 20px;
   line-height: 1.8;
   color: #ffe0f0;
-  font-family: 'ZCOOL KuaiLe', 'Noto Sans SC', sans-serif;
+  font-family: 'DotGothic16', monospace;
   position: relative;
   display: inline-block;
   max-width: 95%;

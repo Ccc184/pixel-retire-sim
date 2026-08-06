@@ -38,14 +38,19 @@ function getLogCategory(log: string): LogCategory {
   return 'normal';
 }
 
-// 提取日常琐事日志
+// 提取日常琐事日志（全部展示，避免与主列表重复时丢失旧记录）
 const dailyLogs = computed(() => {
-  return displayLogs.value.filter(log => getLogCategory(log) === 'daily').slice(-3).reverse();
+  return displayLogs.value.filter(log => getLogCategory(log) === 'daily').reverse();
 });
 
-// 提取人际关系日志
+// 提取人际关系日志（全部展示）
 const relationshipLogs = computed(() => {
-  return displayLogs.value.filter(log => getLogCategory(log) === 'relationship').slice(-5).reverse();
+  return displayLogs.value.filter(log => getLogCategory(log) === 'relationship').reverse();
+});
+
+// 主日志列表：排除已进入"日常琐事/关系动态"折叠区的日志，避免同一文本重复渲染（P0修复）
+const mainLogs = computed(() => {
+  return displayLogs.value.filter(log => !['daily', 'relationship'].includes(getLogCategory(log)));
 });
 
 // 结局触发时给面板加特殊边框
@@ -70,7 +75,7 @@ function extractAge(log: string): string {
 
 // 是否是新日志（最后一条），用于入场动画
 function isNewest(idx: number): boolean {
-  return idx === displayLogs.value.length - 1;
+  return idx === mainLogs.value.length - 1;
 }
 </script>
 
@@ -153,8 +158,8 @@ function isNewest(idx: number): boolean {
       <!-- ============================================================ -->
       <ul class="log-list">
         <li
-          v-for="(log, idx) in displayLogs"
-          :key="idx"
+          v-for="(log, idx) in mainLogs"
+          :key="'main-' + idx"
           class="log-item"
           :class="[
             'tone-' + getLogCategory(log),
@@ -186,14 +191,6 @@ function isNewest(idx: number): boolean {
    CSS 变量定义
    ============================================================ */
 .life-log-panel {
-  --neon-pink: #ff2d95;
-  --neon-green: #00ff88;
-  --neon-blue: #00d4ff;
-  --neon-purple: #c900ff;
-  --neon-orange: #ff8800;
-  --neon-yellow: #ffec27;
-  --neon-red: #ff4444;
-
   --color-primary: #e8e0f0;
   --color-secondary: #94a0b8;
   --color-dim: #6a6a8a;
@@ -208,7 +205,7 @@ function isNewest(idx: number): boolean {
   display: flex;
   flex-direction: column;
   position: relative;
-  font-family: 'Noto Sans SC', sans-serif;
+  font-family: 'DotGothic16', monospace;
   color: var(--color-secondary);
   flex: 1;
   min-height: 0;
@@ -396,7 +393,8 @@ function isNewest(idx: number): boolean {
 }
 
 .fold-body.open {
-  max-height: 200px;
+  max-height: 320px;
+  overflow-y: auto;
 }
 
 .fold-list {

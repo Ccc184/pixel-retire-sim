@@ -2,3 +2,8 @@ node_modules
 dist
 .vite
 *.log
+
+# 黑箱测试 / 追踪脚本输出产物（生成物，不入库）
+scripts/*.txt
+scripts/monologues-inventory.html
+scripts/monologues-full.txt

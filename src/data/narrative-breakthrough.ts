@@ -20,6 +20,7 @@
 import type { NarrativeEvent, GameState } from '../types/global.d.js';
 import { registerNarrativeEvents } from './narrative-registry.js';
 import { clamp } from '../utils/clamp.js';
+import { applyChainHoldingScale, capBreakthroughGain } from '../utils/math-engine.js';
 
 const breakthroughEvents: NarrativeEvent[] = [
 
@@ -38,12 +39,8 @@ const breakthroughEvents: NarrativeEvent[] = [
     sceneTag: 'breakthrough',
     conditions: (s: GameState) => s.isAllInPath === true && ((s.pathSkills?.aiSkill || 0) + (s.aiSkillLevel || 0)) >= 50,
     narrative:
-      '事情是从一个Demo开始的。\n' +
-      '周三下午，你的团队把一个内部AI Agent的演示视频发到了技术社区——原本只是想吸引几个潜在客户。结果周五早上你醒来，发现那条视频的播放量过了200万，转发列表里排着一串你认识的名字：某大厂CTO、某知名投资人、好几个百万粉科技博主。\n' +
-      '你的收件箱炸了。三封来自大厂的"战略合作"邮件，两封来自VC的"想聊聊"的私信，还有十几个企业客户的询价。你团队做的那个Agent，一夜之间成了"AI圈都在讨论的东西"。\n' +
-      '你的合伙人冲进你的房间（远程视频），脸涨得通红："某大厂的战略投资部刚打电话来了，他们想要——不是投资，是收购。全资。现金。"\n' +
-      '你看着TA，又看了看屏幕上那个还在涨的播放量数字。你知道这种机会的窗口很短——热度可能两周就散了，也可能就此改变你的人生。你必须在热度散去之前做出决定。\n' +
-      '你打开了三个选项：卖掉公司、拿融资独立做、把热度转化为客户。',
+      '事情是从一个Demo开始的。周三你把团队内部AI Agent的演示视频发到技术社区，周五早上醒来发现播放量过了200万，转发列表里排着一串你认识的名字：某大厂CTO、知名投资人、百万粉科技博主。收件箱炸了——三封大厂"战略合作"邮件、两封VC私信、十几个企业询价。\n' +
+      '合伙人冲进视频通话，脸涨得通红："某大厂战略投资部刚打电话来，他们想要——不是投资，是收购。全资。现金。"你看着屏幕上还在涨的播放量，知道机会窗口很短。热度可能两周就散，也可能就此改变你的人生。你必须在散去之前做出决定。',
     options: [
       {
         id: 'sell_company',
@@ -154,12 +151,8 @@ const breakthroughEvents: NarrativeEvent[] = [
     sceneTag: 'breakthrough',
     conditions: (s: GameState) => s.isAllInPath === true && (s.pathSkills?.tradingSkill || 0) >= 50,
     narrative:
-      '你是在凌晨四点被Discord吵醒的。\n' +
-      '管理员@了你十七次。你爬起来点开群，满屏都是火箭表情——你的协议TVL刚刚突破了一亿美金。\n' +
-      '不是慢慢涨上来的，是某个DeFi鲸鱼在一小时内注入了4000万，引发了一连串FOMO跟投。你的协议从"小众项目"一夜变成了"赛道热点"。CoinDesk发了快讯，Twitter上有人开始喊"下一个Uniswap"。\n' +
-      '你看着链上数据，心跳很快。你知道这种热度意味着什么：你的代币持仓在这一夜之间翻了4倍，而且还在涨。如果你现在清仓，你立刻就是千万富翁。但如果你不清——热度可能一周就散，代币会跌回去。\n' +
-      '更复杂的是：已经有三个VC在私信你，想要领投一轮。某交易所的人也在问"能不能上你们的项目"。你手里的代币、你的协议、你的社区，全都在一个临界点上。\n' +
-      '你盯着那个还在跳动的TVL数字，必须在热度散去之前做决定。',
+      '你在凌晨四点被Discord吵醒，管理员@了你十七次——满屏火箭表情，你的协议TVL刚突破一亿美金。不是慢慢涨上来的，是某个DeFi鲸鱼一小时注入4000万引发FOMO跟投，你的协议从"小众项目"一夜变成"赛道热点"，媒体开始喊"下一个Uniswap"。\n' +
+      '你的代币持仓一夜翻了4倍，还在涨。清仓你就是千万富翁，不清可能一周就跌回去。更麻烦的是三个VC想领投、交易所想上项目——你的代币、协议、社区全在一个临界点上。你盯着跳动的TVL数字，必须在热度散去之前做决定。',
     options: [
       {
         id: 'cash_out',
@@ -173,7 +166,7 @@ const breakthroughEvents: NarrativeEvent[] = [
           const roll = Math.random();
           if (roll < 0.15) {
             // 大成功：清仓后链上资产直接满足退休条件（>=年支出×20）
-            const cashedOut = Math.max(annualExpense * 25, currentHoldings * 5);
+            const cashedOut = capBreakthroughGain(Math.max(annualExpense * 25, currentHoldings * 5), s);
             (s as any).chainHoldings = 0;
             s.currentSavings += cashedOut;
             s.stress = clamp(s.stress - 25, 0, 100);
@@ -182,7 +175,7 @@ const breakthroughEvents: NarrativeEvent[] = [
             s.lifeLog.push(`你在代币还在涨的时候按下了"全部卖出"。那一刻你的手指是抖的——每一秒都在涨，每一秒都在多赚一辆车。但你没有贪。稳定币到账的那个数字让你盯着屏幕看了五分钟：${cashedOut.toLocaleString()}。你关掉所有行情APP，给社区发了一封"我需要休息一段时间"的信。老K给你发了一条私信，是他二十年来第一次主动说话："活着就好。"你终于理解了那句话：会买的是徒弟，会卖的是师父。你是师父了。`);
           } else if (roll < 0.5) {
             // 小成功
-            const cashedOut = Math.max(annualExpense * 8, currentHoldings * 2);
+            const cashedOut = capBreakthroughGain(Math.max(annualExpense * 8, currentHoldings * 2), s);
             (s as any).chainHoldings = Math.round((s as any).chainHoldings * 0.3);
             s.currentSavings += cashedOut;
             s.stress = clamp(s.stress - 12, 0, 100);
@@ -191,7 +184,7 @@ const breakthroughEvents: NarrativeEvent[] = [
             s.lifeLog.push(`你卖掉了70%的仓位，留了30%赌继续涨。到账${cashedOut.toLocaleString()}——这笔钱让你离"链上自由"近了一大步，但还没到能退休的程度。你看着剩下的30%仓位在接下来一周又涨了20%然后跌了40%，庆幸自己"至少卖了一部分"。HODL是信仰，卖出是智慧，两者之间你需要找平衡。`);
           } else {
             // 差一点：卖早了，只赚了一点
-            const cashedOut = Math.max(annualExpense * 2, currentHoldings * 0.8);
+            const cashedOut = capBreakthroughGain(Math.max(annualExpense * 2, currentHoldings * 0.8), s);
             (s as any).chainHoldings = Math.round((s as any).chainHoldings * 0.5);
             s.currentSavings += cashedOut;
             s.stress = clamp(s.stress - 3, 0, 100);
@@ -212,7 +205,11 @@ const breakthroughEvents: NarrativeEvent[] = [
           const roll = Math.random();
           if (roll < 0.15) {
             // 大成功：协议成为赛道龙头，代币再翻3倍
-            (s as any).chainHoldings = Math.round(currentHoldings * 3);
+            // 增量部分受 capBreakthroughGain 约束：单事件收益最多填满一次退休目标，
+            // 杜绝大持仓×3导致单年数千万的复利爆炸与胜率失衡
+            const newHoldings = applyChainHoldingScale(currentHoldings, 3);
+            const cappedGain = capBreakthroughGain(newHoldings - currentHoldings, s);
+            (s as any).chainHoldings = Math.round(currentHoldings + cappedGain);
             s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 2);
             s.careerStartSalary = s.currentMonthlySalary;
             s.stress = clamp(s.stress - 15, 0, 100);
@@ -221,7 +218,9 @@ const breakthroughEvents: NarrativeEvent[] = [
             s.lifeLog.push(`你拿了融资，协议在三个月内成了赛道龙头。TVL稳定在5亿以上，代币又翻了3倍。你的持仓现在值${((s as any).chainHoldings).toLocaleString()}——这个数字让你终于敢想"退休"两个字了。社区里有人开始叫你"下一个中本聪"，你笑了笑没接。你知道这不是你一个人的功劳，是整个赛道的红利。但你接住了。`);
           } else if (roll < 0.5) {
             // 小成功
-            (s as any).chainHoldings = Math.round(currentHoldings * 1.6);
+            const growHoldings = applyChainHoldingScale(currentHoldings, 1.6);
+            const cappedGrow = capBreakthroughGain(growHoldings - currentHoldings, s);
+            (s as any).chainHoldings = Math.round(currentHoldings + cappedGrow);
             s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 1.5);
             s.careerStartSalary = s.currentMonthlySalary;
             s.stress = clamp(s.stress - 5, 0, 100);
@@ -247,7 +246,7 @@ const breakthroughEvents: NarrativeEvent[] = [
         stateEffect: (s: GameState) => {
           const annualExpense = s.annualBaseCost + (s.currentMortgageCost || 0);
           const currentHoldings = (s as any).chainHoldings || 0;
-          const cashedOut = Math.round(currentHoldings * 0.5);
+          const cashedOut = capBreakthroughGain(Math.round(currentHoldings * 0.5), s);
           (s as any).chainHoldings = Math.round(currentHoldings * 0.5);
           s.currentSavings += cashedOut;
           s.passiveIncome += Math.round(annualExpense * 0.3);
@@ -276,12 +275,8 @@ const breakthroughEvents: NarrativeEvent[] = [
     sceneTag: 'breakthrough',
     conditions: (s: GameState) => s.isAllInPath === true && (s.pathSkills?.remoteSkill || 0) >= 50,
     narrative:
-      '邮件标题是"Annual Partnership Proposal"，发件人是某硅谷巨头的供应商管理部门。\n' +
-      '你以为是钓鱼邮件，点开发现是真的：他们看了你过去两年交付的项目，想签一个年度框架合同——把你列为"优选供应商"，所有相关项目优先派给你，年度保底金额是你的年薪的8倍。\n' +
-      '你盯着那个数字看了很久。8倍。如果签了，你一年的保底收入就够你生活好几年。而且这只是保底——实际派单量可能是保底的2-3倍。\n' +
-      '你的合伙人——那个巴西设计师——在视频里激动得语无伦次："这他妈是XX公司啊！签了我们这辈子不用愁了！"\n' +
-      '但你冷静下来后发现了合同里的小字：作为优选供应商，你需要保证"7×24小时响应能力"，意味着你的团队必须有人随时在线。这对你"全异步、全自由"的理念是个挑战。而且合同里有排他条款——你不能服务他们的直接竞品。\n' +
-      '你坐在大理的阳台上，苍山的风很舒服。你All In这条路是为了自由，而现在"自由"和"财富"同时摆在面前，但选一个就要牺牲另一个。',
+      '邮件标题是"Annual Partnership Proposal"，发件人是某硅谷巨头的供应商管理部门。你以为是钓鱼邮件，点开发现是真的：他们签了年度框架合同，把你列为"优选供应商"，年度保底金额是你年薪的8倍——而这只是保底，实际派单可能是保底的2-3倍。\n' +
+      '合伙人巴西设计师在视频里激动得语无伦次："这他妈是XX公司啊！签了我们这辈子不用愁了！"但你冷静下来看到小字：要保证"7×24小时响应"、团队随时有人在线，还有排他条款不能用竞品。你坐在大理阳台上，苍山的风很舒服。你All In是为了自由，而现在"自由"和"财富"摆在面前，选一个就要牺牲另一个。',
     options: [
       {
         id: 'sign_exclusive',
@@ -415,11 +410,8 @@ const breakthroughEvents: NarrativeEvent[] = [
     sceneTag: 'breakthrough',
     conditions: (s: GameState) => s.isAllInPath === true && (s.pathSkills?.contentSkill || 0) >= 50,
     narrative:
-      '你是在睡梦中被炸醒的——手机震到掉下床头柜。\n' +
-      '你迷迷糊糊点开后台，以为看错了：你昨晚发的那条短视频，12小时内播放量突破了3000万。不是30万，是3000万。涨粉80万。评论区全是"这条视频改变了我的人生观""求求你多做一些这样的内容"。\n' +
-      '你坐起来，清醒了。那条视频你只是随手拍的——讲了一个你All In这几年最真实的故事，没有脚本、没有补光、甚至没化妆。但它"破圈"了。不只是你的粉丝在转，是完全不同圈层的人在做这件事——企业家、大学生、退休老人、甚至某几个明星。\n' +
-      '你的私信炸了：出版社问你要不要出书，MCN平台问你要不要签约，品牌方发来的报价是你以前广告费的10倍。最让你心跳加速的是某综艺节目的邀请——他们想让你做一季节目的主讲嘉宾，酬劳是你两年收入的总和。\n' +
-      '你看着镜子里那个还没洗脸的自己，知道这个窗口很短——破圈的热度可能两周就散了。你必须在这两周里，把"运气"变成"事业"。',
+      '你在睡梦中被手机震醒——昨晚随手拍的那条短视频，12小时播放量突破了3000万，涨粉80万，评论区全是"这条视频改变了我的人生观"。没有脚本、没有补光、甚至没化妆，但它破圈了——企业家、大学生、退休老人、甚至明星都在转。\n' +
+      '私信炸了：出版社问要不要出书，品牌方报价是你以前广告费的10倍，某综艺想让你做主讲师，酬劳是你两年收入的总和。你看着镜子里没洗脸的自己，知道窗口很短——破圈的热度可能两周就散。你必须在这两周里，把"运气"变成"事业"。',
     options: [
       {
         id: 'monetize_hard',
@@ -563,13 +555,8 @@ const breakthroughEvents: NarrativeEvent[] = [
     sceneTag: 'breakthrough',
     conditions: (s: GameState) => s.isAllInPath === true && (s.pathSkills?.managementSkill || 0) >= 50,
     narrative:
-      '那辆黑色商务车是上午十点停在你养老站门口的。\n' +
-      '下来三个人，为首的那个递了张名片——省民政厅养老服务处的副处长。TA笑着说"路过看看"，但你看到TA身后的人拿着相机和记录本，就知道这不是"路过"。\n' +
-      '他们在你的养老站待了两个小时。看你的日间照料流程，翻你的老人健康档案，和老人家属聊天，甚至看了你的财务报表。你全程陪着，心里七上八下——你不知道这是要表彰你还是查你。\n' +
-      '临走时副处长把你拉到一边，说了一句让你愣住的话："你这个模式很好。省里在推社区养老示范点，我想推荐你。如果评上了，有专项补贴、有政策背书、还能在全省推广。"\n' +
-      '你站在门口看着那辆黑车开走，手心在出汗。你知道"示范点"三个字意味着什么：不只是补贴和声誉，而是你的模式可能被复制到全省——你从"开了一家养老站"变成"创造了养老模式"。这可能是你事业的转折点。\n' +
-      '但你也知道：政府背书是一把双刃剑。评上了你要接受更多监管、更多检查、更多"接待任务"。而且"推广"意味着你要从"经营者"变成"管理者"——你要去别的地方开店、培训人、建体系。你All In时想的是"做一家好的养老站"，现在机会让你"做一百家"。\n' +
-      '你看着养老站里正在下棋的老人们，必须在回复副处长之前想清楚。',
+      '那辆黑色商务车上午十点停在你养老站门口。下来三个人，为首的是省民政厅养老服务处的副处长，笑着说"路过看看"——但你看到TA身后的人拿着相机和记录本，就知道这不是"路过"。他们在站里待了两小时：看流程、翻档案、和家属聊天、甚至看财务报表，你全程陪着，心里七上八下。\n' +
+      '临走时副处长把你拉到一边："你这个模式很好。省里在推社区养老示范点，我想推荐你。评上了有专项补贴、政策背书、还能全省推广。"你手心在出汗——从"开了一家养老站"变成"创造养老模式"，这可能是你事业的转折点。但政府背书是双刃剑：更多监管、更严检查，还要你从"经营者"变成"管理者"，去别处开店、培训、建体系。你All In时只想做好一家养老站，现在机会让你做一百家。你看着下棋的老人们，必须在回复之前想清楚。',
     options: [
       {
         id: 'go_national',
@@ -711,12 +698,8 @@ const breakthroughEvents: NarrativeEvent[] = [
     sceneTag: 'breakthrough',
     conditions: (s: GameState) => s.isAllInPath === true && (s.pathSkills?.bioKnowledge || 0) >= 50,
     narrative:
-      '电话是凌晨两点打来的。你本来已经习惯了凌晨的电话——这些年你投的生物科技公司总有各种消息。但这个电话不一样。\n' +
-      '是你重仓的那家做NAD+（能量货币）前体公司的CEO，TA的声音在发抖："我们被收购了。某大药厂溢价收购，全现金。你的股份……你准备好了吗？"\n' +
-      'TA报出那个数字的时候，你以为自己听错了。你让TA重复了一遍。没听错。你手里的股份按收购价算，是你投入时的12倍。\n' +
-      '你放下电话，在黑暗里坐了很久。你等这个电话等了五年。五年前你All In的时候，把大部分身家压在了这家公司——当时所有人都说你疯了，投一个还在二期临床的抗衰公司。但你读了TA们所有的论文，见了TA们的研究员，你赌TA们能成。\n' +
-      '现在赌赢了。但赢的方式和你想的不一样——不是产品上市、不是IPO，是被收购。这意味着你的股份会被一次性清算，你会拿到一笔巨款。但也意味着：如果产品未来上市后卖得更好，你就享受不到了。\n' +
-      '你有72小时决定：接受收购变现离场，还是拒绝收购赌未来IPO。你的生物年龄检测显示你比实际年龄年轻5岁——你的身体在告诉你：你还有时间赌。但你的理智在告诉你：12倍回报已经是一个奇迹了。',
+      '电话是凌晨两点打来的，是你重仓的NAD+前体公司CEO。TA声音发抖："我们被收购了。某大药厂溢价收购，全现金。"TA报出那个数字时你以为听错了——你的股份按收购价算，是投入的12倍。\n' +
+      '你放下电话在黑暗里坐了很久。你等这个电话等了五年——五年前All In时所有人说你疯了，投一个还在二期临床的抗衰公司，但你赌TA们能成。现在赌赢了，却是以你没有准备过的方式：不是IPO，是被收购。你可以拿巨款走人，但如果产品未来卖得更好，你就享受不到了。你有72小时决定：变现离场，还是赌未来IPO。你的生物年龄比实际年轻5岁——身体在说你有时间赌，理智在说12倍已经是奇迹。',
     options: [
       {
         id: 'accept_buyout',
@@ -730,7 +713,7 @@ const breakthroughEvents: NarrativeEvent[] = [
           const roll = Math.random();
           if (roll < 0.15) {
             // 大成功：收购价远超预期
-            const windfall = Math.max(annualExpense * 20, currentBio * 12);
+            const windfall = capBreakthroughGain(Math.max(annualExpense * 20, currentBio * 12), s);
             (s as any).bioPortfolio = 0;
             s.currentSavings += windfall;
             s.stress = clamp(s.stress - 25, 0, 100);
@@ -742,7 +725,7 @@ const breakthroughEvents: NarrativeEvent[] = [
             s.lifeLog.push(`你接受了收购。到账那一刻你盯着银行APP上的数字看了十分钟——${windfall.toLocaleString()}。五年前你投进去的钱翻了12倍。你打电话给你妈，说了一句"妈，我以后不用上班了"，然后哭了。你All In这条路是为了赌"长寿"，但最讽刺的是：你赌到的不是长寿技术本身，是别人对你押注的技术愿意出的价格。你不在乎。你赢了。你可以退休了，可以继续投下一个项目，可以去做任何你想做的事。这五年值了。${mirrorLine}`);
           } else if (roll < 0.5) {
             // 小成功
-            const windfall = Math.max(annualExpense * 7, currentBio * 6);
+            const windfall = capBreakthroughGain(Math.max(annualExpense * 7, currentBio * 6), s);
             (s as any).bioPortfolio = Math.round(currentBio * 0.4);
             s.currentSavings += windfall;
             s.stress = clamp(s.stress - 12, 0, 100);
@@ -751,7 +734,7 @@ const breakthroughEvents: NarrativeEvent[] = [
             s.lifeLog.push(`你接受了收购，套现了60%的股份，留了40%赌产品上市后的里程碑付款。到账${windfall.toLocaleString()}——这笔钱让你离"长寿自由"近了一大步。你的生物年龄检测依然年轻，你还有时间投下一个项目。你看着剩下的40%股份，觉得这是最完美的状态：落了一半袋为安，还留了一半赌未来。`);
           } else {
             // 差一点：收购价不及预期
-            const windfall = Math.max(annualExpense * 2, currentBio * 2);
+            const windfall = capBreakthroughGain(Math.max(annualExpense * 2, currentBio * 2), s);
             (s as any).bioPortfolio = 0;
             s.currentSavings += windfall;
             s.stress = clamp(s.stress - 5, 0, 100);

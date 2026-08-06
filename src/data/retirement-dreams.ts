@@ -20,6 +20,7 @@ export interface DreamItem {
   unitPrice: number   // 单价（元）。数字要小 → 总量要大才震撼
   unit: string        // 单位（个/顿/次/局）
   jokes: [number, string][]  // 数量阈值 → 短梗，从大到小排
+  featured?: boolean  // 精选项：数字人生卡片墙只展示精选3个，最有梗/最震撼
 }
 
 export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
@@ -41,11 +42,11 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[200000, '酒店集团给你命名套房'], [20000, '前台不用看证件'], [5000, '环球旅行标配'], [500, '出差级别'], [50, '偶尔奢侈'], [0, '住青旅也快乐']],
       },
       {
-        emoji: '🍜', title: '米其林餐厅', unitPrice: 800, unit: '顿',
+        emoji: '🍜', title: '米其林餐厅', unitPrice: 800, unit: '顿', featured: true,
         jokes: [[100000, '米其林指南该把你写进去'], [10000, '三星全打卡'], [1000, '资深吃货'], [100, '偶尔品鉴'], [10, '尝个鲜'], [0, '街边小吃也香']],
       },
       {
-        emoji: '🚢', title: '豪华邮轮', unitPrice: 12000, unit: '趟',
+        emoji: '🚢', title: '豪华邮轮', unitPrice: 12000, unit: '趟', featured: true,
         jokes: [[50000, '邮轮公司请你当代言人'], [5000, '海上生活专家'], [500, '邮轮爱好者'], [50, '每年一趟'], [5, '试一趟'], [0, '坐渡轮也行']],
       },
       {
@@ -53,7 +54,7 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[20000, '卡帕多奇亚的气球都是你的'], [2000, '上天成瘾'], [200, '浪漫达人'], [20, '纪念之旅'], [0, '看看图片过过瘾']],
       },
       {
-        emoji: '📷', title: '旅行照片', unitPrice: 5, unit: '张',
+        emoji: '📷', title: '旅行照片', unitPrice: 5, unit: '张', featured: true,
         jokes: [[10000000, '照片能办个世界巡展'], [1000000, '硬盘存不下要买仓库'], [100000, '朋友圈发三年不重样'], [10000, '每趟拍上千张'], [0, '用手机随便拍拍']],
       },
     ],
@@ -72,11 +73,11 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[500, '你就是现代版陶渊明'], [100, '农场主级别'], [30, '小地主'], [5, '几分地够种'], [0, '阳台种菜也行']],
       },
       {
-        emoji: '🐔', title: '能养鸡', unitPrice: 50, unit: '只',
+        emoji: '🐔', title: '能养鸡', unitPrice: 50, unit: '只', featured: true,
         jokes: [[100000, '鸡蛋多到开超市'], [10000, '养鸡专业户'], [1000, '鸡满院子跑'], [100, '养十来只'], [0, '买鸡蛋吃']],
       },
       {
-        emoji: '🍶', title: '自酿米酒', unitPrice: 15, unit: '斤',
+        emoji: '🍶', title: '自酿米酒', unitPrice: 15, unit: '斤', featured: true,
         jokes: [[500000, '你能开酒厂了'], [50000, '酒窖存满'], [5000, '喝不完存着'], [500, '够喝几年'], [0, '买瓶二锅头']],
       },
       {
@@ -84,7 +85,7 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[10000, '花果山是你的了'], [2000, '果园主人'], [200, '水果自给自足'], [20, '种几棵解馋'], [0, '路边买水果']],
       },
       {
-        emoji: '🐕', title: '能养土狗', unitPrice: 500, unit: '条',
+        emoji: '🐕', title: '能养土狗', unitPrice: 500, unit: '条', featured: true,
         jokes: [[500, '狗群能组军团'], [100, '村里狗王'], [20, '狗狗成群'], [3, '养一两只'], [0, '云吸狗']],
       },
       {
@@ -103,11 +104,11 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
     targetWealth: 5_000_000,
     items: [
       {
-        emoji: '📚', title: '能买书', unitPrice: 40, unit: '本',
+        emoji: '📚', title: '能买书', unitPrice: 40, unit: '本', featured: true,
         jokes: [[1000000, '藏书量超过市级图书馆'], [100000, '家里书房比书店大'], [10000, '书架摆满整面墙'], [1000, '小有藏书'], [100, '几本好书'], [0, '去图书馆借']],
       },
       {
-        emoji: '🎓', title: '老年大学课程', unitPrice: 500, unit: '门',
+        emoji: '🎓', title: '老年大学课程', unitPrice: 500, unit: '门', featured: true,
         jokes: [[50000, '校方求你别再报名了'], [5000, '全科目修满'], [500, '博学多才'], [50, '报几门感兴趣的'], [5, '试试水'], [0, '自学也行']],
       },
       {
@@ -123,7 +124,7 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[5000, '组建家庭乐队'], [500, '乐器收藏家'], [50, '会好几种'], [5, '学一门手艺'], [0, '唱歌也不错']],
       },
       {
-        emoji: '✍️', title: '写自传出书', unitPrice: 5000, unit: '本',
+        emoji: '✍️', title: '写自传出书', unitPrice: 5000, unit: '本', featured: true,
         jokes: [[10000, '著作等身，出版社抢着签'], [1000, '多产作家'], [100, '出了好几本'], [10, '出一本留个念想'], [0, '写写日记也好']],
       },
     ],
@@ -142,11 +143,11 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[1000000, 'Steam库比服务器还大'], [100000, '全游戏制霸'], [20000, '库压满了'], [2000, '够玩几年'], [200, '小有收藏'], [0, '玩免费游戏']],
       },
       {
-        emoji: '🥤', title: '肥宅快乐水', unitPrice: 3, unit: '瓶',
+        emoji: '🥤', title: '肥宅快乐水', unitPrice: 3, unit: '瓶', featured: true,
         jokes: [[10000000, '你喝的可乐能灌满游泳池'], [1000000, '可乐当水喝'], [100000, '牙齿先抗议了'], [10000, '快乐水自由'], [1000, '偶尔喝'], [0, '喝凉白开']],
       },
       {
-        emoji: '💳', title: '手游648连充', unitPrice: 648, unit: '发',
+        emoji: '💳', title: '手游648连充', unitPrice: 648, unit: '发', featured: true,
         jokes: [[100000, '游戏公司给你立雕像'], [10000, '全服第一大佬'], [1000, '氪金榜常客'], [100, '小氪怡情'], [0, '零氪党也快乐']],
       },
       {
@@ -158,7 +159,7 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[10000, '家里能开电竞馆'], [500, '设备发烧友'], [100, '年年换新'], [20, '配几台好的'], [3, '配一台'], [0, '用手机凑合']],
       },
       {
-        emoji: '🧸', title: '限定手办', unitPrice: 800, unit: '个',
+        emoji: '🧸', title: '限定手办', unitPrice: 800, unit: '个', featured: true,
         jokes: [[50000, '手办墙申请吉尼斯'], [20000, '展示柜摆满整面墙'], [5000, '手办自由'], [500, '一面手办柜'], [50, '买几个镇宅'], [0, '看看就好']],
       },
     ],
@@ -173,11 +174,11 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
     targetWealth: 5_000_000,
     items: [
       {
-        emoji: '🧣', title: '丝巾收藏', unitPrice: 30, unit: '条',
+        emoji: '🧣', title: '丝巾收藏', unitPrice: 30, unit: '条', featured: true,
         jokes: [[1000000, '丝巾能开纺织厂'], [100000, '一天换一条不重样'], [20000, '丝巾比衣服多'], [2000, '专柜VIP'], [200, '好几条换着戴'], [0, '一条够了']],
       },
       {
-        emoji: '🔊', title: '广场舞音响', unitPrice: 500, unit: '台',
+        emoji: '🔊', title: '广场舞音响', unitPrice: 500, unit: '台', featured: true,
         jokes: [[50000, '音量能震碎玻璃'], [10000, '公园是你的主场'], [2000, '队伍标配'], [200, '够用了'], [20, '凑合用'], [0, '喊拍子也行']],
       },
       {
@@ -185,7 +186,7 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[100000, '广场以你命名'], [30000, '舞王级别'], [10000, 'C位常客'], [2000, '经常站前排'], [300, '偶尔站前排'], [0, '后排划水也快乐']],
       },
       {
-        emoji: '👯', title: '舞伴', unitPrice: 10000, unit: '个',
+        emoji: '👯', title: '舞伴', unitPrice: 10000, unit: '个', featured: true,
         jokes: [[10000, '广场舞选妃现场'], [500, '舞伴成群'], [100, '村里/小区名人'], [20, '有固定舞伴'], [3, '几个舞伴'], [0, '独舞也精彩']],
       },
       {
@@ -212,7 +213,7 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[100, '你建的学校比一个学区还多'], [20, '教育扶贫标杆'], [5, '改变几个村的孩子命运'], [1, '做了一件大好事'], [0, '先捐书本']],
       },
       {
-        emoji: '🍚', title: '爱心午餐', unitPrice: 5, unit: '份',
+        emoji: '🍚', title: '爱心午餐', unitPrice: 5, unit: '份', featured: true,
         jokes: [[10000000, '你养活了一座城的孩子'], [1000000, '山区孩子都记得你'], [100000, '大慈善家'], [10000, '坚持多年'], [1000, '尽一份心'], [0, '心意到了']],
       },
       {
@@ -224,11 +225,11 @@ export const RETIREMENT_DREAMS: RetirementDreamDef[] = [
         jokes: [[1000000, '你捐的书能填满十个图书馆'], [100000, '书香满山区'], [10000, '建了好几个图书角'], [1000, '小有贡献'], [100, '捐些好书'], [0, '捐几本也暖心']],
       },
       {
-        emoji: '🏥', title: '助医基金', unitPrice: 10000, unit: '人',
+        emoji: '🏥', title: '助医基金', unitPrice: 10000, unit: '人', featured: true,
         jokes: [[5000, '你是无数家庭的恩人'], [500, '大爱无疆'], [100, '帮了一大片人'], [10, '帮了几家人'], [1, '帮了一个人'], [0, '去医院当义工也行']],
       },
       {
-        emoji: '🏅', title: '志愿服务时长', unitPrice: 50, unit: 'h',
+        emoji: '🏅', title: '志愿服务时长', unitPrice: 50, unit: 'h', featured: true,
         jokes: [[200000, '志愿服务时长破纪录'], [20000, '全职志愿者'], [2000, '资深志愿者'], [200, '热心肠'], [20, '偶尔帮忙'], [0, '从身边小事做起']],
       },
     ],

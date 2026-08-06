@@ -20,7 +20,7 @@ const techExpertAchievements: NarrativeAchievement[] = [
   {
     id: 'ai_symbiote_tech_expert_1',
     title: '架构之手',
-    narrative: `你被团队推举为AI技术负责人。从写代码的人变成决定写什么代码的人。\n\n会议室里所有人都在等你开口。你清了清嗓子，在白板上画下第一根架构线的那一刻，你突然意识到——以前你是被指挥的人，现在你是那个画方向的人。`,
+    narrative: `你被团队推举为AI技术负责人。白板上画下第一根架构线的那一刻，你突然意识到——以前你是被指挥的人，现在你是那个画方向的人。`,
     pathId: 'ai_symbiote',
     branch: 'tech_expert',
     level: 1,
@@ -36,7 +36,7 @@ const techExpertAchievements: NarrativeAchievement[] = [
   {
     id: 'ai_symbiote_tech_expert_2',
     title: '范式铸币',
-    narrative: `你开源的提示词范式在开发者社区爆火。猎头开始频繁联系你。\n\n那天你只是随手把用了一年的方法论整理了一下传上去，没想到一周后引用数像脱缰的野马。你的私信箱塞满了"求合作""求内推""求讲座"。你第一次明白：在AI时代，最好的简历是你公开的作品。`,
+    narrative: `你随手把用了一年的方法论整理后开源，一周后引用数像脱缰的野马。私信箱塞满"求合作""求内推""求讲座"。你第一次明白：在AI时代，最好的简历是你公开的作品。`,
     pathId: 'ai_symbiote',
     branch: 'tech_expert',
     level: 2,
@@ -52,7 +52,7 @@ const techExpertAchievements: NarrativeAchievement[] = [
   {
     id: 'ai_symbiote_tech_expert_3',
     title: '人机合鸣',
-    narrative: `头部AI集团的HR亲自飞来你的城市，开出你不敢想的价码。你看着offer上的数字，想起那个在出租屋里第一次让AI跑通"Hello World"的夜晚。\n\n"我们能为您做点什么？"对面西装革履的HR问。你端起咖啡，杯壁上映出一张比年轻时成熟许多的脸。你没急着回答，只是想起那个凌晨三点对着屏幕自言自语的夜晚——那时你赌的未来，正在向你兑现。`,
+    narrative: `头部AI集团的HR亲自飞来，开出你不敢想的价码。"我们能为您做点什么？"你端起咖啡，想起出租屋里第一次让AI跑通"Hello World"的夜晚——那时你赌的未来，正在向你兑现。`,
     pathId: 'ai_symbiote',
     branch: 'tech_expert',
     level: 3,
@@ -62,7 +62,7 @@ const techExpertAchievements: NarrativeAchievement[] = [
       state.currentMonthlySalary = Math.round(state.currentMonthlySalary * 2);
     },
     log: `头部AI集团邀你出山，开出天价offer。你签下了那份合约。`,
-    triggersRetirementCheck: true,
+    // 注：移除triggersRetirementCheck——突破是高光不是终点，玩家应继续体验后续内容
   },
 ];
 
@@ -74,7 +74,7 @@ const aiStartupAchievements: NarrativeAchievement[] = [
   {
     id: 'ai_symbiote_startup_1',
     title: '冷启动',
-    narrative: `你的AI产品终于上线了。第一天只有23个用户，但你激动得睡不着觉。\n\n凌晨两点你刷新后台，数字从0跳到1，再到5、12、23。每一个新增用户都像一束微光。你躺在工位旁的折叠床上，盯着天花板想：这23个人，可能就是你撬动世界的支点。`,
+    narrative: `你的AI产品上线了。凌晨两点你刷新后台，数字从0跳到1，再到5、12、23——每一个新增用户都像一束微光。你盯着天花板想：这23个人，可能就是你撬动世界的支点。`,
     pathId: 'ai_symbiote',
     branch: 'ai_startup',
     level: 1,
@@ -90,7 +90,7 @@ const aiStartupAchievements: NarrativeAchievement[] = [
   {
     id: 'ai_symbiote_startup_2',
     title: '资本注血',
-    narrative: `投资人看了你的数据后说"我投了"。你拿到了500万天使轮。你第一次坐在老板椅上，而不是工位上。\n\n会议室的灯很亮，对面那位头发花白的前辈把名片推过来："500万，占股15%。"你签字的手没抖，但出了门你在电梯里靠着墙笑了整整一分钟。这不再是你一个人的赌局了。`,
+    narrative: `投资人看了你的数据后说"我投了"。白发前辈把名片推过来："500万，占股15%。"你签字的手没抖，出了门却在电梯里靠着墙笑了整整一分钟。这不再是你一个人的赌局了。`,
     pathId: 'ai_symbiote',
     branch: 'ai_startup',
     level: 2,
@@ -107,7 +107,7 @@ const aiStartupAchievements: NarrativeAchievement[] = [
   {
     id: 'ai_symbiote_startup_3',
     title: '奇点降临',
-    narrative: `你的产品在开源榜单登顶。服务器差点被挤爆。你看着飙升的用户曲线，知道——你赌对了。\n\n凌晨四点，报警短信把你的手机震成一条响不停的虫。你打开笔记本，看着那条近乎垂直的增长曲线，先是慌，然后笑出了声。多年前那个23个用户的夜晚，原来真的是支点。`,
+    narrative: `凌晨四点，报警短信把你的手机震成一条响不停的虫。你看着近乎垂直的用户增长曲线，先是慌，然后笑出了声——多年前那个23个用户的夜晚，原来真的是支点。`,
     pathId: 'ai_symbiote',
     branch: 'ai_startup',
     level: 3,
@@ -115,7 +115,7 @@ const aiStartupAchievements: NarrativeAchievement[] = [
     savingsChange: 1000000,
     passiveIncomeChange: 100000,
     log: `你的产品登顶开源榜单。服务器差点被挤爆——你赌对了。`,
-    triggersRetirementCheck: true,
+    // 注：移除triggersRetirementCheck——突破是高光不是终点，玩家应继续体验后续内容
   },
 ];
 
@@ -127,7 +127,7 @@ const aiEvangelistAchievements: NarrativeAchievement[] = [
   {
     id: 'ai_symbiote_evangelist_1',
     title: '第一道音',
-    narrative: `你的AI课程上线了。定价299，第一天卖了100份。你意识到——教别人用AI，比自己用AI赚钱。\n\n后台的销售额从0跳到29900，你刷新了三遍确认不是bug。你想起自己第一次写出能用的提示词时，也是这种心跳加速的感觉。原来分享本身就是一种复利。`,
+    narrative: `你的AI课程上线，定价299，首日卖出100份。你刷新三遍确认销售额不是bug——原来分享本身就是一种复利。`,
     pathId: 'ai_symbiote',
     branch: 'ai_evangelist',
     level: 1,
@@ -143,7 +143,7 @@ const aiEvangelistAchievements: NarrativeAchievement[] = [
   {
     id: 'ai_symbiote_evangelist_2',
     title: '信众十万',
-    narrative: `你的频道突破了十万关注。评论区有人叫你"老师"，有人骂你"割韭菜"。你发现，影响力是一把双刃剑。\n\n关注数跳过100000的那一秒你截了图，发了个动态又默默删掉。评论区最高赞是"谢谢老师改变了我"，第二高赞是"又一个割韭菜的"。你关掉手机，第一次认真地想：被看见，是有代价的。`,
+    narrative: `你的频道突破十万关注。你截了图，又默默删掉——评论区最高赞是"谢谢老师改变了我"，第二高赞是"又一个割韭菜的"。你关掉手机，第一次认真地想：被看见，是有代价的。`,
     pathId: 'ai_symbiote',
     branch: 'ai_evangelist',
     level: 2,
@@ -160,7 +160,7 @@ const aiEvangelistAchievements: NarrativeAchievement[] = [
   {
     id: 'ai_symbiote_evangelist_3',
     title: '先知登台',
-    narrative: `你站在AI前沿峰会上，台下坐着一千人。你讲完最后一页，掌声雷动。\n\n聚光灯很烫，你握着翻页笔的手心全是汗。你说出最后一句"谢谢大家"时，掌声像潮水一样涌上来。你望向黑压压的人头，恍惚间看见那个深夜里第一次被AI震撼到的年轻人，坐在最后一排冲你点头。`,
+    narrative: `聚光灯很烫，你握着翻页笔的手心全是汗。你说出"谢谢大家"时，掌声像潮水涌上来。你望向黑压压的人头，恍惚间看见那个深夜里第一次被AI震撼到的年轻人，坐在最后一排冲你点头。`,
     pathId: 'ai_symbiote',
     branch: 'ai_evangelist',
     level: 3,
@@ -168,7 +168,7 @@ const aiEvangelistAchievements: NarrativeAchievement[] = [
     savingsChange: 200000,
     passiveIncomeChange: 50000,
     log: `你站上AI前沿峰会的舞台，千人掌声雷动。那一刻你知道，你不再是追随者。`,
-    triggersRetirementCheck: true,
+    // 注：移除triggersRetirementCheck——突破是高光不是终点，玩家应继续体验后续内容
   },
 ];
 

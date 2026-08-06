@@ -36,10 +36,10 @@
         <!-- 漂浮环境粒子 -->
         <div class="sb-particles">
           <span
-            v-for="i in particles"
+            v-for="(ps, i) in particleStyles"
             :key="i"
             class="sb-particle"
-            :style="{ '--i': i, '--dur': (6 + Math.random() * 8) + 's', '--delay': (Math.random() * 5) + 's' }"
+            :style="ps"
           />
         </div>
 
@@ -167,8 +167,8 @@ interface WindowConfig {
 
 const windows: WindowConfig[] = [
   { key: 'career', icon: '💼', label: '事业', subtitle: 'CAREER', themeColor: '#00ff88', glowColor: 'rgba(0,255,136,0.5)', borderColor: 'rgba(0,255,136,0.12)', delay: 0 },
-  { key: 'life',   icon: '☕', label: '生活', subtitle: 'LIFE',   themeColor: '#00d4ff', glowColor: 'rgba(0,212,255,0.5)', borderColor: 'rgba(0,212,255,0.12)', delay: 180 },
-  { key: 'family', icon: '🏠', label: '家庭', subtitle: 'FAMILY', themeColor: '#ff8ab8', glowColor: 'rgba(255,138,184,0.5)', borderColor: 'rgba(255,138,184,0.12)', delay: 360 },
+  { key: 'life',   icon: '☕', label: '生活', subtitle: 'LIFE',   themeColor: '#00d4ff', glowColor: 'rgba(0,212,255,0.5)', borderColor: 'rgba(0,212,255,0.12)', delay: 120 },
+  { key: 'family', icon: '🏠', label: '家庭', subtitle: 'FAMILY', themeColor: '#ff8ab8', glowColor: 'rgba(255,138,184,0.5)', borderColor: 'rgba(255,138,184,0.12)', delay: 240 },
 ]
 
 // ================================================================
@@ -196,12 +196,26 @@ function buildFrameShadows(frame: number[][], palette: string[]): string {
   return shadows.join(', ')
 }
 
+// 帧阴影缓存：同一场景的帧数据不会变化，只计算一次即可。
+// 避免每帧动画切换时重建巨型 box-shadow 字符串（每帧最多 480 个像素阴影），极大降低渲染开销。
+// 场景对象是静态常量（共83个），缓存条目有界；组件卸载时在 onUnmounted 中 clear() 释放。
+const frameShadowCache = new Map<StoryboardScene, string[]>()
+
+function getFrameShadows(scene: StoryboardScene): string[] {
+  let cached = frameShadowCache.get(scene)
+  if (!cached) {
+    cached = scene.frames.map((frame) => buildFrameShadows(frame, scene.palette))
+    frameShadowCache.set(scene, cached)
+  }
+  return cached
+}
+
 function getFrameStyle(scene: StoryboardScene, frameIndex: number) {
-  const frame = scene.frames[frameIndex % scene.frames.length]
+  const shadows = getFrameShadows(scene)
   return {
     width: PIXEL_SIZE + 'px',
     height: PIXEL_SIZE + 'px',
-    boxShadow: buildFrameShadows(frame, scene.palette),
+    boxShadow: shadows[frameIndex % shadows.length],
   }
 }
 
@@ -305,33 +319,39 @@ function playStoryboards() {
     currentFrames.value[key] = 0
 
     setTimeout(() => {
-      st.scene = currentScene
-      prevSceneIds.value[key] = currentId
-      st.visible = true
-      if (currentScene) {
-        // 启动帧动画循环
-        startFrameLoop(key, currentScene)
-        st.burst = true
-        setTimeout(() => { st.burst = false }, 900)
-        setTimeout(() => {
-          st.glitch = true
-          setTimeout(() => { st.glitch = false }, 220)
-        }, 500 + win.delay)
-        setTimeout(() => { st.isNew = false }, 2000)
-      }
-    }, win.delay + 150)
+          st.scene = currentScene
+          prevSceneIds.value[key] = currentId
+          st.visible = true
+          if (currentScene) {
+            // 启动帧动画循环
+            startFrameLoop(key, currentScene)
+            st.burst = true
+            setTimeout(() => { st.burst = false }, 900)
+            setTimeout(() => {
+              st.glitch = true
+              setTimeout(() => { st.glitch = false }, 220)
+            }, 500 + win.delay)
+            setTimeout(() => { st.isNew = false }, 1200)
+          }
+        }, win.delay + 60)
   }
 }
 
-watch(() => store.state.currentAge, () => { setTimeout(playStoryboards, 400) })
-watch(() => [storyboards.value.family.length, storyboards.value.life.length, storyboards.value.career.length], () => { setTimeout(playStoryboards, 400) })
+// 动画时序常量：压缩跨年等待，让场景尽快动起来（此前 400ms + 150ms 的累计延迟导致"慢半拍"）
+const SCENE_START_DELAY = 100
+const SCENE_START_DELAY_MOUNT = 300
+
+watch(() => store.state.currentAge, () => { setTimeout(playStoryboards, SCENE_START_DELAY) })
+watch(() => [storyboards.value.family.length, storyboards.value.life.length, storyboards.value.career.length], () => { setTimeout(playStoryboards, SCENE_START_DELAY) })
 onMounted(() => {
-  setTimeout(playStoryboards, 600)
+  setTimeout(playStoryboards, SCENE_START_DELAY_MOUNT)
   scheduleGlitch()
 })
 onUnmounted(() => {
   if (glitchTimer) clearTimeout(glitchTimer)
   stopAllFrameLoops()
+  // 释放帧阴影缓存，避免组件卸载后内存残留
+  frameShadowCache.clear()
 })
 
 // ================================================================
@@ -405,7 +425,12 @@ function sceneEffectClass(scene: StoryboardScene | null): string {
 
 // 粒子数量
 const PARTICLES_PER_WIN = 6
-const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
+// 预计算粒子样式：避免每帧重渲染时反复调用 Math.random()，既省开销又让粒子位置稳定
+const particleStyles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => ({
+  '--i': i,
+  '--dur': (6 + Math.random() * 8) + 's',
+  '--delay': (Math.random() * 5) + 's',
+}))
 </script>
 
 <style scoped>
@@ -534,7 +559,7 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   padding: 4px 7px;
   background: linear-gradient(180deg, rgba(0,0,0,0.5) 0%, transparent 100%);
   border-bottom: 1px solid var(--b);
-  font-family: 'Courier New', 'Consolas', monospace;
+  font-family: 'DotGothic16', monospace;
   font-size: 9px;
   letter-spacing: 0.5px;
   flex-shrink: 0;
@@ -633,7 +658,7 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   background: linear-gradient(90deg, transparent, var(--c), transparent);
 }
 .sb-standby-text {
-  font-family: 'Courier New', monospace;
+  font-family: 'DotGothic16', monospace;
   font-size: 7px;
   color: var(--c);
   letter-spacing: 2px;
@@ -767,7 +792,7 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
 /* 持续微动效：开罗游戏经典小人弹跳+呼吸（入场动画完成后启动，避免覆盖入场动画） */
 .sb-art-wrap.sb-in:not(.sb-new) .sb-art-scale {
   animation: idleBounce 2s ease-in-out infinite;
-  animation-delay: 1s;
+  animation-delay: 0.3s;
 }
 @keyframes idleBounce {
   0%,100% { transform: translateY(0) scale(1); filter: drop-shadow(0 3px 4px rgba(0,0,0,0.5)) drop-shadow(0 0 5px var(--g)) brightness(1); }
@@ -835,7 +860,7 @@ const particles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => i)
   flex-shrink: 0;
 }
 .sb-name-text {
-  font-family: 'Courier New', monospace;
+  font-family: 'DotGothic16', monospace;
   font-size: 8px;
   color: rgba(255,255,255,0.4);
   opacity: 0;

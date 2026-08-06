@@ -820,7 +820,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   background: transparent;
   border: 1px dashed rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.35);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'DotGothic16', monospace;
   font-size: 12px;
   letter-spacing: 1px;
   cursor: pointer;
@@ -873,7 +873,8 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-height: 0;
 }
 
@@ -936,42 +937,26 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 
 /* ============================================================
-   响应式布局 — 大屏使用 zoom 等比放大
-   - 高度补偿：height = 100dvh / zoom，基本精确适配
-   - overflow-y:auto 作为兜底：防止浏览器取整误差截断内容
-   - 不加滚动条（只要补偿足够精确就不会触发）
+   响应式布局 — 三栏均分一屏，各自内部滚动
+   - 移除 zoom 放大（避免内容撑高触发整页滚动）
+   - 左右栏内部滚动，中栏吸附可用高度
+   - 大屏：三栏同比例扩展，CRT 高度随可用高度自适应
    ============================================================ */
 
-/* 大屏（≥1400px，27寸1080p等）：放大1.1倍 */
+/* 大屏（≥1400px）：三栏均分，CRT 高度自适应，杜绝整页滚动 */
 @media (min-width: 1400px) {
   .app-root {
-    zoom: 1.1;
-    height: calc(100dvh / 1.1 + 4px);
-    overflow-y: auto;
-    overflow-x: hidden;
+    height: 100dvh;
+    overflow: hidden;
   }
-  .crt-stage :deep(.crt-screen) { max-height: 24vh; }
+  .col-left { width: clamp(220px, 16vw, 340px); }
+  .col-right { width: clamp(240px, 18vw, 380px); }
+  .crt-stage :deep(.crt-screen) { max-height: 30vh; }
 }
 
-/* 超大屏（≥1900px，27寸2K等）：放大1.2倍 */
+/* 超大屏（≥1900px）：进一步放大 CRT 高度上限 */
 @media (min-width: 1900px) {
-  .app-root {
-    zoom: 1.2;
-    height: calc(100dvh / 1.2 + 4px);
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-  .crt-stage :deep(.crt-screen) { max-height: 22vh; }
-}
-
-/* 4K（≥2400px）：放大1.35倍 */
-@media (min-width: 2400px) {
-  .app-root {
-    zoom: 1.35;
-    height: calc(100dvh / 1.35 + 6px);
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
+  .crt-stage :deep(.crt-screen) { max-height: 34vh; }
 }
 
 /* 平板：收窄侧栏 */

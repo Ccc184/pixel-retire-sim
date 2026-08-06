@@ -1,14 +1,26 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, nextTick } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import type { Ending } from '../../types/global.d.js'
-import LifeTimeBill from './LifeTimeBill.vue'
+import LifeAuditReport from './LifeAuditReport.vue'
+import LifeFunReport from './LifeFunReport.vue'
 import { fmt } from '../../utils/format.js'
 
 const store = useGameStore()
 
 const endingInfo = computed<Ending | null>(() => store.getEndingInfo())
 const endingText = computed<string>(() => store.getEndingText())
+
+// ========== 评级揭晓动画（仪式感）==========
+const showGrade = ref(false)
+onMounted(() => {
+  // 结局文本弹出后，延迟 800ms 再揭晓评级，创造期待感
+  nextTick(() => {
+    setTimeout(() => {
+      showGrade.value = true
+    }, 800)
+  })
+})
 
 type Grade = 'S' | 'A' | 'B' | 'C' | 'D'
 
@@ -56,10 +68,6 @@ const finalAssets = computed<number>(() => store.totalWealth)
 const yearsWorked = computed<number>(() => {
   return store.state.totalYearsWorked || Math.max(0, store.state.currentAge - 22)
 })
-const yearsUnemployed = computed<number>(() => store.state.totalUnemployedYears || 0)
-const finalHealth = computed<number>(() => Math.round(store.state.health))
-const finalStress = computed<number>(() => Math.round(store.state.stress))
-const finalHappiness = computed<number>(() => Math.round(store.state.happiness))
 
 // ================================================================
 //  退休第一天微型场景 + 路径专属统计
@@ -168,22 +176,6 @@ const pathStat = computed<PathStat | null>(() => {
   }
 })
 
-function stateColor(val: number, type: 'health' | 'stress' | 'happiness'): string {
-  if (type === 'health') {
-    if (val >= 70) return '#00ff88'
-    if (val >= 40) return '#ff8800'
-    return '#ff2d95'
-  }
-  if (type === 'stress') {
-    if (val >= 70) return '#ff2d95'
-    if (val >= 40) return '#ff8800'
-    return '#00ff88'
-  }
-  if (val >= 70) return '#00ff88'
-  if (val >= 40) return '#ffec27'
-  return '#ff2d95'
-}
-
 // 金额格式化（使用公共工具，带¥符号，自动万/亿）
 const formatMoney = fmt
 
@@ -191,13 +183,36 @@ function handleRestart(): void {
   store.resetGame()
 }
 
-// 人生总账单显示控制
-const showBill = ref(false)
-
-// 查看退休生活：展开/收起账单弹窗
-function handleViewRetire(): void {
-  showBill.value = !showBill.value
-}
+// ========== 收支明细（可折叠，替代原"查看退休生活"弹窗）==========
+const showDetail = ref(false)
+const s = store.state
+const incomeItems = computed(() => {
+  const items: { label: string; value: number }[] = []
+  if (s.lifetimeSalary > 0) items.push({ label: '工资', value: s.lifetimeSalary })
+  if (s.lifetimeInvestmentGain !== 0) items.push({ label: '理财收益', value: s.lifetimeInvestmentGain })
+  if (s.lifetimeSideHustle > 0) items.push({ label: '副业', value: s.lifetimeSideHustle })
+  return items
+})
+const totalIncome = computed(() =>
+  s.lifetimeSalary + s.lifetimeInvestmentGain + s.lifetimeSideHustle
+)
+const foodCost = computed(() => Math.max(0, s.lifetimeLivingCost - s.lifetimeChildCost))
+const expenseItems = computed(() => {
+  const items: { label: string; value: number }[] = []
+  if (foodCost.value > 0) items.push({ label: '吃饭', value: foodCost.value })
+  if (s.lifetimeMortgage > 0) items.push({ label: '房贷', value: s.lifetimeMortgage })
+  if (s.lifetimeChildCost > 0) items.push({ label: '养娃', value: s.lifetimeChildCost })
+  if (s.lifetimeParentCost > 0) items.push({ label: '给父母', value: s.lifetimeParentCost })
+  if (s.lifetimeMedicalCost > 0) items.push({ label: '医院', value: s.lifetimeMedicalCost })
+  if (s.lifetimeGiftMoney > 0) items.push({ label: '份子钱', value: s.lifetimeGiftMoney })
+  if (s.lifetimeInsuranceCost > 0) items.push({ label: '保险', value: s.lifetimeInsuranceCost })
+  if (s.lifetimeCardCost > 0) items.push({ label: '健身卡等', value: s.lifetimeCardCost })
+  return items
+})
+const totalExpense = computed(() => expenseItems.value.reduce((sum, item) => sum + item.value, 0))
+const isNegative = computed(() => store.totalWealth < 0)
+// 净资产统一口径：与主统计"最终净资产"一致（综合可变现资产，含房产/链上/生科/店铺/被动收入资本化）
+const rawNetAssets = computed(() => store.totalWealth)
 </script>
 
 <template>
@@ -231,14 +246,8 @@ function handleViewRetire(): void {
         <span class="deco-line" />
       </div>
 
-      <!-- 评级与标题 -->
+      <!-- 评级与标题：评级已并入年度结算单，标题单独保留 -->
       <div class="ending-header">
-        <div
-          class="grade-badge"
-          :class="gradeConfig[endingInfo.grade as Grade].cls"
-        >
-          {{ endingInfo.grade }}
-        </div>
         <h2 class="ending-name">
           {{ endingInfo.title }} · {{ endingInfo.name }}
         </h2>
@@ -252,33 +261,25 @@ function handleViewRetire(): void {
         <pre class="ending-text">{{ endingText }}</pre>
       </div>
 
-      <!-- 退休第一天微型场景 -->
-      <div class="first-day-scene">
-        <div class="scene-header">
-          <span class="scene-tag">◇ RETIREMENT DAY ONE ◇</span>
-        </div>
-        <p class="scene-text">{{ firstDayScene }}</p>
-      </div>
-
       <!-- 人生总账单（移到独立弹窗，不再嵌在主弹窗里） -->
 
+      <!-- 人生趣味结算（年度报告含评级与退休第一天金句 + 数字人生卡片墙 + 成就徽章墙） -->
+      <LifeFunReport
+        :state="store.state"
+        :grade="endingInfo.grade"
+        :show-grade="showGrade"
+        :first-day-scene="firstDayScene"
+      />
+
       <!-- 统计数据 -->
-      <div class="ending-stats" :class="{ 'has-path-stat': pathStat }">
-        <div class="stat-item">
-          <div class="stat-num num-blue">{{ yearsWorked }}</div>
-          <div class="stat-label">工作年限</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-num num-red">{{ yearsUnemployed }}</div>
-          <div class="stat-label">失业年限</div>
-        </div>
+      <div class="ending-stats" :class="{ 'has-path-stat': !!pathStat }">
         <div class="stat-item">
           <div class="stat-num num-green">{{ formatMoney(finalSavings) }}</div>
           <div class="stat-label">最终存款</div>
         </div>
         <div class="stat-item">
           <div class="stat-num num-pink">{{ formatMoney(finalAssets) }}</div>
-          <div class="stat-label">最终资产</div>
+          <div class="stat-label">最终净资产</div>
         </div>
         <!-- 路径专属统计项 -->
         <div v-if="pathStat" class="stat-item stat-item-path">
@@ -287,29 +288,54 @@ function handleViewRetire(): void {
         </div>
       </div>
 
-      <!-- 身心状态 -->
-      <div class="ending-wellbeing">
-        <div class="wb-stat-item">
-          <span class="wb-stat-label">健康</span>
-          <span class="wb-stat-num" :style="{ color: stateColor(finalHealth, 'health'), textShadow: '0 0 6px ' + stateColor(finalHealth, 'health') }">{{ finalHealth }}</span>
+      <!-- 收支明细（可折叠） -->
+      <div class="detail-toggle" @click="showDetail = !showDetail">
+        <span class="toggle-arrow">{{ showDetail ? '▲' : '▼' }}</span>
+        {{ showDetail ? '收起收支明细' : '收支明细' }}
+        <span class="toggle-arrow">{{ showDetail ? '▲' : '▼' }}</span>
+      </div>
+
+      <div v-if="showDetail" class="detail-bill">
+        <div class="detail-section">
+          <div class="detail-row detail-total">
+            <span class="detail-label">总收入</span>
+            <span class="detail-dots" />
+            <span class="detail-val val-income">{{ formatMoney(totalIncome) }}</span>
+          </div>
+          <div v-for="item in incomeItems" :key="item.label" class="detail-row detail-sub">
+            <span class="detail-label">{{ item.label }}</span>
+            <span class="detail-dots" />
+            <span class="detail-val">{{ formatMoney(item.value) }}</span>
+          </div>
         </div>
-        <div class="wb-stat-item">
-          <span class="wb-stat-label">压力</span>
-          <span class="wb-stat-num" :style="{ color: stateColor(finalStress, 'stress'), textShadow: '0 0 6px ' + stateColor(finalStress, 'stress') }">{{ finalStress }}</span>
+
+        <div class="detail-section">
+          <div class="detail-row detail-total">
+            <span class="detail-label">总支出</span>
+            <span class="detail-dots" />
+            <span class="detail-val val-expense">{{ formatMoney(totalExpense) }}</span>
+          </div>
+          <div v-for="item in expenseItems" :key="item.label" class="detail-row detail-sub">
+            <span class="detail-label">{{ item.label }}</span>
+            <span class="detail-dots" />
+            <span class="detail-val">{{ formatMoney(item.value) }}</span>
+          </div>
         </div>
-        <div class="wb-stat-item">
-          <span class="wb-stat-label">幸福</span>
-          <span class="wb-stat-num" :style="{ color: stateColor(finalHappiness, 'happiness'), textShadow: '0 0 6px ' + stateColor(finalHappiness, 'happiness') }">{{ finalHappiness }}</span>
+
+        <div class="detail-section">
+          <div class="detail-row detail-net-row">
+            <span class="detail-label">净资产</span>
+            <span class="detail-dots" />
+            <span class="detail-val" :class="isNegative ? 'val-negative' : 'val-net'">{{ formatMoney(rawNetAssets) }}</span>
+          </div>
         </div>
       </div>
 
+      <!-- 人生审计报告 -->
+      <LifeAuditReport />
+
       <!-- 重新开始 -->
       <div class="ending-footer">
-        <button class="btn-retire" @click="handleViewRetire">
-          <span class="btn-arrows">{{ showBill ? '▲' : '▼' }}</span>
-          {{ showBill ? '收起账单' : '查看退休生活' }}
-          <span class="btn-arrows">{{ showBill ? '▲' : '▼' }}</span>
-        </button>
         <button class="btn-restart" @click="handleRestart">
           再来一局
         </button>
@@ -317,17 +343,6 @@ function handleViewRetire(): void {
 
       <!-- D级故障效果层 -->
       <div v-if="endingInfo.grade === 'D'" class="glitch-overlay" />
-    </div>
-
-    <!-- 人生总账单独立弹窗 -->
-    <div v-if="showBill" class="bill-overlay" @click.self="handleViewRetire">
-      <div class="bill-modal">
-        <button class="bill-close" @click="handleViewRetire">✕</button>
-        <div class="bill-section-header">
-          <span class="bill-tag">▣ LIFE TIME BILL</span>
-        </div>
-        <LifeTimeBill :state="store.state" />
-      </div>
     </div>
   </div>
 </template>
@@ -597,94 +612,6 @@ function handleViewRetire(): void {
   border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
 }
 
-.grade-badge {
-  font-size: 80px;
-  line-height: 1;
-  letter-spacing: 4px;
-  font-weight: bold;
-  font-family: 'DotGothic16', monospace;
-}
-
-.grade-badge.grade-s {
-  color: #ffec27;
-  text-shadow:
-    0 0 8px #ffec27,
-    0 0 20px #ffec27,
-    0 0 40px #ff8800,
-    0 0 80px #ff2d9580,
-    3px 3px 0 #000;
-  animation: gradeS 2s ease-in-out infinite;
-}
-
-@keyframes gradeS {
-  0%, 100% {
-    text-shadow: 0 0 8px #ffec27, 0 0 20px #ffec27, 0 0 40px #ff8800, 0 0 80px #ff2d9580, 3px 3px 0 #000;
-    transform: scale(1);
-  }
-  50% {
-    text-shadow: 0 0 12px #ffec27, 0 0 30px #ffec27, 0 0 50px #00ff88, 0 0 90px #00d4ff80, 3px 3px 0 #000;
-    transform: scale(1.05);
-  }
-}
-
-.grade-badge.grade-a {
-  color: #00d4ff;
-  text-shadow:
-    0 0 8px #00d4ff,
-    0 0 20px #00d4ff,
-    0 0 40px #00ff8880,
-    3px 3px 0 #000;
-  animation: gradePulse 2.5s ease-in-out infinite;
-}
-
-.grade-badge.grade-b {
-  color: #00ff88;
-  text-shadow:
-    0 0 8px #00ff88,
-    0 0 20px #00ff88,
-    0 0 40px #00d4ff80,
-    3px 3px 0 #000;
-  animation: gradePulse 2.5s ease-in-out infinite;
-}
-
-.grade-badge.grade-c {
-  color: #ff8800;
-  text-shadow:
-    0 0 6px #ff8800,
-    0 0 14px #ff8800,
-    3px 3px 0 #000;
-}
-
-.grade-badge.grade-d {
-  color: #ff004d;
-  text-shadow:
-    0 0 8px #ff004d,
-    0 0 20px #ff004d,
-    0 0 40px #ff2d9580,
-    3px 3px 0 #000;
-  animation: gradeDGlitch 0.5s ease-in-out infinite;
-}
-
-@keyframes gradePulse {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.3); }
-}
-
-@keyframes gradeDGlitch {
-  0%, 100% {
-    text-shadow: 0 0 8px #ff004d, 0 0 20px #ff004d, 0 0 40px #ff2d9580, 3px 3px 0 #000;
-    transform: translate(0);
-  }
-  20% {
-    text-shadow: -3px 0 8px #00d4ff, 3px 0 20px #ff004d, 0 0 40px #ff2d9580, 3px 3px 0 #000;
-    transform: translate(-2px, 0);
-  }
-  40% {
-    text-shadow: 3px 0 8px #ff2d95, -3px 0 20px #ff004d, 0 0 40px #ff2d9580, 3px 3px 0 #000;
-    transform: translate(2px, 0);
-  }
-}
-
 .ending-name {
   font-size: 22px;
   color: #ffffff;
@@ -733,125 +660,14 @@ function handleViewRetire(): void {
   text-shadow: 0 0 2px rgba(255, 204, 170, 0.3);
 }
 
-/* 退休第一天微型场景 */
-.first-day-scene {
-  position: relative;
-  background: rgba(0, 0, 0, 0.45);
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  box-shadow: inset 0 0 12px rgba(0, 212, 255, 0.08), 0 0 8px rgba(0, 212, 255, 0.15);
-  padding: 0;
-}
-
-.scene-header {
-  padding: 6px 12px;
-  background: rgba(0, 212, 255, 0.1);
-  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
-}
-
-.scene-tag {
-  font-size: 10px;
-  color: #00d4ff;
-  letter-spacing: 2px;
-  text-shadow: 0 0 4px #00d4ff;
-}
-
-.scene-text {
-  font-family: 'DotGothic16', monospace;
-  font-size: 13px;
-  line-height: 1.9;
-  color: #b8e6ff;
-  margin: 0;
-  padding: 12px 16px;
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 3px rgba(0, 212, 255, 0.3);
-  font-style: italic;
-}
-
-/* 人生总账单独立弹窗 */
-.bill-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.85);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  backdrop-filter: blur(4px);
-}
-
-.bill-modal {
-  position: relative;
-  width: min(760px, 95%);
-  max-height: 92vh;
-  overflow-y: auto;
-  background: #0a0a0a;
-  border: 2px solid rgba(0, 212, 255, 0.4);
-  box-shadow: 0 0 40px rgba(0, 212, 255, 0.2);
-  border-radius: 4px;
-  padding: 24px;
-}
-
-.bill-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.6);
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  transition: all 0.2s;
-}
-.bill-close:hover {
-  background: rgba(255, 80, 80, 0.3);
-  color: #fff;
-}
-
-/* 旧样式保留兼容 */
-.ending-bill-wrapper {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(0, 212, 255, 0.3);
-  box-shadow: inset 0 0 12px rgba(0, 212, 255, 0.1), 0 0 6px rgba(0, 212, 255, 0.2);
-  padding: 0;
-  overflow: hidden;
-  scroll-margin-top: 20px;
-}
-
-.bill-section-header {
-  padding: 10px 16px;
-  background: rgba(0, 212, 255, 0.1);
-  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
-  margin-bottom: 12px;
-}
-
-.bill-tag {
-  font-size: 14px;
-  color: #00d4ff;
-  letter-spacing: 3px;
-  text-shadow: 0 0 6px #00d4ff;
-  font-weight: bold;
-}
-
 /* 统计数据 */
 .ending-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
 
-/* 有路径专属统计项时，前4项2x2，第5项横跨整行 */
-.ending-stats.has-path-stat {
-  grid-template-columns: repeat(2, 1fr);
-}
-
+/* 路径专属统计项横跨整行，突出展示 */
 .ending-stats.has-path-stat .stat-item-path {
   grid-column: 1 / -1;
   background: rgba(255, 236, 39, 0.06);
@@ -892,7 +708,6 @@ function handleViewRetire(): void {
 }
 
 .num-blue { color: #00d4ff; text-shadow: 0 0 6px #00d4ff; }
-.num-red { color: #ff2d95; text-shadow: 0 0 6px #ff2d95; }
 .num-green { color: #00ff88; text-shadow: 0 0 6px #00ff88; }
 .num-pink { color: #ff2d95; text-shadow: 0 0 6px #c900ff; }
 .num-yellow { color: #ffec27; text-shadow: 0 0 6px #ffec27, 0 0 14px rgba(255, 236, 39, 0.5); }
@@ -910,67 +725,6 @@ function handleViewRetire(): void {
   align-items: center;
   gap: 10px;
   padding-top: 8px;
-}
-
-/* 查看退休生活按钮 - 主色调大按钮 */
-.btn-retire {
-  font-size: 16px;
-  padding: 14px 36px;
-  background: rgba(0, 212, 255, 0.15);
-  color: #00d4ff;
-  border: 2px solid #00d4ff;
-  box-shadow:
-    0 0 8px #00d4ff,
-    0 0 20px #00d4ff40,
-    inset 0 0 12px #00d4ff20;
-  letter-spacing: 3px;
-  font-family: 'DotGothic16', monospace;
-  font-weight: bold;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  transition: all 0.15s ease;
-  text-shadow: 0 0 6px #00d4ff;
-  position: relative;
-  overflow: hidden;
-  width: 100%;
-  justify-content: center;
-}
-
-.btn-retire::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent 0px,
-    transparent 3px,
-    rgba(255,255,255,0.03) 3px,
-    rgba(255,255,255,0.03) 4px
-  );
-  pointer-events: none;
-}
-
-.btn-retire:hover:not(:disabled) {
-  background: rgba(0, 212, 255, 0.25);
-  color: #fff;
-  border-color: #00d4ff;
-  box-shadow:
-    0 0 12px #00d4ff,
-    0 0 28px #00d4ff80,
-    0 0 50px #00ff8840,
-    inset 0 0 16px #00d4ff30;
-  text-shadow: 0 0 8px #00d4ff, 0 0 16px #00d4ff;
-  transform: translateY(-2px);
-}
-
-.btn-retire:active:not(:disabled) {
-  transform: translateY(2px);
-  box-shadow:
-    0 0 6px #00d4ff,
-    0 0 14px #00d4ff60,
-    inset 0 0 10px #00d4ff30;
 }
 
 /* 再来一局按钮 - 灰色小按钮 */
@@ -1025,33 +779,59 @@ function handleViewRetire(): void {
   50% { opacity: 1; transform: translateX(-3px); }
 }
 
-/* ---- 身心状态 ---- */
-.ending-wellbeing {
-  display: flex;
-  justify-content: center;
-  gap: 20px;
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(201, 0, 255, 0.25);
-  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.4);
-}
-
-.wb-stat-item {
+/* ====== 收支明细（可折叠） ====== */
+.detail-toggle {
   display: flex;
   align-items: center;
-  gap: 8px;
-}
-
-.wb-stat-label {
-  font-size: 12px;
-  color: #94b0c2;
-  letter-spacing: 1px;
-}
-
-.wb-stat-num {
-  font-size: 22px;
-  font-weight: bold;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
   font-family: 'DotGothic16', monospace;
-  letter-spacing: 1px;
+  font-size: 13px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+  text-shadow: 0 0 6px rgba(0, 212, 255, 0.5);
 }
+.detail-toggle:hover {
+  background: rgba(0, 212, 255, 0.15);
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.2);
+}
+.toggle-arrow { font-size: 10px; }
+
+.detail-bill {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  padding: 6px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.detail-section { padding: 4px 0; }
+.detail-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 0;
+  font-family: 'DotGothic16', monospace;
+}
+.detail-total { font-weight: bold; }
+.detail-label { font-size: 13px; color: #94b0c2; flex-shrink: 0; }
+.detail-dots {
+  flex: 1;
+  border-bottom: 1px dotted rgba(255, 255, 255, 0.2);
+  transform: translateY(-3px);
+}
+.detail-val { font-size: 13px; color: #e0e0f0; flex-shrink: 0; }
+.detail-sub { padding-left: 16px; }
+.detail-sub .detail-label { font-size: 12px; color: #8888aa; }
+.val-income { color: #00ff88; text-shadow: 0 0 6px rgba(0, 255, 136, 0.4); }
+.val-expense { color: #ff8800; text-shadow: 0 0 6px rgba(255, 136, 0, 0.4); }
+.val-net { color: #00d4ff; text-shadow: 0 0 6px rgba(0, 212, 255, 0.4); }
+.val-negative { color: #ff004d; text-shadow: 0 0 6px rgba(255, 0, 77, 0.4); }
+.detail-net-row { border-top: 1px dashed rgba(255, 255, 255, 0.15); padding-top: 8px; }
 </style>
