@@ -24,19 +24,46 @@ import type { NarrativeEvent, GameState } from '../types/global.d.js';
 import { getAllExtraEvents } from './narrative-registry.js';
 import { clamp } from '../utils/clamp.js';
 
-// 加载其他路径的叙事数据（模块自注册到 narrative-registry）
-import './narrative-data-chain.js';
-import './narrative-data-nomad.js';
-import './narrative-data-ip.js';
-import './narrative-data-silver.js';
-import './narrative-data-bio.js';
+// 加载通用叙事数据（所有路径都需要，保持静态加载）
+// 失业/再就业、All-in、公司、突破、可重复通用事件、MBTI专属、哲学/灵魂拷问
 import './narrative-unemployed.js';
 import './narrative-allin.js';
 import './narrative-company.js';
 import './narrative-breakthrough.js';
+import './narrative-recurring.js';
 import './narrative-data-mbti.js';
 import './narrative-data-philosophy.js';
-import './narrative-recurring.js';
+
+// ============================================================
+// 路径专属叙事数据：按需动态加载（代码分割）
+// 链上/游牧/IP/银发/生物 5 个大型路径文件仅在玩家选择对应路径时才加载，
+// 显著减小首屏主包体积。AI共生者事件已内置于本文件，无需动态加载。
+// ============================================================
+const PATH_DATA_LOADERS: Record<string, () => Promise<unknown>> = {
+  chain_native: () => import('./narrative-data-chain.js'),
+  digital_nomad: () => import('./narrative-data-nomad.js'),
+  super_ip: () => import('./narrative-data-ip.js'),
+  silver_economy: () => import('./narrative-data-silver.js'),
+  bio_gambler: () => import('./narrative-data-bio.js'),
+};
+
+/** 已加载完成的路径集合（防止重复加载） */
+const loadedPathData = new Set<string>();
+
+/**
+ * 确保目标路径的专属叙事数据已加载。
+ * 首次调用时动态 import 对应 chunk，加载后其 registerNarrativeEvents
+ * 副作用会自动把事件注册进 narrative-registry。
+ */
+export async function ensurePathDataLoaded(pathId?: string | null): Promise<void> {
+  if (!pathId || pathId === 'ai_symbiote') return;
+  if (loadedPathData.has(pathId)) return;
+  const loader = PATH_DATA_LOADERS[pathId];
+  if (loader) {
+    await loader();
+    loadedPathData.add(pathId);
+  }
+}
 
 // ============================================================
 // 辅助函数

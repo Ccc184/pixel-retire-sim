@@ -17,7 +17,7 @@ import { BLIND_BOX_OUTCOMES, detectBlindBoxOutcomes } from '../data/blind-box-ou
 import { processRomanceYear } from '../data/romance.js';
 import { checkAchievements } from '../data/achievements.js';
 import { getPath } from '../data/retirement-paths.js';
-import { selectNarrativeEvent } from '../data/narrative-events.js';
+import { selectNarrativeEvent, ensurePathDataLoaded } from '../data/narrative-events.js';
 import { checkAchievements as checkNarrativeAchievements } from '../data/narrative-achievements.js';
 import { getMBTIProfessionModifier, getActiveMBTIMechanics, getActiveMBTITrait } from '../data/mbti-system.js';
 import { RETIREMENT_DREAMS } from '../data/retirement-dreams.js';
@@ -1102,33 +1102,36 @@ export const useGameStore = defineStore('game', () => {
 
   /** 抽取当年的叙事事件 */
   function drawNarrativeEvent() {
-    // 生成新年的心境独白
-    generateYearOpeningMonologue();
+    // 确保当前路径的专属叙事数据已加载（动态 chunk），避免事件池缺少该路径事件
+    ensurePathDataLoaded(state.value.retirementPath).then(() => {
+      // 生成新年的心境独白
+      generateYearOpeningMonologue();
 
-    // 先检测是否触发十字路口
-    const crossroad = detectCrossroad(state.value, crossroadFiredTags.value);
-    if (crossroad) {
-      currentCrossroad.value = crossroad;
-      showCrossroad.value = true;
-      currentNarrativeEvent.value = null;
+      // 先检测是否触发十字路口
+      const crossroad = detectCrossroad(state.value, crossroadFiredTags.value);
+      if (crossroad) {
+        currentCrossroad.value = crossroad;
+        showCrossroad.value = true;
+        currentNarrativeEvent.value = null;
+        selectedNarrativeOptionId.value = null;
+        return;
+      }
+
+      // 没有十字路口，正常抽取叙事事件
+      currentCrossroad.value = null;
+      showCrossroad.value = false;
+
+      // 延期退休阶段：50%概率为平静年份（不抽事件，直接休养生息）
+      if (isDelayedRetirementPhase(state.value) && Math.random() < 0.5) {
+        currentNarrativeEvent.value = null;
+        selectedNarrativeOptionId.value = null;
+        return;
+      }
+
+      const event = selectNarrativeEvent(state.value, state.value.narrativeEventFired || {});
+      currentNarrativeEvent.value = event;
       selectedNarrativeOptionId.value = null;
-      return;
-    }
-
-    // 没有十字路口，正常抽取叙事事件
-    currentCrossroad.value = null;
-    showCrossroad.value = false;
-
-    // 延期退休阶段：50%概率为平静年份（不抽事件，直接休养生息）
-    if (isDelayedRetirementPhase(state.value) && Math.random() < 0.5) {
-      currentNarrativeEvent.value = null;
-      selectedNarrativeOptionId.value = null;
-      return;
-    }
-
-    const event = selectNarrativeEvent(state.value, state.value.narrativeEventFired || {});
-    currentNarrativeEvent.value = event;
-    selectedNarrativeOptionId.value = null;
+    });
   }
 
   /** 玩家选择叙事事件的某个选项 */
