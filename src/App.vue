@@ -32,6 +32,9 @@ const confirmRef = ref<InstanceType<typeof CyberConfirm> | null>(null)
 // 注册数值提示切换快捷键（Ctrl+Shift+H）
 onMounted(() => {
   registerHintToggleShortcut()
+  // 隐藏 loading 骨架屏
+  const el = document.getElementById('loading-screen')
+  if (el) el.classList.add('fade-out')
 })
 
 // ---- BGM 管理：随游戏阶段/路径自动切换 ----
