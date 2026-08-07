@@ -96,7 +96,7 @@ defineExpose({ addToast });
 
 .toast-badge {
   display: block;
-  font-size: 9px;
+  font-size: 10px;
   color: #ffd700;
   letter-spacing: 2px;
   text-shadow: 0 0 4px #ffd700;

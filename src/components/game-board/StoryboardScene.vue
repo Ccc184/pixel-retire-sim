@@ -566,11 +566,11 @@ const particleStyles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => ({
 }
 .sb-ico { font-size: 10px; }
 .sb-txt { color: var(--c); font-weight: bold; font-size: 10px; }
-.sb-sub { color: rgba(255,255,255,0.3); font-size: 8px; letter-spacing: 1px; }
+.sb-sub { color: rgba(255,255,255,0.3); font-size: 10px; letter-spacing: 1px; }
 .sb-yr {
   margin-left: auto;
   color: rgba(255,255,255,0.35);
-  font-size: 8px;
+  font-size: 10px;
 }
 .sb-rec {
   width: 6px; height: 6px;
@@ -659,7 +659,7 @@ const particleStyles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => ({
 }
 .sb-standby-text {
   font-family: 'DotGothic16', monospace;
-  font-size: 7px;
+  font-size: 9px;
   color: var(--c);
   letter-spacing: 2px;
 }
@@ -861,7 +861,7 @@ const particleStyles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => ({
 }
 .sb-name-text {
   font-family: 'DotGothic16', monospace;
-  font-size: 8px;
+  font-size: 10px;
   color: rgba(255,255,255,0.4);
   opacity: 0;
   transform: translateY(4px);
@@ -1208,19 +1208,19 @@ const particleStyles = Array.from({ length: PARTICLES_PER_WIN }, (_, i) => ({
 
 /* ===== 响应式 ===== */
 @media (max-width: 768px) {
-  .sb-topbar { padding: 3px 5px; font-size: 7px; }
+  .sb-topbar { padding: 3px 5px; font-size: 8px; }
   .sb-ico { font-size: 8px; }
   .sb-txt { font-size: 8px; }
   .sb-sub { display: none; }
-  .sb-name-text { font-size: 7px; }
+  .sb-name-text { font-size: 8px; }
 }
 
 @media (min-width: 1400px) {
   .sb-topbar { padding: 5px 10px; font-size: 10px; gap: 6px; }
   .sb-ico { font-size: 12px; }
   .sb-txt { font-size: 12px; }
-  .sb-sub { font-size: 9px; }
-  .sb-yr { font-size: 9px; }
+  .sb-sub { font-size: 10px; }
+  .sb-yr { font-size: 10px; }
   .sb-name { padding: 4px 10px; min-height: 22px; }
   .sb-name-text { font-size: 10px; }
   .sb-rec { width: 7px; height: 7px; }

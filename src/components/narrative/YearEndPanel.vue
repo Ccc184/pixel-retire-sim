@@ -2,7 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import type { GameState, YearResult } from '../../types/global.d.js'
-import { playTurn, playDing, playBuzz, playBigGain, playBigLoss } from '../../utils/audio.js'
+import { playTurn, playDing, playBuzz, playBigGain, playBigLoss, playBlindboxReveal, playMilestone, playBreakthrough } from '../../utils/audio.js'
 import { fmt, fmtExact, fmtSigned, fmtSalaryDelta } from '../../utils/format.js'
 import { generateMilestoneSummary, isMilestoneAge } from '../../data/milestone-summaries.js'
 
@@ -58,6 +58,22 @@ watch(() => store.showYearEnd, (newVal) => {
       else if (change >= 0) playDing()
       else playBuzz()
     }, 300)
+
+    // 里程碑年：播放里程碑和弦
+    if (isMilestoneAge(result.value?.age || 0)) {
+      setTimeout(() => playMilestone(), 500)
+    }
+    // 有盲盒揭晓：播放盲盒揭晓音
+    const bbReveals = result.value?.blindBoxReveals || []
+    if (bbReveals.length > 0) {
+      setTimeout(() => playBlindboxReveal(), 700)
+    }
+    // 被动收入/大事件显著突破：播放突破和弦
+    const hasBreakthrough = (result.value as any)?.cardDetails?.some((c: any) =>
+      /突破|跃升|翻倍|重大|契机|转机/i.test(String(c.title || '')))
+    if (hasBreakthrough) {
+      setTimeout(() => playBreakthrough(), 900)
+    }
   }
 })
 
@@ -910,15 +926,19 @@ function handleContinue(): void {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 24px 20px;
-  background: #0d0e1a;
+  padding: 28px 22px;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(201, 0, 255, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(0, 212, 255, 0.05) 0%, transparent 50%),
+    linear-gradient(160deg, #0d0e1a 0%, #0f0a20 40%, #0a0f1a 100%);
   z-index: 152;
 
   /* 多层霓虹边框：紫+蓝 */
   box-shadow:
     0 0 16px var(--neon-purple),
     0 0 40px rgba(201, 0, 255, 0.35),
-    0 0 80px rgba(201, 0, 255, 0.15);
+    0 0 80px rgba(201, 0, 255, 0.15),
+    inset 0 0 40px rgba(201, 0, 255, 0.03);
   border: 2px solid var(--neon-purple);
   outline: 1px solid rgba(0, 212, 255, 0.2);
   outline-offset: 4px;
@@ -1025,12 +1045,14 @@ function handleContinue(): void {
 
 .yearend-age {
   margin: 0;
-  font-size: 14px;
-  letter-spacing: 3px;
+  font-size: 16px;
+  letter-spacing: 4px;
   color: var(--neon-pink);
   text-shadow:
-    0 0 4px var(--neon-pink),
-    0 0 10px var(--neon-pink);
+    0 0 6px var(--neon-pink),
+    0 0 14px var(--neon-pink),
+    0 0 28px rgba(255, 45, 149, 0.4);
+  font-weight: bold;
 }
 
 /* ============================================================
@@ -1040,6 +1062,7 @@ function handleContinue(): void {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin: 2px 0;
 }
 
 .divider-line {
@@ -1050,11 +1073,12 @@ function handleContinue(): void {
 }
 
 .divider-dot {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   background: var(--neon-blue);
   box-shadow: 0 0 6px var(--neon-blue);
   flex-shrink: 0;
+  transform: rotate(45deg);
 }
 
 /* ============================================================
@@ -1070,56 +1094,91 @@ function handleContinue(): void {
 
 /* 分区一：年度金句 - 品红色霓虹 */
 .section-quote {
-  padding: 12px 10px 8px;
-  background: rgba(255, 45, 149, 0.04);
+  padding: 14px 12px 10px;
+  background: linear-gradient(135deg, rgba(255, 45, 149, 0.06) 0%, rgba(255, 45, 149, 0.02) 100%);
   border: 1px solid rgba(255, 45, 149, 0.25);
   box-shadow: inset 0 0 14px rgba(255, 45, 149, 0.06), 0 0 10px rgba(255, 45, 149, 0.1);
+  position: relative;
+}
+.section-quote::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 45, 149, 0.4), transparent);
+  pointer-events: none;
 }
 
 /* 分区二：事件回顾 - 蓝色霓虹 */
 .section-events {
-  padding: 10px;
-  background: rgba(0, 212, 255, 0.03);
+  padding: 12px 10px;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.04) 0%, rgba(0, 212, 255, 0.01) 100%);
   border: 1px solid rgba(0, 212, 255, 0.2);
   box-shadow: inset 0 0 12px rgba(0, 212, 255, 0.05);
+  position: relative;
+}
+.section-events::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+  pointer-events: none;
 }
 
 /* 分区三：数字总结 - 绿色霓虹 */
 .section-numbers {
-  padding: 10px;
-  background: rgba(0, 255, 136, 0.03);
+  padding: 12px 10px;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.04) 0%, rgba(0, 255, 136, 0.01) 100%);
   border: 1px solid rgba(0, 255, 136, 0.2);
   box-shadow: inset 0 0 12px rgba(0, 255, 136, 0.05);
   gap: 8px;
+  position: relative;
+}
+.section-numbers::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.3), transparent);
+  pointer-events: none;
 }
 
 /* 分区标题条 */
 .section-header {
   text-align: center;
   padding-bottom: 6px;
-  margin-bottom: 2px;
-  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+  margin-bottom: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
 .section-tag {
   font-size: 10px;
   letter-spacing: 3px;
   font-weight: bold;
+  display: inline-block;
+  padding: 0 8px;
 }
 
 .section-quote .section-tag {
   color: #ff2d95;
   text-shadow: 0 0 6px #ff2d95, 0 0 12px rgba(255, 45, 149, 0.5);
+  border: 1px solid rgba(255, 45, 149, 0.15);
+  padding: 2px 10px;
 }
 
 .section-events .section-tag {
   color: #00d4ff;
   text-shadow: 0 0 6px #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  padding: 2px 10px;
 }
 
 .section-numbers .section-tag {
   color: #00ff88;
   text-shadow: 0 0 6px #00ff88;
+  border: 1px solid rgba(0, 255, 136, 0.12);
+  padding: 2px 10px;
 }
 
 /* 无事件占位 */
@@ -1141,10 +1200,18 @@ function handleContinue(): void {
 .milestone-section {
   position: relative;
   z-index: 2;
-  padding: 12px 14px;
+  padding: 14px 14px;
   background: linear-gradient(135deg, rgba(201, 0, 255, 0.06), rgba(0, 212, 255, 0.04));
   border: 1px solid rgba(201, 0, 255, 0.2);
-  border-radius: 4px;
+  box-shadow: inset 0 0 12px rgba(201, 0, 255, 0.06);
+}
+.milestone-section::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 0, 255, 0.3), transparent);
+  pointer-events: none;
 }
 
 .milestone-line {
@@ -1203,6 +1270,8 @@ function handleContinue(): void {
     0 0 14px rgba(255, 45, 149, 0.6),
     0 0 28px rgba(255, 45, 149, 0.3);
   animation: quoteGlow 3s ease-in-out infinite;
+  font-weight: 500;
+  letter-spacing: 0.5px;
 }
 
 @keyframes quoteGlow {
@@ -1244,19 +1313,23 @@ function handleContinue(): void {
 .story-stream {
   position: relative;
   z-index: 2;
-  padding: 4px 8px;
+  padding: 6px 8px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .story-line {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  padding: 4px 0 4px 10px;
+  padding: 5px 0 5px 12px;
   border-left: 2px solid var(--story-color, #6b8299);
   box-shadow: -2px 0 6px -2px var(--story-color, transparent);
+  transition: background 0.15s ease;
+}
+.story-line:hover {
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .story-icon {
@@ -1264,6 +1337,8 @@ function handleContinue(): void {
   font-size: 13px;
   line-height: 1.7;
   filter: drop-shadow(0 0 3px var(--story-color, transparent));
+  width: 14px;
+  text-align: center;
 }
 
 .story-text {
@@ -1272,6 +1347,7 @@ function handleContinue(): void {
   color: #9fb3c8;
   text-shadow: none;
   word-break: break-word;
+  flex: 1;
 }
 
 .fold-arrow {
@@ -1296,8 +1372,8 @@ function handleContinue(): void {
 .finance-section.compact {
   position: relative;
   z-index: 2;
-  padding: 10px 10px;
-  background: rgba(0, 0, 0, 0.35);
+  padding: 12px 10px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%);
   border: 1px solid rgba(0, 255, 136, 0.15);
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
 }
@@ -1313,9 +1389,19 @@ function handleContinue(): void {
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  padding: 4px 6px;
-  background: rgba(10, 5, 30, 0.5);
+  padding: 8px 6px 6px;
+  background: linear-gradient(180deg, rgba(10, 5, 30, 0.6) 0%, rgba(10, 5, 30, 0.4) 100%);
   border: 1px solid rgba(201, 0, 255, 0.15);
+  position: relative;
+  overflow: hidden;
+}
+.finance-compact-grid .finance-item::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 0, 255, 0.2), transparent);
+  pointer-events: none;
 }
 
 .finance-compact-grid .finance-label {
@@ -1339,7 +1425,7 @@ function handleContinue(): void {
 
 .unit-label {
   color: #7a95a8;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .val-green {
@@ -1378,8 +1464,8 @@ function handleContinue(): void {
 .wellbeing-section.compact {
   position: relative;
   z-index: 2;
-  padding: 10px;
-  background: rgba(0, 0, 0, 0.35);
+  padding: 12px 10px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.3) 100%);
   border: 1px solid rgba(0, 255, 136, 0.15);
 }
 
@@ -1388,13 +1474,17 @@ function handleContinue(): void {
   align-items: center;
   justify-content: center;
   gap: 16px;
+  padding: 4px 0;
 }
 
 .wb-compact-row .wb-item {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   font-size: 12px;
+  padding: 6px 14px;
+  background: rgba(10, 5, 30, 0.4);
+  border: 1px solid rgba(0, 255, 136, 0.08);
 }
 
 .wb-compact-row .wb-label {
@@ -1405,11 +1495,14 @@ function handleContinue(): void {
 
 .wb-compact-row .wb-num {
   font-weight: bold;
-  font-size: 13px;
+  font-size: 15px;
+  min-width: 24px;
+  text-align: center;
 }
 
 .wb-compact-row .wb-delta {
   font-size: 11px;
+  font-weight: 500;
 }
 
 .delta-up {
@@ -1618,9 +1711,10 @@ function handleContinue(): void {
   z-index: 10;
   display: flex;
   justify-content: center;
-  padding: 12px 0 8px;
-  background: linear-gradient(transparent, rgba(10, 5, 25, 0.95) 40%);
+  padding: 16px 0 10px;
+  background: linear-gradient(transparent, rgba(10, 5, 25, 0.95) 30%);
   margin-top: 8px;
+  border-top: 1px solid rgba(0, 255, 136, 0.1);
 }
 
 .btn-continue {
@@ -1719,11 +1813,20 @@ function handleContinue(): void {
    成就解锁区域（绿色霓虹，分区二点五）
    ============================================================ */
 .section-achievement {
-  padding: 14px 10px;
-  background: rgba(0, 255, 136, 0.06);
+  padding: 16px 12px;
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.08) 0%, rgba(0, 255, 136, 0.03) 100%);
   border: 1px solid rgba(0, 255, 136, 0.3);
   box-shadow: inset 0 0 16px rgba(0, 255, 136, 0.08), 0 0 12px rgba(0, 255, 136, 0.15);
   animation: achievementSlideIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+}
+.section-achievement::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.4), transparent);
+  pointer-events: none;
 }
 
 @keyframes achievementSlideIn {
@@ -1791,7 +1894,7 @@ function handleContinue(): void {
    ============================================================ */
 @media (max-width: 520px) {
   .yearend-panel {
-    padding: 20px 16px;
+    padding: 20px 14px;
     gap: 10px;
   }
 
@@ -1806,6 +1909,15 @@ function handleContinue(): void {
   .wb-compact-row {
     flex-wrap: wrap;
     gap: 8px;
+  }
+  .wb-compact-row .wb-item {
+    padding: 4px 10px;
+  }
+
+  .section-quote,
+  .section-events,
+  .section-numbers {
+    padding: 10px 8px;
   }
 
   .btn-continue {

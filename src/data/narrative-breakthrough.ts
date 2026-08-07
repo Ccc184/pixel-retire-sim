@@ -424,7 +424,10 @@ const breakthroughEvents: NarrativeEvent[] = [
           const roll = Math.random();
           if (roll < 0.15) {
             // 大成功：破圈持续，变现爆炸
-            s.passiveIncome += annualExpense * 2;
+            // 被动收入增量受 capBreakthroughGain 约束：单次突破的被动收入增量不超过"年支出×1.5"，
+            // 避免一次事件凭空加两年生活费导致的单年总资产跳变失真（真实人生中一次破圈不会让年被动收入翻数倍）
+            const passiveBoost = capBreakthroughGain(Math.round(annualExpense * 1.5), s);
+            s.passiveIncome += passiveBoost;
             (s as any).ipReputation = Math.min(100, (s as any).ipReputation + 30);
             s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 3);
             s.careerStartSalary = s.currentMonthlySalary;
@@ -434,7 +437,7 @@ const breakthroughEvents: NarrativeEvent[] = [
             s.lifeLog.push(`破圈的热度没有两周散去——它持续了整整三个月。你接了四个广告、出了一本畅销书、上了一档爆款综艺。付费课程上线第一天卖了200万。你的被动收入（课程+版权+长尾广告）直接覆盖了两年生活费，IP声誉也涨到了行业顶端。小棠给你发了一条私信，只有四个字："我就知道。"后面跟着一个23岁时你卡壳重说的视频截图——那是她关注你的第一天。你看着后台那个"矩阵总粉丝"突破500万的曲线，第一次觉得"超级IP"这四个字名副其实。你可以退休了，但你不退——因为你正在巅峰。`);
           } else if (roll < 0.5) {
             // 小成功
-            s.passiveIncome += annualExpense;
+            s.passiveIncome += capBreakthroughGain(Math.round(annualExpense * 0.8), s);
             (s as any).ipReputation = Math.min(100, (s as any).ipReputation + 15);
             s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 2);
             s.careerStartSalary = s.currentMonthlySalary;
@@ -465,7 +468,9 @@ const breakthroughEvents: NarrativeEvent[] = [
           const roll = Math.random();
           if (roll < 0.15) {
             // 大成功：付费社区爆发
-            s.passiveIncome += annualExpense * 2;
+            // 被动收入增量受 capBreakthroughGain 约束（单次不超过年支出×1.5），避免一次爆社区加两年生活费
+            const passiveBoost = capBreakthroughGain(Math.round(annualExpense * 1.5), s);
+            s.passiveIncome += passiveBoost;
             (s as any).ipReputation = Math.min(100, (s as any).ipReputation + 25);
             s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 1.8);
             s.careerStartSalary = s.currentMonthlySalary;
@@ -475,7 +480,7 @@ const breakthroughEvents: NarrativeEvent[] = [
             s.lifeLog.push(`你没接广告，而是开了一个付费社区。破圈来的300万粉里有2%转化成了付费会员——每月199元。你看着后台那个"月度订阅收入"的数字，愣了：这比接广告多5倍，而且是每月持续到账的被动收入。你的社区成了行业里最大的垂直社群，声誉涨到了顶峰。你终于理解了什么叫"IP资产化"——不是卖广告位，是建一个属于你的城池。你可以退休了，因为这座城池自己会转。`);
           } else if (roll < 0.5) {
             // 小成功
-            s.passiveIncome += annualExpense;
+            s.passiveIncome += capBreakthroughGain(Math.round(annualExpense * 0.8), s);
             (s as any).ipReputation = Math.min(100, (s as any).ipReputation + 18);
             s.currentMonthlySalary = Math.round(s.currentMonthlySalary * 1.5);
             s.careerStartSalary = s.currentMonthlySalary;

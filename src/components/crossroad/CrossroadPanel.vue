@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import type { CrossroadEvent } from '../../types/global.d.js'
-import { playConfirm } from '../../utils/audio.js'
+import { playConfirm, playHover } from '../../utils/audio.js'
 import { showNumericalHints } from '../../utils/ui-prefs.js'
 import { fmt, fmtExact } from '../../utils/format.js'
 
@@ -147,6 +147,7 @@ function handleSelect(optionId: string, option: any): void {
           :class="{ 'option-disabled': !isOptionAvailable(option) }"
           :disabled="!isOptionAvailable(option)"
           @click="handleSelect(option.id, option)"
+          @mouseenter="playHover"
         >
           <div class="option-header">
             <span class="option-letter">{{ optionLetters[idx] ?? '' }}</span>
@@ -419,7 +420,7 @@ function handleSelect(optionId: string, option: any): void {
 }
 
 .snap-unit {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: normal;
   color: #7a9bb5;
   margin-left: 2px;

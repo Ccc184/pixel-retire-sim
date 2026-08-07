@@ -76,46 +76,45 @@ export function getChainScaleDampeningFactor(holdings: number, multiplier: numbe
 }
 
 /**
- * 链上持仓绝对上限：防止后期复利数值无界爆炸（单年+数百万导致数值失真）
- * 5000万已远超任何路径的退休门槛（约年支出×12≈200-240万），对胜率无影响，
- * 仅约束极端幸运局把持仓滚到上亿的数值失真问题。
+ * 生物科技持仓规模递减因子：与链上对称。
+ * 持仓越大，正向收益率的边际效果越小——大资金的进出、机会成本、市场规模本身都是收益率的天敌。
+ *   - 100万以下：100%效果
+ *   - 100万~500万：80%
+ *   - 500万~2000万：60%
+ *   - 2000万~1亿：35%
+ *   - 1亿~3亿：15%
+ *   - 3亿以上：6%
+ * 仅对 multiplier > 1 的正向缩放生效（收益递减）；负向缩放（亏损）不受影响。
  */
-export const MAX_CHAIN_HOLDINGS = 50000000;
-
-/**
- * 生物科技持仓绝对上限：与 MAX_CHAIN_HOLDINGS 配套。
- * 生物赌徒的持仓通过"年化16%复利 + 突破事件12×/20×放大"，后期若不设上限会滚到上亿，
- * 单年击穿退休目标，稀释长期经营与规划感。5000万已远超任何路径退休门槛，仅约束极端幸运局。
- */
-export const MAX_BIO_PORTFOLIO = 50000000;
-
-/**
- * 投资复利收益递减因子：存款规模越大，非固收渠道（基金/股票/黄金/投机）的
- * 收益率边际越小。模拟真实市场"大资金收益率自然收窄"的规律，
- * 并从根源上抑制 AI共生者等路径后期单年存款跳变数百万的数值爆炸。
- *
- *   - 存款 500万以下：100%（普通家庭，资金小收益可观）
- *   - 500万~1000万：80%（资金量开始影响进出节奏）
- *   - 1000万~3000万：55%（千万级组合，收益率自然收窄）
- *   - 3000万~1亿：30%（大资金，追求稳健为主）
- *   - 1亿以上：15%（巨型组合，跑赢大盘即是胜利）
- */
-export function getInvestmentReturnDampeningFactor(savings: number): number {
-  if (savings <= 5000000) return 1.0;
-  if (savings <= 10000000) return 0.8;
-  if (savings <= 30000000) return 0.55;
-  if (savings <= 100000000) return 0.30;
-  return 0.15;
+export function getBioScaleDampeningFactor(portfolio: number, multiplier: number): number {
+  if (multiplier <= 1.0) return 1.0;
+  if (portfolio <= 1000000) return 1.0;
+  if (portfolio <= 5000000) return 0.8;
+  if (portfolio <= 20000000) return 0.6;
+  if (portfolio <= 100000000) return 0.35;
+  if (portfolio <= 300000000) return 0.15;
+  return 0.06;
 }
 
 /**
- * 应用带规模递减的链上持仓缩放
+ * 应用带规模递减的生物科技持仓缩放
+ * 不再设硬性持仓上限：靠规模递减算法自然收敛峰值，避免数值失真。
+ * @returns 实际应用后的新持仓值
+ */
+export function applyBioScale(portfolio: number, multiplier: number): number {
+  const damp = getBioScaleDampeningFactor(portfolio, multiplier);
+  const actualMultiplier = 1.0 + (multiplier - 1.0) * damp;
+  return Math.max(0, Math.round(portfolio * actualMultiplier));
+}
+
+/**
+ * 应用带规模递减的链上持仓缩放（不再设硬性持仓上限）
  * @returns 实际应用后的新持仓值
  */
 export function applyChainHoldingScale(holdings: number, multiplier: number): number {
   const damp = getChainScaleDampeningFactor(holdings, multiplier);
   const actualMultiplier = 1.0 + (multiplier - 1.0) * damp;
-  return Math.min(MAX_CHAIN_HOLDINGS, Math.max(0, Math.round(holdings * actualMultiplier)));
+  return Math.max(0, Math.round(holdings * actualMultiplier));
 }
 
 /**
@@ -585,28 +584,39 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   // 不应该出现"月薪涨到5万但生活费还是3千"的不真实情况
   // 失业期间不触发消费升级（没收入还升级消费不现实）
   if (!state.isUnemployed && state.currentMonthlySalary > 0 && state.currentAge >= 22) {
-    const annualSalary = state.currentMonthlySalary * 12;
+    // 生活水准锚定"全年总收入"（工资+被动收入），而非仅月薪。
+    // 真实人生：被动收入高的富裕玩家生活也更讲究，不会"月薪5万但被动收入40万还住3千房租"。
+    // 这同时抑制了高被动收入路径的存款爆炸（原：被动收入几乎全部净存，导致财富虚高）。
+    const annualSalary = state.currentMonthlySalary * 12 + (state.passiveIncome || 0);
     // 消费升级目标：生活费占年收入的比例随收入增长而下降（高收入群体储蓄率更高）
-    let targetRatio = 0.5; // 默认50%用于生活
-    if (annualSalary > 600000) targetRatio = 0.45; // 年薪50万+：45%生活
-    if (annualSalary > 1000000) targetRatio = 0.4; // 年薪100万+：40%生活
-    if (annualSalary > 2000000) targetRatio = 0.35; // 年薪200万+：35%生活
-    if (annualSalary < 120000) targetRatio = 0.6; // 年薪10万以下：60%生活
-    if (annualSalary < 80000) targetRatio = 0.7; // 年薪不到7万：70%生活（入不敷出风险）
+    // 消费压力系数放大目标比例：收入越高生活越讲究，更高储蓄积累受阻（平衡校准杠杆）
+    let targetRatio = 0.5 * consumptionPressureMult; // 默认50%用于生活
+    if (annualSalary > 600000) targetRatio = 0.45 * consumptionPressureMult; // 年薪50万+：45%生活
+    if (annualSalary > 1000000) targetRatio = 0.4 * consumptionPressureMult; // 年薪100万+：40%生活
+    if (annualSalary > 2000000) targetRatio = 0.35 * consumptionPressureMult; // 年薪200万+：35%生活
+    if (annualSalary < 120000) targetRatio = 0.6 * consumptionPressureMult; // 年薪10万以下：60%生活
+    if (annualSalary < 80000) targetRatio = 0.7 * consumptionPressureMult; // 年薪不到7万：70%生活（入不敷出风险）
     
     // 目标生活费 = 年薪 × 目标比例
     // 但要保证不低于已有固定开销（子女、赡养费等不能砍）
     // 房贷/车险在后面计算，这里只考虑已确定的固定支出
     const fixedCosts = childCost + parentSupportCost;
-    const targetLivingCost = Math.max(
+    const baseTarget = Math.max(
       Math.round(annualSalary * targetRatio),
       fixedCosts + baseCost * cityConfig.costMultiplier * 0.5 // 至少保留基础生活费的一半（吃饭、交通等刚性支出）
     );
+    // 路径生活方式系数：放大特定高收入路径的生活费目标（AI/银发），抑制储蓄爆炸
+    const lifestyleMult = getPathLifestyleMult(state);
+    const targetLivingCost = Math.round(baseTarget * lifestyleMult);
     
     const currentLivingBeforeAdjust = result.livingCost;
     if (targetLivingCost > currentLivingBeforeAdjust) {
-      // 收入增长：消费升级，每年追赶20%的差距（消费习惯改变较慢）
-      const adjustment = Math.round((targetLivingCost - currentLivingBeforeAdjust) * 0.20);
+      // 收入增长：消费升级，每年追赶固定比例（消费习惯改变较慢）。
+      // 追赶速度随消费压力系数放大：压力越高，生活水准越快跟上收入（真实化校准杠杆）。
+      // v18：基数从0.20提到0.35——高收入路径（AI/银发）此前因追赶过慢、生活费远低于收入，
+      //     导致存款爆炸、任何杠杆都压不下成功率。更快的追赶更贴近"收入越高过得越讲究"。
+      const catchUpRate = 0.35 * Math.max(1, consumptionPressureMult);
+      const adjustment = Math.round((targetLivingCost - currentLivingBeforeAdjust) * catchUpRate);
       result.livingCost += adjustment;
       // 把消费升级的25%固化到baseCost中（大部分升级是暂时的，小部分持久化）
       const baseAdjustment = Math.round(adjustment / cityConfig.costMultiplier);
@@ -750,8 +760,22 @@ export function calculateYearlySettlement(state: GameState): YearResult {
 
   // ========== 步骤3：存款分布理财收益计算 ==========
   const savings = state.currentSavings;
-  // 投资复利收益递减：存款规模越大，非固收收益率边际越小（抑制后期数值爆炸）
-  const investDamp = getInvestmentReturnDampeningFactor(savings);
+  // 投资市场年景（概率化，替代复利递减公式）
+  // 真实人生：存款越大越容易进入"平稳年"(收益范围收窄、求稳)，但没有硬上限——
+  // 仍保留小概率"大牛/黑天鹅年"(收益范围放大)，大资金在牛市照赚，这就是现实中大资金也能一直挣钱的通道。
+  // 年景分布：
+  //   - 大年 ~6%：×1.6（收益范围放大，牛市/黑天鹅普涨）
+  //   - 平稳年(概率随存款上升)：×0.3（收益范围收窄，大资金求稳）
+  //   - 正常年：×1.0（全额波动）
+  let investRegime = 1.0;
+  let flatProb = 0.12;
+  if (savings > 100000000) flatProb = 0.5;
+  else if (savings > 30000000) flatProb = 0.38;
+  else if (savings > 10000000) flatProb = 0.28;
+  else if (savings > 5000000) flatProb = 0.2;
+  const regimeRoll = Math.random();
+  if (regimeRoll < 0.06) investRegime = 1.6;      // 大牛/黑天鹅年
+  else if (regimeRoll < 0.06 + flatProb) investRegime = 0.3; // 平稳年
 
   // 1. 余额宝（活期）收益 - 1.5%固定
   result.bankGain = Math.round(savings * (state.bankDepositPct / 100) * 0.015);
@@ -760,12 +784,12 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   result.fixedDepositGain = Math.round(savings * (state.fixedDepositPct / 100) * 0.03);
 
   // 3. 指数基金收益 - 年化-10%~+20%
-  const fundReturnRate = (-0.1 + Math.random() * 0.3) * investDamp;
+  const fundReturnRate = (-0.1 + Math.random() * 0.3) * investRegime;
   result.fundGain = Math.round(savings * (state.indexFundPct / 100) * fundReturnRate);
 
   // 4. 股票收益 - 年化-30%~+40%
   // 生物赌徒的生科投资通过 bioPortfolioGain 独立计算，不走 stockGain（避免双重计算）
-  const stockReturnRate = (-0.3 + Math.random() * 0.7) * investDamp;
+  const stockReturnRate = (-0.3 + Math.random() * 0.7) * investRegime;
   if (state.retirementPath === 'bio_gambler') {
     result.stockGain = 0; // 生科投资收益走 bioPortfolioGain
   } else {
@@ -775,17 +799,17 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   // 5. 黄金收益 - 通胀年+8%，萧条年+15%，平稳年0~2%
   let goldReturnRate: number;
   if (state.economicCycle === 0) { // 繁荣
-    goldReturnRate = (-0.02 + Math.random() * 0.04) * investDamp; // -2%~+2%
+    goldReturnRate = (-0.02 + Math.random() * 0.04) * investRegime; // -2%~+2%
   } else if (state.economicCycle === 2) { // 萧条
-    goldReturnRate = (0.08 + Math.random() * 0.14) * investDamp; // +8%~+22%
+    goldReturnRate = (0.08 + Math.random() * 0.14) * investRegime; // +8%~+22%
   } else { // 平稳
-    goldReturnRate = Math.random() * 0.04 * investDamp; // 0%~+4%
+    goldReturnRate = Math.random() * 0.04 * investRegime; // 0%~+4%
   }
   result.goldGain = Math.round(savings * (state.goldPct / 100) * goldReturnRate);
 
   // 6. 比特币/投机收益 - 年化-80%~+200%（极端波动）
   // 链上原住民的加密资产通过 chainHoldingsGain 独立计算，不走 specGain（避免双重计算）
-  const btcReturnRate = (-0.8 + Math.random() * 2.8) * investDamp;
+  const btcReturnRate = (-0.8 + Math.random() * 2.8) * investRegime;
   if (state.retirementPath === 'chain_native') {
     result.specGain = 0; // 加密资产收益走 chainHoldingsGain
   } else {
@@ -845,8 +869,7 @@ export function calculateYearlySettlement(state: GameState): YearResult {
     }
 
     const beforeHoldings = chainHoldings;
-    // 复利上限：持仓受 MAX_CHAIN_HOLDINGS 约束，杜绝后期无界爆炸
-    const afterHoldings = Math.min(MAX_CHAIN_HOLDINGS, Math.max(0, Math.round(beforeHoldings * (1 + chainReturnRate))));
+    const afterHoldings = Math.max(0, Math.round(beforeHoldings * (1 + chainReturnRate)));
     result.chainHoldingsGain = afterHoldings - beforeHoldings;
     (state as any).chainHoldings = afterHoldings;
   }
@@ -865,8 +888,13 @@ export function calculateYearlySettlement(state: GameState): YearResult {
       // 生物年龄比实际小5岁以上：投资判断有信息优势，亏损时减少50%损失
       bioReturnRate = bioReturnRate < 0 ? bioReturnRate * 0.5 : bioReturnRate * 1.1;
     }
+    // 规模递减效应：持仓越大，正向收益率的边际效果越小（与链上对称）
+    if (bioReturnRate > 0) {
+      const dampBio = getBioScaleDampeningFactor(bioPortfolio, 1 + bioReturnRate);
+      bioReturnRate *= dampBio;
+    }
     const beforeBio = bioPortfolio;
-    const afterBio = Math.max(0, Math.min(MAX_BIO_PORTFOLIO, Math.round(beforeBio * (1 + bioReturnRate))));
+    const afterBio = Math.max(0, Math.round(beforeBio * (1 + bioReturnRate)));
     result.bioPortfolioGain = afterBio - beforeBio;
     (state as any).bioPortfolio = afterBio;
   }
@@ -947,14 +975,45 @@ export function calculateYearlySettlement(state: GameState): YearResult {
       silver_economy: 1.06, // 银发：月营收有独立增长，被动收入6%
       bio_gambler: 1.06,    // 生物赌徒：投资组合有独立增长，被动收入6%
     };
-    const rate = growthRate[state.retirementPath] || 1.06;
+    const baseRate = growthRate[state.retirementPath] || 1.06;
+    const annualPassive = state.passiveIncome;
+
+    // 被动收入概率化平台期（替代全局硬衰减）
+    // 真实人生：收入越高越容易触到"平台期"(停滞/微降)，但没有硬上限——
+    // 头部靠运气/突破事件仍能跳升(突破年)，这就是"他现实里就是能一直挣钱"的通道。
+    // 年景分布：
+    //   - 突破年 ~6%：+20%~+50%（破圈/融资/放大，不受规模限制，是尾部持续增长的通道）
+    //   - 停滞年(概率随收入上升)：-3%~+3%（平台期，不涨不跌，多数人在这停下）
+    //   - 正常年：按路径基础复利全额增长（不再对公式打折）
+    // 期望增长随规模收敛(停滞年概率抬升)，但系统永不封死头部的增长。
+    let stagnationProb = 0.05 * passivePlateauStrength;
+    if (annualPassive > 3000000) stagnationProb = 0.45 * passivePlateauStrength;
+    else if (annualPassive > 1000000) stagnationProb = 0.30 * passivePlateauStrength;
+    else if (annualPassive > 500000) stagnationProb = 0.15 * passivePlateauStrength;
+    // 平台期概率上限：即便强度再高，也保留一条"突破年"的上升通道（不封死头部）
+    stagnationProb = Math.min(0.9, stagnationProb);
+
+    const yearRoll = Math.random();
+    let rate: number;
+    if (yearRoll < 0.06) {
+      rate = 1.2 + Math.random() * 0.3; // 突破年：+20%~+50%
+    } else if (yearRoll < 0.06 + stagnationProb) {
+      rate = 0.97 + Math.random() * 0.06; // 停滞年：-3%~+3%
+    } else {
+      rate = baseRate; // 正常年：全额复利
+    }
     state.passiveIncome = Math.round(state.passiveIncome * rate);
     // 生物赌徒：投资组合随研究深入和行业发展增长
     if (state.retirementPath === 'bio_gambler') {
       const bioPort = (state as any).bioPortfolio || 0;
       // All In后全职研究：每年复利增长（16%，反映行业增长+个人研究优势+临床进展）
       // All In前：8%趋势增长 + 每月工资的8%定投加仓
-      const growthMultiplier = state.isAllInPath ? 1.16 : 1.08;
+      // 规模递减：持仓越大，行业增长率的边际效果越小（避免复利无界爆炸，靠算法自然收敛峰值）
+      let growthMultiplier = state.isAllInPath ? 1.16 : 1.08;
+      if (growthMultiplier > 1) {
+        const dampBio = getBioScaleDampeningFactor(bioPort, growthMultiplier);
+        growthMultiplier = Math.max(1.0, 1.0 + (growthMultiplier - 1.0) * dampBio);
+      }
       const grown = Math.round(bioPort * growthMultiplier);
       // All In前：每年从工资中拿8%加仓（工资定投生科股）
       // All In后：每年至少追加1.2万新投资（来自咨询/科普的再投入）
@@ -962,7 +1021,7 @@ export function calculateYearlySettlement(state: GameState): YearResult {
       if (!state.isAllInPath && !state.isUnemployed && state.currentMonthlySalary > 0) {
         minNewInvestment = Math.round(state.currentMonthlySalary * 12 * 0.08);
       }
-      (state as any).bioPortfolio = Math.min(MAX_BIO_PORTFOLIO, Math.max(grown, bioPort + minNewInvestment));
+      (state as any).bioPortfolio = Math.max(grown, bioPort + minNewInvestment);
     }
     // 链上原住民：持仓随加密市场长期趋势增长（每年+4%长期趋势，短期波动已在上面计算）
     if (state.retirementPath === 'chain_native') {
@@ -1185,14 +1244,8 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   if ((state as any).chainHoldings !== undefined && (state as any).chainHoldings < 0) {
     (state as any).chainHoldings = 0;
   }
-  // 复利上限：链上持仓不得超过 MAX_CHAIN_HOLDINGS，杜绝事件/盲盒叠加导致的无界爆炸
-  if ((state as any).chainHoldings !== undefined && (state as any).chainHoldings > MAX_CHAIN_HOLDINGS) {
-    (state as any).chainHoldings = MAX_CHAIN_HOLDINGS;
-  }
-  // 复利上限：生物持仓不得超过 MAX_BIO_PORTFOLIO，杜绝事件/盲盒叠加导致的无界爆炸
-  if ((state as any).bioPortfolio !== undefined && (state as any).bioPortfolio > MAX_BIO_PORTFOLIO) {
-    (state as any).bioPortfolio = MAX_BIO_PORTFOLIO;
-  }
+  // 复利上限：改用规模递减算法自然收敛峰值，不再设硬性持仓上限
+  // （链上/生物各自在年度波动与趋势增长处已应用 getChainScaleDampeningFactor / getBioScaleDampeningFactor）
 
   return result;
 }
@@ -1227,12 +1280,102 @@ export function switchCity(state: GameState, newCity: CityType): void {
 // 判定结局（纳入身心状态综合评定）
 /**
  * 计算总财富（纳入所有资产）
+ * 被动收入资本化：用"被动收入 × 倍数"估算其可持续折现价值。
+ * 原值 20 倍 + 被动收入自身复利形成双向膨胀，导致后期总财富虚高、人人达标。
+ * 调低该倍数更贴近真实：被动收入流本身会波动/触顶，不应按 20 倍永续折现。
+ * 该值为可配置项，便于校准脚本测试不同组合。
  */
+export let passiveIncomeCapMult = 12;
+
+/** 供校准脚本动态调整被动收入资本化倍数（ESM 导入绑定只读，需走 setter） */
+export function setPassiveIncomeCapMult(v: number): void {
+  passiveIncomeCapMult = v;
+}
+
+/**
+ * 消费压力系数（消费升级杠杆）：放大生活费占年薪的目标比例。
+ * 真实人生：收入越高，生活水准越讲究（换房、教育、医疗、社交、品质消费），
+ * 该系数用于校准——把"最优策略下人人达标"收敛到"约60%成功"。
+ * 默认1.6（v19校准）：配合平台期2.0，让中低路径贴近60；偏高储蓄路径由 pathLifestyleMult 单独收紧。
+ */
+export let consumptionPressureMult = 1.6;
+
+/** 供校准脚本动态调整消费压力系数 */
+export function setConsumptionPressureMult(v: number): void {
+  consumptionPressureMult = v;
+}
+
+/**
+ * 被动收入平台期强度：放大"停滞年"概率，收入越高越容易触到平台期。
+ * 真实人生：被动收入不会无限复利，头部靠运气/突破事件才能再跳升。
+ * 该系数用于校准——把高被动收入路径的成功率压回目标区间。
+ * 默认2.0（v19校准）：与消费压力1.6协同，把"最优策略下人人达标"收敛到"约60%成功"。
+ */
+export let passivePlateauStrength = 2.0;
+
+/** 供校准脚本动态调整被动收入平台期强度 */
+export function setPassivePlateauStrength(v: number): void {
+  passivePlateauStrength = v;
+}
+
+/**
+ * 路径生活方式系数：放大特定高收入路径的生活费目标，
+ * 抑制"存款爆炸"（AI/银发此前储蓄率过高、终端财富虚高，成功率98%/85%）。
+ * 真实人生：AI从业者/实体生意老板的消费习惯（品质生活、经营成本）随收入快速上移。
+ * 默认1.0，>1 表示该路径生活更讲究、储蓄积累更慢。
+ * v19校准默认：AI=1.5（高收入品质生活，把98%压到60）、银发=1.25（实体经营成本，把85%压到60）、
+ * 链上=0.8（加密资产是未实现收益，不应无节制抬高生活标准——避免"持仓暴涨→消费升级→门槛被抬高"的洼地死循环）。
+ */
+export let pathLifestyleMult: Record<string, number> = {
+  ai_symbiote: 1.5,
+  silver_economy: 1.25,
+  chain_native: 0.8,
+};
+
+export function setPathLifestyleMult(pathId: string, v: number): void {
+  pathLifestyleMult[pathId] = v;
+}
+export function getPathLifestyleMult(state: GameState): number {
+  if (!state.retirementPath) return 1.0;
+  return pathLifestyleMult[state.retirementPath] ?? 1.0;
+}
+
+/**
+ * 链上持仓年度市场自然增长（"链上洼地"修复核心）
+ * 此前链上持仓只靠叙事事件驱动、无年度自然增值，导致持仓长期无法积累，
+ * 成功率远低于其他路径（30% vs 60-97%）。
+ * 真实加密市场：长期向上但波动巨大。这里给链上持仓一个年度自然增值，
+ * 用牛熊概率分布模拟波动，靠规模递减（getChainScaleDampeningFactor）防止大资金无限复利，
+ * 亏损不衰减（保持高风险风味），但长期期望为正、具备可达成性。
+ */
+export let chainAnnualGrowthBase = 0.18;
+
+export function setChainAnnualGrowthBase(v: number): void {
+  chainAnnualGrowthBase = v;
+}
+
+export function applyAnnualChainGrowth(state: GameState): number {
+  const holdings = (state as any).chainHoldings || 0;
+  if (holdings <= 0) return 0;
+  const roll = Math.random();
+  let growth: number;
+  if (roll < 0.25) growth = chainAnnualGrowthBase + Math.random() * 0.3;          // 牛市 +10%~+40%
+  else if (roll < 0.55) growth = chainAnnualGrowthBase * 0.5 + Math.random() * 0.1; // 温和上涨
+  else if (roll < 0.75) growth = 0;                                               // 横盘
+  else if (roll < 0.90) growth = -(0.06 + Math.random() * 0.14);                  // 回调 -6%~-20%
+  else growth = -(0.2 + Math.random() * 0.2);                                     // 深熊 -20%~-40%
+  const damp = getChainScaleDampeningFactor(holdings, 1 + growth);
+  const effectiveGrowth = growth * damp;
+  const newHoldings = Math.max(0, Math.round(holdings * (1 + effectiveGrowth)));
+  (state as any).chainHoldings = newHoldings;
+  return newHoldings - holdings;
+}
+
 export function calculateTotalWealth(state: GameState): number {
   const chainHoldingsValue = (state as any).chainHoldings || 0;
   const bioPortfolioValue = (state as any).bioPortfolio || 0;
   const shopValue = state.shopValue || 0;
-  const passiveIncomeCapitalized = state.passiveIncome * 20;
+  const passiveIncomeCapitalized = state.passiveIncome * passiveIncomeCapMult;
   return state.currentSavings + state.propertyValue + chainHoldingsValue + bioPortfolioValue + shopValue + passiveIncomeCapitalized;
 }
 

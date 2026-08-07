@@ -297,7 +297,7 @@ function toggle() {
 .risk-bar-labels {
   display: flex;
   justify-content: space-between;
-  font-size: 9px;
+  font-size: 10px;
   color: #94b0c2;
   margin-top: 3px;
 }
@@ -373,7 +373,7 @@ function toggle() {
 
 .anchor-tag {
   display: inline-block;
-  font-size: 9px;
+  font-size: 10px;
   padding: 1px 6px;
   border-radius: 2px;
   margin-right: 4px;
@@ -403,7 +403,7 @@ function toggle() {
 }
 
 .anchor-source {
-  font-size: 9px;
+  font-size: 10px;
   color: #5f574f;
   font-style: italic;
 }

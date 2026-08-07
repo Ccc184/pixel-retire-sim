@@ -134,6 +134,109 @@ function selectDream(dreamId: RetirementDream) {
 // 金额格式化（纯数字，自动万/元）
 const formatWan = fmtNum
 
+// ================================================================
+//  一键开局 · 人生模板（快速开局，3秒入坑）
+// ----------------------------------------------------------------
+//  每个模板是一组"人设"：城市×职业×人格×梦想×起薪×目标资产。
+//  点击即填好全部选项并直接开局；下方完整自定义区仍可微调。
+// ================================================================
+interface LifeTemplate {
+  id: string
+  emoji: string
+  name: string
+  tagline: string
+  city: CityType
+  profession: Profession
+  temperament: 'NT' | 'NF' | 'SJ' | 'SP'
+  dream: RetirementDream
+  salary: number
+}
+
+const LIFE_TEMPLATES: LifeTemplate[] = [
+  {
+    id: 't_system',
+    emoji: '🛋️',
+    name: '体制稳赢',
+    tagline: '低消费城市+铁饭碗，稳稳攒够300万',
+    city: '避风低洼地',
+    profession: '体制内',
+    temperament: 'SJ',
+    dream: 'farm_hermit',
+    salary: 8000,
+  },
+  {
+    id: 't_hustle',
+    emoji: '🔥',
+    name: '高薪卷王',
+    tagline: '高风险高回报，35岁前冲刺800万',
+    city: '资本修罗场',
+    profession: '红利行业',
+    temperament: 'NT',
+    dream: 'world_traveler',
+    salary: 15000,
+  },
+  {
+    id: 't_freelance',
+    emoji: '🎒',
+    name: '自由浪人',
+    tagline: '边学边挣，技能越老越香',
+    city: '中坚大后方',
+    profession: '自由职业',
+    temperament: 'NF',
+    dream: 'lifelong_scholar',
+    salary: 12000,
+  },
+  {
+    id: 't_minimal',
+    emoji: '🌾',
+    name: '躺平极简',
+    tagline: '手艺吃饭+低欲望，轻松攒钱',
+    city: '避风低洼地',
+    profession: '一线蓝领',
+    temperament: 'SP',
+    dream: 'square_dance_king',
+    salary: 9000,
+  },
+]
+
+// 模板里的人格气质 → 具体 MBTI 代表类型（复用 TEMPERAMENT_CARDS 的 repType）
+function temperamentToType(temp: 'NT' | 'NF' | 'SJ' | 'SP'): MBTIType | null {
+  const card = TEMPERAMENT_CARDS.find((c) => c.temp === temp)
+  return card ? card.repType : null
+}
+
+// 应用一个模板：填好所有选项并直接开局
+function applyTemplate(t: LifeTemplate): void {
+  selectedCity.value = t.city
+  selectedProfession.value = t.profession
+  selectedMBTI.value = temperamentToType(t.temperament)
+  selectedDream.value = t.dream
+  initSalary.value = t.salary
+  const dream = RETIREMENT_DREAMS.find((d) => d.id === t.dream)
+  targetWealth.value = dream ? dream.targetWealth : 3000000
+  startGame()
+}
+
+// 随机人生：随机抽一组人设直接开跑
+function randomLife(): void {
+  const cityIdx = Math.floor(Math.random() * cityOptions.length)
+  const profIdx = Math.floor(Math.random() * professionOptions.length)
+  const tempIdx = Math.floor(Math.random() * TEMPERAMENT_CARDS.length)
+  const dreamIdx = Math.floor(Math.random() * RETIREMENT_DREAMS.length)
+  const t: LifeTemplate = {
+    id: 't_random',
+    emoji: '🎲',
+    name: '随机人生',
+    tagline: '命运洗牌，抽到啥算啥',
+    city: cityOptions[cityIdx].id,
+    profession: professionOptions[profIdx].id,
+    temperament: TEMPERAMENT_CARDS[tempIdx].temp,
+    dream: RETIREMENT_DREAMS[dreamIdx].id,
+    salary: 8000 + Math.floor(Math.random() * 7) * 1000, // 8000-14000
+  }
+  applyTemplate(t)
+}
+
 function startGame(): void {
   if (!canStart.value) return
   store.setupGame(
@@ -160,6 +263,45 @@ function startGame(): void {
         <span class="title-deco">◥◣</span>
       </div>
       <p class="setup-neon-sub">设定你的像素人生起点</p>
+
+      <!-- ===== 一键开局 · 人生模板 ===== -->
+      <section class="setup-section quick-section">
+        <h3 class="section-title">
+          <span class="section-num neon-yellow-num">⚡</span>
+          <span class="section-title-text">一键开局 · 选个人设先跑</span>
+          <span class="section-optional-tag">快速</span>
+        </h3>
+        <p class="quick-intro">懒得精配？点个模板直接开跑，下方仍可随意微调。</p>
+        <div class="template-grid">
+          <div
+            v-for="t in LIFE_TEMPLATES"
+            :key="t.id"
+            class="neon-card template-card"
+            @click="applyTemplate(t)"
+          >
+            <div class="card-scanlines" />
+            <div class="tpl-emoji">{{ t.emoji }}</div>
+            <div class="tpl-name">{{ t.name }}</div>
+            <div class="tpl-tagline">{{ t.tagline }}</div>
+            <div class="tpl-go">▶ 开局</div>
+            <span class="card-corner cc-tl" />
+            <span class="card-corner cc-tr" />
+            <span class="card-corner cc-bl" />
+            <span class="card-corner cc-br" />
+          </div>
+          <div class="neon-card template-card tpl-random" @click="randomLife">
+            <div class="card-scanlines" />
+            <div class="tpl-emoji">🎲</div>
+            <div class="tpl-name">随机人生</div>
+            <div class="tpl-tagline">命运洗牌，抽到啥算啥</div>
+            <div class="tpl-go">▶ 开局</div>
+            <span class="card-corner cc-tl" />
+            <span class="card-corner cc-tr" />
+            <span class="card-corner cc-bl" />
+            <span class="card-corner cc-br" />
+          </div>
+        </div>
+      </section>
 
       <!-- 城市选择 -->
       <section class="setup-section">
@@ -420,6 +562,111 @@ function startGame(): void {
   flex-direction: column;
   gap: 12px;
 }
+
+/* ===== 一键开局 · 人生模板 ===== */
+.quick-section {
+  background: rgba(255, 236, 39, 0.04);
+  border: 1px dashed rgba(255, 236, 39, 0.35);
+  border-radius: 6px;
+  padding: 14px 16px;
+}
+
+.quick-intro {
+  font-size: 12px;
+  color: #c2c3c7;
+  margin: 0;
+  letter-spacing: 0.5px;
+  line-height: 1.6;
+  text-align: center;
+  font-style: italic;
+}
+
+.template-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .template-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 560px) {
+  .template-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.template-card {
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  border-color: rgba(255, 236, 39, 0.4);
+  min-height: 128px;
+  justify-content: center;
+}
+.template-card:hover {
+  transform: translateY(-3px);
+  border-color: #ff2d95;
+  background: rgba(255, 45, 149, 0.1);
+}
+.tpl-random {
+  border-style: dashed;
+  border-color: rgba(201, 0, 255, 0.5);
+}
+.tpl-random:hover {
+  border-color: #c900ff;
+  background: rgba(201, 0, 255, 0.12);
+}
+
+.tpl-emoji {
+  font-size: 30px;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.25));
+}
+.template-card:hover .tpl-emoji {
+  animation: templateBounce 0.6s ease;
+}
+@keyframes templateBounce {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.25); }
+  100% { transform: scale(1); }
+}
+
+.tpl-name {
+  font-size: 15px;
+  font-weight: bold;
+  color: #ffec27;
+  letter-spacing: 1px;
+  font-family: 'DotGothic16', monospace;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 0 6px rgba(255, 236, 39, 0.5);
+}
+.tpl-random .tpl-name { color: #c9a8ff; text-shadow: 0 0 6px rgba(201, 0, 255, 0.5); }
+
+.tpl-tagline {
+  font-size: 10px;
+  color: #94b0c2;
+  line-height: 1.4;
+  position: relative;
+  z-index: 1;
+}
+.template-card:hover .tpl-tagline { color: #ffccdd; }
+
+.tpl-go {
+  font-size: 11px;
+  color: #00ff88;
+  letter-spacing: 2px;
+  text-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
+  position: relative;
+  z-index: 1;
+  opacity: 0.75;
+  font-family: 'DotGothic16', monospace;
+}
+.template-card:hover .tpl-go { opacity: 1; }
 
 .section-title {
   font-size: 16px;

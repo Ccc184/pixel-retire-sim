@@ -89,21 +89,21 @@ const happinessLevel = computed(() => s.happiness ?? 60);
 const healthLevel = computed(() => s.health ?? 80);
 
 function healthEmoji(val: number): string {
-  if (val >= 70) return '●';
+  if (val >= 70) return '♥';
   if (val >= 50) return '●';
-  if (val >= 30) return '●';
-  return '●';
+  if (val >= 30) return '◐';
+  return '○';
 }
 
 function stressEmoji(val: number): string {
-  if (val >= 70) return '●';
-  if (val >= 40) return '●';
-  return '●';
+  if (val >= 70) return '🔥';
+  if (val >= 40) return '⚠';
+  return '✓';
 }
 
 function happinessEmoji(val: number): string {
-  if (val >= 70) return '◆';
-  if (val >= 40) return '◇';
+  if (val >= 70) return '★';
+  if (val >= 40) return '◆';
   return '○';
 }
 
@@ -910,14 +910,14 @@ const relOpen = ref(false);
   padding: 6px 8px;
   min-width: 150px;
   box-shadow: 0 0 12px rgba(201, 0, 255, 0.3);
-  font-size: 9px;
+  font-size: 10px;
   pointer-events: none;
 }
 
 .wb-tip-title {
   color: #c900ff;
   font-weight: bold;
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 1px;
   margin-bottom: 3px;
   padding-bottom: 2px;
@@ -1051,7 +1051,7 @@ const relOpen = ref(false);
   position: absolute;
   top: -7px;
   right: 4px;
-  font-size: 9px;
+  font-size: 10px;
   padding: 0 4px;
   font-weight: bold;
   border-radius: 2px;
@@ -1089,7 +1089,7 @@ const relOpen = ref(false);
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 9px;
+  font-size: 10px;
   color: #6a6a8a;
   letter-spacing: 0.5px;
   margin-bottom: 3px;
@@ -1159,7 +1159,7 @@ const relOpen = ref(false);
 }
 
 .asset-dot-rate {
-  font-size: 9px;
+  font-size: 10px;
   color: #6a6a8a;
   flex-shrink: 0;
 }
@@ -1197,7 +1197,7 @@ const relOpen = ref(false);
 .collapse-arrow {
   display: inline-block;
   color: #c900ff;
-  font-size: 9px;
+  font-size: 10px;
   text-shadow: 0 0 4px #c900ff;
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
   flex-shrink: 0;
@@ -1291,7 +1291,7 @@ const relOpen = ref(false);
 }
 
 .path-desc {
-  font-size: 9px;
+  font-size: 10px;
   color: #94b0c2;
   line-height: 1.5;
   margin-bottom: 6px;
@@ -1306,7 +1306,7 @@ const relOpen = ref(false);
 }
 
 .skill-chip {
-  font-size: 9px;
+  font-size: 10px;
   color: #00ff88;
   border: 1px solid rgba(0, 255, 136, 0.5);
   background: rgba(0, 255, 136, 0.06);
@@ -1322,7 +1322,7 @@ const relOpen = ref(false);
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 10px;
   padding-top: 4px;
   border-top: 1px dashed rgba(201, 0, 255, 0.15);
 }
@@ -1368,7 +1368,7 @@ const relOpen = ref(false);
 }
 
 .faith-tag {
-  font-size: 9px;
+  font-size: 10px;
   flex-shrink: 0;
   font-weight: bold;
   letter-spacing: 1px;
@@ -1416,7 +1416,7 @@ const relOpen = ref(false);
 
 .toggle-summary {
   margin-left: auto;
-  font-size: 9px;
+  font-size: 10px;
   color: #7f8fae;
   letter-spacing: 0.5px;
   text-transform: none;
@@ -1524,7 +1524,7 @@ const relOpen = ref(false);
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 10px;
 }
 
 .rel-key {
@@ -1559,29 +1559,29 @@ const relOpen = ref(false);
   text-align: right;
   color: #c2c3c7;
   font-weight: bold;
-  font-size: 9px;
+  font-size: 10px;
   flex-shrink: 0;
 }
 
 .rel-tag {
-  font-size: 8px;
+  font-size: 9px;
   color: #94b0c2;
   flex-shrink: 0;
 }
 
 .rel-age-text {
-  font-size: 9px;
+  font-size: 10px;
   color: #c2c3c7;
 }
 
 .rel-cost {
-  font-size: 9px;
+  font-size: 10px;
   color: #ff8800;
   text-shadow: 0 0 4px #ff8800;
 }
 
 .rel-deceased {
-  font-size: 9px;
+  font-size: 10px;
   color: #566c86;
   padding: 2px 0;
   letter-spacing: 1px;
@@ -1593,7 +1593,7 @@ const relOpen = ref(false);
 }
 
 .rel-na {
-  font-size: 9px;
+  font-size: 10px;
   color: #566c86;
   padding: 2px 0;
   letter-spacing: 1px;
@@ -1614,7 +1614,7 @@ const relOpen = ref(false);
 }
 
 .personality-tag {
-  font-size: 8px;
+  font-size: 9px;
   color: #c900ff;
   border: 1px solid #c900ff80;
   padding: 0 4px;
@@ -1623,7 +1623,7 @@ const relOpen = ref(false);
 }
 
 .partner-trait {
-  font-size: 9px;
+  font-size: 10px;
   color: #ff8cc8;
   margin-bottom: 3px;
   font-style: italic;
@@ -1654,7 +1654,7 @@ const relOpen = ref(false);
 }
 
 .rel-child-header {
-  font-size: 9px;
+  font-size: 10px;
   color: #00d4ff;
   text-shadow: 0 0 4px #00d4ff;
   margin-bottom: 2px;
@@ -1664,7 +1664,7 @@ const relOpen = ref(false);
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 9px;
+  font-size: 10px;
   padding: 1px 0;
 }
 
@@ -1680,7 +1680,7 @@ const relOpen = ref(false);
   width: 16px;
   text-align: right;
   font-weight: bold;
-  font-size: 9px;
+  font-size: 10px;
   flex-shrink: 0;
 }
 </style>

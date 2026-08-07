@@ -19,8 +19,9 @@ import CrossroadPanel from './components/crossroad/CrossroadPanel.vue'
 import YearEndPanel from './components/narrative/YearEndPanel.vue'
 import AchievementToast from './components/ui/AchievementToast.vue'
 import CyberConfirm from './components/ui/CyberConfirm.vue'
+import CollectionPanel from './components/ui/CollectionPanel.vue'
 
-import { playClick, playAchievement } from './utils/audio.js'
+import { playClick, playAchievement, playEnding, startMusic, stopMusic, ensureAudio, toggleAudioMuted, isAudioMuted, playCityTravel, playWedding, playBaby, playUnemployed, playReemployed, playSideHustle } from './utils/audio.js'
 import { registerHintToggleShortcut } from './utils/ui-prefs.js'
 import { getPath } from './data/retirement-paths.js'
 
@@ -33,8 +34,62 @@ onMounted(() => {
   registerHintToggleShortcut()
 })
 
+// ---- BGM 管理：随游戏阶段/路径自动切换 ----
+const audioMuted = ref(isAudioMuted())
+function toggleMute(): void {
+  audioMuted.value = toggleAudioMuted()
+}
+// 开场 BGM：玩家首次点击 start 时解锁音频并播放开场曲
+function playIntroMusic(): void {
+  ensureAudio()
+  startMusic('intro')
+}
+// 阶段切换：intro→开场曲；setup/path_select→保持开场曲；playing→路径主题；ending→结局曲
+watch(
+  () => store.state.gamePhase,
+  (phase) => {
+    if (phase === 'playing') {
+      startMusic(store.state.retirementPath || 'intro')
+      // 副业启动号角：进入人生的第一年
+      setTimeout(() => playSideHustle(), 300)
+    } else if (phase === 'ending') {
+      startMusic('ending')
+    } else {
+      startMusic('intro')
+    }
+  }
+)
+// 生活状态音效：结婚 / 生子 / 失业 / 再就业
+watch(() => store.state.isMarried, (v, old) => { if (v && !old) playWedding() })
+watch(() => store.state.hasChild, (v, old) => { if (v && !old) playBaby() })
+watch(() => store.state.isUnemployed, (v, old) => {
+  if (v && !old) playUnemployed()
+  else if (!v && old) playReemployed()
+})
+// 路径切换：进入 playing 后，选择路径时切到对应主题曲
+watch(
+  () => store.state.retirementPath,
+  (path) => {
+    if (store.state.gamePhase === 'playing' && path) startMusic(path)
+  }
+)
+// 结局：播放结局号角
+watch(
+  () => store.state.currentEndingId,
+  (id) => {
+    if (id) playEnding(id.startsWith('path_success_'))
+  }
+)
+
 const gamePhase = computed(() => store.state.gamePhase)
 const showCitySelect = computed(() => store.showCitySelect)
+
+// 人生图鉴（跨局收藏）弹窗
+const showCollection = ref(false)
+function openCollection(): void {
+  playClick()
+  showCollection.value = true
+}
 
 const cityList: CityType[] = ['资本修罗场', '中坚大后方', '避风低洼地']
 
@@ -56,6 +111,8 @@ function handleStart(): void {
   playClick()
   // originChoices 将在 startNewGame 中随机生成（不再经过问卷）
   store.startNewGame()
+  // 解锁音频并播放开场曲（需在用户手势内）
+  playIntroMusic()
 }
 
 function handleTestSkip(): void {
@@ -73,6 +130,7 @@ function handleRestartConfirm(): void {
 }
 
 function handleCityPick(city: CityType): void {
+  playCityTravel()
   store.applyGeoArbitrage(city)
 }
 
@@ -235,6 +293,9 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
         </div>
       </div>
       <div class="top-right">
+        <button class="btn-sound" @click="toggleMute" :title="audioMuted ? '开启声音' : '静音'">
+          {{ audioMuted ? '🔇' : '🔊' }}
+        </button>
         <div v-if="currentPath" class="faith-meter">
           <span class="faith-label">信念</span>
           <div class="faith-bar"><div class="faith-fill" :style="{ width: faithLevel + '%' }" /></div>
@@ -287,15 +348,18 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
           <span class="intro-hint">// 没有正确答案，只有你的选择 //</span>
         </p>
 
-        <button class="btn-start-big" @click="handleStart">
+        <button class="btn-start-big" @click="handleStart()">
           <span class="btn-arrow">▶</span>
           <span class="btn-text">PRESS START</span>
           <span class="btn-cursor">_</span>
         </button>
 
-        <button class="btn-test-skip" @click="handleTestSkip">
-          [测试] 直接看退休结局 →
-        </button>
+        <div class="intro-actions">
+          <button class="btn-collection" @click="openCollection">◈ 人生图鉴</button>
+          <button class="btn-test-skip" @click="handleTestSkip">
+            [测试] 直接看退休结局 →
+          </button>
+        </div>
 
         <p class="intro-foot">
           // 每一步都不可逆 · 每一年都在结算 //
@@ -390,6 +454,9 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
       message="确定要放弃当前人生，重新开始吗？所有进度将被清除。"
       @confirm="handleRestartConfirm"
     />
+
+    <!-- ===================== 人生图鉴（跨局收藏） ===================== -->
+    <CollectionPanel :show="showCollection" @close="showCollection = false" />
   </div>
 </template>
 
@@ -474,6 +541,24 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 }
 .btn-restart:hover {
   background: rgba(255, 68, 68, 0.2);
+  color: #fff;
+}
+
+.btn-sound {
+  font-family: 'DotGothic16', monospace;
+  font-size: 14px;
+  color: var(--neon-green);
+  background: rgba(0, 30, 10, 0.8);
+  border: 1px solid var(--neon-green);
+  padding: 3px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.2s;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.btn-sound:hover {
+  background: rgba(0, 255, 136, 0.2);
   color: #fff;
 }
 
@@ -832,6 +917,34 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   background: rgba(0, 212, 255, 0.05);
 }
 
+.intro-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.intro-actions .btn-test-skip { margin: 0; }
+
+.btn-collection {
+  padding: 6px 16px;
+  background: rgba(0, 30, 10, 0.4);
+  border: 1px solid var(--neon-green);
+  color: var(--neon-green);
+  font-family: 'DotGothic16', monospace;
+  font-size: 12px;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
+}
+.btn-collection:hover {
+  background: rgba(0, 255, 136, 0.15);
+  color: #fff;
+  box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
+}
+
 /* ============================================================
    游戏主布局 - flex三栏（大屏自适应，无 max-width 限制）
    ============================================================ */
@@ -1015,7 +1128,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
     letter-spacing: 1px;
   }
   .btn-restart {
-    font-size: 9px;
+    font-size: 10px;
     padding: 2px 6px;
   }
   .top-center {
@@ -1035,7 +1148,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
     font-size: 10px;
     flex-shrink: 0;
   }
-  .stat-badge .label { font-size: 8px; }
+  .stat-badge .label { font-size: 9px; }
   .stat-badge .value { font-size: 10px; }
   .stat-badge .icon { font-size: 10px; }
   .top-right {
@@ -1045,7 +1158,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
     padding: 2px 6px;
     gap: 3px;
   }
-  .faith-label { font-size: 8px; }
+  .faith-label { font-size: 9px; }
   .faith-value { font-size: 11px; }
   .faith-bar { width: 36px; }
 

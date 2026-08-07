@@ -58,15 +58,16 @@ html, body {
   background: linear-gradient(180deg, #0a0a1a 0%, #1a0a2e 50%, #0d1a0a 100%);
   background-attachment: fixed;
   color: var(--pico-white);
-  font-family: 'DotGothic16', monospace;
+  font-family: 'DotGothic16', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
   font-size: 16px;
   line-height: 1.5;
   overflow-x: hidden;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: grayscale;
   image-rendering: pixelated;
-  /* 全局文字微弱霓虹发光 */
-  text-shadow: 0 0 4px rgba(201, 0, 255, 0.25), 0 0 8px rgba(0, 212, 255, 0.15);
+  /* 全局文字——取消霓虹发光，让文字保持清晰锐利
+     标题/装饰性文字的霓虹效果由各个组件自行控制 */
+  text-shadow: none;
 }
 
 /* ---- 全局城市天际线剪影（固定在背景层底部） ---- */
@@ -209,8 +210,8 @@ body::after {
    霓虹风滚动条
    ============================================================ */
 ::-webkit-scrollbar {
-  width: 12px;
-  height: 12px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {

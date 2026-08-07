@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watchEffect } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
-import { playSelect, playConfirm } from '../../utils/audio.js'
+import { playSelect, playConfirm, playCrisis, playRetirePulse, playHover } from '../../utils/audio.js'
 import { showNumericalHints } from '../../utils/ui-prefs.js'
 import { fmtSigned, fmt } from '../../utils/format.js'
 import type { NarrativeOption } from '../../types/global.d.js'
@@ -35,9 +35,14 @@ function handleCommit() {
 }
 
 function handleRetire() {
-  playConfirm()
+  playRetirePulse()
   store.chooseRetire()
 }
+
+// 危机事件出现时播放警报音
+watchEffect(() => {
+  if (currentEvent.value?.eventType === 'crisis') playCrisis()
+})
 
 // 财务预估
 const estimatedAnnualIncome = computed(() => {
@@ -183,6 +188,7 @@ const skillLabels: Record<string, string> = {
             disabled: !isOptionAvailable(option),
           }"
           @click="handleSelectOption(option.id)"
+          @mouseenter="playHover"
         >
           <div class="option-scanlines" />
 
@@ -334,7 +340,7 @@ const skillLabels: Record<string, string> = {
   align-items: center;
   gap: 3px;
   padding: 1px 5px;
-  font-size: 9px;
+  font-size: 10px;
   color: rgba(180, 185, 200, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 2px;
@@ -351,7 +357,7 @@ const skillLabels: Record<string, string> = {
 }
 
 .skill-chip strong {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 400;
   color: rgba(200, 210, 230, 0.6);
 }
@@ -438,7 +444,7 @@ const skillLabels: Record<string, string> = {
 }
 
 .event-type-tag {
-  font-size: 9px;
+  font-size: 10px;
   padding: 2px 6px;
   border-radius: 2px;
   letter-spacing: 1px;
@@ -611,7 +617,7 @@ const skillLabels: Record<string, string> = {
 }
 
 .option-hint {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.5px;
   font-family: 'DotGothic16', monospace;
@@ -620,7 +626,7 @@ const skillLabels: Record<string, string> = {
 }
 
 .option-disabled-reason {
-  font-size: 9px;
+  font-size: 10px;
   color: #ff6666;
   font-style: italic;
 }

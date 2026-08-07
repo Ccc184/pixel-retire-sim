@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, computed, nextTick, shallowRef } from 'vue';
 import { matchStoryboardScenes, type SceneContext } from '../data/storyboard-scenes.js';
 import type { GameState, Profession, CityType, OriginChoices, YearResult, CrossroadEvent, NarrativeEvent, MBTIType, SalaryChangeEntry, RetirementDream } from '../types/global.d.js';
-import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth, isDelayedRetirementPhase } from '../utils/math-engine.js';
+import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth, isDelayedRetirementPhase, applyAnnualChainGrowth } from '../utils/math-engine.js';
 import { rollRandomEvents } from '../data/events.js';
 import { rollDailyEvents, applyDailyEventEffects } from '../data/daily-events.js';
 import { ENDINGS, buildEndingText } from '../utils/narrative.js';
@@ -10,6 +10,7 @@ import { computeFinalGrade, type FinalGrade } from '../utils/rating.js';
 import { initParents, initFriends, processRelationships, resetMarriedFriendSet } from '../utils/relationships.js';
 import { resetSharedNarrativeLru, filterSharedRecent } from '../utils/shared-narrative-lru.js';
 import { scheduleSave, loadSave, clearSave } from './persist.js';
+import { recordRun } from '../utils/collection.js';
 import { detectCrossroad } from '../data/crossroads.js';
 import { detectCardEchoes } from '../data/card-echoes.js';
 import { BLIND_BOX_OUTCOMES, detectBlindBoxOutcomes } from '../data/blind-box-outcomes.js';
@@ -1518,6 +1519,11 @@ export const useGameStore = defineStore('game', () => {
     else if (cycleRoll < 0.75) state.value.economicCycle = 1; // 平稳
     else state.value.economicCycle = 2; // 萧条
 
+    // 4.5 链上持仓年度市场自然增长（"链上洼地"修复：持仓此前只靠事件驱动、无法积累）
+    if (state.value.retirementPath === 'chain_native') {
+      applyAnnualChainGrowth(state.value);
+    }
+
     // 4.5 滚动日常琐事（削减为每年1条，腾出空间给恋爱/大事件）
     // 按每条事件逐条记录变化，用于收支/变化来源面板展示
     const dailyLogs: string[] = [];
@@ -2251,6 +2257,26 @@ export const useGameStore = defineStore('game', () => {
   }
   
   // ========== 结局系统 ==========
+  // 跨局图鉴：把这一局写入收藏（独立于单局存档，resetGame 不清除）
+  function recordEndingRun() {
+    const eid = state.value.currentEndingId;
+    if (!eid) return;
+    const info = getEndingInfo();
+    if (!info) return;
+    const isPath = eid.startsWith('path_success_') || eid.startsWith('path_failure_');
+    const pathId = isPath ? (eid.replace(/^path_(success|failure)_/, '') as RetirementPathId) : null;
+    const path = pathId ? getPath(pathId) : null;
+    recordRun(state.value, {
+      endingId: eid,
+      grade: info.grade,
+      title: info.title,
+      name: info.name,
+      pathId,
+      pathName: path?.name || '',
+      pathIcon: path?.icon || '',
+    });
+  }
+
   function triggerEarlyRetirement(success: boolean) {
     const path = getPath(state.value.retirementPath);
     if (!path) return;
@@ -2259,6 +2285,7 @@ export const useGameStore = defineStore('game', () => {
     state.value.gamePhase = 'ending';
     addLog(success ? `第${state.value.currentAge}岁，你做到了。` : `第${state.value.currentAge}岁，这条路没有走通。`);
     scheduleSave(state.value);
+    recordEndingRun();
   }
 
   // 玩家主动选择退休——随时可退休，不做任何达标条件拦截
@@ -2273,6 +2300,7 @@ export const useGameStore = defineStore('game', () => {
     state.value.currentEndingId = endingId;
     state.value.gamePhase = 'ending';
     scheduleSave(state.value);
+    recordEndingRun();
   }
   
   function getEndingText(): string {

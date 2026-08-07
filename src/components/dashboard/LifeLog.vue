@@ -250,7 +250,7 @@ function isNewest(idx: number): boolean {
 }
 
 .header-title {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--color-dim);
   letter-spacing: 2px;
   text-transform: uppercase;
@@ -258,7 +258,7 @@ function isNewest(idx: number): boolean {
 }
 
 .header-count {
-  font-size: 9px;
+  font-size: 10px;
   color: var(--neon-blue);
   font-family: 'DotGothic16', monospace;
   font-weight: 700;
@@ -356,7 +356,7 @@ function isNewest(idx: number): boolean {
 
 .fold-arrow {
   display: inline-block;
-  font-size: 8px;
+  font-size: 10px;
   color: var(--color-dim);
   transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
@@ -366,14 +366,14 @@ function isNewest(idx: number): boolean {
 }
 
 .fold-title {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 1px;
   text-transform: uppercase;
   flex: 1;
 }
 
 .fold-count {
-  font-size: 9px;
+  font-size: 10px;
   padding: 0 2px;
   font-weight: 700;
 }
@@ -454,8 +454,6 @@ function isNewest(idx: number): boolean {
   color: var(--color-secondary);
   transition: background 0.12s, border-color 0.2s;
   position: relative;
-  opacity: 0;
-  animation: logSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
 
 .log-item.is-new {
@@ -503,19 +501,19 @@ function isNewest(idx: number): boolean {
   gap: 1px;
   color: var(--neon-blue);
   font-weight: 700;
-  font-size: 9px;
+  font-size: 10px;
   font-family: 'DotGothic16', monospace;
   margin-top: 1px;
 }
 
 .age-prefix {
-  font-size: 7px;
+  font-size: 8px;
   opacity: 0.55;
   letter-spacing: 0.5px;
 }
 
 .age-num {
-  font-size: 9px;
+  font-size: 10px;
   text-shadow: 0 0 3px currentColor;
 }
 
@@ -686,7 +684,7 @@ function isNewest(idx: number): boolean {
 }
 
 .footer-text {
-  font-size: 8px;
+  font-size: 9px;
   color: var(--color-dim);
   letter-spacing: 2px;
   font-family: 'DotGothic16', monospace;

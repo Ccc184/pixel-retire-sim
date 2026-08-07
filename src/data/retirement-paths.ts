@@ -6,7 +6,7 @@
  * 戏剧性来自赌注本身、中途的信念动摇、以及情感线的冲突。
  */
 import type { GameState, RetirementPathId } from '../types/global.d.js';
-import { switchCity, CITY_CONFIGS, applyChainHoldingScale } from '../utils/math-engine.js';
+import { switchCity, CITY_CONFIGS, applyChainHoldingScale, passiveIncomeCapMult } from '../utils/math-engine.js';
 
 // ============================================================
 // 路径接口定义
@@ -184,9 +184,9 @@ const aiSymbiote: RetirementPath = {
   ],
 
   checkSuccess: (state) => {
-    // 成功条件（v16.3）：总财富(存款+被动收入×20) >= 年支出×32 且 信念值>=50 且 年龄>=36
+    // 成功条件（v16.3）：总财富(存款+被动收入×12) >= 年支出×32 且 信念值>=50 且 年龄>=36
     const annualExpense = state.annualBaseCost + (state.currentMortgageCost || 0);
-    const passiveCapitalized = (state.passiveIncome || 0) * 20;
+    const passiveCapitalized = (state.passiveIncome || 0) * passiveIncomeCapMult;
     const totalWealth = state.currentSavings + passiveCapitalized;
     return totalWealth >= annualExpense * 32 && state.pathFaith >= 50 && state.currentAge >= 36;
   },
@@ -339,10 +339,10 @@ const chainNative: RetirementPath = {
   checkSuccess: (state) => {
     const chainHoldings = (state as any).chainHoldings || 0;
     const annualExpense = state.annualBaseCost + (state.currentMortgageCost || 0);
-    // 成功（v18放宽）：链上资产>=年支出×12 且 信念值>=40 且 年龄>=35
-    // 此前 v15 的 ×18 门槛叠加每年 5% 归零概率，导致胜率仅 3.5%，绝大多数玩家注定失败。
-    // 放宽门槛并配合"链上认知"软性护栏（降低归零概率），让这条路既有高波动的刺激感，又具备可达成性。
-    return chainHoldings >= annualExpense * 12 && state.pathFaith >= 40 && state.currentAge >= 35;
+    // 成功（v19校准）：链上资产>=年支出×5 且 信念值>=40 且 年龄>=35
+    // 与 checkCanRetire 的退休门槛（×5）对齐，避免"能退休却不算走通"的倒挂。
+    // 配合 applyAnnualChainGrowth 的年度自然增长（"洼地"修复），让这条高波动路径具备可达成性。
+    return chainHoldings >= annualExpense * 5 && state.pathFaith >= 40 && state.currentAge >= 35;
   },
 
   successTitle: '链上自由',
@@ -934,9 +934,9 @@ const bioGambler: RetirementPath = {
 
   checkSuccess: (state) => {
     const bioPortfolio = (state as any).bioPortfolio || 0;
-    // 成功（v16回调：从150万降到120万，健康门槛45保持）
-    // 生物投资>=120万 且 健康>=45 且 信念>=40 且 年龄>=36
-    return bioPortfolio >= 1200000 && state.health >= 45 && state.pathFaith >= 40 && state.currentAge >= 36;
+    // 成功（v19校准：从120万降到100万，配合高波动路径收敛到60；健康门槛45保持）
+    // 生物投资>=100万 且 健康>=45 且 信念>=40 且 年龄>=36
+    return bioPortfolio >= 1000000 && state.health >= 45 && state.pathFaith >= 40 && state.currentAge >= 36;
   },
 
   successTitle: '明日世界',

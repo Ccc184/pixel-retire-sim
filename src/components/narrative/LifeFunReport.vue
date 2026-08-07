@@ -102,17 +102,20 @@ onUnmounted(() => {
         <span class="ar-year">{{ report.year }}</span>
       </div>
 
-      <!-- 评级徽章：延迟揭晓，整张结算单的视觉焦点 -->
-      <transition name="grade-reveal">
-        <div
-          v-if="showGrade"
-          class="ar-grade"
-          :class="gradeStyle.anim || ''"
-          :style="{ color: gradeStyle.color, textShadow: gradeStyle.shadow }"
-        >
-          {{ props.grade }}
-        </div>
-      </transition>
+      <!-- 评级徽章：占位容器防止布局跳跃 -->
+      <div class="ar-grade-wrapper">
+        <!-- 延迟揭晓，整张结算单的视觉焦点 -->
+        <transition name="grade-reveal">
+          <div
+            v-if="showGrade"
+            class="ar-grade"
+            :class="gradeStyle.anim || ''"
+            :style="{ color: gradeStyle.color, textShadow: gradeStyle.shadow }"
+          >
+            {{ props.grade }}
+          </div>
+        </transition>
+      </div>
 
       <div class="ar-title">{{ report.title }}</div>
 
@@ -322,7 +325,7 @@ onUnmounted(() => {
   position: absolute;
   top: 4px;
   left: 6px;
-  font-size: 9px;
+  font-size: 10px;
   color: #94b0c2;
   letter-spacing: 1px;
   opacity: 0.9;
@@ -444,7 +447,7 @@ onUnmounted(() => {
 .badge.locked .badge-name { color: #5f574f; }
 
 .badge-desc {
-  font-size: 8px;
+  font-size: 9px;
   color: #94b0c2;
   line-height: 1.3;
 }
@@ -482,7 +485,7 @@ onUnmounted(() => {
 }
 
 .ar-kicker {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 2px;
   color: #c9a8ff;
   font-family: 'DotGothic16', monospace;
@@ -591,7 +594,7 @@ onUnmounted(() => {
 }
 
 .ar-core-note {
-  font-size: 9px;
+  font-size: 10px;
   color: #94b0c2;
   margin-top: 2px;
   line-height: 1.3;
@@ -650,6 +653,14 @@ onUnmounted(() => {
 }
 
 /* ====== 结算单内评级徽章 ====== */
+.ar-grade-wrapper {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 6px 0;
+}
+
 .ar-grade {
   font-size: 72px;
   line-height: 1;
@@ -712,7 +723,7 @@ onUnmounted(() => {
 }
 
 .ar-scene-kicker {
-  font-size: 9px;
+  font-size: 10px;
   letter-spacing: 2px;
   color: #c9a8ff;
   font-family: 'DotGothic16', monospace;

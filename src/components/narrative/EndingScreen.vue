@@ -4,12 +4,34 @@ import { useGameStore } from '../../store/game.store.js'
 import type { Ending } from '../../types/global.d.js'
 import LifeAuditReport from './LifeAuditReport.vue'
 import LifeFunReport from './LifeFunReport.vue'
+import CollectionPanel from '../ui/CollectionPanel.vue'
+import { collectionState } from '../../utils/collection.js'
+import { generateAnnualReport } from '../../utils/life-fun.js'
+import { renderPoster, downloadPoster } from '../../utils/share-poster.js'
 import { fmt } from '../../utils/format.js'
 
 const store = useGameStore()
 
 const endingInfo = computed<Ending | null>(() => store.getEndingInfo())
 const endingText = computed<string>(() => store.getEndingText())
+
+// ========== 人生图鉴 / 分享海报 ==========
+const showCollection = ref(false)
+const isNewUnlock = computed(() => !!(collectionState.value.lastRun?.isNewUnlock))
+const newUnlockTitle = computed(() => collectionState.value.lastRun?.title || '')
+
+function handleShare(): void {
+  const grade = endingInfo.value?.grade || 'B'
+  const report = generateAnnualReport(store.state)
+  const dataUrl = renderPoster({
+    report,
+    grade,
+    firstDayScene: firstDayScene.value,
+    pathIcon: report.pathIcon,
+    pathName: report.pathName,
+  })
+  downloadPoster(dataUrl, `像素退休·${report.year}年人生报告.png`)
+}
 
 // ========== 评级揭晓动画（仪式感）==========
 const showGrade = ref(false)
@@ -253,6 +275,15 @@ const rawNetAssets = computed(() => store.totalWealth)
         </h2>
       </div>
 
+      <!-- 新图鉴解锁仪式感提示 -->
+      <transition name="newunlock-in">
+        <div v-if="isNewUnlock" class="new-unlock">
+          <span class="nu-icon">✦</span>
+          <span class="nu-text">新图鉴解锁 · {{ newUnlockTitle }}</span>
+          <span class="nu-icon">✦</span>
+        </div>
+      </transition>
+
       <!-- 结局文本（日志摘要区域） -->
       <div class="ending-body">
         <div class="body-header">
@@ -336,6 +367,12 @@ const rawNetAssets = computed(() => store.totalWealth)
 
       <!-- 重新开始 -->
       <div class="ending-footer">
+        <button class="btn-action" @click="handleShare">
+          🖼 保存分享海报
+        </button>
+        <button class="btn-action" @click="showCollection = true">
+          ◈ 人生图鉴
+        </button>
         <button class="btn-restart" @click="handleRestart">
           再来一局
         </button>
@@ -344,6 +381,9 @@ const rawNetAssets = computed(() => store.totalWealth)
       <!-- D级故障效果层 -->
       <div v-if="endingInfo.grade === 'D'" class="glitch-overlay" />
     </div>
+
+    <!-- 人生图鉴弹窗 -->
+    <CollectionPanel :show="showCollection" @close="showCollection = false" />
   </div>
 </template>
 
@@ -721,17 +761,65 @@ const rawNetAssets = computed(() => store.totalWealth)
 
 .ending-footer {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: center;
   align-items: center;
   gap: 10px;
-  padding-top: 8px;
+  padding-top: 12px;
+  flex-wrap: wrap;
 }
+.btn-action {
+  font-size: 13px;
+  padding: 10px 20px;
+  background: rgba(0, 0, 0, 0.35);
+  color: var(--neon-green);
+  border: 1px solid var(--neon-green);
+  box-shadow: 0 0 10px rgba(0, 255, 136, 0.15), inset 0 0 8px rgba(0, 0, 0, 0.3);
+  letter-spacing: 1px;
+  font-family: 'DotGothic16', monospace;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.btn-action:hover {
+  background: rgba(0, 255, 136, 0.15);
+  color: #fff;
+  box-shadow: 0 0 14px rgba(0, 255, 136, 0.35), inset 0 0 8px rgba(0, 0, 0, 0.3);
+}
+
+/* 新图鉴解锁提示 */
+.new-unlock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border: 1px solid var(--neon-yellow);
+  background: rgba(255, 236, 39, 0.08);
+  color: var(--neon-yellow);
+  font-size: 13px;
+  letter-spacing: 2px;
+  font-family: 'DotGothic16', monospace;
+  text-shadow: 0 0 8px rgba(255, 236, 39, 0.6);
+  box-shadow: 0 0 14px rgba(255, 236, 39, 0.15);
+  animation: newUnlockGlow 1.6s ease-in-out infinite;
+}
+@keyframes newUnlockGlow {
+  0%, 100% { box-shadow: 0 0 10px rgba(255, 236, 39, 0.12); }
+  50% { box-shadow: 0 0 22px rgba(255, 236, 39, 0.35); }
+}
+.newunlock-in-enter-active { transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+.newunlock-in-enter-from { opacity: 0; transform: translateY(-10px) scale(0.9); filter: blur(3px); }
+.newunlock-in-enter-to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
 
 /* 再来一局按钮 - 灰色小按钮 */
 .btn-restart {
   font-size: 13px;
-  padding: 8px 24px;
-  background: rgba(100, 100, 100, 0.1);
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.05);
   color: #94b0c2;
   border: 1px solid #5f574f;
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
@@ -742,6 +830,7 @@ const rawNetAssets = computed(() => store.totalWealth)
   align-items: center;
   gap: 6px;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .btn-restart:hover:not(:disabled) {

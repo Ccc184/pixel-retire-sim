@@ -16,6 +16,13 @@ const transitionType = ref<string | null>(null);
 const isAnimating = ref(false);
 const showContent = ref(false);
 
+// 预计算金币雨随机值，避免模板中 Math.random() 导致每次渲染闪烁
+const moneyDrops = Array.from({ length: 12 }, () => ({
+  left: 5 + Math.random() * 90,
+  delay: Math.random() * 0.6,
+  dur: 0.6 + Math.random() * 0.4,
+}));
+
 // 车的颜色根据 carValue 推断
 const carColor = computed(() => {
   const val = store.state.carValue;
@@ -166,7 +173,7 @@ function startTransition(type: string) {
       <template v-else-if="transitionType === 'money'">
         <div class="tf-money">
           <div class="tf-money-rain">
-            <span v-for="i in 12" :key="i" class="tf-money-drop" :style="{ left: (Math.random() * 90 + 5) + '%', animationDelay: (Math.random() * 0.6) + 's', animationDuration: (0.6 + Math.random() * 0.4) + 's' }">$</span>
+            <span v-for="(drop, i) in moneyDrops" :key="i" class="tf-money-drop" :style="{ left: drop.left + '%', animationDelay: drop.delay + 's', animationDuration: drop.dur + 's' }">$</span>
           </div>
           <div class="tf-money-counter">
             <span class="tf-money-digit">¥</span>
