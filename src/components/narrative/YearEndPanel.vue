@@ -642,6 +642,9 @@ function handleContinue(): void {
       <div class="pixel-corner corner-bl" />
       <div class="pixel-corner corner-br" />
 
+      <!-- 滚动内容容器：四角固定在面板帧上，内容超高时仅此容器滚动 -->
+      <div class="yearend-scroll">
+
       <!-- ============================================================
            带一：顶部状态条（横向排布）：年龄 | 年结余 | 关键指标
            ============================================================ -->
@@ -994,6 +997,7 @@ function handleContinue(): void {
           <span class="btn-text">翻开第 {{ state.currentAge }} 岁 ▸</span>
         </button>
       </div>
+      </div>  <!-- /yearend-scroll -->
     </div>
   </div>
 </template>
@@ -1045,10 +1049,8 @@ function handleContinue(): void {
   position: relative;
   width: min(520px, 100%);
   max-height: 90%;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
   padding: 28px 22px;
   background:
     radial-gradient(ellipse at 20% 20%, rgba(201, 0, 255, 0.06) 0%, transparent 50%),
@@ -1067,6 +1069,17 @@ function handleContinue(): void {
   outline-offset: 4px;
 
   animation: yearendSlideIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 滚动内容容器：承载全部内容，超高时仅此容器滚动，四角固定在面板帧上 */
+.yearend-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 /* ============================================================
@@ -2567,6 +2580,9 @@ function handleContinue(): void {
 @media (max-width: 520px) {
   .yearend-panel {
     padding: 20px 14px;
+  }
+
+  .yearend-scroll {
     gap: 10px;
   }
 
@@ -2612,12 +2628,15 @@ function handleContinue(): void {
     width: min(100%, 940px);
     max-height: calc(100% - 48px);
     margin: 0 auto;
-    overflow-y: auto;
-    overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    gap: 14px;
     padding: 22px 26px 18px;
+  }
+
+  .yearend-scroll {
+    gap: 14px;
+    overflow-y: auto;
+    overflow-x: hidden;
   }
 
   /* 顶部条：年龄 + 运势签，居中 */

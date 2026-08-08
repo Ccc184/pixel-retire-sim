@@ -170,8 +170,8 @@ function processPartner(state: GameState, logs: string[]) {
     state.partner.datingStage = 'divorced';
     state.partner.exName = state.partner.name;
     state.isMarried = false;
-    // 财产分割
-    const splitCost = Math.min(state.currentSavings * 0.3, 200000);
+    // 财产分割（负债时不倒扣，避免负数存款被反向加钱）
+    const splitCost = Math.max(0, Math.min(state.currentSavings * 0.3, 200000));
     state.currentSavings -= Math.round(splitCost);
     logs.push(`你们坐在民政局门口的长椅上，手里的离婚证还没盖章。${state.partner.name}先开口："对不起"。你想说"没关系"，但声音发不出来。——财产分割${Math.round(splitCost)}元，感情归零，信任清空。`);
     state.stress = Math.min(100, state.stress + 1);

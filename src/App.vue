@@ -350,7 +350,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
         </p>
 
         <p class="intro-desc">
-          22岁，你走出校门，口袋里装着第一份offer。<br>
+          {{ store.state.startAge || 22 }}岁，你走出校门，口袋里装着第一份offer。<br>
           城市、行业、起薪——这些选择将决定你未来三十年的轨迹。<br>
           买房还是攒钱？跳槽还是熬着？结婚还是一个人？<br>
           每一年都在结算，每一步都不可逆。<br>
@@ -700,18 +700,37 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   -webkit-backdrop-filter: blur(6px);
 }
 
-/* 四角霓虹装饰 */
+/* 四角像素 L 形霓虹装饰（与结算面板角保持一致质感） */
 .intro-corner {
   position: absolute;
-  width: 28px;
-  height: 28px;
-  border: 3px solid var(--neon-pink);
-  box-shadow: 0 0 8px var(--neon-pink);
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
 }
-.intro-corner.tl { top: -3px; left: -3px; border-right: none; border-bottom: none; }
-.intro-corner.tr { top: -3px; right: -3px; border-left: none; border-bottom: none; border-color: var(--neon-blue); box-shadow: 0 0 8px var(--neon-blue); }
-.intro-corner.bl { bottom: -3px; left: -3px; border-right: none; border-top: none; border-color: var(--neon-blue); box-shadow: 0 0 8px var(--neon-blue); }
-.intro-corner.br { bottom: -3px; right: -3px; border-left: none; border-top: none; border-color: var(--neon-orange); box-shadow: 0 0 8px var(--neon-orange); }
+.intro-corner.tl {
+  top: -2px; left: -2px;
+  border-top: 3px solid var(--neon-pink);
+  border-left: 3px solid var(--neon-pink);
+  filter: drop-shadow(0 0 3px var(--neon-pink));
+}
+.intro-corner.tr {
+  top: -2px; right: -2px;
+  border-top: 3px solid var(--neon-blue);
+  border-right: 3px solid var(--neon-blue);
+  filter: drop-shadow(0 0 3px var(--neon-blue));
+}
+.intro-corner.bl {
+  bottom: -2px; left: -2px;
+  border-bottom: 3px solid var(--neon-blue);
+  border-left: 3px solid var(--neon-blue);
+  filter: drop-shadow(0 0 3px var(--neon-blue));
+}
+.intro-corner.br {
+  bottom: -2px; right: -2px;
+  border-bottom: 3px solid var(--neon-orange);
+  border-right: 3px solid var(--neon-orange);
+  filter: drop-shadow(0 0 3px var(--neon-orange));
+}
 
 .intro-eyebrow {
   display: flex;

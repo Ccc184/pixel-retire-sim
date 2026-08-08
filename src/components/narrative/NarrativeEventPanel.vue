@@ -305,6 +305,8 @@ const hintColorMap: Record<string, { color: string; shadow: string }> = {
   flex-direction: column;
   gap: 8px;
   overflow-y: auto;
+  /* 始终预留滚动条槽位，避免知识卡片展开弹出滚动条时挤压文字导致移位 */
+  scrollbar-gutter: stable;
   width: 100%;
   /* 不使用 backdrop-filter，避免破坏成就浮层的 position:fixed 定位 */
   box-shadow: inset 0 0 18px rgba(0, 212, 255, 0.04);

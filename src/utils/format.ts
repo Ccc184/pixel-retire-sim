@@ -97,5 +97,5 @@ export function fmtNum(n: number): string {
  * 例：8% / 12.5% / 0.3%
  */
 export function fmtPct(n: number, digits = 0): string {
-  return `${n >= 0 ? '' : ''}${n.toFixed(digits)}%`;
+  return `${n.toFixed(digits)}%`;
 }

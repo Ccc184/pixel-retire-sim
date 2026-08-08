@@ -99,18 +99,37 @@ function selectPath(pathId: RetirementPathId) {
   margin: 20px 0;
 }
 
-/* 四角霓虹装饰 */
+/* 四角像素 L 形霓虹装饰（与结算面板角保持一致质感） */
 .intro-corner {
   position: absolute;
-  width: 24px;
-  height: 24px;
-  border: 2px solid var(--neon-pink);
-  box-shadow: 0 0 8px var(--neon-pink);
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
 }
-.intro-corner.tl { top: -2px; left: -2px; border-right: none; border-bottom: none; }
-.intro-corner.tr { top: -2px; right: -2px; border-left: none; border-bottom: none; border-color: var(--neon-blue); box-shadow: 0 0 8px var(--neon-blue); }
-.intro-corner.bl { bottom: -2px; left: -2px; border-right: none; border-top: none; border-color: var(--neon-blue); box-shadow: 0 0 8px var(--neon-blue); }
-.intro-corner.br { bottom: -2px; right: -2px; border-left: none; border-top: none; border-color: var(--neon-orange); box-shadow: 0 0 8px var(--neon-orange); }
+.intro-corner.tl {
+  top: -2px; left: -2px;
+  border-top: 3px solid var(--neon-pink);
+  border-left: 3px solid var(--neon-pink);
+  filter: drop-shadow(0 0 3px var(--neon-pink));
+}
+.intro-corner.tr {
+  top: -2px; right: -2px;
+  border-top: 3px solid var(--neon-blue);
+  border-right: 3px solid var(--neon-blue);
+  filter: drop-shadow(0 0 3px var(--neon-blue));
+}
+.intro-corner.bl {
+  bottom: -2px; left: -2px;
+  border-bottom: 3px solid var(--neon-blue);
+  border-left: 3px solid var(--neon-blue);
+  filter: drop-shadow(0 0 3px var(--neon-blue));
+}
+.intro-corner.br {
+  bottom: -2px; right: -2px;
+  border-bottom: 3px solid var(--neon-orange);
+  border-right: 3px solid var(--neon-orange);
+  filter: drop-shadow(0 0 3px var(--neon-orange));
+}
 
 .path-eyebrow {
   display: flex;

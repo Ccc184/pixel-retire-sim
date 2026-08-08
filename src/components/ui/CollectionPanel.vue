@@ -186,7 +186,7 @@ function close(): void {
 .coll-bar { flex: 1; height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; }
 .coll-fill { height: 100%; background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple), var(--neon-pink)); border-radius: 4px; transition: width 0.6s ease; box-shadow: 0 0 8px rgba(0, 212, 255, 0.5); }
 
-.coll-scroll { overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-right: 4px; }
+.coll-scroll { overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-right: 4px; scrollbar-gutter: stable; }
 .coll-scroll::-webkit-scrollbar { width: 6px; }
 .coll-scroll::-webkit-scrollbar-thumb { background: rgba(201, 0, 255, 0.4); border-radius: 3px; }
 

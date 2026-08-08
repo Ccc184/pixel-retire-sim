@@ -24,14 +24,37 @@ const newUnlockTitle = computed(() => collectionState.value.lastRun?.title || ''
 function handleShare(): void {
   const grade = endingInfo.value?.grade || 'B'
   const report = generateAnnualReport(store.state)
-  const dataUrl = renderPoster({
+  const s = store.state
+
+  // 人生快照：终点年龄 / 工作年限 / 城市 / 职业 / 家庭 / 路径统计
+  const snapshot: { label: string; value: string }[] = []
+  snapshot.push({ label: '终点年龄', value: `${s.currentAge}岁` })
+  snapshot.push({ label: '工作年限', value: `${yearsWorked.value}年` })
+  if (s.currentCity) snapshot.push({ label: '落脚城市', value: s.currentCity })
+  if (s.currentProfession) snapshot.push({ label: '最终职业', value: s.currentProfession })
+  const fam = s.isMarried ? (s.hasChild ? '已婚·有娃' : '已婚') : (s.hasChild ? '未婚·有娃' : '未婚')
+  snapshot.push({ label: '家庭状态', value: fam })
+  if (pathStat.value) snapshot.push({ label: pathStat.value.label, value: pathStat.value.value })
+
+  // 路径结局显示路径名；普通结局显示结局名，避免出现"未知路径"
+  const isPathEnding = isPathSuccess.value || currentPathKey.value !== 'default'
+  const pathName = isPathEnding ? report.pathName : `${endingInfo.value?.title || ''} · ${endingInfo.value?.name || ''}`
+  const pathIcon = isPathEnding ? report.pathIcon : '🏁'
+
+  renderPoster({
     report,
     grade,
     firstDayScene: firstDayScene.value,
-    pathIcon: report.pathIcon,
-    pathName: report.pathName,
+    pathIcon,
+    pathName,
+    stats: snapshot,
+    income: totalIncome.value,
+    expense: totalExpense.value,
+    net: rawNetAssets.value,
+    website: 'https://pixel-retire-sim.pages.dev',
+  }).then((dataUrl) => {
+    downloadPoster(dataUrl, `像素退休·${report.year}年人生报告.png`)
   })
-  downloadPoster(dataUrl, `像素退休·${report.year}年人生报告.png`)
 }
 
 // ========== 评级揭晓动画（仪式感）==========
@@ -260,6 +283,9 @@ const rawNetAssets = computed(() => store.totalWealth)
         <span class="bc bc-br" />
       </div>
 
+      <!-- 滚动内容容器：四角与边框固定在模态帧上，内容超高时仅此容器滚动 -->
+      <div class="ending-scroll">
+
       <!-- 标题装饰 -->
       <div class="ending-header-deco">
         <span class="deco-line" />
@@ -357,6 +383,7 @@ const rawNetAssets = computed(() => store.totalWealth)
           再来一局
         </button>
       </div>
+      </div>  <!-- /ending-scroll -->
 
       <!-- D级故障效果层 -->
       <div v-if="endingInfo.grade === 'D'" class="glitch-overlay" />
@@ -410,16 +437,25 @@ const rawNetAssets = computed(() => store.totalWealth)
   position: relative;
   width: min(640px, 100%);
   max-height: 90%;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
   padding: 28px 24px;
   background: rgba(10, 5, 30, 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   z-index: 2;
   animation: endingPop 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 滚动内容容器：承载全部内容，超高时仅此容器滚动，四角与边框固定在模态帧上 */
+.ending-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
 }
 
 @keyframes endingPop {

@@ -262,7 +262,9 @@ export const useGameStore = defineStore('game', () => {
 
   // 计算属性
   const totalWealth = computed(() => calculateTotalWealth(state.value));
-  const progressToTarget = computed(() => Math.min(100, (totalWealth.value / state.value.targetWealth) * 100));
+  const progressToTarget = computed(() => state.value.targetWealth > 0
+    ? Math.min(100, (totalWealth.value / state.value.targetWealth) * 100)
+    : 0);
   // 是否可以退休——人生不被定义，玩家随时可自主决定退休，不做任何达标条件限制
   const canRetireNow = computed(() => {
     return state.value.endingTriggered === false && state.value.gamePhase === 'playing';

@@ -297,6 +297,7 @@ function isNewest(idx: number): boolean {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
   padding: 6px 10px;
   position: relative;
   scroll-behavior: smooth;
@@ -420,6 +421,7 @@ function isNewest(idx: number): boolean {
 .fold-body.open {
   max-height: 320px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .fold-list {

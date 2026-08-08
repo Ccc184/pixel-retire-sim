@@ -410,6 +410,7 @@ onUnmounted(() => {
   margin: 0;
   max-height: 240px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
   text-shadow: 0 0 2px rgba(255, 204, 170, 0.3);
 }
 

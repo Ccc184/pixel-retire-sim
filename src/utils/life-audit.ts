@@ -450,7 +450,7 @@ function generateMetrics(state: GameState): AuditItem[] {
 
   // 投资回报率
   const invGain = s.lifetimeInvestmentGain || 0
-  const totalInvested = (s.indexFundPct || 0 + s.speculationPct || 0 + s.stockPct || 0) > 0 ? s.currentSavings * 0.5 : 0
+  const totalInvested = ((s.indexFundPct || 0) + (s.speculationPct || 0) + (s.stockPct || 0)) > 0 ? s.currentSavings * 0.5 : 0
   if (totalInvested > 0 && invGain > 0) {
     const roi = Math.round(invGain / totalInvested * 100)
     items.push({

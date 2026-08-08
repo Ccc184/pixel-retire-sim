@@ -838,7 +838,8 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   // 比特币历史年化：典型年-50%~+150%，极端牛市(2021)+400%，归零风险真实存在
   // 注意：如果玩家已放弃链上投资（hasAbandonedCrypto），不再计算持仓波动
   const chainHoldings = (state as any).chainHoldings || 0;
-  if (chainHoldings > 0 && !(state as any).hasAbandonedCrypto) {
+  // 链上原住民路径已由 applyAnnualChainGrowth 单独执行年度自然增长，此处跳过，避免同一年双重计算回报
+  if (chainHoldings > 0 && !(state as any).hasAbandonedCrypto && state.retirementPath !== 'chain_native') {
     const roll = Math.random();
     let chainReturnRate: number;
 

@@ -351,6 +351,7 @@ function handleSelect(optionId: string, option: any): void {
   max-height: 200px;
   overflow-y: auto;
   overflow-x: hidden;
+  scrollbar-gutter: stable;
   padding-right: 4px;
 }
 

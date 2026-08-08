@@ -142,7 +142,7 @@ function makeUnemployedEvents(pathId: RetirementPathId, cfg: PathConfig): Narrat
     id: `unemployed_day1_${pathId}`,
     title: '失重',
     pathId,
-    ageRange: [23, 65],
+    ageRange: [23, 60],
     priority: 10, // 最高优先级
     weight: 100,
     oncePerGame: true,
