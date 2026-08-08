@@ -625,7 +625,6 @@ const relOpen = ref(false);
       <div class="path-desc">{{ currentPath.description }}</div>
       <div class="skill-chips">
         <span class="skill-chip">{{ currentPath.subtitle }}</span>
-        <span class="skill-chip">◎ 退休由你决定</span>
       </div>
       <div class="faith-row">
         <span class="faith-label">信念</span>

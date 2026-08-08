@@ -26,21 +26,25 @@ const displayLogs = computed(() => {
 });
 
 // 日志分类
-type LogCategory = 'danger' | 'success' | 'card' | 'swan' | 'relationship' | 'daily' | 'normal';
+type LogCategory = 'danger' | 'success' | 'card' | 'swan' | 'relationship' | 'daily' | 'investment' | 'freedom' | 'normal';
 
 function getLogCategory(log: string): LogCategory {
   // 黑天鹅事件（最高优先级）
   if (/黑天鹅/.test(log)) return 'swan';
-  // 危险事件
-  if (/(爆仓|重病|破产|裁员|失业|被骗|损失|阴影|创伤|警示)/.test(log)) return 'danger';
+  // 危险 / 负面冲击
+  if (/(爆仓|重病|破产|裁员|失业|被骗|损失|阴影|创伤|警示|崩盘|债务|亏损|病危|手术|住院|透支|榨干|抗议|卷.*钱|窟窿|取关|难度)/.test(log)) return 'danger';
   // 人际关系事件
-  if (/(父母|伴侣|配偶|孩子|子女|朋友|同事|离婚|结婚|恩爱|感情|关系|亲情)/.test(log)) return 'relationship';
-  // 日常琐事
-  if (/(体检|看病|感冒|堵车|加班|外卖|房租|水电|通勤|家务|买菜|失眠|感冒)/.test(log)) return 'daily';
-  // 成功事件
-  if (/(升职|加薪|结婚|宝宝|副业|保险|极简|套利)/.test(log)) return 'success';
+  if (/(父母|伴侣|配偶|孩子|子女|朋友|同事|离婚|结婚|恩爱|感情|关系|亲情|恋人|分手|表白|陪伴|供养)/.test(log)) return 'relationship';
+  // 投资 / 链上 / 资产运作
+  if (/(加密|比特币|代币|持仓|仓位|K线|HODL|TVL|套现|融资|股权|收购|清仓|牛市|熊市|投资|股份|回购|链上|资产|增值|发行|上市|涨了|翻了)/.test(log)) return 'investment';
+  // 事业突破 / 成长
+  if (/(升职|加薪|宝宝|副业|保险|极简|套利|产品上线|订阅|被动收入|合同|订单|粉丝|付费社区|加盟|示范点|签约|突破|里程碑|成功|赚到|盈利|客户|交付|品牌|声誉|覆盖)/.test(log)) return 'success';
+  // 人生转折 / 自由选择
+  if (/(辞职|辞职信|离职|出走|单程票|自由|退休|归来|告别|出发|回老家)/.test(log)) return 'freedom';
   // 卡片选择类事件
-  if (/(你选择|购入|买入|报名|学习|开启|升级|跳槽|搬家|配置)/.test(log)) return 'card';
+  if (/(你选择|购入|买入|报名|学习|开启|升级|跳槽|搬家|配置|加入|成立|拜访)/.test(log)) return 'card';
+  // 日常琐事
+  if (/(体检|看病|感冒|堵车|加班|外卖|房租|水电|通勤|家务|买菜|失眠|咳嗽|发烧)/.test(log)) return 'daily';
   return 'normal';
 }
 
@@ -73,10 +77,25 @@ watch(
   },
 );
 
-// 提取年龄（从日志开头"第X岁"），用于显示小标签
+// 提取年龄（兼容"第X岁"与"X岁这年"两种开头），用于显示小标签
 function extractAge(log: string): string {
-  const match = log.match(/^第(\d+)岁/);
-  return match ? match[1] : '—';
+  const match = log.match(/^第?(\d+)岁/);
+  return match ? match[1] : '';
+}
+
+// 为每条日志计算年龄：无法从自身提取时，继承上一条带年龄日志的年龄（叙事日志同属该年）
+const ageOfLog = computed(() => {
+  const map = new Map<string, string>();
+  let lastAge = '';
+  for (const log of displayLogs.value) {
+    const own = extractAge(log);
+    if (own) lastAge = own;
+    map.set(log, lastAge || '—');
+  }
+  return map;
+});
+function ageOf(log: string): string {
+  return ageOfLog.value.get(log) || '—';
 }
 
 // 是否是新日志（最后一条），用于入场动画
@@ -119,7 +138,7 @@ function isNewest(idx: number): boolean {
             >
               <span class="log-age-badge daily-badge">
                 <span class="age-prefix">AGE</span>
-                <span class="age-num">{{ extractAge(log) }}</span>
+                <span class="age-num">{{ ageOf(log) }}</span>
               </span>
               <span class="fold-text">{{ interp(log) }}</span>
             </li>
@@ -145,7 +164,7 @@ function isNewest(idx: number): boolean {
             >
               <span class="log-age-badge rel-badge">
                 <span class="age-prefix">AGE</span>
-                <span class="age-num">{{ extractAge(log) }}</span>
+                <span class="age-num">{{ ageOf(log) }}</span>
               </span>
               <span class="fold-text">{{ interp(log) }}</span>
             </li>
@@ -176,7 +195,7 @@ function isNewest(idx: number): boolean {
           <!-- 时间戳（年龄） -->
           <span class="log-age-badge">
             <span class="age-prefix">AGE</span>
-            <span class="age-num">{{ extractAge(log) }}</span>
+            <span class="age-num">{{ ageOf(log) }}</span>
           </span>
           <span class="log-text">{{ interp(log) }}</span>
           <!-- 黑天鹅闪烁边框条 -->
@@ -451,12 +470,12 @@ function isNewest(idx: number): boolean {
 .log-item {
   display: flex;
   align-items: flex-start;
-  gap: 5px;
-  padding: 5px 0 5px 4px;
+  gap: 8px;
+  padding: 6px 4px 6px 6px;
   border-bottom: 1px solid var(--border-faint);
   border-left: 2px solid transparent;
   font-size: 10px;
-  line-height: 1.5;
+  line-height: 1.6;
   color: var(--color-secondary);
   transition: background 0.12s, border-color 0.2s;
   position: relative;
@@ -480,47 +499,53 @@ function isNewest(idx: number): boolean {
 @keyframes logSlideInNew {
   0% {
     opacity: 0;
-    transform: translateX(-8px);
-    background: rgba(0, 212, 255, 0.12);
+    background: rgba(0, 212, 255, 0.14);
   }
   60% {
     opacity: 1;
-    transform: translateX(2px);
     background: rgba(0, 212, 255, 0.06);
   }
   100% {
     opacity: 1;
-    transform: translateX(0);
     background: transparent;
   }
 }
 
 .log-item:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
 }
 
-/* 年龄 badge - compact inline */
+/* 年龄 badge - compact pixel block */
 .log-age-badge {
   flex-shrink: 0;
   display: inline-flex;
-  align-items: baseline;
-  gap: 1px;
+  align-items: center;
+  gap: 3px;
   color: var(--neon-blue);
   font-weight: 700;
   font-size: 10px;
   font-family: 'DotGothic16', monospace;
+  padding: 1px 5px 1px 4px;
   margin-top: 1px;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 3px;
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.15) inset;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
 .age-prefix {
-  font-size: 8px;
-  opacity: 0.55;
-  letter-spacing: 0.5px;
+  font-size: 7px;
+  opacity: 0.6;
+  letter-spacing: 1px;
 }
 
 .age-num {
-  font-size: 10px;
-  text-shadow: 0 0 3px currentColor;
+  font-size: 11px;
+  text-shadow: 0 0 4px currentColor;
+  min-width: 12px;
+  text-align: center;
 }
 
 .log-text {
@@ -565,6 +590,9 @@ function isNewest(idx: number): boolean {
 }
 .log-item.tone-danger .log-age-badge {
   color: var(--neon-pink);
+  background: rgba(255, 45, 149, 0.1);
+  border-color: rgba(255, 45, 149, 0.4);
+  box-shadow: 0 0 6px rgba(255, 45, 149, 0.2) inset;
 }
 .log-item.tone-danger .log-text {
   color: #ff9dcc;
@@ -579,6 +607,9 @@ function isNewest(idx: number): boolean {
 }
 .log-item.tone-swan .log-age-badge {
   color: var(--neon-red);
+  background: rgba(255, 68, 68, 0.12);
+  border-color: rgba(255, 68, 68, 0.45);
+  box-shadow: 0 0 6px rgba(255, 68, 68, 0.25) inset;
 }
 .log-item.tone-swan .log-text {
   color: #ff6688;
@@ -618,6 +649,9 @@ function isNewest(idx: number): boolean {
 }
 .log-item.tone-success .log-age-badge {
   color: var(--neon-green);
+  background: rgba(57, 255, 20, 0.1);
+  border-color: rgba(57, 255, 20, 0.4);
+  box-shadow: 0 0 6px rgba(57, 255, 20, 0.2) inset;
 }
 .log-item.tone-success .log-text {
   color: #99ffcc;
@@ -629,6 +663,9 @@ function isNewest(idx: number): boolean {
 }
 .log-item.tone-card .log-age-badge {
   color: var(--neon-orange);
+  background: rgba(255, 140, 0, 0.12);
+  border-color: rgba(255, 140, 0, 0.45);
+  box-shadow: 0 0 6px rgba(255, 140, 0, 0.22) inset;
 }
 .log-item.tone-card .log-text {
   color: #ffcc88;
@@ -641,6 +678,9 @@ function isNewest(idx: number): boolean {
 }
 .log-item.tone-relationship .log-age-badge {
   color: var(--neon-pink);
+  background: rgba(255, 45, 149, 0.1);
+  border-color: rgba(255, 45, 149, 0.4);
+  box-shadow: 0 0 6px rgba(255, 45, 149, 0.2) inset;
 }
 .log-item.tone-relationship .log-text {
   color: #e0a0c8;
@@ -653,17 +693,56 @@ function isNewest(idx: number): boolean {
 }
 .log-item.tone-daily .log-age-badge {
   color: var(--neon-blue);
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.2) inset;
 }
 .log-item.tone-daily .log-text {
   color: var(--color-secondary);
 }
 
-/* normal - 普通日志 */
+/* normal - 普通日志（中性格调，避免整体偏紫） */
 .log-item.tone-normal {
-  border-left-color: rgba(201, 0, 255, 0.5);
+  border-left-color: rgba(148, 160, 184, 0.35);
 }
 .log-item.tone-normal .log-age-badge {
-  color: var(--neon-purple);
+  color: var(--color-secondary);
+  background: rgba(148, 160, 184, 0.1);
+  border-color: rgba(148, 160, 184, 0.3);
+  box-shadow: 0 0 6px rgba(148, 160, 184, 0.12) inset;
+}
+.log-item.tone-normal .log-text {
+  color: var(--color-secondary);
+}
+
+/* investment - 投资 / 链上 / 资产运作（青蓝） */
+.log-item.tone-investment {
+  border-left-color: var(--neon-blue);
+  background: rgba(0, 212, 255, 0.03);
+}
+.log-item.tone-investment .log-age-badge {
+  color: var(--neon-blue);
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.4);
+  box-shadow: 0 0 6px rgba(0, 212, 255, 0.2) inset;
+}
+.log-item.tone-investment .log-text {
+  color: #7fd9ff;
+}
+
+/* freedom - 人生转折 / 自由选择（温暖金） */
+.log-item.tone-freedom {
+  border-left-color: #ffd76a;
+  background: rgba(255, 215, 106, 0.04);
+}
+.log-item.tone-freedom .log-age-badge {
+  color: #ffd76a;
+  background: rgba(255, 215, 106, 0.1);
+  border-color: rgba(255, 215, 106, 0.4);
+  box-shadow: 0 0 6px rgba(255, 215, 106, 0.2) inset;
+}
+.log-item.tone-freedom .log-text {
+  color: #ffd76a;
 }
 
 /* ============================================================

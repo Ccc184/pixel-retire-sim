@@ -311,11 +311,6 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
         <button class="btn-sound" @click="toggleMute" :title="audioMuted ? '开启声音' : '静音'">
           {{ audioMuted ? '🔇' : '🔊' }}
         </button>
-        <div v-if="currentPath" class="faith-meter">
-          <span class="faith-label">信念</span>
-          <div class="faith-bar"><div class="faith-fill" :style="{ width: faithLevel + '%' }" /></div>
-          <span class="faith-value"><AnimatedNumber :value="faithLevel" :format="fmtRound" /></span>
-        </div>
       </div>
     </header>
 
@@ -547,7 +542,8 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
 }
 
 .top-title {
@@ -598,7 +594,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   gap: 5px;
   align-items: center;
   flex-wrap: wrap;
-  flex: 1;
+  flex: 0 0 auto;
   justify-content: center;
 }
 
@@ -637,18 +633,11 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-shrink: 0;
+  flex: 1;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
-.faith-meter {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 10px;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid var(--neon-purple);
-}
 .faith-label { font-size: 9px; color: var(--text-dim, #6a6a8a); }
 .faith-value {
   font-size: 13px;
@@ -1230,10 +1219,6 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   .stat-badge .icon { font-size: 10px; }
   .top-right {
     gap: 4px;
-  }
-  .faith-meter {
-    padding: 2px 6px;
-    gap: 3px;
   }
   .faith-label { font-size: 9px; }
   .faith-value { font-size: 11px; }
