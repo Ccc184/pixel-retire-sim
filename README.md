@@ -217,3 +217,50 @@ npm run preview    # 预览生产构建
 - 40 岁再分叉事件需设 `weight: 100` 确保高触发率（97.8%+）。
 - 所有路径初始必须以**副业**形式起步，不改变职业、城市与薪资；迁城需用 `switchCity()` 正确应用城市系数。
 - 音频规范：**无背景音乐（BGM）**，仅保留音效（SFX）。
+
+---
+
+## 十一、部署与推送（每次改完代码照着做即可）
+
+> 本机的 `git` 不在 PATH 里，需用完整路径调用。仓库远端为 SSH。以下命令可直接复制执行。
+
+### 0. 关键路径常量
+
+```powershell
+$git='C:\Program Files\Git\bin\git.exe'   # git 完整路径（不在 PATH）
+$ssh='C:\Program Files\Git\usr\bin\ssh.exe'  # ssh 完整路径
+```
+
+### 1. 提交并推送到 GitHub（触发 Pages 自动部署）
+
+```powershell
+cd 'd:\6a3eda3f32f10123e28acfe9\pixel-retire-sim'
+$git='C:\Program Files\Git\bin\git.exe'
+& $git status -s          # 查看改动
+& $git add -A
+& $git commit -m "更新说明"   # 换成实际提交信息
+& $git push origin main
+```
+
+> 推送后在 GitHub 仓库 **Actions** 标签确认 `Deploy to GitHub Pages` 工作流跑绿，约 1–2 分钟。
+
+### 2. 部署到 Cloudflare Pages（需 API 令牌）
+
+```powershell
+# 先构建最新产物
+cd 'd:\6a3eda3f32f10123e28acfe9\pixel-retire-sim'
+npm run build
+
+# 用 Cloudflare API 令牌部署（令牌从 https://dash.cloudflare.com/profile/api-tokens 获取）
+$env:CLOUDFLARE_API_TOKEN='<你的API令牌>'
+npx wrangler pages deploy dist --project-name=pixel-retire-sim
+```
+
+### 3. 线上地址
+
+| 平台 | 地址 | 说明 |
+|---|---|---|
+| GitHub Pages | `https://Ccc184.github.io/pixel-retire-sim/` | push 到 main 自动部署 |
+| Cloudflare Pages | `https://pixel-retire-sim.pages.dev` | 手动 `wrangler pages deploy` 部署，评审提交优先用这个 |
+
+> 复赛提交（飞书问卷）优先填 Cloudflare 的 `pages.dev` 地址。
