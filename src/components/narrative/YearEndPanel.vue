@@ -1044,7 +1044,7 @@ function handleContinue(): void {
 .yearend-panel {
   position: relative;
   width: min(520px, 100%);
-  max-height: 90vh;
+  max-height: 90%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -2610,7 +2610,7 @@ function handleContinue(): void {
   /* 面板：居中、内容自适应宽度（不占全屏），超高时整体滚动 */
   .yearend-panel {
     width: min(100%, 940px);
-    max-height: calc(100vh - 48px);
+    max-height: calc(100% - 48px);
     margin: 0 auto;
     overflow-y: auto;
     overflow-x: hidden;

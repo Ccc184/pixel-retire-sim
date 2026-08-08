@@ -61,13 +61,20 @@ html, body {
   font-family: 'DotGothic16', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', sans-serif;
   font-size: 16px;
   line-height: 1.5;
-  overflow-x: hidden;
+  overflow: hidden;
   -webkit-font-smoothing: none;
   -moz-osx-font-smoothing: grayscale;
   image-rendering: pixelated;
   /* 全局文字——取消霓虹发光，让文字保持清晰锐利
      标题/装饰性文字的霓虹效果由各个组件自行控制 */
   text-shadow: none;
+}
+
+/* 仅当浏览器支持 flex 时，以 body 作为居中容器承载等比缩放的 #app */
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ---- 全局城市天际线剪影（固定在背景层底部） ---- */
@@ -127,15 +134,16 @@ body::after {
 }
 
 #app {
-  width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* 整体等比缩放：以 1600x900 为基准，随视口成比例放大（字体/面板/间距同步变大）
+     --ui-w / --ui-h 抵消 zoom 的放大，保证缩放后恰好填满一屏 */
+  zoom: var(--ui-scale, 1);
+  width: var(--ui-w, 100%);
+  height: var(--ui-h, 100dvh);
   display: flex;
   flex-direction: column;
   position: relative;
   z-index: 1;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 /* ============================================================

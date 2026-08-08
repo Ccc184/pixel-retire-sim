@@ -158,7 +158,7 @@ function close(): void {
 .coll-modal {
   position: relative;
   width: min(760px, 100%);
-  max-height: 92vh;
+  max-height: 92%;
   display: flex;
   flex-direction: column;
   gap: 12px;

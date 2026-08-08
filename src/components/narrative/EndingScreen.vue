@@ -481,7 +481,7 @@ const rawNetAssets = computed(() => store.totalWealth)
 .ending-modal {
   position: relative;
   width: min(640px, 100%);
-  max-height: 90vh;
+  max-height: 90%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;

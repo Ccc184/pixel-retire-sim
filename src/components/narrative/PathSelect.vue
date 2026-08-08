@@ -74,7 +74,7 @@ function selectPath(pathId: RetirementPathId) {
   justify-content: center;
   padding: 20px 16px;
   overflow-y: auto;
-  min-height: 100vh;
+  min-height: 100%;
 }
 
 .path-select-inner {

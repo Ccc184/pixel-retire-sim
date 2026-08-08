@@ -489,8 +489,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 <style scoped>
 .app-root {
   width: 100%;
-  height: 100vh;
-  height: 100dvh;
+  height: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -670,8 +669,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  min-height: 100vh;
-  min-height: 100dvh;
+  min-height: 100%;
   overflow-x: hidden;
 }
 
@@ -1112,7 +1110,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 /* 三个正方形窗口并列：宽高比 3:1，每个窗口恰好是正方形 */
 .crt-stage :deep(.crt-screen) {
   aspect-ratio: 3 / 1;
-  max-height: 26vh;
+  max-height: clamp(180px, 26vh, 460px);
 }
 
 /* ============================================================
@@ -1130,12 +1128,12 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   }
   .col-left { width: clamp(220px, 16vw, 340px); }
   .col-right { width: clamp(240px, 18vw, 380px); }
-  .crt-stage :deep(.crt-screen) { max-height: 30vh; }
+  .crt-stage :deep(.crt-screen) { max-height: clamp(200px, 30vh, 520px); }
 }
 
 /* 超大屏（≥1900px）：进一步放大 CRT 高度上限 */
 @media (min-width: 1900px) {
-  .crt-stage :deep(.crt-screen) { max-height: 34vh; }
+  .crt-stage :deep(.crt-screen) { max-height: clamp(220px, 34vh, 600px); }
 }
 
 /* 平板：收窄侧栏 */
