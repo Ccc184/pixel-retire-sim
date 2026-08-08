@@ -52,6 +52,53 @@ export function randomRange(min: number, max: number): number {
 }
 
 /**
+ * 经济感知缩放：把卡片里写死的"小额固定收益"按玩家当前经济规模放大，
+ * 避免后期（存款数十万~上千万时）出现"选=没选"的卡片。
+ *
+ * 规则（只放大正的收益类效果，成本类与已可感知的大额保持不变）：
+ *   - 目标下限 = ref * floorPct（让收益至少占到当前经济规模的一定比例，能被感知）
+ *   - 上限 = amount * maxMult（防止小数额被无脑放大到离谱）
+ *   - 结果 = max(原值, min(下限, 上限))，即只抬升"过小"的收益，越大越不干预
+ *
+ * @param amount  卡片里写死的固定收益（正数）
+ * @param ref     参照经济规模（如当前存款 / 年支出 / 月薪）
+ * @param floorPct  收益下限占参照的比例
+ * @param maxMult  最大放大倍数（防爆）
+ */
+export function scalePerceptibleIncome(amount: number, ref: number, floorPct: number, maxMult: number): number {
+  if (amount <= 0) return amount; // 只处理正的收益
+  const floor = ref * floorPct;
+  const capped = amount * maxMult;
+  return Math.max(amount, Math.min(floor, capped));
+}
+
+/**
+ * 投资成本缩放：把"花钱换钱"的投资型固定成本按玩家当前经济规模放大，
+ * 避免后期（存款数十万~上千万时）投资几千万把却毫无感觉（"选=没选"）。
+ *
+ * 与 scalePerceptibleIncome 对称，但作用于负的成本：
+ *   - 目标下限 = ref * floorPct（让投资额至少占到当前经济规模的比例，能被感知）
+ *   - 上限 = |cost| * maxMult（防止小成本被放大到离谱，也防止玩家被掏空）
+ *   - 结果 = max(|cost|, min(下限, 上限))，即只抬升"过小"的投资额
+ *
+ * 注意：仅用于"投资型成本"（负 savingsChange 且同时有正回报 passiveIncomeChange/
+ * salaryChange）。纯消费成本（请客/体检/家庭开销）不应放大。
+ *
+ * @param cost  卡片里写死的固定投资成本（负数）
+ * @param ref   参照经济规模（如当前存款）
+ * @param floorPct  投资额下限占参照的比例
+ * @param maxMult  最大放大倍数（防爆）
+ */
+export function scalePerceptibleCost(cost: number, ref: number, floorPct: number, maxMult: number): number {
+  if (cost >= 0) return cost; // 只处理负的投资成本
+  const absCost = Math.abs(cost);
+  const floor = ref * floorPct;
+  const capped = absCost * maxMult;
+  const scaled = Math.max(absCost, Math.min(floor, capped));
+  return -scaled;
+}
+
+/**
  * 链上持仓规模递减因子：持仓越大，正向缩放的边际效果越小
  * 模拟真实加密市场规律：小资金灵活，大资金体量本身就是收益率的敌人
  *
@@ -149,7 +196,7 @@ export function applySalaryRaise(state: GameState): SalaryChangeEntry[] {
   if (state.isAllInPath) {
     const pathSkills = state.pathSkills || {};
     const maxSkill = Math.max(0, ...Object.values(pathSkills));
-    let skillGrowthRate = Math.min(maxSkill / 25 * 0.02, 0.10);
+    let skillGrowthRate = Math.min(maxSkill / 15 * 0.032, 0.14);
     const faithBonus = state.pathFaith > 70 ? 1.03 : 1.0;
     const salaryMultiple = state.currentMonthlySalary / Math.max(1, initialRealSalary);
     let growthDecay = 1.0;
@@ -200,10 +247,10 @@ export function applySalaryRaise(state: GameState): SalaryChangeEntry[] {
     return breakdown;
   }
 
-  // 技能加成：取路径技能最高值，每10点技能带来1%额外涨薪
+  // 技能加成：取路径技能最高值，每5点技能带来1%额外涨薪（v13平衡：技能权重↑↑，不学就掉队）
   const pathSkills = state.pathSkills || {};
   const maxSkill = Math.max(0, ...Object.values(pathSkills));
-  const skillBonus = 1 + Math.min(maxSkill / 1000, 0.3);
+  const skillBonus = 1 + Math.min(maxSkill / 500, 0.6);
 
   // 信念加成：信念>70时额外+5%涨薪
   const faithBonus = state.pathFaith > 70 ? 1.05 : 1.0;
@@ -212,9 +259,10 @@ export function applySalaryRaise(state: GameState): SalaryChangeEntry[] {
   const mbtiProfMod = getMBTIProfessionModifier((state as any).mbtiType, state.currentProfession);
   const mbtiGrowthMult = mbtiProfMod.salaryGrowthMultiplier;
 
-  // 年龄乘数
+  // 年龄乘数（薪资曲线：黄金期30-45 → 46岁后逐步回落0.7 → 52岁后0.5，避免薪资锁定在35岁峰值）
   const ageMult = state.currentAge >= 30 && state.currentAge <= 45 ? 1.2
-    : state.currentAge >= 46 && state.currentAge <= 55 ? 1.0
+    : state.currentAge >= 46 && state.currentAge <= 51 ? 0.7
+    : state.currentAge >= 52 ? 0.5
     : 0.8;
 
   // 萧条修正
@@ -226,13 +274,13 @@ export function applySalaryRaise(state: GameState): SalaryChangeEntry[] {
 
   switch (state.currentProfession) {
     case '体制内': {
-      baseRaise = 0.03;
+      baseRaise = 0.0216;
       capMultiplier = 2.5;
       break;
     }
     case '红利行业': {
       if (state.currentAge < 35) {
-        baseRaise = 0.10;
+        baseRaise = 0.072;
         capMultiplier = 4.5;
       } else if (state.currentAge === 35) {
         // 35岁断崖：乘0.7
@@ -240,37 +288,37 @@ export function applySalaryRaise(state: GameState): SalaryChangeEntry[] {
         const cliffDelta = cliffSalary - state.currentMonthlySalary;
         breakdown.push({ source: '35岁危机', amount: cliffDelta, note: '行业优化结构，你被划入"高龄低潜"名单，薪资下调30%' });
         state.currentMonthlySalary = cliffSalary;
-        baseRaise = 0.03;
-        capMultiplier = 3.5;
+        baseRaise = 0.0216;
+        capMultiplier = 2.8;
       } else {
-        baseRaise = 0.03;
-        capMultiplier = 3.5;
+        baseRaise = 0.0216;
+        capMultiplier = 2.8;
       }
       break;
     }
     case '传统私企': {
-      baseRaise = 0.05;
+      baseRaise = 0.036;
       capMultiplier = 3.0;
       break;
     }
     case '自由职业': {
-      const rand = randomRange(-0.14, 0.13);
-      baseRaise = 0.015 + rand;
+      const rand = randomRange(-0.11, 0.10);
+      baseRaise = 0.0108 + rand;
       capMultiplier = 3.2;
       break;
     }
     case '实体创业': {
-      baseRaise = 0.02;
+      baseRaise = 0.0144;
       capMultiplier = 6.0;
       break;
     }
     case '一线蓝领': {
-      baseRaise = 0.03;
+      baseRaise = 0.0216;
       capMultiplier = 2.5;
       break;
     }
     default:
-      baseRaise = 0.04;
+      baseRaise = 0.0288;
       capMultiplier = 3.0;
   }
 
@@ -579,56 +627,24 @@ export function calculateYearlySettlement(state: GameState): YearResult {
     result.livingCost = Math.round(result.livingCost * 0.96); // 较年轻：医疗支出略减4%
   }
   
-  // ========== 消费升级（lifestyle inflation）机制 ==========
-  // 真实人生中，人随着收入增长会提升消费水平：换更好的房子、更好的饮食、更好的医疗、更多社交
-  // 不应该出现"月薪涨到5万但生活费还是3千"的不真实情况
-  // 失业期间不触发消费升级（没收入还升级消费不现实）
-  if (!state.isUnemployed && state.currentMonthlySalary > 0 && state.currentAge >= 22) {
-    // 生活水准锚定"全年总收入"（工资+被动收入），而非仅月薪。
-    // 真实人生：被动收入高的富裕玩家生活也更讲究，不会"月薪5万但被动收入40万还住3千房租"。
-    // 这同时抑制了高被动收入路径的存款爆炸（原：被动收入几乎全部净存，导致财富虚高）。
-    const annualSalary = state.currentMonthlySalary * 12 + (state.passiveIncome || 0);
-    // 消费升级目标：生活费占年收入的比例随收入增长而下降（高收入群体储蓄率更高）
-    // 消费压力系数放大目标比例：收入越高生活越讲究，更高储蓄积累受阻（平衡校准杠杆）
-    let targetRatio = 0.5 * consumptionPressureMult; // 默认50%用于生活
-    if (annualSalary > 600000) targetRatio = 0.45 * consumptionPressureMult; // 年薪50万+：45%生活
-    if (annualSalary > 1000000) targetRatio = 0.4 * consumptionPressureMult; // 年薪100万+：40%生活
-    if (annualSalary > 2000000) targetRatio = 0.35 * consumptionPressureMult; // 年薪200万+：35%生活
-    if (annualSalary < 120000) targetRatio = 0.6 * consumptionPressureMult; // 年薪10万以下：60%生活
-    if (annualSalary < 80000) targetRatio = 0.7 * consumptionPressureMult; // 年薪不到7万：70%生活（入不敷出风险）
-    
-    // 目标生活费 = 年薪 × 目标比例
-    // 但要保证不低于已有固定开销（子女、赡养费等不能砍）
-    // 房贷/车险在后面计算，这里只考虑已确定的固定支出
-    const fixedCosts = childCost + parentSupportCost;
-    const baseTarget = Math.max(
-      Math.round(annualSalary * targetRatio),
-      fixedCosts + baseCost * cityConfig.costMultiplier * 0.5 // 至少保留基础生活费的一半（吃饭、交通等刚性支出）
-    );
-    // 路径生活方式系数：放大特定高收入路径的生活费目标（AI/银发），抑制储蓄爆炸
-    const lifestyleMult = getPathLifestyleMult(state);
-    const targetLivingCost = Math.round(baseTarget * lifestyleMult);
-    
-    const currentLivingBeforeAdjust = result.livingCost;
-    if (targetLivingCost > currentLivingBeforeAdjust) {
-      // 收入增长：消费升级，每年追赶固定比例（消费习惯改变较慢）。
-      // 追赶速度随消费压力系数放大：压力越高，生活水准越快跟上收入（真实化校准杠杆）。
-      // v18：基数从0.20提到0.35——高收入路径（AI/银发）此前因追赶过慢、生活费远低于收入，
-      //     导致存款爆炸、任何杠杆都压不下成功率。更快的追赶更贴近"收入越高过得越讲究"。
-      const catchUpRate = 0.35 * Math.max(1, consumptionPressureMult);
-      const adjustment = Math.round((targetLivingCost - currentLivingBeforeAdjust) * catchUpRate);
-      result.livingCost += adjustment;
-      // 把消费升级的25%固化到baseCost中（大部分升级是暂时的，小部分持久化）
-      const baseAdjustment = Math.round(adjustment / cityConfig.costMultiplier);
-      state.annualBaseCost += Math.round(baseAdjustment * 0.25);
-    } else if (targetLivingCost < currentLivingBeforeAdjust * 0.85) {
-      // 收入下降：较快速下调生活水平（勒紧裤腰带快，消费升级慢）
-      const adjustment = Math.round((currentLivingBeforeAdjust - targetLivingCost) * 0.30);
-      result.livingCost = Math.max(targetLivingCost, currentLivingBeforeAdjust - adjustment);
-    }
+  // ========== 常理生活开销：家庭结构系数（替代"赚得多必须花得多"的消费升级） ==========
+  // 生活开销由"城市基本盘 + 家庭结构"决定，不随收入比例强制升降。
+  // 赚得多不一定花得多——高品质消费是玩家的主动选择（买房/买车/旅行/培养孩子），
+  // 而非被收入自动绑架的生活水准。这才符合普通人的常理。
+  // 家庭结构系数只作用于"基础生活成本"部分，子女/赡养/房贷等独立核算不重复放大：
+  //   - 已婚/有伴侣：双人生活开销上升（吃饭、居住、生活用品）
+  //   - 与父母同住：省下一份房租/居住成本
+  const baseLivingCost = result.livingCost - childCost - parentSupportCost;
+  let familyMult = 1.0;
+  if (state.isMarried && state.partner && !state.partner.hasDivorced) {
+    familyMult = 1.25;       // 双人生活
   }
-  
-  // 通胀复利：3%（v5从2.5%提升：真实通胀+消费升级，长期理财必须跑赢通胀）
+  if (state.parents && state.parents.isAlive && state.parents.livingWithPlayer) {
+    familyMult *= 0.85;      // 与父母同住省房钱
+  }
+  result.livingCost = Math.round(baseLivingCost * familyMult) + childCost + parentSupportCost;
+
+  // 通胀复利：3%（生活成本随年代自然上涨，但只跟时间走，不跟收入走）
   state.annualBaseCost = Math.round(state.annualBaseCost * 1.03);
 
   // ========== 保护逻辑：All In/有公司/自雇职业的玩家不能被设为失业（自己当老板/没有固定雇主）==========
@@ -777,39 +793,39 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   if (regimeRoll < 0.06) investRegime = 1.6;      // 大牛/黑天鹅年
   else if (regimeRoll < 0.06 + flatProb) investRegime = 0.3; // 平稳年
 
-  // 1. 余额宝（活期）收益 - 1.5%固定
-  result.bankGain = Math.round(savings * (state.bankDepositPct / 100) * 0.015);
+  // 1. 余额宝（活期）收益 - 1.35%固定（v13平衡：理财收益↓）
+  result.bankGain = Math.round(savings * (state.bankDepositPct / 100) * 0.0135);
 
-  // 2. 定期存款收益 - 3%固定
-  result.fixedDepositGain = Math.round(savings * (state.fixedDepositPct / 100) * 0.03);
+  // 2. 定期存款收益 - 2.7%固定（v13平衡：理财收益↓）
+  result.fixedDepositGain = Math.round(savings * (state.fixedDepositPct / 100) * 0.027);
 
-  // 3. 指数基金收益 - 年化-10%~+20%
-  const fundReturnRate = (-0.1 + Math.random() * 0.3) * investRegime;
+  // 3. 指数基金收益 - 年化-9%~+18%（v13平衡：理财收益↓10%）
+  const fundReturnRate = (-0.09 + Math.random() * 0.27) * investRegime;
   result.fundGain = Math.round(savings * (state.indexFundPct / 100) * fundReturnRate);
 
-  // 4. 股票收益 - 年化-30%~+40%
+  // 4. 股票收益 - 年化-27%~+36%（v13平衡：理财收益↓10%）
   // 生物赌徒的生科投资通过 bioPortfolioGain 独立计算，不走 stockGain（避免双重计算）
-  const stockReturnRate = (-0.3 + Math.random() * 0.7) * investRegime;
+  const stockReturnRate = (-0.27 + Math.random() * 0.63) * investRegime;
   if (state.retirementPath === 'bio_gambler') {
     result.stockGain = 0; // 生科投资收益走 bioPortfolioGain
   } else {
     result.stockGain = Math.round(savings * (state.stockPct / 100) * stockReturnRate);
   }
 
-  // 5. 黄金收益 - 通胀年+8%，萧条年+15%，平稳年0~2%
+  // 5. 黄金收益 - v13平衡：理财收益↓10%
   let goldReturnRate: number;
   if (state.economicCycle === 0) { // 繁荣
-    goldReturnRate = (-0.02 + Math.random() * 0.04) * investRegime; // -2%~+2%
+    goldReturnRate = (-0.018 + Math.random() * 0.036) * investRegime; // -1.8%~+1.8%
   } else if (state.economicCycle === 2) { // 萧条
-    goldReturnRate = (0.08 + Math.random() * 0.14) * investRegime; // +8%~+22%
+    goldReturnRate = (0.072 + Math.random() * 0.126) * investRegime; // +7.2%~+19.8%
   } else { // 平稳
-    goldReturnRate = Math.random() * 0.04 * investRegime; // 0%~+4%
+    goldReturnRate = Math.random() * 0.036 * investRegime; // 0%~+3.6%
   }
   result.goldGain = Math.round(savings * (state.goldPct / 100) * goldReturnRate);
 
-  // 6. 比特币/投机收益 - 年化-80%~+200%（极端波动）
+  // 6. 比特币/投机收益 - 年化-72%~+180%（v13平衡：理财收益↓10%）
   // 链上原住民的加密资产通过 chainHoldingsGain 独立计算，不走 specGain（避免双重计算）
-  const btcReturnRate = (-0.8 + Math.random() * 2.8) * investRegime;
+  const btcReturnRate = (-0.72 + Math.random() * 2.52) * investRegime;
   if (state.retirementPath === 'chain_native') {
     result.specGain = 0; // 加密资产收益走 chainHoldingsGain
   } else {
@@ -976,29 +992,17 @@ export function calculateYearlySettlement(state: GameState): YearResult {
       bio_gambler: 1.06,    // 生物赌徒：投资组合有独立增长，被动收入6%
     };
     const baseRate = growthRate[state.retirementPath] || 1.06;
-    const annualPassive = state.passiveIncome;
 
-    // 被动收入概率化平台期（替代全局硬衰减）
-    // 真实人生：收入越高越容易触到"平台期"(停滞/微降)，但没有硬上限——
-    // 头部靠运气/突破事件仍能跳升(突破年)，这就是"他现实里就是能一直挣钱"的通道。
+    // 被动收入自然复利（移除"平台期/停滞年"压制）
+    // 真实人生：踏实经营的人，收入会随积累持续增长，不必人为设置"越高越停滞"。
+    // 保留"突破年"惊喜（破圈/融资/放大），让偶尔一飞冲天成为合情合理的高光时刻。
     // 年景分布：
-    //   - 突破年 ~6%：+20%~+50%（破圈/融资/放大，不受规模限制，是尾部持续增长的通道）
-    //   - 停滞年(概率随收入上升)：-3%~+3%（平台期，不涨不跌，多数人在这停下）
-    //   - 正常年：按路径基础复利全额增长（不再对公式打折）
-    // 期望增长随规模收敛(停滞年概率抬升)，但系统永不封死头部的增长。
-    let stagnationProb = 0.05 * passivePlateauStrength;
-    if (annualPassive > 3000000) stagnationProb = 0.45 * passivePlateauStrength;
-    else if (annualPassive > 1000000) stagnationProb = 0.30 * passivePlateauStrength;
-    else if (annualPassive > 500000) stagnationProb = 0.15 * passivePlateauStrength;
-    // 平台期概率上限：即便强度再高，也保留一条"突破年"的上升通道（不封死头部）
-    stagnationProb = Math.min(0.9, stagnationProb);
-
+    //   - 突破年 ~8%：+25%~+60%（破圈/融资/放大，是"赚到惊喜"的通道）
+    //   - 正常年：按路径基础复利全额增长
     const yearRoll = Math.random();
     let rate: number;
-    if (yearRoll < 0.06) {
-      rate = 1.2 + Math.random() * 0.3; // 突破年：+20%~+50%
-    } else if (yearRoll < 0.06 + stagnationProb) {
-      rate = 0.97 + Math.random() * 0.06; // 停滞年：-3%~+3%
+    if (yearRoll < 0.08) {
+      rate = 1.25 + Math.random() * 0.35; // 突破年：+25%~+60%
     } else {
       rate = baseRate; // 正常年：全额复利
     }
@@ -1121,22 +1125,13 @@ export function calculateYearlySettlement(state: GameState): YearResult {
   if (state.currentAge >= 51 && state.currentAge <= 60) ageStressAdd = 0; // 知天命
   else if (state.currentAge >= 61) ageStressAdd = -2; // 退休后压力释放
 
-  // 基础恢复力（v11校准：高压区恢复力大幅提高，彻底消除死亡螺旋）
-  // 设计逻辑：压力越高，身体的"求生反弹"越强——不是越难恢复，而是更努力地恢复
-  // <50: 恢复4（低压力时不需要太多恢复）
-  // 50-70: 恢复5（中压区开始加速恢复）
-  // 70-85: 恢复7（高压区，身体进入应激恢复模式）
-  // 85-95: 恢复9（危险区，强制大幅恢复）
-  // 95+: 恢复12（极限区，emergency shutdown级别的恢复）
-  let stressRecovery = 4;
-  if (state.stress > 95) stressRecovery = 12;
-  else if (state.stress > 85) stressRecovery = 9;
-  else if (state.stress > 70) stressRecovery = 7;
-  else if (state.stress > 50) stressRecovery = 5;
-
+  // 基础恢复力（v12校准：自然恢复统一收敛到 game.store 的 v12 机制，此处不再恢复）
+  // 修复说明：旧 v11 在此处应用强恢复（4-12），而 game.store 的 v12 自然恢复
+  // 又在同一年再次削弱性恢复（0-2），两套机制叠加导致压力几乎无法堆积，
+  // 崩溃机制形同虚设。此处将压力恢复收敛到 game.store 的唯一自然恢复来源，
+  // 本函数只保留年龄加压（ageStressAdd）与事件/角色状态带来的压力变化。
+  const stressRecovery = 0;
   state.stress = Math.min(100, Math.max(0, state.stress + ageStressAdd - stressRecovery));
-
-  // 副业持续压力（维护副业的长期负担）
   if (state.hasSideHustle && (state as any).sideHustleStress) {
     state.stress = Math.min(100, state.stress + (state as any).sideHustleStress);
   }
@@ -1293,54 +1288,6 @@ export function setPassiveIncomeCapMult(v: number): void {
 }
 
 /**
- * 消费压力系数（消费升级杠杆）：放大生活费占年薪的目标比例。
- * 真实人生：收入越高，生活水准越讲究（换房、教育、医疗、社交、品质消费），
- * 该系数用于校准——把"最优策略下人人达标"收敛到"约60%成功"。
- * 默认1.6（v19校准）：配合平台期2.0，让中低路径贴近60；偏高储蓄路径由 pathLifestyleMult 单独收紧。
- */
-export let consumptionPressureMult = 1.6;
-
-/** 供校准脚本动态调整消费压力系数 */
-export function setConsumptionPressureMult(v: number): void {
-  consumptionPressureMult = v;
-}
-
-/**
- * 被动收入平台期强度：放大"停滞年"概率，收入越高越容易触到平台期。
- * 真实人生：被动收入不会无限复利，头部靠运气/突破事件才能再跳升。
- * 该系数用于校准——把高被动收入路径的成功率压回目标区间。
- * 默认2.0（v19校准）：与消费压力1.6协同，把"最优策略下人人达标"收敛到"约60%成功"。
- */
-export let passivePlateauStrength = 2.0;
-
-/** 供校准脚本动态调整被动收入平台期强度 */
-export function setPassivePlateauStrength(v: number): void {
-  passivePlateauStrength = v;
-}
-
-/**
- * 路径生活方式系数：放大特定高收入路径的生活费目标，
- * 抑制"存款爆炸"（AI/银发此前储蓄率过高、终端财富虚高，成功率98%/85%）。
- * 真实人生：AI从业者/实体生意老板的消费习惯（品质生活、经营成本）随收入快速上移。
- * 默认1.0，>1 表示该路径生活更讲究、储蓄积累更慢。
- * v19校准默认：AI=1.5（高收入品质生活，把98%压到60）、银发=1.25（实体经营成本，把85%压到60）、
- * 链上=0.8（加密资产是未实现收益，不应无节制抬高生活标准——避免"持仓暴涨→消费升级→门槛被抬高"的洼地死循环）。
- */
-export let pathLifestyleMult: Record<string, number> = {
-  ai_symbiote: 1.5,
-  silver_economy: 1.25,
-  chain_native: 0.8,
-};
-
-export function setPathLifestyleMult(pathId: string, v: number): void {
-  pathLifestyleMult[pathId] = v;
-}
-export function getPathLifestyleMult(state: GameState): number {
-  if (!state.retirementPath) return 1.0;
-  return pathLifestyleMult[state.retirementPath] ?? 1.0;
-}
-
-/**
  * 链上持仓年度市场自然增长（"链上洼地"修复核心）
  * 此前链上持仓只靠叙事事件驱动、无年度自然增值，导致持仓长期无法积累，
  * 成功率远低于其他路径（30% vs 60-97%）。
@@ -1371,6 +1318,37 @@ export function applyAnnualChainGrowth(state: GameState): number {
   return newHoldings - holdings;
 }
 
+/**
+ * 百分比制投资卡辅助：按玩家当前存款的一定比例计算"投入"与"年化被动回报"。
+ *
+ * 解决"选=没选"：固定金额（如投5000）在存款百万级时毫无感知。
+ * 改成按存款比例投入，回报也成正比，任何财富档位下选择都有明确数值反馈。
+ *
+ * @param investPct    投资额占当前存款的比例（如 0.05 = 投入存款的5%）
+ * @param annualReturn 年化被动回报率（相对投入额，如 0.08 = 投入的8%/年）
+ * @param minInvest    最低投入额（防止存款极低时投入过小，象征性保底）
+ * @param maxInvest    最高投入额（防止存款爆炸时投入过大，防溢出）
+ * @returns 一对 dynamic fn，分别用于 savingsChangeFn / passiveIncomeChangeFn
+ */
+export function pctInvestment(
+  investPct: number,
+  annualReturn: number,
+  minInvest = 5000,
+  maxInvest = 5000000,
+): { investFn: (s: GameState) => number; returnFn: (s: GameState) => number } {
+  const investFn = (s: GameState) => {
+    const base = Math.max(0, s.currentSavings || 0);
+    const invest = Math.round(base * investPct);
+    // 投入额不超过当前存款，避免低存款时 minInvest 保底导致负资产
+    return Math.min(base, Math.max(minInvest, Math.min(maxInvest, invest)));
+  };
+  const returnFn = (s: GameState) => {
+    const invest = investFn(s);
+    return Math.max(0, Math.round(invest * annualReturn));
+  };
+  return { investFn, returnFn };
+}
+
 export function calculateTotalWealth(state: GameState): number {
   const chainHoldingsValue = (state as any).chainHoldings || 0;
   const bioPortfolioValue = (state as any).bioPortfolio || 0;
@@ -1380,44 +1358,60 @@ export function calculateTotalWealth(state: GameState): number {
 }
 
 /**
- * 判断玩家是否已满足退休条件（财富达标 或 路径成功）
- * 满足后 UI 会显示"退休"按钮供玩家选择
+ * 财务自由判定（按常理，而非硬性的"目标资产"门槛）
+ *
+ * 真实人生里，一个人退休不必攒够一个天价的预设数字——只要满足任一：
+ *   1. 被动收入 >= 年生活开销（被动收入自己覆盖生活，钱自己转）
+ *   2. 可变现净资产 >= 年生活开销 × 20（4%法则：存款够吃二十年）
+ *
+ * 这样，"暴富/套现/被动收入暴涨"这些剧情波澜会直接点亮提前退休的资格，
+ * 而不是被人为卡死在"必须攒够500万"这一条线上。退休时机由剧情自然决定，
+ * 玩家可能 35 岁、40 岁、50 岁随时财务自由——这就是惊喜与不确定性。
  */
-export function checkCanRetire(state: GameState): boolean {
-  if (state.endingTriggered) return false;
-  const totalWealth = calculateTotalWealth(state);
-  const wealthMet = totalWealth >= state.targetWealth;
-  // 退休与否由玩家自主决定，退休质量的唯一标准是预设金额(targetWealth)是否达标
-  if (wealthMet) return true;
-  // 实体创业特殊判定
-  if (state.currentProfession === '实体创业' && state.currentSavings >= state.careerStartSalary * 12 * 20) return true;
-  return false;
+export function isFinanciallyFree(state: GameState): boolean {
+  const annualExpense = Math.max(12000, (state.annualBaseCost || 0) + (state.currentMortgageCost || 0));
+  // 被动收入覆盖年开销：被动且可持续，货币自己转
+  const passiveCovers = (state.passiveIncome || 0) >= annualExpense;
+  // 可变现净资产够吃 20 年（4%法则），含现金/房产/链上/生物/店铺
+  const liquidCovers = calculateLiquidWealth(state) >= annualExpense * 20;
+  return passiveCovers || liquidCovers;
 }
 
+/**
+ * 判断玩家是否已满足退休条件（财富达标 或 财务自由）
+ * 满足后 UI 会显示"退休"按钮供玩家选择
+ */
 /**
  * 玩家自愿退休时，根据当前状态返回最佳结局ID
  */
 export function getVoluntaryRetirementEnding(state: GameState): string {
   const totalWealth = calculateTotalWealth(state);
   const wealthMet = totalWealth >= state.targetWealth;
+  const finFree = isFinanciallyFree(state);
+  // 常理退休：达成硬性目标 或 财务自由（被动覆盖 / 存款够吃20年）
+  const qualified = wealthMet || finFree;
 
-  // 路径结局：达到预设金额(targetWealth) + 走了对应路径 → 该路径成功结局
-  // 退休质量的唯一标准是预设金额，不再设置路径成功门槛
-  if (wealthMet && state.retirementPath) {
-    return `path_success_${state.retirementPath}`;
+  // 路径结局：走对应路径 + (达成目标 或 财务自由) + 路径事业真正走通 → 该路径成功结局
+  // 修复说明：此前"攒够钱"就直接给 path_success，导致 checkSuccess（如银发营收判定）
+  // 形同虚设。现在路径成功 = 财务达标(qualified) && checkSuccess(路径事业走通)。
+  if (qualified && state.retirementPath) {
+    const path = getPath(state.retirementPath);
+    if (path && path.checkSuccess(state)) {
+      return `path_success_${state.retirementPath}`;
+    }
   }
 
-  // 财富达标的各种结局
-  if (wealthMet) {
-    // E1 传奇自由人：财富达标 + 幸福>=70 + 健康>=60 + 无伴侣
+  // 达成退休资格的各种结局
+  if (qualified) {
+    // E1 传奇自由人：财富充足 + 幸福>=70 + 健康>=60 + 无伴侣
     if (!state.isMarried && state.happiness >= 70 && state.health >= 60) return 'E1';
-    // E2 温馨港湾：财富达标 + 幸福>=50 + 健康>=40 + 有伴侣有孩子
+    // E2 温馨港湾：财富充足 + 幸福>=50 + 健康>=40 + 有伴侣有孩子
     if (state.isMarried && state.hasChild && state.happiness >= 50 && state.health >= 40) return 'E2';
-    // E5 极简行者：财富达标 + 极简 + 幸福>=40
+    // E5 极简行者：财富充足 + 极简 + 幸福>=40
     if (state.usedMinimalism && state.annualBaseCost < 30000 * 0.6 && state.happiness >= 40) return 'E5';
-    // E3 平凡微光：财富达标 + 幸福>=30
+    // E3 平凡微光：财富充足 + 幸福>=30
     if (state.happiness >= 30) return 'E3';
-    // 财富达标但身心状态较差，仍归为E3
+    // 财富充足但身心状态较差，仍归为E3
     return 'E3';
   }
 
@@ -1458,14 +1452,19 @@ export function checkEnding(state: GameState): string | null {
 
   const totalWealth = calculateTotalWealth(state);
   const wealthMet = totalWealth >= state.targetWealth;
+  const qualified = wealthMet || isFinanciallyFree(state);
 
   // 60岁硬上限：无论是否达标都强制结局
   if (reachedHardCap) {
-    // 到达60岁：达到预设金额(targetWealth) + 走了对应路径 → 该路径成功结局
-    if (wealthMet && state.retirementPath) {
-      return `path_success_${state.retirementPath}`;
+    // 到达60岁：走对应路径 + (达成目标 或 财务自由) + 路径事业走通 → 该路径成功结局
+    // 修复说明：与 getVoluntaryRetirementEnding 口径一致，路径成功需 checkSuccess 判定。
+    if (qualified && state.retirementPath) {
+      const path = getPath(state.retirementPath);
+      if (path && path.checkSuccess(state)) {
+        return `path_success_${state.retirementPath}`;
+      }
     }
-    if (wealthMet) {
+    if (qualified) {
       if (!state.isMarried && state.happiness >= 70 && state.health >= 60) return 'E1';
       if (state.isMarried && state.hasChild && state.happiness >= 50 && state.health >= 40) return 'E2';
       if (state.usedMinimalism && state.annualBaseCost < 30000 * 0.6 && state.happiness >= 40) return 'E5';
@@ -1511,8 +1510,8 @@ export function isDelayedRetirementPhase(state: GameState): boolean {
   const path = getPath(state.retirementPath);
   if (!path) return false;
   if (state.currentAge < path.targetRetireAge) return false;
-  // 到达路径退休年龄但尚未达到预设金额(targetWealth) → 延期退休阶段
+  // 到达路径退休年龄但尚未攒够（未达成目标 且 未财务自由）→ 延期退休阶段
   const totalWealth = calculateTotalWealth(state);
-  if (totalWealth >= state.targetWealth) return false;
+  if (totalWealth >= state.targetWealth || isFinanciallyFree(state)) return false;
   return true;
 }

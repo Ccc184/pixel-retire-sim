@@ -1273,7 +1273,7 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
               s.friends[0].relation = Math.max(0, s.friends[0].relation - 40);
             }
             const failLogs = [
-              `第${s.currentAge}岁，你辞职了。你们烧完了投资人的钱，烧完了自己的积蓄，最后在一个雨夜解散了团队。散伙饭上没人说话，兄弟喝多了拍桌子说"都怪你当初那个技术选型"，你摔了杯子差点打起来。你们再也没联系过。35岁，失业，存款归零还欠了五万信用卡债。老婆跟你冷战了三个月，说"我当初就说不让你去"。你投出去的简历石沉大海，面试官问你"这几年怎么空窗了"，你张了张嘴不知道怎么解释。深夜你坐在阳台上抽烟，想如果当初没辞职，现在应该已经升总监了吧。后悔两个字你不敢说出口，但它每天都在咬你。`,
+              `第${s.currentAge}岁，你辞职了。你们烧完了投资人的钱，烧完了自己的积蓄，最后在一个雨夜解散了团队。散伙饭上没人说话，兄弟喝多了拍桌子说"都怪你当初那个技术选型"，你摔了杯子差点打起来。你们再也没联系过。{age}岁，失业，存款归零还欠了五万信用卡债。老婆跟你冷战了三个月，说"我当初就说不让你去"。你投出去的简历石沉大海，面试官问你"这几年怎么空窗了"，你张了张嘴不知道怎么解释。深夜你坐在阳台上抽烟，想如果当初没辞职，现在应该已经升总监了吧。后悔两个字你不敢说出口，但它每天都在咬你。`,
               `第${s.currentAge}岁，你辞职了。公司撑了两年还是倒了。最后那半年你没拿过工资，连社保都是自己交的。散伙那天兄弟红着眼说"对不起"，你说"没事"，但其实你心里知道——你们回不去了。你不仅丢了工作，还丢了一个认识十五年的朋友。重新找工作的时候你才发现，原来的同事都已经成了你的面试官。他们客客气气地叫你"X总"，但你看得出来他们眼神里的意思：那个赌输了的人。回家面对伴侣的眼神，你第一次觉得自己像个失败者。`,
             ];
             return { log: failLogs[Math.floor(Math.random() * failLogs.length)], cost: 80000 };
@@ -1482,9 +1482,15 @@ export const CROSSROAD_EVENTS: CrossroadEvent[] = [
 // ========== 检测当前状态是否触发了十字路口 ==========
 export function detectCrossroad(state: GameState, firedTags: Map<string, number>): CrossroadEvent | null {
   // 先遍历所有事件，筛选符合条件的（需在全局冷却检查前计算，以便豁免高优先级路径专属十字路口）
+  // 起始年龄相对化：路径专属十字路口（含在 PATH_CROSSROADS 中）按起始年龄轴触发，
+  // 与叙事事件系统的相对化保持一致（startAge≠22 时两者才对齐）。
+  const pathCrossroadIds = new Set(PATH_CROSSROADS.map(c => c.id));
   const eligible = CROSSROAD_EVENTS.filter(evt => {
-    // 年龄范围
-    if (state.currentAge < evt.ageRange[0] || state.currentAge > evt.ageRange[1]) return false;
+    // 年龄范围：路径专属十字路口用相对年龄轴，通用十字路口用绝对年龄轴
+    const ageCheck = pathCrossroadIds.has(evt.id)
+      ? state.currentAge - (state.startAge || 22) + 22
+      : state.currentAge;
+    if (ageCheck < evt.ageRange[0] || ageCheck > evt.ageRange[1]) return false;
     // 条件
     if (!evt.conditions(state)) return false;
     // 同tag冷却检查

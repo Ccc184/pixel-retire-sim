@@ -5,18 +5,24 @@ import type { CrossroadEvent } from '../../types/global.d.js'
 import { playConfirm, playHover } from '../../utils/audio.js'
 import { showNumericalHints } from '../../utils/ui-prefs.js'
 import { fmt, fmtExact } from '../../utils/format.js'
+import { interpolateText } from '../../utils/text-interpolate.js'
 
 const store = useGameStore()
 const s = store.state
 
 const event = computed<CrossroadEvent | null>(() => store.currentCrossroad)
 
-// 解析叙事文本：将 {age} 占位符替换为当前实际年龄，避免硬编码年龄与触发年龄错位
+// 解析叙事文本：将 {age}/{startAge}/{years} 占位符替换为实际值，避免硬编码年龄与触发年龄错位
 const resolvedNarrative = computed<string>(() => {
   const e = event.value
   if (!e) return ''
-  return e.narrative.replace(/\{age\}/g, String(store.state.currentAge))
+  return interpolateText(e.narrative, s)
 })
+
+// 解析选项文本（label/description），同样做占位符插值
+function resolveOptionText(text: string): string {
+  return interpolateText(text || '', s)
+}
 
 const optionLetters: Record<number, string> = {
   0: 'A',
@@ -151,10 +157,10 @@ function handleSelect(optionId: string, option: any): void {
         >
           <div class="option-header">
             <span class="option-letter">{{ optionLetters[idx] ?? '' }}</span>
-            <span class="option-label">{{ option.label }}</span>
+            <span class="option-label">{{ resolveOptionText(option.label) }}</span>
             <span v-if="!isOptionAvailable(option)" class="lock-badge">🔒</span>
           </div>
-          <p class="option-description">{{ option.description }}</p>
+          <p class="option-description">{{ resolveOptionText(option.description) }}</p>
           <span v-if="showNumericalHints" class="option-hint" :class="'hint-' + option.hintColor">
             {{ option.hint }}
           </span>

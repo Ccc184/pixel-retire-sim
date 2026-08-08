@@ -28,6 +28,7 @@ import type { NarrativeEvent, NarrativeAchievement, GameState } from '../types/g
 import { registerNarrativeEvents } from './narrative-registry.js';
 import { registerAchievements } from './narrative-achievements.js';
 import { clamp } from '../utils/clamp.js';
+import { pctInvestment } from '../utils/math-engine.js';
 
 // ============================================================
 // 辅助函数
@@ -100,7 +101,7 @@ const commonEvents: NarrativeEvent[] = [
           addFollowers(s, 200);
           addReputation(s, 2);
         },
-        log: '22岁，你开始了日更。前三个月像对着空房间说话，但你咬牙没断。第98天，有一条突然被推上了热门，粉丝一夜涨了八百。你这才尝到"被算法选中"的甜头。',
+        log: '{startAge}岁，你开始了日更。前三个月像对着空房间说话，但你咬牙没断。第98天，有一条突然被推上了热门，粉丝一夜涨了八百。你这才尝到"被算法选中"的甜头。',
       },
       {
         id: 'study_top_creators',
@@ -113,7 +114,7 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
           addFollowers(s, 80);
         },
-        log: '22岁，你没急着发内容，而是把同领域前50个账号的视频逐帧拆解。你建了一张Excel，记下每个爆款的开头钩子、节奏、结尾。三个月后你心里有了一套方法论——发出去的第一条，数据比90%的新人都好。',
+        log: '{startAge}岁，你没急着发内容，而是把同领域前50个账号的视频逐帧拆解。你建了一张Excel，记下每个爆款的开头钩子、节奏、结尾。三个月后你心里有了一套方法论——发出去的第一条，数据比90%的新人都好。',
       },
       {
         id: 'authentic_voice',
@@ -128,7 +129,7 @@ const commonEvents: NarrativeEvent[] = [
           addFollowers(s, 50);
           addReputation(s, 5);
         },
-        log: '22岁，你做了一个决定：不蹭热点、不标题党、不卖人设。涨粉很慢，但每条评论都让你相信，留下来的都是真懂你的人。你把"真诚"当成护城河——虽然你还不知道，这条河以后也会淹死你。',
+        log: '{startAge}岁，你做了一个决定：不蹭热点、不标题党、不卖人设。涨粉很慢，但每条评论都让你相信，留下来的都是真懂你的人。你把"真诚"当成护城河——虽然你还不知道，这条河以后也会淹死你。',
       },
     ],
   },
@@ -160,7 +161,7 @@ const commonEvents: NarrativeEvent[] = [
           addFollowers(s, 600);
           addReputation(s, 4);
         },
-        log: '23岁，你删掉了那些"像别人"的草稿，开始只发"像你"的内容。涨粉速度慢了，但粉丝黏性高得离谱——有人把你每条视频的口头禅做成了表情包。有人认出了你——那种感觉很奇怪。',
+        log: '{age}岁，你删掉了那些"像别人"的草稿，开始只发"像你"的内容。涨粉速度慢了，但粉丝黏性高得离谱——有人把你每条视频的口头禅做成了表情包。有人认出了你——那种感觉很奇怪。',
       },
       {
         id: 'niche_down',
@@ -174,7 +175,7 @@ const commonEvents: NarrativeEvent[] = [
           addFollowers(s, 400);
           addReputation(s, 3);
         },
-        log: '23岁，你从一个泛领域收缩到一个极窄的细分赛道。同行笑话你"把自己做小了"，但三个月后你成了那个赛道里绕不开的名字。你发现：小池塘里的王，比大海里的鱼先上岸。',
+        log: '{age}岁，你从一个泛领域收缩到一个极窄的细分赛道。同行笑话你"把自己做小了"，但三个月后你成了那个赛道里绕不开的名字。你发现：小池塘里的王，比大海里的鱼先上岸。',
       },
       {
         id: 'collab_others',
@@ -187,7 +188,7 @@ const commonEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 5, 0, 100);
           addFollowers(s, 500);
         },
-        log: '23岁，你和五个同量级博主组了个"互推联盟"。每个月互相客串一次，流量共享。你们戏称自己是"内容互助会"。一年后五个人都涨了粉，但你也发现：抱团的代价是，你必须永远配合别人的节奏。',
+        log: '{age}岁，你和五个同量级博主组了个"互推联盟"。每个月互相客串一次，流量共享。你们戏称自己是"内容互助会"。一年后五个人都涨了粉，但你也发现：抱团的代价是，你必须永远配合别人的节奏。',
       },
     ],
   },
@@ -221,7 +222,7 @@ const commonEvents: NarrativeEvent[] = [
           addFollowers(s, 300);
           addReputation(s, 2);
         },
-        log: '23岁，你接了人生第一条广告。你把产品用了三天才写脚本，植入做得克制，粉丝甚至没察觉是广告。品牌方很满意，追加了第二条。你把"恰饭"做成了"信任变现"，但也开始失眠：这条线，你能守住多久？',
+        log: '{age}岁，你接了人生第一条广告。你把产品用了三天才写脚本，植入做得克制，粉丝甚至没察觉是广告。品牌方很满意，追加了第二条。你把"恰饭"做成了"信任变现"，但也开始失眠：这条线，你能守住多久？',
       },
       {
         id: 'refuse_pure',
@@ -235,7 +236,7 @@ const commonEvents: NarrativeEvent[] = [
           addReputation(s, 6);
           addFollowers(s, 150);
         },
-        log: '23岁，你拒绝了那条广告。粉丝不知道你为他们挡掉了一次"恰饭"，但你的内容纯度保住了。半年后一个更大的品牌找上门，报价翻了三倍——因为"你不乱接广告"这件事，已经成了你的标签。',
+        log: '{age}岁，你拒绝了那条广告。粉丝不知道你为他们挡掉了一次"恰饭"，但你的内容纯度保住了。半年后一个更大的品牌找上门，报价翻了三倍——因为"你不乱接广告"这件事，已经成了你的标签。',
       },
       {
         id: 'take_and_double_down',
@@ -250,7 +251,7 @@ const commonEvents: NarrativeEvent[] = [
           addReputation(s, -3);
           addFollowers(s, 200);
         },
-        log: '23岁，你一口气接了三条广告。钱到账时你很高兴，但评论区开始有人酸"是不是要转型带货号了"。你嘴上说不理，心里却咯噔一下。你赚到了第一桶金，但你也第一次发现：信任是消耗品。',
+        log: '{age}岁，你一口气接了三条广告。钱到账时你很高兴，但评论区开始有人酸"是不是要转型带货号了"。你嘴上说不理，心里却咯噔一下。你赚到了第一桶金，但你也第一次发现：信任是消耗品。',
       },
     ],
   },
@@ -273,17 +274,18 @@ const commonEvents: NarrativeEvent[] = [
       {
         id: 'upgrade_production',
         label: '砸钱升级设备和学习剪辑',
-        description: '内容质量是地基，磨刀不误砍柴工',
-        hint: '内容创作+12 · 存款-4000 · 压力+4 · 粉丝+400 · 月薪+500',
+        description: '拿出存款的一部分升级设备和报课，内容质量是地基，磨刀不误砍柴工，投得越多质量提升越明显',
+        hint: '内容创作+12 · 投入存款4% · 压力+4 · 粉丝+400 · 月薪+投入的12.5%',
         hintColor: 'positive',
         skillGains: { contentSkill: 12 },
-        savingsChange: -4000,
-        salaryChange: 500,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.04, 0).investFn(s),
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 4, 0, 100);
           addFollowers(s, 400);
+          const invest = pctInvestment(0.04, 0).investFn(s);
+          s.currentMonthlySalary += Math.round(invest * 0.125);
         },
-        log: '24岁，你花光了一个月工资买镜头、麦克风、灯光，又报了个剪辑课。成品质量肉眼可见地提升，开始有粉丝留言"你的画质在进步"。你发现：内容这行没有捷径，只有"做得更好"和"做得更久"。',
+        log: '{age}岁，你拿出积蓄的一部分买镜头、麦克风、灯光，又报了个剪辑课。投入越多，设备和课程就越高端。成品质量肉眼可见地提升，开始有粉丝留言"你的画质在进步"。你发现：内容这行没有捷径，只有"做得更好"和"做得更久"。',
       },
       {
         id: 'batch_content',
@@ -297,7 +299,7 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
           addFollowers(s, 300);
         },
-        log: '24岁，你把内容生产拆成了选题库、脚本模板、拍摄清单、剪辑SOP。周末一天拍五条，工作日只剪不发。你从一个"靠灵感"的创作者变成了一个"靠系统"的运营者。效率上来了，但你偶尔会怀念那种"突然有灵感"的兴奋。',
+        log: '{age}岁，你把内容生产拆成了选题库、脚本模板、拍摄清单、剪辑SOP。周末一天拍五条，工作日只剪不发。你从一个"靠灵感"的创作者变成了一个"靠系统"的运营者。效率上来了，但你偶尔会怀念那种"突然有灵感"的兴奋。',
       },
       {
         id: 'take_break',
@@ -313,7 +315,7 @@ const commonEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
         },
-        log: '24岁，你给自己放了一周假，关掉所有数据后台。前三天你焦虑得手痒，后四天你开始重新注意到窗外的云。回来后你拍了一条"我停更一周的感受"，反而成了那季度数据最好的一条。你明白：内容源于生活，而你已经很久没在生活了。',
+        log: '{age}岁，你给自己放了一周假，关掉所有数据后台。前三天你焦虑得手痒，后四天你开始重新注意到窗外的云。回来后你拍了一条"我停更一周的感受"，反而成了那季度数据最好的一条。你明白：内容源于生活，而你已经很久没在生活了。',
       },
     ],
   },
@@ -338,7 +340,7 @@ const branchSelectEvent: NarrativeEvent[] = [
     conditions: (s) => !s.narrativeBranch || s.narrativeBranch === 'unassigned',
     narrative:
       '三年了。你从一个对着空房间说话的新人，变成了接过几条广告、被人认出过两次的"小博主"。但"小博主"是个很尴尬的位置——大不到能养活自己，小不到能随时抽身。\n\n' +
-      '25岁这年，你坐在出租屋里复盘三年内容，却还没想清楚一个根本问题：你到底要成为什么样的IP？是教别人你会的东西，做大众喜闻乐见的内容，还是沉下心做思想？三条路都能走通，但每一条都意味着放弃另外两条的某些可能。深夜，你在备忘录里写下三个词：教、乐、思。光标闪了很久，等你做一个不会反悔的决定。',
+      '{age}岁这年，你坐在出租屋里复盘三年内容，却还没想清楚一个根本问题：你到底要成为什么样的IP？是教别人你会的东西，做大众喜闻乐见的内容，还是沉下心做思想？三条路都能走通，但每一条都意味着放弃另外两条的某些可能。深夜，你在备忘录里写下三个词：教、乐、思。光标闪了很久，等你做一个不会反悔的决定。',
     options: [
       {
         id: 'choose_ip_educator',
@@ -348,12 +350,13 @@ const branchSelectEvent: NarrativeEvent[] = [
         hintColor: 'positive',
         skillGains: { contentSkill: 12, audienceSkill: 8 },
         branchSwitch: 'ip_educator',
+        memorySet: { choseEducator: true, choseEntertainer: false, choseThoughtLeader: false },
         stateEffect: (s) => {
           ensureSkills(s);
           s.stress = clamp(s.stress + 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '25岁，你选了"教"。你把过去三年踩过的坑整理成了一套方法论，准备做你的第一门付费课。你赌的是：在这个人人焦虑的时代，"让人变好"是一门永不过时的生意。',
+        log: '{age}岁，你选了"教"。你把过去三年踩过的坑整理成了一套方法论，准备做你的第一门付费课。你赌的是：在这个人人焦虑的时代，"让人变好"是一门永不过时的生意。',
       },
       {
         id: 'choose_ip_entertainer',
@@ -363,12 +366,13 @@ const branchSelectEvent: NarrativeEvent[] = [
         hintColor: 'positive',
         skillGains: { audienceSkill: 12, contentSkill: 8 },
         branchSwitch: 'ip_entertainer',
+        memorySet: { choseEducator: false, choseEntertainer: true, choseThoughtLeader: false },
         stateEffect: (s) => {
           ensureSkills(s);
           s.stress = clamp(s.stress + 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '25岁，你选了"乐"。你把内容节奏调快，开始追热点、做剧情、博眼球。你赌的是：在这个信息过载的时代，谁能抓住眼球，谁就能把流量变成一切。',
+        log: '{age}岁，你选了"乐"。你把内容节奏调快，开始追热点、做剧情、博眼球。你赌的是：在这个信息过载的时代，谁能抓住眼球，谁就能把流量变成一切。',
       },
       {
         id: 'choose_ip_thought_leader',
@@ -378,12 +382,13 @@ const branchSelectEvent: NarrativeEvent[] = [
         hintColor: 'positive',
         skillGains: { contentSkill: 12, brandSkill: 8 },
         branchSwitch: 'ip_thought_leader',
+        memorySet: { choseEducator: false, choseEntertainer: false, choseThoughtLeader: true },
         stateEffect: (s) => {
           ensureSkills(s);
           s.stress = clamp(s.stress + 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '25岁，你选了"思"。你停掉了那些追热点的短平快内容，开始写长文、做深度。粉丝增速腰斩，但留下的人开始认真和你讨论。你赌的是：在这个浅薄的时代，"深刻"是一种稀缺资产。',
+        log: '{age}岁，你选了"思"。你停掉了那些追热点的短平快内容，开始写长文、做深度。粉丝增速腰斩，但留下的人开始认真和你讨论。你赌的是：在这个浅薄的时代，"深刻"是一种稀缺资产。',
       },
     ],
   },
@@ -413,33 +418,33 @@ const educatorEvents: NarrativeEvent[] = [
       {
         id: 'refine_course',
         label: '根据反馈大改课程，做到物超所值',
-        description: '把每一条差评都当成免费的顾问',
-        hint: '内容创作+12 · 受众运营+6 · 压力+8 · 声誉+6 · 存款-2000 · 被动收入+8000/年 · 副业+8000(课程销售)',
+        description: '拿出存款的一部分重做课程，把每一条差评都当成免费的顾问，投得越多改版越彻底',
+        hint: '内容创作+12 · 受众运营+6 · 压力+8 · 声誉+6 · 投入存款2% · 被动收入+年化400% · 副业+8000(课程销售)',
         hintColor: 'positive',
         skillGains: { contentSkill: 12, audienceSkill: 6 },
-        savingsChange: -2000,
-        passiveIncomeChange: 8000,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.02, 4.0).investFn(s),
+        passiveIncomeChangeFn: (s: GameState) => pctInvestment(0.02, 4.0).returnFn(s),
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 8, 0, 100);
           addReputation(s, 6);
           s.currentYearSideHustle += 8000; // 改版后课程销量回升，本月结款的课程收入
         },
-        log: '26岁，你把课程推倒重做了三遍。新增了答疑、作业批改、社群陪跑。差评率从8%降到了1%。口碑发酵后月销翻了倍，月底平台结款8000元到账。有学员在结业时给你发了长长的小作文感谢。那一刻，"知识付费"四个字忽然没那么脏了。',
+        log: '{age}岁，你拿出积蓄的一部分把课程推倒重做了三遍。新增了答疑、作业批改、社群陪跑。投入越多，改版就越彻底。差评率从8%降到了1%。口碑发酵后月销翻了倍，月底平台结款8000元到账。有学员在结业时给你发了长长的小作文感谢。那一刻，"知识付费"四个字忽然没那么脏了。',
       },
       {
         id: 'scale_marketing',
         label: '加大投放，冲销量',
-        description: '内容够用了，先用钱换流量',
-        hint: '品牌价值+10 · 受众运营+8 · 存款-6000 · 压力+5 · 声誉-2 · 被动收入+12000/年',
+        description: '拿出存款的一部分砸信息流，内容够用了，先用钱换流量，投得越多销量冲得越猛',
+        hint: '品牌价值+10 · 受众运营+8 · 投入存款6% · 压力+5 · 声誉-2 · 被动收入+年化200%',
         hintColor: 'positive',
         skillGains: { brandSkill: 10, audienceSkill: 8 },
-        savingsChange: -6000,
-        passiveIncomeChange: 12000,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.06, 2.0).investFn(s),
+        passiveIncomeChangeFn: (s: GameState) => pctInvestment(0.06, 2.0).returnFn(s),
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 5, 0, 100);
           addReputation(s, -2);
         },
-        log: '26岁，你把课程收入的四成砸进了信息流投放。销量翻了三倍，但退课率也上来了。你开始懂一个道理：投放能买来学员，买不来口碑。',
+        log: '{age}岁，你拿出积蓄的一部分砸进了信息流投放。投入越多，投放量级就越大，销量翻得越猛。销量翻了三倍，但退课率也上来了。你开始懂一个道理：投放能买来学员，买不来口碑。',
       },
       {
         id: 'free_taster',
@@ -453,7 +458,7 @@ const educatorEvents: NarrativeEvent[] = [
           addFollowers(s, 1500);
           addReputation(s, 4);
         },
-        log: '26岁，你把课程里最干的两节免费放了出来。一周播放破百万，粉丝涨了一波，课程销量跟着翻了倍。你发现：最好的广告，是你真金白银的干货。',
+        log: '{age}岁，你把课程里最干的两节免费放了出来。一周播放破百万，粉丝涨了一波，课程销量跟着翻了倍。你发现：最好的广告，是你真金白银的干货。',
       },
     ],
   },
@@ -485,7 +490,7 @@ const educatorEvents: NarrativeEvent[] = [
           addReputation(s, 5);
           addFollowers(s, 1000);
         },
-        log: '28岁，你把学员的真实案例整理成了一个系列。每期讲一个人的转变，不卖课，只讲故事。结果这些"软广"比硬广还转化高。你明白：最好的招生简章，是别人替你写的人生。',
+        log: '{age}岁，你把学员的真实案例整理成了一个系列。每期讲一个人的转变，不卖课，只讲故事。结果这些"软广"比硬广还转化高。你明白：最好的招生简章，是别人替你写的人生。',
       },
       {
         id: 'mentor_deeply',
@@ -499,7 +504,7 @@ const educatorEvents: NarrativeEvent[] = [
           addReputation(s, 6);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '28岁，你从上千学员里挑了十个种子，一对一深度陪跑。半年后这十个人里有三个做出了自己的成绩，逢人就夸你。你赚的钱没变多，但你的"江湖地位"变了——你成了"能带出人"的老师。',
+        log: '{age}岁，你从上千学员里挑了十个种子，一对一深度陪跑。半年后这十个人里有三个做出了自己的成绩，逢人就夸你。你赚的钱没变多，但你的"江湖地位"变了——你成了"能带出人"的老师。',
       },
       {
         id: 'stay_humble',
@@ -513,7 +518,7 @@ const educatorEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           addReputation(s, 3);
         },
-        log: '28岁，你没把那条私信发出来。你回了长长的一封邮件恭喜他，然后默默把这件事记在了"继续做下去的理由"清单里。你不想消费学员的成功——但你也知道，这份克制，是另一种更长远的品牌。',
+        log: '{age}岁，你没把那条私信发出来。你回了长长的一封邮件恭喜他，然后默默把这件事记在了"继续做下去的理由"清单里。你不想消费学员的成功——但你也知道，这份克制，是另一种更长远的品牌。',
       },
     ],
   },
@@ -536,17 +541,17 @@ const educatorEvents: NarrativeEvent[] = [
       {
         id: 'build_own_platform',
         label: '自建私域，把学员攥在自己手里',
-        description: '做小程序、做社群、做自有交付系统',
-        hint: '品牌价值+12 · 受众运营+10 · 存款-15000 · 压力+10 · 声誉+3 · 被动收入+10000/年',
+        description: '拿出存款的一部分做小程序、做社群、做自有交付系统，投得越多系统越完善',
+        hint: '品牌价值+12 · 受众运营+10 · 投入存款15% · 压力+10 · 声誉+3 · 被动收入+年化67%',
         hintColor: 'positive',
         skillGains: { brandSkill: 12, audienceSkill: 10 },
-        savingsChange: -15000,
-        passiveIncomeChange: 10000,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.15, 0.667).investFn(s),
+        passiveIncomeChangeFn: (s: GameState) => pctInvestment(0.15, 0.667).returnFn(s),
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 10, 0, 100);
           addReputation(s, 3);
         },
-        log: '30岁，你花光了半年的利润，搭了自己的小程序和社群。第一年只有三成学员愿意跟你"搬家"，但留下来的都是死忠。两年后平台又改了两次规则，别人哀嚎时你很平静——因为你的命，终于在自己手里了。',
+        log: '{age}岁，你拿出积蓄的一部分搭了自己的小程序和社群。投入越多，系统就越完善。第一年只有三成学员愿意跟你"搬家"，但留下来的都是死忠。两年后平台又改了两次规则，别人哀嚎时你很平静——因为你的命，终于在自己手里了。',
       },
       {
         id: 'multi_platform',
@@ -560,22 +565,22 @@ const educatorEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           addFollowers(s, 800);
         },
-        log: '30岁，你成了"五线作战"的讲师，同一门课在五个平台同步卖。累是真累，但哪个平台抽风你都不慌。你发现：分散的代价是精力被切碎，收益是再也没人能一键掐死你。',
+        log: '{age}岁，你成了"五线作战"的讲师，同一门课在五个平台同步卖。累是真累，但哪个平台抽风你都不慌。你发现：分散的代价是精力被切碎，收益是再也没人能一键掐死你。',
       },
       {
         id: 'pivot_to_community',
         label: '弱化课程，转向高客单社群',
-        description: '课程是一次性买卖，社群是长期关系',
-        hint: '受众运营+10 · 品牌价值+8 · 存款-5000 · 幸福+4 · 被动收入+8000/年 · 声誉+4',
+        description: '拿出存款的一部分搭建社群运营体系，课程是一次性买卖，社群是长期关系，投得越多社群运营越精细',
+        hint: '受众运营+10 · 品牌价值+8 · 投入存款5% · 幸福+4 · 被动收入+年化160% · 声誉+4',
         hintColor: 'positive',
         skillGains: { audienceSkill: 10, brandSkill: 8 },
-        savingsChange: -5000,
-        passiveIncomeChange: 8000,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.05, 1.6).investFn(s),
+        passiveIncomeChangeFn: (s: GameState) => pctInvestment(0.05, 1.6).returnFn(s),
         stateEffect: (s) => {
           s.happiness = clamp(s.happiness + 4, 0, 100);
           addReputation(s, 4);
         },
-        log: '30岁，你把重心从"卖课"转向了"经营社群"。年费社群定价是课程的五倍，人少但黏。你不再追新学员，而是让老学员续费、转介绍。利润没降，但你从"卖产品的人"变成了"养关系的人"。',
+        log: '{age}岁，你拿出积蓄的一部分把重心从"卖课"转向了"经营社群"。投入越多，社群运营就越精细。年费社群定价是课程的五倍，人少但黏。你不再追新学员，而是让老学员续费、转介绍。利润没降，但你从"卖产品的人"变成了"养关系的人"。',
       },
     ],
   },
@@ -609,7 +614,7 @@ const educatorEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           addReputation(s, 5);
         },
-        log: '31岁，你关了三个月招生，把课程里每个方法论都拿去实战了一遍。有两条被证伪了，你删掉重写。再开课时你心里踏实了——你知道自己讲的每个字，都是被现实检验过的。',
+        log: '{age}岁，你关了三个月招生，把课程里每个方法论都拿去实战了一遍。有两条被证伪了，你删掉重写。再开课时你心里踏实了——你知道自己讲的每个字，都是被现实检验过的。',
       },
       {
         id: 'co_learn_with_students',
@@ -624,7 +629,7 @@ const educatorEvents: NarrativeEvent[] = [
           addReputation(s, 4);
           addFollowers(s, 500);
         },
-        log: '31岁，你在开课仪式上说："我不是大师，我只是比你们早走了几步，还在走。"学员反而更买账。你发现：承认局限不是示弱，是另一种权威——"知道边界在哪"的人，比"假装无所不知"的人可信。',
+        log: '{age}岁，你在开课仪式上说："我不是大师，我只是比你们早走了几步，还在走。"学员反而更买账。你发现：承认局限不是示弱，是另一种权威——"知道边界在哪"的人，比"假装无所不知"的人可信。',
       },
       {
         id: 'ride_hype',
@@ -639,7 +644,7 @@ const educatorEvents: NarrativeEvent[] = [
           addReputation(s, -4);
           s.pathFaith = clamp(s.pathFaith - 3, 0, 100);
         },
-        log: '31岁，你借着大佬的转发疯狂扩招，一个月赚了过去半年的钱。但深夜你看着那些"感谢老师"的评论，心里发虚。你赚到了名和利，却欠下了一笔叫"名不副实"的债——你知道，迟早有人会来讨。',
+        log: '{age}岁，你借着大佬的转发疯狂扩招，一个月赚了过去半年的钱。但深夜你看着那些"感谢老师"的评论，心里发虚。你赚到了名和利，却欠下了一笔叫"名不副实"的债——你知道，迟早有人会来讨。',
       },
     ],
   },
@@ -672,7 +677,7 @@ const educatorEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           addReputation(s, 2);
         },
-        log: '33岁，你花了半年把课程生产、社群运营、商务对接全部SOP化。你只负责选题和出镜，其余交给团队。产能翻了三倍，你终于能按时睡觉了。但你偶尔会怀念那个凌晨两点自己剪视频的自己——那时的累，是为自己累。',
+        log: '{age}岁，你花了半年把课程生产、社群运营、商务对接全部SOP化。你只负责选题和出镜，其余交给团队。产能翻了三倍，你终于能按时睡觉了。但你偶尔会怀念那个凌晨两点自己剪视频的自己——那时的累，是为自己累。',
       },
       {
         id: 'stay_solo',
@@ -687,7 +692,7 @@ const educatorEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           addReputation(s, 5);
         },
-        log: '33岁，你解散了团队，退了办公室。收入少了三成，但你重新找回了那种"每条内容都是我自己"的感觉。你发现：超级IP的"超级"不在于规模，而在于"不可被替代的独特"。机器可以复制流程，复制不了你。',
+        log: '{age}岁，你解散了团队，退了办公室。收入少了三成，但你重新找回了那种"每条内容都是我自己"的感觉。你发现：超级IP的"超级"不在于规模，而在于"不可被替代的独特"。机器可以复制流程，复制不了你。',
       },
       {
         id: 'partner_up',
@@ -701,7 +706,7 @@ const educatorEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 4, 0, 100);
           s.happiness = clamp(s.happiness + 4, 0, 100);
         },
-        log: '33岁，你拉了一个老学员做合伙人——他懂运营，你懂内容。你终于不用再一个人扛。但你也第一次体会到了"分权"的痛：你不再是唯一的决策者。你们为了一条广告吵到凌晨，最后各自退了一步——这也许就是"合伙"的代价与红利。',
+        log: '{age}岁，你拉了一个老学员做合伙人——他懂运营，你懂内容。你终于不用再一个人扛。但你也第一次体会到了"分权"的痛：你不再是唯一的决策者。你们为了一条广告吵到凌晨，最后各自退了一步——这也许就是"合伙"的代价与红利。',
       },
     ],
   },
@@ -734,7 +739,7 @@ const educatorEvents: NarrativeEvent[] = [
           addReputation(s, 4);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
-        log: '35岁，你发了律师函，写了篇长文晒出时间线证据。抄袭者下架了课程，但转头换个马甲继续干。你赢了官司，却没赢市场。你明白：在内容行业，维权成本永远高于抄袭成本。',
+        log: '{age}岁，你发了律师函，写了篇长文晒出时间线证据。抄袭者下架了课程，但转头换个马甲继续干。你赢了官司，却没赢市场。你明白：在内容行业，维权成本永远高于抄袭成本。',
       },
       {
         id: 'out_innovate',
@@ -748,7 +753,7 @@ const educatorEvents: NarrativeEvent[] = [
           addReputation(s, 5);
           addFollowers(s, 800);
         },
-        log: '35岁，你没理那个抄袭者，而是用三个月做出了2.0版课程——加了实战陪跑、行业定制、终身更新。抄袭者还在卖你一年前的旧版。你用"持续进化"回答了"被抄袭"：最好的维权，是让自己永远值得被追。',
+        log: '{age}岁，你没理那个抄袭者，而是用三个月做出了2.0版课程——加了实战陪跑、行业定制、终身更新。抄袭者还在卖你一年前的旧版。你用"持续进化"回答了"被抄袭"：最好的维权，是让自己永远值得被追。',
       },
       {
         id: 'open_source',
@@ -763,7 +768,7 @@ const educatorEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           addFollowers(s, 2000);
         },
-        log: '35岁，你把课程的核心方法论全部免费公开了。同行说你疯了，但你的逻辑是：当基础知识人人都有，"跟你学"的价值就变成了陪伴、反馈和圈子——这些抄不走。一年后你的高客单社群反而爆满，因为"跟你"本身成了稀缺品。',
+        log: '{age}岁，你把课程的核心方法论全部免费公开了。同行说你疯了，但你的逻辑是：当基础知识人人都有，"跟你学"的价值就变成了陪伴、反馈和圈子——这些抄不走。一年后你的高客单社群反而爆满，因为"跟你"本身成了稀缺品。',
       },
     ],
   },
@@ -797,7 +802,7 @@ const educatorEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '37岁，你办了一个"讲师孵化营"，把你的方法论教给十几个想成为讲师的人。他们用你的体系开课，分你一部分收益。你的收入没少，但你的时间多了一倍。你从"自己讲"变成了"让别人替你讲"——这也许就是知识付费的终极形态。',
+        log: '{age}岁，你办了一个"讲师孵化营"，把你的方法论教给十几个想成为讲师的人。他们用你的体系开课，分你一部分收益。你的收入没少，但你的时间多了一倍。你从"自己讲"变成了"让别人替你讲"——这也许就是知识付费的终极形态。',
       },
       {
         id: 'write_canon',
@@ -812,7 +817,7 @@ const educatorEvents: NarrativeEvent[] = [
           addReputation(s, 10);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '37岁，你花了一年写了一本行业方法论的书。出版后成了这个细分领域的"入门必读"。你看着书店里那本印着你名字的书，想起25岁那个怕没人买课的自己——原来"沉淀"两个字，是要用十年去兑现的。',
+        log: '{age}岁，你花了一年写了一本行业方法论的书。出版后成了这个细分领域的"入门必读"。你看着书店里那本印着你名字的书，想起25岁那个怕没人买课的自己——原来"沉淀"两个字，是要用十年去兑现的。',
       },
       {
         id: 'step_back',
@@ -829,7 +834,7 @@ const educatorEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 10, 0, 100);
           s.health = clamp(s.health + 5, 0, 100);
         },
-        log: '37岁，你主动减少了出镜，把舞台让给了你带出来的年轻人。有人问你"不怕过气吗"，你笑了：当一个老师最大的成功，是学生不再需要他。"退"也是一种前进——这话你过去只觉得是托词。',
+        log: '{age}岁，你主动减少了出镜，把舞台让给了你带出来的年轻人。有人问你"不怕过气吗"，你笑了：当一个老师最大的成功，是学生不再需要他。"退"也是一种前进——这话你过去只觉得是托词。',
       },
     ],
   },
@@ -869,7 +874,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addFollowers(s, 8000);
           addReputation(s, -2);
         },
-        log: '26岁，你把那条爆款的"钩子+反转+金句"结构拆成了模板，连发十条。八条扑了，两条又爆了。你摸到了爆款的部分规律，但也开始被粉丝说"套路化了"。你换来了流量，但你也开始害怕——你已经不会做"不套路"的内容了。',
+        log: '{age}岁，你把那条爆款的"钩子+反转+金句"结构拆成了模板，连发十条。八条扑了，两条又爆了。你摸到了爆款的部分规律，但也开始被粉丝说"套路化了"。你换来了流量，但你也开始害怕——你已经不会做"不套路"的内容了。',
         blindBoxTrigger: 'ip_first_viral',
       },
       {
@@ -884,7 +889,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addFollowers(s, 4000);
           addReputation(s, 4);
         },
-        log: '26岁，你没急着复制爆款，而是花一个月做了一条制作精良的长视频。数据没爆，但完播率高得吓人，粉丝黏性暴涨。你把"路过的人"变成了"留下的人"——这比一次爆款值钱得多。',
+        log: '{age}岁，你没急着复制爆款，而是花一个月做了一条制作精良的长视频。数据没爆，但完播率高得吓人，粉丝黏性暴涨。你把"路过的人"变成了"留下的人"——这比一次爆款值钱得多。',
       },
       {
         id: 'monetize_fast',
@@ -899,7 +904,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addFollowers(s, 2000);
           s.currentYearSideHustle += 30000; // 流量巅峰期接的三个广告单，平台分账后到账
         },
-        log: '26岁，你在流量最高点接了三个大广告，账上进账三万。但三个月后热度退潮，粉丝开始说"你已经不是当初那个你了"。你赚到了第一桶金，也买到了第一波"过气感"——流量和信任，原来是两本账。',
+        log: '{age}岁，你在流量最高点接了三个大广告，账上进账三万。但三个月后热度退潮，粉丝开始说"你已经不是当初那个你了"。你赚到了第一桶金，也买到了第一波"过气感"——流量和信任，原来是两本账。',
       },
     ],
   },
@@ -933,7 +938,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 4, 0, 100);
           addFollowers(s, 500);
         },
-        log: '28岁，你拒了那五十万。三个月后一个和你调性完全契合的品牌找上门，开价八十万，还允许你全程参与创意。你明白了：定价权的本质不是"敢报高价"，是"敢拒高价"——拒绝本身，就是在给品牌加码。',
+        log: '{age}岁，你拒了那五十万。三个月后一个和你调性完全契合的品牌找上门，开价八十万，还允许你全程参与创意。你明白了：定价权的本质不是"敢报高价"，是"敢拒高价"——拒绝本身，就是在给品牌加码。',
       },
       {
         id: 'renegotiate',
@@ -947,7 +952,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addReputation(s, 2);
           s.currentYearSideHustle += 50000; // 品牌定制内容合作费，分期到账
         },
-        log: '28岁，你接了那单，但坚持自己写脚本、自己剪。成片出来，粉丝没觉得是广告，反而说"这条拍得真好"。品牌方很满意，把你列进了年度合作名单，5万元合作费分两期到账。你赚了钱，也没掉份——但你心里清楚，这种平衡是走钢丝。',
+        log: '{age}岁，你接了那单，但坚持自己写脚本、自己剪。成片出来，粉丝没觉得是广告，反而说"这条拍得真好"。品牌方很满意，把你列进了年度合作名单，5万元合作费分两期到账。你赚了钱，也没掉份——但你心里清楚，这种平衡是走钢丝。',
       },
       {
         id: 'take_full',
@@ -962,7 +967,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addFollowers(s, -500);
           s.currentYearSideHustle += 50000; // 品牌方一次性付清的软广合作费
         },
-        log: '28岁，你按品牌方的要求拍了一条"软广"。5万元到账了，但评论区一片"恰饭味太重"。你赚到了这五万，却赔掉了一部分信任——而信任，是这个行业里最贵的复利资产。',
+        log: '{age}岁，你按品牌方的要求拍了一条"软广"。5万元到账了，但评论区一片"恰饭味太重"。你赚到了这五万，却赔掉了一部分信任——而信任，是这个行业里最贵的复利资产。',
         blindBoxTrigger: 'ip_brand_deal',
       },
     ],
@@ -997,7 +1002,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 3, 0, 100);
           addFollowers(s, -2000);
         },
-        log: '29岁，你发了一条道歉视频，没找任何借口。风波慢慢平息，但你的"立场"被重新定义了——以后你说话，所有人都会拿这次道歉当标尺。你买了教训：泛娱乐可以博眼球，但有些线，一旦越过就回不来。',
+        log: '{age}岁，你发了一条道歉视频，没找任何借口。风波慢慢平息，但你的"立场"被重新定义了——以后你说话，所有人都会拿这次道歉当标尺。你买了教训：泛娱乐可以博眼球，但有些线，一旦越过就回不来。',
         blindBoxTrigger: 'ip_controversy',
       },
       {
@@ -1013,7 +1018,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addReputation(s, -8);
           addFollowers(s, 5000);
         },
-        log: '29岁，你没道歉，反而连发三条"硬刚"内容。流量确实暴涨，黑粉和铁粉一起涌入。但你被几个平台限流了，主流品牌再也不敢找你。你换来了一时的热度，却失去了一辈子的"安全牌"身份。',
+        log: '{age}岁，你没道歉，反而连发三条"硬刚"内容。流量确实暴涨，黑粉和铁粉一起涌入。但你被几个平台限流了，主流品牌再也不敢找你。你换来了一时的热度，却失去了一辈子的"安全牌"身份。',
       },
       {
         id: 'lay_low',
@@ -1028,7 +1033,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
           addFollowers(s, -1000);
         },
-        log: '29岁，你停更了一个月，关掉所有通知。等你再回来时，热搜早就换了主角。你损失了一些粉丝，但保住了"不表态"的余地。你学到：有时候不说话，比说任何话都安全。',
+        log: '{age}岁，你停更了一个月，关掉所有通知。等你再回来时，热搜早就换了主角。你损失了一些粉丝，但保住了"不表态"的余地。你学到：有时候不说话，比说任何话都安全。',
       },
     ],
   },
@@ -1062,7 +1067,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           addFollowers(s, -1500);
         },
-        log: '30岁，你咬牙把日更改成了周更。前两周数据暴跌，你焦虑得想反悔。但一个月后，单条质量上来了，完播率翻倍，留下的都是真粉。你重新有了周末，重新能好好吃顿饭。你发现：少做，反而做得更好。',
+        log: '{age}岁，你咬牙把日更改成了周更。前两周数据暴跌，你焦虑得想反悔。但一个月后，单条质量上来了，完播率翻倍，留下的都是真粉。你重新有了周末，重新能好好吃顿饭。你发现：少做，反而做得更好。',
       },
       {
         id: 'build_team',
@@ -1076,7 +1081,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 4, 0, 100);
           addFollowers(s, 2000);
         },
-        log: '30岁，你招了剪辑和运营，自己只负责出镜和选题。产能没降，你终于能睡整觉了。但你很快发现新的累：管理团队比自己做内容还操心。你换了一种累法，但至少不再是孤军奋战。',
+        log: '{age}岁，你招了剪辑和运营，自己只负责出镜和选题。产能没降，你终于能睡整觉了。但你很快发现新的累：管理团队比自己做内容还操心。你换了一种累法，但至少不再是孤军奋战。',
       },
       {
         id: 'pivot_format',
@@ -1091,7 +1096,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addReputation(s, 5);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '30岁，你停掉了短视频，转型做一小时的长视频播客。粉丝掉了一波，但留下的人开始认真听你说话。你忽然分不清，是在"喂"内容，还是在"对话"。短期的数据跌了，但你的"人"终于回来了。',
+        log: '{age}岁，你停掉了短视频，转型做一小时的长视频播客。粉丝掉了一波，但留下的人开始认真听你说话。你忽然分不清，是在"喂"内容，还是在"对话"。短期的数据跌了，但你的"人"终于回来了。',
       },
     ],
   },
@@ -1124,7 +1129,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 4, 0, 100);
           addFollowers(s, 1000);
         },
-        log: '32岁，你开始有意识地做"对人有帮助"的内容。流量没以前爆，但评论区开始出现"这条救了我"这样的话。做内容原来不只是做生意——是在和别人的生命发生关系。这份重量，你愿意扛。',
+        log: '{age}岁，你开始有意识地做"对人有帮助"的内容。流量没以前爆，但评论区开始出现"这条救了我"这样的话。做内容原来不只是做生意——是在和别人的生命发生关系。这份重量，你愿意扛。',
       },
       {
         id: 'keep_distance',
@@ -1137,7 +1142,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 4, 0, 100);
           addReputation(s, 2);
         },
-        log: '32岁，你办完见面会就减少了线下活动。你害怕那种"被需要"的重量——太近了，粉丝会把对父母、对爱人的期待投射到你身上，而你给不了。你选择保持屏幕的距离，这既保护了他们，也保护了你。',
+        log: '{age}岁，你办完见面会就减少了线下活动。你害怕那种"被需要"的重量——太近了，粉丝会把对父母、对爱人的期待投射到你身上，而你给不了。你选择保持屏幕的距离，这既保护了他们，也保护了你。',
       },
       {
         id: 'monetize_fandom',
@@ -1152,7 +1157,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addReputation(s, -2);
           s.currentYearSideHustle += 15000; // 首批付费会员年费+周边销售，首月结款
         },
-        log: '32岁，你推出了付费会员和周边产品。核心粉丝很买账，年付会员卖爆了，首月结款15000元。但也有人说你"消费粉丝感情"。你在"经营关系"和"收割感情"之间反复横跳——这条界线，你至今没画清楚。',
+        log: '{age}岁，你推出了付费会员和周边产品。核心粉丝很买账，年付会员卖爆了，首月结款15000元。但也有人说你"消费粉丝感情"。你在"经营关系"和"收割感情"之间反复横跳——这条界线，你至今没画清楚。',
       },
     ],
   },
@@ -1186,7 +1191,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 4, 0, 100);
           addReputation(s, 4);
         },
-        log: '34岁，你拒了那家MCN。三年后他们签的一个同期博主因为合约纠纷被封号，你看着新闻出了一身冷汗。你少赚了钱，但你的号、你的名、你的内容，永远是你自己的。自由很贵，但有些东西比钱贵。',
+        log: '{age}岁，你拒了那家MCN。三年后他们签的一个同期博主因为合约纠纷被封号，你看着新闻出了一身冷汗。你少赚了钱，但你的号、你的名、你的内容，永远是你自己的。自由很贵，但有些东西比钱贵。',
       },
       {
         id: 'sign_selective',
@@ -1200,7 +1205,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 3, 0, 100);
           s.currentYearSideHustle += 20000; // MCN接的商单分成，季度结算
         },
-        log: '34岁，你和MCN签了非独家商务约——他们负责接商单、谈价格，你保留内容主导权。商务收入翻了一倍，本季度分成到账20000元。但你失去了一些"拒单自由"。你换来了一部分省心，也交出了一部分主权。所有的合作都是交换。',
+        log: '{age}岁，你和MCN签了非独家商务约——他们负责接商单、谈价格，你保留内容主导权。商务收入翻了一倍，本季度分成到账20000元。但你失去了一些"拒单自由"。你换来了一部分省心，也交出了一部分主权。所有的合作都是交换。',
       },
       {
         id: 'sign_full',
@@ -1215,7 +1220,7 @@ const entertainerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 6, 0, 100);
           s.currentYearSideHustle += 30000; // MCN预付的年度保底商务款
         },
-        log: '34岁，你签了全约。第一个月数据确实飞起来了，MCN预付的30000元保底到账。但内容方向越来越不由你。半年后你想解约，违约金是年收入的三倍。你换来了规模，却把自己重新关进了笼子——只是这次笼子镀了金。',
+        log: '{age}岁，你签了全约。第一个月数据确实飞起来了，MCN预付的30000元保底到账。但内容方向越来越不由你。半年后你想解约，违约金是年收入的三倍。你换来了规模，却把自己重新关进了笼子——只是这次笼子镀了金。',
         blindBoxTrigger: 'ip_mentor_betrayal',
       },
     ],
@@ -1249,7 +1254,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addReputation(s, 5);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '36岁，你停掉了老赛道，开了一个全新的内容方向。前三个月数据惨淡，老粉骂你"不务正业"。但半年后新赛道跑出来了，你成了那片新土地上的先行者。你证明了一件事：能火一次是运气，能火两次是本事。',
+        log: '{age}岁，你停掉了老赛道，开了一个全新的内容方向。前三个月数据惨淡，老粉骂你"不务正业"。但半年后新赛道跑出来了，你成了那片新土地上的先行者。你证明了一件事：能火一次是运气，能火两次是本事。',
       },
       {
         id: 'go_niche_premium',
@@ -1264,7 +1269,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addReputation(s, 6);
           addFollowers(s, -2000);
         },
-        log: '36岁，你不再追百万播放，转而服务那一万核心粉。你做了高客单会员、线下闭门会、定制咨询。粉丝少了，但每个人为你付的钱多了十倍。你从"大众明星"变成了"小众教主"——后者活得更久。',
+        log: '{age}岁，你不再追百万播放，转而服务那一万核心粉。你做了高客单会员、线下闭门会、定制咨询。粉丝少了，但每个人为你付的钱多了十倍。你从"大众明星"变成了"小众教主"——后者活得更久。',
       },
       {
         id: 'embrace_elder',
@@ -1278,7 +1283,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addReputation(s, 4);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '36岁，你在一条视频里第一次大方承认"我不年轻了"。没想到这条反而爆了——评论区一堆人说"终于有个不装嫩的博主"。你换了个赛道：不追年轻人的热点，讲你这个年纪的人才懂的事。你输了年轻，赢了厚度。',
+        log: '{age}岁，你在一条视频里第一次大方承认"我不年轻了"。没想到这条反而爆了——评论区一堆人说"终于有个不装嫩的博主"。你换了个赛道：不追年轻人的热点，讲你这个年纪的人才懂的事。你输了年轻，赢了厚度。',
       },
     ],
   },
@@ -1302,17 +1307,17 @@ const entertainerEvents: NarrativeEvent[] = [
       {
         id: 'build_ecosystem',
         label: '建内容生态，从创作者变平台',
-        description: '孵化新人、做MCN、做工具',
-        hint: '品牌价值+12 · 受众运营+10 · 存款-20000 · 压力+8 · 被动收入+20000/年 · 声誉+6',
+        description: '拿出存款的一部分孵化新人、做MCN、做工具，投得越多生态越大',
+        hint: '品牌价值+12 · 受众运营+10 · 投入存款20% · 压力+8 · 被动收入+年化100% · 声誉+6',
         hintColor: 'positive',
         skillGains: { brandSkill: 12, audienceSkill: 10 },
-        savingsChange: -20000,
-        passiveIncomeChange: 20000,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.20, 1.0).investFn(s),
+        passiveIncomeChangeFn: (s: GameState) => pctInvestment(0.20, 1.0).returnFn(s),
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 8, 0, 100);
           addReputation(s, 6);
         },
-        log: '38岁，你把个人IP升级成了一个内容生态：孵化了五个新人、做了个创作者工具、开了个行业峰会。你不靠单条内容赚钱了，你靠"系统"赚钱。你从一个"演员"变成了"剧院老板"——这才是真正的退休自由。',
+        log: '{age}岁，你拿出积蓄的一部分把个人IP升级成了一个内容生态：孵化了五个新人、做了个创作者工具、开了个行业峰会。投入越多，生态规模就越大。你不靠单条内容赚钱了，你靠"系统"赚钱。你从一个"演员"变成了"剧院老板"——这才是真正的退休自由。',
       },
       {
         id: 'ip_franchise',
@@ -1327,7 +1332,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '38岁，你把过去十年的爆款做成了一套"内容方法论"的系列课和精选合集。这些内容不再追热点，但永远有人需要。它们像不动产一样，在你睡觉时持续产生收益。你终于把"流量"变成了"资产"。',
+        log: '{age}岁，你把过去十年的爆款做成了一套"内容方法论"的系列课和精选合集。这些内容不再追热点，但永远有人需要。它们像不动产一样，在你睡觉时持续产生收益。你终于把"流量"变成了"资产"。',
       },
       {
         id: 'graceful_exit',
@@ -1344,7 +1349,7 @@ const entertainerEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '38岁，你领完那个奖，发了一条"感谢大家，我要歇一阵了"。你没说退圈，但所有人都懂。你把账号交给了团队维护，自己去了趟一直想去的海边。你在沙滩上坐了一下午，潮水来了又退，手机一次没看。',
+        log: '{age}岁，你领完那个奖，发了一条"感谢大家，我要歇一阵了"。你没说退圈，但所有人都懂。你把账号交给了团队维护，自己去了趟一直想去的海边。你在沙滩上坐了一下午，潮水来了又退，手机一次没看。',
       },
     ],
   },
@@ -1385,7 +1390,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '27岁，你推掉了所有商务，闭关一年写书。你重写了四稿，删掉了所有"听起来很爽但站不住"的金句。书出版后销量平平，但被几个学界的人认真讨论了。"被少数人认真对待"比"被多数人转发"更珍贵——这话你过去不信，现在信了。',
+        log: '{age}岁，你推掉了所有商务，闭关一年写书。你重写了四稿，删掉了所有"听起来很爽但站不住"的金句。书出版后销量平平，但被几个学界的人认真讨论了。"被少数人认真对待"比"被多数人转发"更珍贵——这话你过去不信，现在信了。',
       },
       {
         id: 'compile_articles',
@@ -1399,7 +1404,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 2);
           s.currentYearSideHustle += 15000; // 文集三次加印的版税，出版社季度结款
         },
-        log: '27岁，你把过往爆款长文整理成了一本文集，三个月加印两次。出版社按合同打来15000元版税。你赚到了钱和名，但你自己知道，这只是"文章合集"而非"著作"。你换来了一本书的厚度，却欠下了一本"真正的书"的债。',
+        log: '{age}岁，你把过往爆款长文整理成了一本文集，三个月加印两次。出版社按合同打来15000元版税。你赚到了钱和名，但你自己知道，这只是"文章合集"而非"著作"。你换来了一本书的厚度，却欠下了一本"真正的书"的债。',
       },
       {
         id: 'co_write_expert',
@@ -1413,7 +1418,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 5, 0, 100);
           addReputation(s, 5);
         },
-        log: '27岁，你和一个学界前辈合著了一本书——你出洞察，他出论证。书出版后评价很高，但你心里有点不是滋味：夸这本书的人，多半是夸"论证扎实"，而那恰好是你最没把握的部分。你换来了声誉，也看清了自己的天花板。',
+        log: '{age}岁，你和一个学界前辈合著了一本书——你出洞察，他出论证。书出版后评价很高，但你心里有点不是滋味：夸这本书的人，多半是夸"论证扎实"，而那恰好是你最没把握的部分。你换来了声誉，也看清了自己的天花板。',
       },
     ],
   },
@@ -1448,7 +1453,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addFollowers(s, 1500);
           s.currentYearSideHustle += 25000; // 本年接的五场商业演讲，单场五千到五万不等
         },
-        log: '29岁，你开始系统接商业演讲，单场报价从五千涨到了五万。本年接了五场，到账25000元。你发现"现场感染力"是一种稀缺能力，而你有。但你也发现：演讲越多，你思考的时间越少。你开始警惕——一个不思考的思想领袖，只是个高级复读机。',
+        log: '{age}岁，你开始系统接商业演讲，单场报价从五千涨到了五万。本年接了五场，到账25000元。你发现"现场感染力"是一种稀缺能力，而你有。但你也发现：演讲越多，你思考的时间越少。你开始警惕——一个不思考的思想领袖，只是个高级复读机。',
       },
       {
         id: 'deepen_thought',
@@ -1462,7 +1467,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '29岁，你拒掉了八成演讲邀约，只去那些能逼你产出新思考的场合。你的演讲场次少了，但每一场都被行业反复引用。你明白：思想领袖真正稀缺的，是"值得被曝光的新观点"——曝光本身反倒不缺。',
+        log: '{age}岁，你拒掉了八成演讲邀约，只去那些能逼你产出新思考的场合。你的演讲场次少了，但每一场都被行业反复引用。你明白：思想领袖真正稀缺的，是"值得被曝光的新观点"——曝光本身反倒不缺。',
       },
       {
         id: 'start_movement',
@@ -1477,7 +1482,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           addFollowers(s, 2000);
         },
-        log: '29岁，你在那场演讲结尾宣布了一个行业倡议，号召同行一起做件难事。响应者众，你从一个"演讲者"变成了"发起人"。"思想"变"行动"的边——你摸到了——这才是思想领袖该干的事。',
+        log: '{age}岁，你在那场演讲结尾宣布了一个行业倡议，号召同行一起做件难事。响应者众，你从一个"演讲者"变成了"发起人"。"思想"变"行动"的边——你摸到了——这才是思想领袖该干的事。',
       },
     ],
   },
@@ -1510,7 +1515,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           addFollowers(s, -1000);
         },
-        log: '30岁，你写了篇长文公开承认自己那个观点的漏洞，并邀请那位学者公开对谈。对谈直播观看破百万，你和对方从论敌变成了惺惺相惜。掉了一批"只想看你赢"的粉，但换来了一批"因为你会认错而信你"的人。你明白：思想领袖的权威，建立在"敢于不权威"之上。',
+        log: '{age}岁，你写了篇长文公开承认自己那个观点的漏洞，并邀请那位学者公开对谈。对谈直播观看破百万，你和对方从论敌变成了惺惺相惜。掉了一批"只想看你赢"的粉，但换来了一批"因为你会认错而信你"的人。你明白：思想领袖的权威，建立在"敢于不权威"之上。',
       },
       {
         id: 'refine_position',
@@ -1524,7 +1529,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, -2);
           s.pathFaith = clamp(s.pathFaith - 3, 0, 100);
         },
-        log: '30岁，你没公开回应，但在后续内容里悄悄修正了那个观点。聪明的粉丝发现了，说你"嘴硬但心虚"；没发现的继续挺你。你保住了面子，却失去了一次"立信"的机会——你心里清楚，这笔账迟早要还。',
+        log: '{age}岁，你没公开回应，但在后续内容里悄悄修正了那个观点。聪明的粉丝发现了，说你"嘴硬但心虚"；没发现的继续挺你。你保住了面子，却失去了一次"立信"的机会——你心里清楚，这笔账迟早要还。',
       },
       {
         id: 'ignore_attack',
@@ -1538,7 +1543,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 2);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
-        log: '30岁，你没回应那位学者，而是连发三篇新长文。热度盖过了争议，但那位学者的反驳文章至今还排在搜索引擎前列，时不时被人翻出来。你赢得了当下，却把一颗雷埋在了未来。',
+        log: '{age}岁，你没回应那位学者，而是连发三篇新长文。热度盖过了争议，但那位学者的反驳文章至今还排在搜索引擎前列，时不时被人翻出来。你赢得了当下，却把一颗雷埋在了未来。',
       },
     ],
   },
@@ -1572,7 +1577,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 10);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '31岁，你花了半年写了一本专著，把这个概念的前世今生、边界、误读全部讲透。书成了这个领域的"标准定义"，以后所有人引用都得提你的名字。你用一本书，把"被引用"变成了"被定义"——这才是思想资产的终极形态。',
+        log: '{age}岁，你花了半年写了一本专著，把这个概念的前世今生、边界、误读全部讲透。书成了这个领域的"标准定义"，以后所有人引用都得提你的名字。你用一本书，把"被引用"变成了"被定义"——这才是思想资产的终极形态。',
       },
       {
         id: 'ride_influence',
@@ -1587,7 +1592,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           addFollowers(s, 3000);
         },
-        log: '31岁，你开始就更多公共议题发声，从行业专家变成了公共知识分子。影响力暴涨，但也招来了更多审视——你说的每句话都被放在显微镜下。你享受破圈的快感，也开始承受"被所有人盯着"的代价。',
+        log: '{age}岁，你开始就更多公共议题发声，从行业专家变成了公共知识分子。影响力暴涨，但也招来了更多审视——你说的每句话都被放在显微镜下。你享受破圈的快感，也开始承受"被所有人盯着"的代价。',
       },
       {
         id: 'stay_academic',
@@ -1601,7 +1606,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           addFollowers(s, 500);
         },
-        log: '31岁，你反而收缩了发声面，回到更严谨的学术写作。你怕你的概念被滥用、被断章取义，于是亲手给它设了边界。掉了一些围观流量，但留下来的都是认真读你字的人。你选择了"小而深"，放弃了"大而浅"。',
+        log: '{age}岁，你反而收缩了发声面，回到更严谨的学术写作。你怕你的概念被滥用、被断章取义，于是亲手给它设了边界。掉了一些围观流量，但留下来的都是认真读你字的人。你选择了"小而深"，放弃了"大而浅"。',
       },
     ],
   },
@@ -1635,7 +1640,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 10);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '33岁，你成了几个智库的常驻顾问。你的思想真的在改变规则。但你也被卷入了你曾批判的"体制"——你开始理解"身在其中的难"。你不再只是个评论者，你成了参与者。这份重量，让你既骄傲又失眠。',
+        log: '{age}岁，你成了几个智库的常驻顾问。你的思想真的在改变规则。但你也被卷入了你曾批判的"体制"——你开始理解"身在其中的难"。你不再只是个评论者，你成了参与者。这份重量，让你既骄傲又失眠。',
       },
       {
         id: 'stay_outside',
@@ -1648,7 +1653,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 6);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '33岁，你只做"提建议的人"，拒绝进入任何执行机构。你怕被体制收编后失去批判的资格。有人笑你"清高"，但你心里清楚：知识分子的锋芒，往往在被"招安"的那天就钝了。你选择了"永远在野"。',
+        log: '{age}岁，你只做"提建议的人"，拒绝进入任何执行机构。你怕被体制收编后失去批判的资格。有人笑你"清高"，但你心里清楚：知识分子的锋芒，往往在被"招安"的那天就钝了。你选择了"永远在野"。',
       },
       {
         id: 'public_educator',
@@ -1663,7 +1668,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           addFollowers(s, 4000);
         },
-        log: '33岁，你没进庙堂，而是把晦涩的思想翻译成了大众能懂的内容。你做了一档科普节目，把那些智库里的概念讲给普通人听。你的影响面从几百个决策者变成了几百万普通人——你选择了"广场"而非"密室"。',
+        log: '{age}岁，你没进庙堂，而是把晦涩的思想翻译成了大众能懂的内容。你做了一档科普节目，把那些智库里的概念讲给普通人听。你的影响面从几百个决策者变成了几百万普通人——你选择了"广场"而非"密室"。',
       },
     ],
   },
@@ -1697,7 +1702,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 12);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '35岁，你用两年写了一本"自我反驳"的书，公开推翻了第一本书里的几个核心论点。学界震动，有人说你"朝令夕改"，更多人说你"这才是真学者"。你证明了一件事：能超越自己的，才配叫思想领袖。',
+        log: '{age}岁，你用两年写了一本"自我反驳"的书，公开推翻了第一本书里的几个核心论点。学界震动，有人说你"朝令夕改"，更多人说你"这才是真学者"。你证明了一件事：能超越自己的，才配叫思想领袖。',
       },
       {
         id: 'expand_scope',
@@ -1712,7 +1717,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '35岁，你跨界写了一本融合两个领域的书。学界有人说你"不务正业"，但这本书反而成了两个领域之间的桥梁，被反复引用。你发现：真正的思想创新，往往发生在学科的缝隙里。',
+        log: '{age}岁，你跨界写了一本融合两个领域的书。学界有人说你"不务正业"，但这本书反而成了两个领域之间的桥梁，被反复引用。你发现：真正的思想创新，往往发生在学科的缝隙里。',
       },
       {
         id: 'curate_canon',
@@ -1727,7 +1732,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 10);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '35岁，你主编了一套领域丛书，邀请了十几位学者各写一本。你从"一个人写书"变成了"定义一个领域的人"。这套书成了这个领域的入门标配，而你的名字，印在了每一本的封面上。',
+        log: '{age}岁，你主编了一套领域丛书，邀请了十几位学者各写一本。你从"一个人写书"变成了"定义一个领域的人"。这套书成了这个领域的入门标配，而你的名字，印在了每一本的封面上。',
       },
     ],
   },
@@ -1761,7 +1766,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           addFollowers(s, -500);
         },
-        log: '37岁，你公开发了一篇"自我批判"，质疑自己最出名的那个概念。学界震动，有人说你"晚节不保"，更多人说你"这才是真活人"。你宁愿做一个会犯错的活人，也不做一个被供着的牌位。思想的命，在于流动。',
+        log: '{age}岁，你公开发了一篇"自我批判"，质疑自己最出名的那个概念。学界震动，有人说你"晚节不保"，更多人说你"这才是真活人"。你宁愿做一个会犯错的活人，也不做一个被供着的牌位。思想的命，在于流动。',
       },
       {
         id: 'mentor_next_gen',
@@ -1776,7 +1781,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 10);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '37岁，你办了一个青年思想者计划，亲自带十个有潜力的年轻人。你说："我不缺再写一本书的能力，我缺的是把火种传下去的时间。"两年后其中三个人已经崭露头角，被业界称为"你的学派"。你成了"开宗立派"的人。',
+        log: '{age}岁，你办了一个青年思想者计划，亲自带十个有潜力的年轻人。你说："我不缺再写一本书的能力，我缺的是把火种传下去的时间。"两年后其中三个人已经崭露头角，被业界称为"你的学派"。你成了"开宗立派"的人。',
       },
       {
         id: 'retire_into_thought',
@@ -1793,7 +1798,7 @@ const thoughtLeaderEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '37岁，你宣布停更所有公共平台，回到书房。你说"该说的话说完了，剩下的留给后来人"。你不再追热点、不再发声、不再露面，但你写的书还在被一版再版。你用"消失"完成了最后的"存在"——真正的思想者，连退场都是一种思想。',
+        log: '{age}岁，你宣布停更所有公共平台，回到书房。你说"该说的话说完了，剩下的留给后来人"。你不再追热点、不再发声、不再露面，但你写的书还在被一版再版。你用"消失"完成了最后的"存在"——真正的思想者，连退场都是一种思想。',
       },
     ],
   },
@@ -1832,7 +1837,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           addFollowers(s, 500);
           addReputation(s, 3);
         },
-        log: '27岁，你花了三个月把平台粉丝导入了自己的社群和邮件列表。迁移率只有三成，但这三成是你真正的资产。半年后平台又改了次算法，别人哀嚎时你很平静——因为你的命，终于在自己手里了。',
+        log: '{age}岁，你花了三个月把平台粉丝导入了自己的社群和邮件列表。迁移率只有三成，但这三成是你真正的资产。半年后平台又改了次算法，别人哀嚎时你很平静——因为你的命，终于在自己手里了。',
       },
       {
         id: 'multi_platform_hedge',
@@ -1845,7 +1850,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           addFollowers(s, 800);
         },
-        log: '27岁，你把内容同步到了所有平台。累是真累，但哪个平台抽风你都不慌。你成了"全平台博主"，但也付出了代价：你的精力被切碎，每个平台都做不深。',
+        log: '{age}岁，你把内容同步到了所有平台。累是真累，但哪个平台抽风你都不慌。你成了"全平台博主"，但也付出了代价：你的精力被切碎，每个平台都做不深。',
       },
       {
         id: 'adapt_new_rule',
@@ -1859,7 +1864,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           addFollowers(s, 600);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
-        log: '27岁，你花了两周拆解新算法，调整了内容结构。流量回来了七成，但你心里有根刺：你是在"伺候算法"，不是在"做内容"。你赢了这场，但你知道，下个改版还会来。',
+        log: '{age}岁，你花了两周拆解新算法，调整了内容结构。流量回来了七成，但你心里有根刺：你是在"伺候算法"，不是在"做内容"。你赢了这场，但你知道，下个改版还会来。',
         blindBoxTrigger: 'ip_algorithm_change',
       },
     ],
@@ -1893,7 +1898,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 3, 0, 100);
           addReputation(s, -5);
         },
-        log: '29岁，你咬着牙又做了三条同款内容。数据一条比一条好。你关掉后台，在黑暗里坐了很久，觉得自己像在往一个无底洞里填东西。',
+        log: '{age}岁，你咬着牙又做了三条同款内容。数据一条比一条好。你关掉后台，在黑暗里坐了很久，觉得自己像在往一个无底洞里填东西。',
       },
       {
         id: 'delete_and_reflect',
@@ -1907,7 +1912,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           addReputation(s, 5);
         },
-        log: '29岁，你删了那条内容。后台数据归零，评论区安静了。你重新打开一个严肃选题的草稿，光标闪了很久。你知道自己做了对的事，但心里某个角落仍在想：那十万阅读量。',
+        log: '{age}岁，你删了那条内容。后台数据归零，评论区安静了。你重新打开一个严肃选题的草稿，光标闪了很久。你知道自己做了对的事，但心里某个角落仍在想：那十万阅读量。',
         isRestOption: true,
       },
       {
@@ -1922,7 +1927,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 2, 0, 100);
           addReputation(s, 3);
         },
-        log: '29岁，你在那条内容顶部加了一行字"标题党实验，正文比标题有意思"。阅读量掉了一半，但差评也少了。有人在评论区说"就冲你敢承认，关注了"。你笑了笑，说不清是轻松还是苦涩。',
+        log: '{age}岁，你在那条内容顶部加了一行字"标题党实验，正文比标题有意思"。阅读量掉了一半，但差评也少了。有人在评论区说"就冲你敢承认，关注了"。你笑了笑，说不清是轻松还是苦涩。',
       },
     ],
   },
@@ -1954,7 +1959,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           addFollowers(s, -1000);
         },
-        log: '30岁，你发了篇长文，承认那些话确实说过，交代了完整的上下文，为不当言论道歉，但没有为没说过的话认罪。舆论分化，但大部分理性的人站了你。你用"坦诚"扛过了这次——但你也从此学会了"任何话都可能被录音"。',
+        log: '{age}岁，你发了篇长文，承认那些话确实说过，交代了完整的上下文，为不当言论道歉，但没有为没说过的话认罪。舆论分化，但大部分理性的人站了你。你用"坦诚"扛过了这次——但你也从此学会了"任何话都可能被录音"。',
       },
       {
         id: 'legal_action',
@@ -1969,7 +1974,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           addReputation(s, 4);
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
         },
-        log: '30岁，你报了警，查出泄密的是一个曾经合作过又闹翻的前助理。对方被追究了隐私泄露责任，但这件事也让你再不敢轻易信任身边人。你赢得了法律，却输掉了对人的一部分信任。',
+        log: '{age}岁，你报了警，查出泄密的是一个曾经合作过又闹翻的前助理。对方被追究了隐私泄露责任，但这件事也让你再不敢轻易信任身边人。你赢得了法律，却输掉了对人的一部分信任。',
       },
       {
         id: 'lay_low_wait',
@@ -1983,7 +1988,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           addReputation(s, -2);
           addFollowers(s, -2000);
         },
-        log: '30岁，你没回应，停更了两周。热度确实退了，但那篇扒皮文章还在搜索引擎前列。你换来了暂时的平静，却把解释权让给了别人。半年后还有人拿这事问你，你才后悔当初没把话说清楚。',
+        log: '{age}岁，你没回应，停更了两周。热度确实退了，但那篇扒皮文章还在搜索引擎前列。你换来了暂时的平静，却把解释权让给了别人。半年后还有人拿这事问你，你才后悔当初没把话说清楚。',
       },
     ],
   },
@@ -2018,7 +2023,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           addFollowers(s, -3000);
         },
-        log: '32岁，你停更半年，去了趟没人认识你的地方。前两个月你焦虑得想回来，第三个月你开始重新注意到风吹过树叶的声音。回来后你写的东西变了——多了烟火气，少了表演感。你用"停下来"换回了"想说话"的能力。',
+        log: '{age}岁，你停更半年，去了趟没人认识你的地方。前两个月你焦虑得想回来，第三个月你开始重新注意到风吹过树叶的声音。回来后你写的东西变了——多了烟火气，少了表演感。你用"停下来"换回了"想说话"的能力。',
       },
       {
         id: 'change_medium',
@@ -2032,7 +2037,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           addFollowers(s, 1000);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '32岁，你从文字创作者转去做播客。新媒介的笨拙感反而点燃了你——你重新像个新手一样兴奋。倦怠的根源，是太熟练——熟练到失去了紧张感。换个赛道，你又找回了"不会"的快乐。',
+        log: '{age}岁，你从文字创作者转去做播客。新媒介的笨拙感反而点燃了你——你重新像个新手一样兴奋。倦怠的根源，是太熟练——熟练到失去了紧张感。换个赛道，你又找回了"不会"的快乐。',
       },
       {
         id: 'therapy_support',
@@ -2047,7 +2052,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.health = clamp(s.health + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
         },
-        log: '32岁，你开始看心理咨询师。你慢慢看清了：你的倦怠源于"把被关注当成了被爱"。当流量不再给你刺激，你就觉得空。你学会了不靠数据定义自己——这比任何爆款都治愈。',
+        log: '{age}岁，你开始看心理咨询师。你慢慢看清了：你的倦怠源于"把被关注当成了被爱"。当流量不再给你刺激，你就觉得空。你学会了不靠数据定义自己——这比任何爆款都治愈。',
       },
     ],
   },
@@ -2063,7 +2068,7 @@ const crossBranchEvents: NarrativeEvent[] = [
     weight: 7,
     oncePerGame: true,
     narrative:
-      '在一个行业活动上，你被引荐给你入行时的偶像——那个你22岁贴在床头、每条内容都逐字拆解过的前辈。可真见到了，你发现TA比镜头里老、比想象中疲惫，客气地夸了你两句"后生可畏"就低头看手机走了。你站在原地，像小时候发现圣诞老人是爸爸扮的那种失落。\n' +
+      '在一个行业活动上，你被引荐给你入行时的偶像——那个你{startAge}岁贴在床头、每条内容都逐字拆解过的前辈。可真见到了，你发现TA比镜头里老、比想象中疲惫，客气地夸了你两句"后生可畏"就低头看手机走了。你站在原地，像小时候发现圣诞老人是爸爸扮的那种失落。\n' +
       '你忽然明白：你崇拜的那个人，其实从未存在过——你崇拜的，一直是你自己想象出来的那个"完美的自己"。神坛上没有神，只有一个个和你一样疲惫、一样挣扎、一样会老的人。你跪了十二年，跪的是自己的影子。',
     options: [
       {
@@ -2078,7 +2083,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 4, 0, 100);
           addReputation(s, 3);
         },
-        log: '34岁，你没失望，反而清醒了。你看着前辈的现状，暗暗记下"我不要变成那样"。你不再追偶像，开始做自己。你看着前辈远去的背影，没有追上去。你转身，往另一个方向走了。',
+        log: '{age}岁，你没失望，反而清醒了。你看着前辈的现状，暗暗记下"我不要变成那样"。你不再追偶像，开始做自己。你看着前辈远去的背影，没有追上去。你转身，往另一个方向走了。',
       },
       {
         id: 'befriend_peer',
@@ -2092,7 +2097,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           addFollowers(s, 500);
         },
-        log: '34岁，你主动约前辈喝了顿酒，聊的都是行业里的难。你们成了忘年交。你发现：去掉光环，TA只是个比你早走了十年的同行。你不再仰望，但多了个能说真话的人。',
+        log: '{age}岁，你主动约前辈喝了顿酒，聊的都是行业里的难。你们成了忘年交。你发现：去掉光环，TA只是个比你早走了十年的同行。你不再仰望，但多了个能说真话的人。',
       },
       {
         id: 'mentor_others',
@@ -2107,7 +2112,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           addFollowers(s, 1500);
         },
-        log: '34岁，你开始有意识地提携新人，但从不让他们把你当神。你常说："我也是个会犯错的人。"你把"去神化"当成了传承的一部分——你不想造新的神坛，你想让后辈一开始就站着走路。',
+        log: '{age}岁，你开始有意识地提携新人，但从不让他们把你当神。你常说："我也是个会犯错的人。"你把"去神化"当成了传承的一部分——你不想造新的神坛，你想让后辈一开始就站着走路。',
       },
     ],
   },
@@ -2267,7 +2272,7 @@ const crisisEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '33岁，你没认怂。你花了半年逐条辟谣、起诉了三个造谣账号、赢了两个。真相慢慢浮出来，掉的粉回来了一部分。但你瘦了十五斤，落下了失眠的毛病。你赢了这场战役，但你的身体替你付了账单。',
+        log: '{age}岁，你没认怂。你花了半年逐条辟谣、起诉了三个造谣账号、赢了两个。真相慢慢浮出来，掉的粉回来了一部分。但你瘦了十五斤，落下了失眠的毛病。你赢了这场战役，但你的身体替你付了账单。',
       },
       {
         id: 'sincere_apology',
@@ -2283,7 +2288,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           addFollowers(s, -15000);
         },
-        log: '33岁，你发了一篇长文，为你确实说过的不当言论道歉，但拒绝为编造的罪名认罪。舆论分化但逐渐平息。你损失了大量粉丝，却保住了"知错能改"的信誉。你学到：危机里最难的不是反击，是分辨哪些该认、哪些不能认。',
+        log: '{age}岁，你发了一篇长文，为你确实说过的不当言论道歉，但拒绝为编造的罪名认罪。舆论分化但逐渐平息。你损失了大量粉丝，却保住了"知错能改"的信誉。你学到：危机里最难的不是反击，是分辨哪些该认、哪些不能认。',
       },
       {
         id: 'disappear_reinvent',
@@ -2299,7 +2304,7 @@ const crisisEvents: NarrativeEvent[] = [
           addFollowers(s, -40000);
           s.pathFaith = clamp(s.pathFaith - 10, 0, 100);
         },
-        log: '33岁，你注销了所有账号，消失了半年。半年后你用一个全新的身份重新开始，没人知道你就是当年那个人。你保住了命，却丢了十年的积累。你常常在深夜想：那个被你亲手埋掉的名字，值不值得？',
+        log: '{age}岁，你注销了所有账号，消失了半年。半年后你用一个全新的身份重新开始，没人知道你就是当年那个人。你保住了命，却丢了十年的积累。你常常在深夜想：那个被你亲手埋掉的名字，值不值得？',
       },
     ],
   },
@@ -2334,7 +2339,7 @@ const crisisEvents: NarrativeEvent[] = [
           addReputation(s, 4);
           addFollowers(s, -Math.floor(getFollowers(s) * 0.7));
         },
-        log: '35岁，你靠着多年前导出的私域名单，一个一个把真粉重新聚起来。一年后你重建了三成规模，但都是死忠。你把这次"清零"当成了教训：从今往后，任何粉丝都先沉淀到自己的池子里。你输了一次，但再不会输第二次。',
+        log: '{age}岁，你靠着多年前导出的私域名单，一个一个把真粉重新聚起来。一年后你重建了三成规模，但都是死忠。你把这次"清零"当成了教训：从今往后，任何粉丝都先沉淀到自己的池子里。你输了一次，但再不会输第二次。',
       },
       {
         id: 'diversify_everywhere',
@@ -2348,7 +2353,7 @@ const crisisEvents: NarrativeEvent[] = [
           addFollowers(s, -Math.floor(getFollowers(s) * 0.8));
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
         },
-        log: '35岁，你在五个平台同时重新开始。前半年每个平台都从零涨，累得脱相。但你立下了铁律：任何一个平台的粉丝都不超过总量四成。你用一次"清零"的代价，换来了真正的"反脆弱"。',
+        log: '{age}岁，你在五个平台同时重新开始。前半年每个平台都从零涨，累得脱相。但你立下了铁律：任何一个平台的粉丝都不超过总量四成。你用一次"清零"的代价，换来了真正的"反脆弱"。',
       },
       {
         id: 'sue_platform',
@@ -2363,7 +2368,7 @@ const crisisEvents: NarrativeEvent[] = [
           addReputation(s, 8);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '35岁，你把平台告上了法庭，案件引起了行业关注。两年后你赢了部分诉求，平台公开道歉并恢复了你的部分内容。你成了一场行业讨论的导火索：创作者的内容到底归谁？你输了两年时间和大量金钱，却赢得了"创作者权利"这块更大的牌。',
+        log: '{age}岁，你把平台告上了法庭，案件引起了行业关注。两年后你赢了部分诉求，平台公开道歉并恢复了你的部分内容。你成了一场行业讨论的导火索：创作者的内容到底归谁？你输了两年时间和大量金钱，却赢得了"创作者权利"这块更大的牌。',
       },
     ],
   },
@@ -2397,7 +2402,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           addFollowers(s, -2000);
         },
-        log: '37岁，你把十几年的创作笔记、引用来源、重构过程全部公开了。舆论反转——大部分人承认你是"站在巨人肩上"而非"抄袭"。那位前辈也偃旗息鼓。你用"彻底透明"扛过了这次，但也立下了一个规矩：从今往后，任何引用都标注来源。你的"原创"二字，从此经得起放大镜。',
+        log: '{age}岁，你把十几年的创作笔记、引用来源、重构过程全部公开了。舆论反转——大部分人承认你是"站在巨人肩上"而非"抄袭"。那位前辈也偃旗息鼓。你用"彻底透明"扛过了这次，但也立下了一个规矩：从今往后，任何引用都标注来源。你的"原创"二字，从此经得起放大镜。',
       },
       {
         id: 'settle_privately',
@@ -2412,7 +2417,7 @@ const crisisEvents: NarrativeEvent[] = [
           addReputation(s, 2);
           s.pathFaith = clamp(s.pathFaith - 4, 0, 100);
         },
-        log: '37岁，你私下联系了那位前辈，承认了"启发来源"并在新版书里加了致谢，对方撤回了指控。风波平息了，但"和解"在舆论眼里约等于"心虚"。你保住了体面，却永远洗不掉那层疑云——你知道，这是你为"年轻时不严谨"付的利息。',
+        log: '{age}岁，你私下联系了那位前辈，承认了"启发来源"并在新版书里加了致谢，对方撤回了指控。风波平息了，但"和解"在舆论眼里约等于"心虚"。你保住了体面，却永远洗不掉那层疑云——你知道，这是你为"年轻时不严谨"付的利息。',
       },
       {
         id: 'counter_sue',
@@ -2428,7 +2433,244 @@ const crisisEvents: NarrativeEvent[] = [
           addReputation(s, 6);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '37岁，你反诉了那位前辈诽谤。官司打了两年，你赢了，但赢得很难看——法庭认定不构成抄袭，却也指出你"引用规范存在瑕疵"。你赢了法理，输了部分人心。你拿着判决书走出法院，记者围上来问"胜诉感受"。你笑了笑，把判决书折好，塞进口袋，什么也没说。',
+        log: '{age}岁，你反诉了那位前辈诽谤。官司打了两年，你赢了，但赢得很难看——法庭认定不构成抄袭，却也指出你"引用规范存在瑕疵"。你赢了法理，输了部分人心。你拿着判决书走出法院，记者围上来问"胜诉感受"。你笑了笑，把判决书折好，塞进口袋，什么也没说。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 40岁再分叉事件（ip_midlife_rebranch）
+// 参照 AI 路径：知识付费线/思想领袖线在中年可再选一次，泛娱乐线不重复触发
+// ============================================================
+
+const midlifeRebranchEvents: NarrativeEvent[] = [
+  {
+    id: 'ip_midlife_rebranch',
+    title: '四十，再选一次',
+    sceneTag: 'home',
+    pathId: 'super_ip',
+    ageRange: [40, 40],
+    priority: 8,
+    weight: 100,
+    eventType: 'milestone',
+    oncePerGame: true,
+    conditions: (s) =>
+      s.narrativeBranch === 'ip_educator' || s.narrativeBranch === 'ip_thought_leader',
+    narrative:
+      '{age}岁这年，内容行业从人人眼红的流量红利，进入了算法洗牌的残酷期。追热点的号一个接一个没落，真正留下来的反而是那些扎进细分领域、有自己判断的人。你在这条路上走了十五年，粉丝数字涨了又跌、跌了又涨，你习惯了被看见，也习惯了被遗忘——但深夜你删掉又打回的字，还是会问自己同一个问题：\n' +
+      '我还在做我想做的事吗？还是只是惯性替我把路走完了？\n' +
+      '这不是二十多岁那种"下一条爆款在哪里"的焦虑，而是"我明明还有选择"的清醒。你知道自己累了，但你没认输。你只是模糊地感觉到：四十岁不是终点，是另一条路的街角。你站在这里，还能再选一次——不是从零开始，是带着这十五年捡来的所有东西，重新出发。',
+    options: [
+      {
+        id: 'ip_deepen_path',
+        label: '不换了，把这条路走穿',
+        description: '你的积累已经足够深，继续把它凿到别人够不到的地方',
+        hint: '信念+12 · 幸福+8 · 压力-4 · 相关技能+8',
+        hintColor: 'positive',
+        memorySet: { reinforcedIppath: true },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+          const branch = s.narrativeBranch;
+          ensureSkills(s);
+          if (branch === 'ip_educator') {
+            s.pathSkills['contentSkill'] = Math.min(100, (s.pathSkills['contentSkill'] || 0) + 8);
+          } else if (branch === 'ip_thought_leader') {
+            s.pathSkills['contentSkill'] = Math.min(100, (s.pathSkills['contentSkill'] || 0) + 8);
+            s.pathSkills['brandSkill'] = Math.min(100, (s.pathSkills['brandSkill'] || 0) + 8);
+          }
+        },
+        log: '{age}岁，你没换方向。不是不敢，是你想明白了——你在这条路上攒下的内容、判断和信任，不是别人轻易能偷走的。你关掉那些"转型"的念头，把十五年的积累又往下凿了一层。浪退了，你才发现自己从没被冲走，你一直站在礁石上。',
+      },
+      {
+        id: 'ip_switch_to_entertainer',
+        label: '下场追流量，自己搏一个爆款',
+        description: '内容/口碑你都攒够了，是时候把它变成更响的声量',
+        hint: '积蓄-50000 · 压力+15 · 信念+8 · 切换至泛娱乐线',
+        hintColor: 'danger',
+        savingsChange: -50000,
+        branchSwitch: 'ip_entertainer',
+        memorySet: { switchedToEntertainerMid: true },
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.stress = clamp(s.stress + 15, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.pathSkills['audienceSkill'] = Math.min(100, (s.pathSkills['audienceSkill'] || 0) + 6);
+        },
+        log: '{age}岁，你决定自己下场搏一把声量。过去你教别人、替别人背书，现在你把自己推到台前最亮的地方。你推掉了那些"稳"的档期，把攒了十几年的认知和梗全押进去。你比25岁那次更平静——那一次是赌，这一次是算。',
+      },
+      {
+        id: 'ip_switch_to_educator',
+        label: '收回锋芒，把积累做成体系',
+        description: '聚光灯下站久了，你想回到那个"让人真正学到东西"的地方',
+        hint: '内容创作+8 · 受众运营+4 · 压力+8 · 信念+6 · 切换至知识付费线',
+        hintColor: 'neutral',
+        skillGains: { contentSkill: 8, audienceSkill: 4 },
+        branchSwitch: 'ip_educator',
+        memorySet: { switchedToEducatorMid: true },
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '{age}岁，你收回了追热点的锋芒，决定回到那个"让人真正学到东西"的地方。那些年你讲了太多段子、追了太多热点，忽然想沉下心来，把那些真正值钱的经验做成一套体系。你开始录长课——不是二十多岁那种蹭热度的快内容，是带着十五年踩过的坑做出来的东西。你发现当你的内容有了分量，钱和信任会自己找上门。',
+      },
+      {
+        id: 'ip_switch_to_thought_leader',
+        label: '把积累变成观点和影响力',
+        description: '你比多数人更懂这个行业，也更能讲清楚它——那就让更多人听你讲',
+        hint: '内容创作+10 · 品牌价值+8 · 被动收入+6000/年 · 压力+6 · 切换至思想领袖线',
+        hintColor: 'positive',
+        skillGains: { contentSkill: 10, brandSkill: 8 },
+        passiveIncomeChange: 6000,
+        branchSwitch: 'ip_thought_leader',
+        memorySet: { switchedToThoughtLeaderMid: true },
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '{age}岁，你决定不再只做那个"讲方法的人"，而要成为那个"定义方向的人"。你开始系统性地输出——不是二十多岁那种追热点的观点，是带着十五年放过的狠话、吃过的亏写出来的东西。更新比那时慢，但每一篇都有人收藏、转发、反复看。你发现当你的名字有了分量，钱和影响力会自己找上门。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 分支记忆回声事件（ip 42-44岁，后期"翻旧账"，形成叙事闭环）
+// ============================================================
+
+const ipEchoEvents: NarrativeEvent[] = [
+
+  // 42岁：当年一起起号的老搭档
+  {
+    id: 'ip_echo_old_partner',
+    title: '老搭档',
+    sceneTag: 'home',
+    pathId: 'super_ip',
+    ageRange: [42, 42],
+    priority: 6,
+    oncePerGame: true,
+    memoryAnyOf: ['choseEducator', 'choseEntertainer', 'choseThoughtLeader'],
+    narrative:
+      '你刷到一条动态：当年那个和你一起从零起步、共用一台手机剪视频的"老搭档"，现在办起了自己的MCN，签了上百个达人。照片里他还是那副"我们要做全网最火内容"的光，但鬓角白了，身后多了一整个办公室的年轻人。\n' +
+      '你们已经很久没联系了。你盯着那张照片，忽然想起：当年如果不是他拉你入行，你可能现在还在那间格子间里。你打开聊天框，光标闪了很久。',
+    options: [
+      {
+        id: 'ip_reach_out_partner',
+        label: '发条消息，约他喝一杯',
+        description: '有些过命的交情，不该只活在朋友圈里',
+        hint: '幸福+8 · 压力-5 · 存款-2000',
+        hintColor: 'positive',
+        savingsChange: -2000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+        },
+        log: '你给他发了条消息，他秒回："我还以为你把我忘了。"你们约在当年一起熬夜剪视频的小馆子，他还是点他常吃的那几个菜。聊到凌晨，他问你当年要是没一起入行会怎样，你笑着说"那我可能还在那间格子间里"。他拍你的肩："那你就错过了我。"两鬓都有白发的人，在深夜的火锅店里笑得跟二十年前一样。',
+      },
+      {
+        id: 'ip_watch_quietly',
+        label: '看看就好，不打扰',
+        description: '各自安好，就是最好的结局',
+        hint: '幸福+3 · 压力-2',
+        hintColor: 'neutral',
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+          s.stress = clamp(s.stress - 2, 0, 100);
+        },
+        log: '你点了个赞，关掉了动态。你们已经很久没联系了，但你知道他过得很好，他也知道你在自己的路上走得不错。成年人的友谊有时候就是这样——不打扰，但心里一直有那个位置。你把手机放进口袋，继续打磨你的下一期内容。',
+      },
+    ],
+  },
+
+  // 43岁：那扇没推开的门
+  {
+    id: 'ip_echo_unopened_door',
+    title: '那扇门',
+    sceneTag: 'home',
+    pathId: 'super_ip',
+    ageRange: [43, 43],
+    priority: 6,
+    oncePerGame: true,
+    memoryAnyOf: ['choseEducator', 'choseEntertainer', 'choseThoughtLeader'],
+    narrative:
+      '深夜剪完一条视频，你顺手刷到一条热搜：一个你当年研究过、最后没做过的垂类赛道，被一个团队做成了爆款，转头就是千万粉丝。你点进去看了很久。\n' +
+      '十五年前你面前有过这么一扇门，你犹豫过，最后没推开。你从不后悔自己的选择——你现在的路也很好。只是偶尔，在这样安静的深夜，你会好奇门后面的那条路，会把你带到哪里。你关掉手机，不是留恋，是想知道，那个平行的自己，过得好不好。',
+    options: [
+      {
+        id: 'ip_close_forever',
+        label: '合上手机，回到自己的路',
+        description: '不回顾，不内耗，专注脚下',
+        hint: '信念+8 · 压力-4 · 幸福+3',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+        },
+        log: '你把手机放回桌上，望向窗外。这扇门你已经看了十五年，该合上了。你走回自己的剪辑台，那里有你的内容、你的事业、你亲手选的人生。你不再回望——不是不想，是终于明白，每条路都有它独一无二的风景。',
+      },
+      {
+        id: 'ip_open_again',
+        label: '顺着那扇门，去做当年没做的事',
+        description: '中年再去补上当年的遗憾，做点真正想做的事',
+        hint: '幸福+10 · 压力+6 · 信念+6 · 存款-8000',
+        hintColor: 'neutral',
+        savingsChange: -8000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '你花了一个月把当年那个垂类赛道重新研究了一遍。它已经不再是当年的样子了——但你的判断力也不再是十五年前的样子。你注册了一个新账号，白纸一样从头开始。你四十多岁了，本该求稳，可你发现，当你真的想推开一扇门的时候，你依然会心跳加速。你决定去看看——不是逃回过去，是带着这半生的重量，去补一个当年没舍得做的梦。',
+      },
+    ],
+  },
+
+  // 44岁：换过航向的人
+  {
+    id: 'ip_echo_switched_path',
+    title: '换过的路',
+    sceneTag: 'home',
+    pathId: 'super_ip',
+    ageRange: [44, 44],
+    priority: 6,
+    oncePerGame: true,
+    conditions: (s) => (s.branchHistory || []).length > 1,
+    narrative:
+      '整理旧网盘时，你翻到一段十五年前的粗剪视频。那是你刚入行时拍的，镜头晃、收音差、满是没学会剪辑的人的稚嫩。你忽然想起自己换过多少次方向——从做知识，到追泛娱乐，再到转身做思想领袖，又或者反着来。\n' +
+      '外人看你，是一个"一直很火"的人。只有你知道，你其实一直在换路，只是一次比一次更笃定。那些曾让你彻夜难眠的"错误选择"，回头看都成了下一个路口的路标。你保存好那段粗剪，像保存一枚旧徽章。不是遗憾，是纪念——纪念那个愿意一次次重新出发的自己。',
+    options: [
+      {
+        id: 'ip_accept_own_path',
+        label: '坦然接受，这就是我的人生',
+        description: '换过路，绕了远，但每一步都算数',
+        hint: '信念+10 · 幸福+8 · 压力-5',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+        },
+        log: '你关掉那段粗剪，给自己倒了杯茶。窗外是黄昏，你就着夕阳想：你换过路，绕过远，走过别人觉得"浪费"的弯路——但正是那些弯路，让你在四十岁的时候，比那些从未下过车的人，更清楚自己想去哪。你吹了吹茶上的热气。这条路是你自己绕出来的，每一段都算数。',
+      },
+      {
+        id: 'ip_share_winding_path',
+        label: '把换路的经验讲给新人听',
+        description: '你的弯路，是别人最好的路灯',
+        hint: '幸福+8 · 受众运营+4 · 被动收入+4000/年 · 压力+3',
+        hintColor: 'positive',
+        skillGains: { audienceSkill: 4 },
+        passiveIncomeChange: 4000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress + 3, 0, 100);
+        },
+        log: '你受邀在一个创作者社群里分享自己换路的心路。你讲了那些绕过的弯、吃过的亏、推翻重来的决定。讲完掌声响了很久。散场后一个刚起步的年轻人红着眼眶说："谢谢你，我正纠结要不要换方向。"你拍拍他的肩："换不换都对，只要别骗自己。"你忽然觉得，你这半生的蜿蜒，原来也可以成为别人的坦途。',
       },
     ],
   },
@@ -2446,6 +2688,8 @@ export const IP_NARRATIVE_EVENTS: NarrativeEvent[] = [
   ...thoughtLeaderEvents,
   ...crossBranchEvents,
   ...crisisEvents,
+  ...midlifeRebranchEvents,
+  ...ipEchoEvents,
 ];
 
 // ============================================================
@@ -3322,7 +3566,7 @@ const lateGameEvents: NarrativeEvent[] = [
           addFollowers(s, -5000);
           addReputation(s, -5);
         },
-        log: '46岁，你发了一条长文。没有辩解，没有公关话术，你只是说"那句话是我说的，我当时想错了，现在我的观点变了。人是会变的。"掉了五千粉，但评论区慢慢平静了。小棠回了一句"我看到了"，三天后她又开始给你的内容点赞。你明白了：被流量反噬是网红的成人礼——你没那么好，也没那么坏，你只是一个会犯错的人。',
+        log: '{age}岁，你发了一条长文。没有辩解，没有公关话术，你只是说"那句话是我说的，我当时想错了，现在我的观点变了。人是会变的。"掉了五千粉，但评论区慢慢平静了。小棠回了一句"我看到了"，三天后她又开始给你的内容点赞。你明白了：被流量反噬是网红的成人礼——你没那么好，也没那么坏，你只是一个会犯错的人。',
       },
       {
         id: 'silence_wait_out',
@@ -3336,7 +3580,7 @@ const lateGameEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness - 8, 0, 100);
           addFollowers(s, -15000);
         },
-        log: '46岁，你停更了两周。你没看评论，没回私信，把手机关了一个人去了海边。回来后发现热度确实退了，但粉丝掉了一万五，评论区的温度也冷了——你以前那种"像朋友一样"的氛围没了。小棠没有再私信你，但也没取关。你知道有些裂痕可以修补，有些只能带着。',
+        log: '{age}岁，你停更了两周。你没看评论，没回私信，把手机关了一个人去了海边。回来后发现热度确实退了，但粉丝掉了一万五，评论区的温度也冷了——你以前那种"像朋友一样"的氛围没了。小棠没有再私信你，但也没取关。你知道有些裂痕可以修补，有些只能带着。',
       },
       {
         id: 'fight_back',
@@ -3351,7 +3595,220 @@ const lateGameEvents: NarrativeEvent[] = [
           addFollowers(s, -20000);
           addReputation(s, -10);
         },
-        log: '46岁，你发了一条视频逐条反驳。你据理力争、寸步不让，评论区彻底炸了——一半人骂你"死鸭子嘴硬"，一半人挺你"有骨气"。你赢了争吵，但输了氛围。粉丝掉了两万，品牌合作暂停了三个月。小棠取关了。半年后风波平息，你还在做内容，但你知道有些东西永远地变了：你不再相信"全网都是你的朋友"这种幻觉了。',
+        log: '{age}岁，你发了一条视频逐条反驳。你据理力争、寸步不让，评论区彻底炸了——一半人骂你"死鸭子嘴硬"，一半人挺你"有骨气"。你赢了争吵，但输了氛围。粉丝掉了两万，品牌合作暂停了三个月。小棠取关了。半年后风波平息，你还在做内容，但你知道有些东西永远地变了：你不再相信"全网都是你的朋友"这种幻觉了。',
+      },
+    ],
+  },
+
+  // 53岁：名字的重量 —— 超级IP的黄昏
+  {
+    id: 'ip_late_name',
+    title: '名字的重量',
+    sceneTag: 'home',
+    pathId: 'super_ip',
+    ageRange: [53, 53],
+    priority: 8,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    narrative:
+      '那天你收到一个粉丝的私信，只有一句话："谢谢你，你的内容救了我一命。"你点开ta的首页，空荡荡的，只发过这一条。你盯了很久，没有回。\n' +
+      '你这一辈子都在经营"你的名字"——一个IP、一个符号、一个被千万人记住的label。你把它做大、做值钱、做出圈。可这一刻你忽然发现，那个名字真正的重量，从来不在于它值多少钱，而在于它曾在某个陌生人的深夜，挡下过一场风暴。\n' +
+      '你关了电脑，窗外天已经亮了。你想起自己二十岁那年，也曾经在深夜被某个陌生人的一句话救过。这么多年，你一直在追逐"被多少人看见"，却忘了问自己：你究竟想被看见什么？',
+    options: [
+      {
+        id: 'ip_legacy_mentor',
+        label: '把话筒交给年轻人，做他们的梯子',
+        description: '你照亮过的路，也该让别人也踩得上去',
+        hint: '信念+12 · 声誉+8 · 粉丝+50000 · 幸福+6',
+        hintColor: 'positive',
+        skillGains: { audienceSkill: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          addFollowers(s, 50000);
+          addReputation(s, 8);
+        },
+        log: '{age}岁，你启动了扶持计划，把平台流量和资源倾斜给那些还不会"做自己"的年轻人。有人说你"疯了，给自己培养对手"，你笑了笑。一年后，你扶持的创作者里有人拿了奖、有人出了书、有人救了一群人的命。你忽然明白：一个IP最了不起的顶点，不是被所有人仰望，而是让所有人都有机会成为自己。你站在山顶那几年，原来只是为了今天能告诉别人——路在哪儿。',
+      },
+      {
+        id: 'ip_legacy_keep',
+        label: '继续做，做到时代的最后一刻',
+        description: '你的名字就是你的作品，你停不下来',
+        hint: '信念+15 · 压力+10 · 粉丝+80000 · 幸福-3',
+        hintColor: 'danger',
+        skillGains: { audienceSkill: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 15, 0, 100);
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.happiness = clamp(s.happiness - 3, 0, 100);
+          addFollowers(s, 80000);
+        },
+        log: '{age}岁，你决定继续做下去。新的一代不认识你，但你的名字还在榜单上。你学会了新的梗、新的平台、新的算法，像二十岁那样重新当回"新人"。有次直播，弹幕刷屏问"你多大了"，你笑着说"我永远二十岁"。下播后你照了照镜子，镜子里的人眼角有纹路了。你忽然有点难过——你连老，都不敢老。',
+      },
+      {
+        id: 'ip_legacy_quiet',
+        label: '把账号交给团队，自己退到幕后',
+        description: '你已经证明过自己了，剩下的日子想为自己活',
+        hint: '幸福+10 · 压力-12 · 信念-8 · 粉丝-20000',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.stress = clamp(s.stress - 12, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
+          addFollowers(s, -20000);
+        },
+        log: '{age}岁，你悄悄把账号交给了团队运营，自己退了幕。没有告别，没有煽情，只发了一条"谢谢大家，江湖再见"。评论区哭成一片，但你人已经在洱海边了。你住进一间没信号的小院，每天种花、写字、看云。你终于明白：那个名字替你活了大半辈子，现在，轮到叫这个名字的真人，去过自己的生活了。',
+      },
+    ],
+  },
+
+  // 50岁：流量洼地 —— 过气焦虑与初心拉扯
+  {
+    id: 'ip_late_flow_plateau',
+    title: '流量洼地',
+    sceneTag: 'studio',
+    pathId: 'super_ip',
+    ageRange: [50, 50],
+    priority: 8,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'normal',
+    narrative:
+      '某天你打开后台，看到三个月的数据曲线像一条平缓的抛物线——播放量、完播率、涨粉数，全都趴在地上，纹丝不动。你换过标题、换过封面、换过选题，甚至跟着算法改过风格，但数据就是不肯抬头。\n' +
+      '一个之前合作过的品牌方发来消息，开了一个很高的价，条件是内容要按他们的脚本来——那套"标题党+制造焦虑+收割"的流量公式，你二十年前就玩过，也早就看透了。对方说："哥，你过气了没关系，听话就能再火回来。"你盯着那条消息，忽然有种说不出的滋味：你在这个行业待了快三十年，第一次觉得，自己快跟不上了。',
+    options: [
+      {
+        id: 'accept_brand_script',
+        label: '接这单，按他们的脚本来',
+        description: '先活下去，再说理想',
+        hint: '收入+6万 · 内容创作-6 · 信念-8 · 压力+6',
+        hintColor: 'neutral',
+        skillGains: { contentSkill: -6 },
+        savingsChange: 60000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
+        },
+        log: '{age}岁，你接了那单。脚本写得炉火纯青——标题党、制造焦虑、一键三连的钩子，你闭着眼都能做。数据果然又好看了，品牌方很满意，又续了三期。但每录完一期，你看着监视器里那个念着别人台词的自己，都觉得陌生。钱是赚到了，可你心里清楚：你正在用别人给的剧本，演一个你自己都不认识的过气网红。',
+      },
+      {
+        id: 'stay_true',
+        label: '婉拒，继续做自己想做的',
+        description: '数据可以难看，但不能连自己都骗',
+        hint: '内容创作+12 · 品牌价值+6 · 信念+10 · 幸福+6 · 收入-6万',
+        hintColor: 'positive',
+        skillGains: { contentSkill: 12, brandSkill: 6 },
+        savingsChange: -60000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+        },
+        log: '{age}岁，你回了品牌方一句"算了，我还是想按自己的来"。对方没再劝，但那单自然黄了，收入少了六万。你继续做那些"数据难看"的内容，接连几条都扑了。直到一个月后，一条你真正想讲的故事意外爆了，评论区好多人说"这才是我关注你的原因"。你忽然明白：流量会过气，但真诚不会。你可以输给算法一时，但不能输给那个一直在做自己的自己。',
+      },
+      {
+        id: 'self_mock',
+        label: '坦然自嘲一把，把过气做成内容',
+        description: '既然避不开，不如大方承认',
+        hint: '受众运营+10 · 品牌价值+8 · 信念+6 · 压力-6 · 粉丝+20000',
+        hintColor: 'positive',
+        skillGains: { audienceSkill: 10, brandSkill: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.stress = clamp(s.stress - 6, 0, 100);
+          addFollowers(s, 20000);
+        },
+        log: '{age}岁，你发了一条视频，标题叫《过气网红的碎碎念》。你没有卖惨，只是平静地讲"我确实过气了，数据惨不忍睹，但我还挺喜欢现在的自己"。没想到这条没做任何推广的碎碎念，意外击中了很多同龄人的共鸣，涨了两万粉。那些私信里说"原来你也一样"的人，让你觉得自己不是一个人在"过气"。过气不是终点，是你终于可以不再为别人而活的起点。',
+      },
+      {
+        id: 'long_break',
+        label: '索性停更一阵，去透口气',
+        description: '过气就过气，先把自己养回来',
+        hint: '幸福+8 · 压力-10 · 粉丝-10000',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 10, 0, 100);
+          addFollowers(s, -10000);
+        },
+        log: '{age}岁，你把手机关了，停更了整整一个月。你去爬山、做饭、陪家人，第一次连续一周没打开后台。回来那天你鼓足勇气点开数据，粉丝掉了一万，但你意外地平静。你忽然觉得，"过气"这两个字其实没那么可怕——它只是提醒你，你终于可以不为流量活了。你决定以后更新慢一点、真一点，反正你已经过了需要在意的年纪。',
+      },
+    ],
+  },
+
+  // 57岁：老伙计 —— 与团队/粉丝/家人的沉淀
+  {
+    id: 'ip_late_tribe',
+    title: '老伙计',
+    sceneTag: 'city',
+    pathId: 'super_ip',
+    ageRange: [57, 57],
+    priority: 8,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    narrative:
+      '你收到一条消息，是跟了你二十年的老同事大刘——从你只有几百个订阅就跟着你的第一个"搭档"，也是你团队里最老的那批人。他给你发了一句："哥，我要退休了，谢谢你这些年。"你忽然想起，你们一起熬过无数个通宵，一起扛过最狼狈的塌房，一起把账号从零做到千万。\n' +
+      '你算了算，他今年五十八，跟了你二十一年。你一直以为"团队"是为你打工的人，是给你创造流量的机器。直到这一刻你才猛地意识到：他们不是你的员工，是你这三十年"名字"真正的见证者和合伙人。你忽然有点惭愧——这些年你忙着追流量、追增长，多久没好好坐下来，跟他们吃过一顿饭了？',
+    options: [
+      {
+        id: 'honor_team',
+        label: '认真办一场，给团队和老粉一个交代',
+        description: '二十年的情分，值得一场体面的告别',
+        hint: '品牌价值+10 · 信念+10 · 幸福+8 · 声誉+10 · 花费-3万',
+        hintColor: 'positive',
+        skillGains: { brandSkill: 10 },
+        savingsChange: -30000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          addReputation(s, 10);
+        },
+        log: '{age}岁，你包下一家餐厅，把跟了你多年的老员工和老粉代表都请来了。你没说什么煽情的话，只是亲自给他们一人倒了一杯酒，说"这二十年，谢谢你们。"大刘喝到微醺，红着眼说"哥，值了"。那顿饭破费三万，但你觉得这是你这辈子花得最值的一笔钱。你忽然明白：一个IP最大的资产从来不是粉丝数，是那些陪你从零走到今天的人。',
+      },
+      {
+        id: 'share_equity',
+        label: '把股份分给跟了多年的伙伴',
+        description: '他们没有名字，但功不可没',
+        hint: '信念+12 · 幸福+6 · 声誉+8 · 收入-10万',
+        hintColor: 'positive',
+        skillGains: { audienceSkill: 8 },
+        savingsChange: -100000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          addReputation(s, 8);
+        },
+        log: '{age}岁，你重新做了股权结构，把一部分股份分给了大刘那批跟了你多年的伙伴。他们先是愣住，然后有人开始掉眼泪。你只说了一句："这二十年，你们不是我的员工，是我的合伙人。"业务层面你损失了十万分红，但你换来了一个更稳的团队——往后的年份里，每次风口转向，都是他们顶住压力帮你把账号和口碑都守住了。你这才懂：把利益分出去，是把人心留住。',
+      },
+      {
+        id: 'retire_with_family',
+        label: '把重心还给家人，退居幕后',
+        description: '打拼半生，该陪陪家里人了',
+        hint: '幸福+12 · 压力-12 · 信念-6 · 粉丝-15000',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 12, 0, 100);
+          s.stress = clamp(s.stress - 12, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 6, 0, 100);
+          addFollowers(s, -15000);
+        },
+        log: '{age}岁，大刘退休那天，你也跟着退居幕后了。你把账号和团队交给下一代，自己回家陪老婆孩子。二十八年，你第一次在家连过一个完整的春节。你刷到粉丝在评论区问"你还会更新吗"，你回了一条"会在，但不会那么拼了"。你终于明白：你把这个IP当人生，可人生不该只有一个IP。那些年你亏欠家人的，现在用余生慢慢还。',
+      },
+      {
+        id: 'stay_all_in',
+        label: '继续all in，把IP做到最后一刻',
+        description: '他们可以退，你不行',
+        hint: '信念+15 · 压力+12 · 幸福-6 · 声誉+6',
+        hintColor: 'danger',
+        skillGains: { contentSkill: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 15, 0, 100);
+          s.stress = clamp(s.stress + 12, 0, 100);
+          s.happiness = clamp(s.happiness - 6, 0, 100);
+          addReputation(s, 6);
+        },
+        log: '{age}岁，大刘他们退休了，但你决定继续all in。你又签了几个新的合作，把账号的盘子越做越大。外人看来你正盛年不老，只有你自己知道：你每天醒来第一件事是看数据，晚上睡前最后一件事还是看数据。你连休息都不敢，怕一停，那个"你还行"的人设就塌了。你忽然有点羡慕大刘——他退了，可以睡个安稳觉；而你，还困在这个自己给自己造的牢笼里。',
       },
     ],
   },

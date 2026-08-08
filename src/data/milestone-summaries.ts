@@ -135,7 +135,7 @@ function summaryAt30(state: GameState): string[] {
   const salary = state.currentMonthlySalary;
   const startSalary = state.careerStartSalary;
   const pathName = state.retirementPath ? PATH_NAMES[state.retirementPath] : null;
-  const ev = extractKeyEvents(state, 22);
+  const ev = extractKeyEvents(state, state.startAge || 22);
   const p = state.partner;
 
   // —— 开篇：十年
@@ -214,7 +214,7 @@ function summaryAt30(state: GameState): string[] {
 
   // —— 财务现实
   if (ev.bankrupt || savings < 0) {
-    lines.push(`存款是负的。三十岁的你比二十二岁时还穷，信用卡还欠着钱。你不再跟大学同学聊理想了——不是不想聊，是聊不起。`);
+    lines.push(`存款是负的。三十岁的你比${state.startAge || 22}岁时还穷，信用卡还欠着钱。你不再跟大学同学聊理想了——不是不想聊，是聊不起。`);
   } else if (savings > 500000) {
     lines.push(`存款${fmtWan(savings)}。你有了一点底气，但你见过同事被裁后三个月找不到工作的样子，知道这点底气经不住什么风浪。`);
   } else if (savings > 100000) {

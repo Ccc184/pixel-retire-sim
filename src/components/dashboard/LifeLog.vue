@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
 import { useGameStore } from '../../store/game.store.js';
+import { interpolateText } from '../../utils/text-interpolate.js';
 
 const store = useGameStore();
 const s = computed(() => store.state);
+
+// 渲染时插值 {startAge}/{age} 占位符（覆盖开局日志等直接写入 lifeLog 的文案）
+function interp(log: string): string {
+  return interpolateText(log, s.value);
+}
 
 const logContainer = ref<HTMLElement | null>(null);
 
@@ -115,7 +121,7 @@ function isNewest(idx: number): boolean {
                 <span class="age-prefix">AGE</span>
                 <span class="age-num">{{ extractAge(log) }}</span>
               </span>
-              <span class="fold-text">{{ log }}</span>
+              <span class="fold-text">{{ interp(log) }}</span>
             </li>
           </ul>
         </div>
@@ -141,7 +147,7 @@ function isNewest(idx: number): boolean {
                 <span class="age-prefix">AGE</span>
                 <span class="age-num">{{ extractAge(log) }}</span>
               </span>
-              <span class="fold-text">{{ log }}</span>
+              <span class="fold-text">{{ interp(log) }}</span>
             </li>
           </ul>
         </div>
@@ -172,7 +178,7 @@ function isNewest(idx: number): boolean {
             <span class="age-prefix">AGE</span>
             <span class="age-num">{{ extractAge(log) }}</span>
           </span>
-          <span class="log-text">{{ log }}</span>
+          <span class="log-text">{{ interp(log) }}</span>
           <!-- 黑天鹅闪烁边框条 -->
           <span v-if="getLogCategory(log) === 'swan'" class="swan-flash-bar" />
         </li>

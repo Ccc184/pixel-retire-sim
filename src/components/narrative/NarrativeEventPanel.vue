@@ -89,60 +89,10 @@ const hintColorMap: Record<string, { color: string; shadow: string }> = {
   neutral: { color: 'var(--neon-blue)', shadow: '0 0 4px var(--neon-blue)' },
   danger: { color: '#ff4444', shadow: '0 0 4px #ff4444' },
 }
-
-// 技能值显示
-const skillEntries = computed(() => {
-  const skills = store.state.pathSkills
-  if (!skills) return []
-  return Object.entries(skills).filter(([_, v]) => v > 0)
-})
-
-const skillLabels: Record<string, string> = {
-  // AI共生者
-  aiSkill: 'AI技术',
-  promptMastery: '提示词',
-  aiTraining: '模型训练',
-  // 链上原住民
-  tradingSkill: '交易',
-  defiSkill: 'DeFi开发',
-  communityInfluence: '社区影响',
-  // 数字游牧民
-  remoteSkill: '远程协作',
-  languageSkill: '语言能力',
-  crossCulturalSkill: '跨文化',
-  // 超级IP
-  contentSkill: '内容创作',
-  audienceSkill: '受众运营',
-  brandSkill: '品牌价值',
-  // 银发守夜人
-  careSkill: '护理专业',
-  managementSkill: '运营管理',
-  policySkill: '政策资源',
-  // 生物赌徒
-  healthOptSkill: '健康优化',
-  bioKnowledge: '生物知识',
-  investmentSkill: '投资分析',
-}
 </script>
 
 <template>
   <div class="narrative-panel">
-    <!-- 年初独白 -->
-    <div v-if="store.state.yearOpeningMonologue" class="year-monologue">
-      {{ store.state.yearOpeningMonologue }}
-    </div>
-
-    <!-- 技能值显示 -->
-    <div v-if="skillEntries.length > 0" class="skill-bar">
-      <span
-        v-for="[skill, val] in skillEntries"
-        :key="skill"
-        class="skill-chip"
-      >
-        {{ skillLabels[skill] || skill }} <strong>{{ val }}</strong>
-      </span>
-    </div>
-
     <!-- 财务预警条 -->
     <div class="finance-warning-bar" :class="'warn-' + safetyLevel">
       <span class="warn-icon-main">
@@ -219,12 +169,20 @@ const skillLabels: Record<string, string> = {
 
     <!-- 无事件时显示休养生息（岔路口激活时不显示） -->
     <div v-else-if="!isCrossroadActive" class="no-event-container">
-      <div class="no-event-icon">🌙</div>
-      <h3 class="no-event-title">平静的一年</h3>
-      <p class="no-event-desc">
-        没有特别的事情发生。你可以选择休养生息，让身心自然恢复。<br>
-        有时候，不折腾就是最好的选择。
-      </p>
+      <!-- 本年度已做出岔路口抉择：展示决策剧情，而非"平静的一年" -->
+      <template v-if="store.pendingCrossroadStory">
+        <div class="no-event-icon">⚡</div>
+        <h3 class="no-event-title crossroad-pending-title">命运岔路口 · 你已做出选择</h3>
+        <p class="no-event-desc crossroad-decision-text">{{ store.pendingCrossroadStory }}</p>
+      </template>
+      <template v-else>
+        <div class="no-event-icon">🌙</div>
+        <h3 class="no-event-title">平静的一年</h3>
+        <p class="no-event-desc">
+          没有特别的事情发生。你可以选择休养生息，让身心自然恢复。<br>
+          有时候，不折腾就是最好的选择。
+        </p>
+      </template>
     </div>
 
     <!-- 岔路口激活时的占位提示 -->
@@ -242,6 +200,7 @@ const skillLabels: Record<string, string> = {
       <div class="action-hint">
         <template v-if="currentEvent && !selectedOptionId">▸ 请先选择一个选项</template>
         <template v-else-if="currentEvent && selectedOptionId">▸ 已选择，可以推进</template>
+        <template v-else-if="store.pendingCrossroadStory">▸ 你已做出选择，可以推进</template>
         <template v-else-if="!isCrossroadActive">▸ 平静的一年</template>
         <template v-else>▸ 命运岔路口</template>
       </div>
@@ -267,7 +226,7 @@ const skillLabels: Record<string, string> = {
         @click="handleCommit"
       >
         <span class="btn-arrow">▶</span>
-        {{ currentEvent ? '度过这一年' : '休养生息' }}
+        {{ currentEvent || store.pendingCrossroadStory ? '度过这一年' : '休养生息' }}
         <span class="btn-arrow">▶</span>
       </button>
     </div>
@@ -307,59 +266,6 @@ const skillLabels: Record<string, string> = {
 }
 .narrative-panel::-webkit-scrollbar-thumb:hover {
   background: rgba(0, 212, 255, 0.5);
-}
-
-/* ============================================================
-   年初独白
-   ============================================================ */
-.year-monologue {
-  padding: 5px 12px;
-  background: rgba(201, 0, 255, 0.04);
-  border-left: 3px solid var(--neon-purple);
-  border-radius: 0 4px 4px 0;
-  font-size: 11px;
-  color: #d0c0e0;
-  font-style: italic;
-  line-height: 1.5;
-  flex-shrink: 0;
-}
-
-/* ============================================================
-   技能值 —— 低调设计，不抢叙事视觉焦点
-   ============================================================ */
-.skill-bar {
-  display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
-  flex-shrink: 0;
-  opacity: 0.55;
-}
-
-.skill-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 5px;
-  font-size: 10px;
-  color: rgba(180, 185, 200, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 2px;
-  background: rgba(255, 255, 255, 0.03);
-  font-family: 'DotGothic16', monospace;
-  letter-spacing: 0.5px;
-  transition: opacity 0.2s;
-}
-
-.skill-chip:hover {
-  opacity: 1;
-  color: rgba(220, 225, 240, 0.95);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-.skill-chip strong {
-  font-size: 10px;
-  font-weight: 400;
-  color: rgba(200, 210, 230, 0.6);
 }
 
 /* ============================================================
@@ -668,6 +574,18 @@ const skillLabels: Record<string, string> = {
   text-align: center;
   line-height: 1.6;
   margin: 0;
+}
+
+/* 岔路口决策剧情展示：左对齐、可滚动、字号略大，承载完整叙事 */
+.no-event-desc.crossroad-decision-text {
+  text-align: left;
+  font-size: 12px;
+  color: #cdd9e6;
+  line-height: 1.8;
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 4px;
+  white-space: pre-wrap;
 }
 
 /* ============================================================

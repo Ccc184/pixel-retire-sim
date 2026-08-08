@@ -2,14 +2,14 @@ import { defineStore } from 'pinia';
 import { ref, computed, nextTick, shallowRef } from 'vue';
 import { matchStoryboardScenes, type SceneContext } from '../data/storyboard-scenes.js';
 import type { GameState, Profession, CityType, OriginChoices, YearResult, CrossroadEvent, NarrativeEvent, MBTIType, SalaryChangeEntry, RetirementDream } from '../types/global.d.js';
-import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, checkCanRetire, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth, isDelayedRetirementPhase, applyAnnualChainGrowth } from '../utils/math-engine.js';
+import { CITY_CONFIGS, applySalaryRaise, calculateYearlySettlement, checkEnding, switchCity, getVoluntaryRetirementEnding, calculateTotalWealth, clampAnnualSalaryGrowth, isDelayedRetirementPhase, applyAnnualChainGrowth, isFinanciallyFree } from '../utils/math-engine.js';
 import { rollRandomEvents } from '../data/events.js';
 import { rollDailyEvents, applyDailyEventEffects } from '../data/daily-events.js';
 import { ENDINGS, buildEndingText } from '../utils/narrative.js';
 import { computeFinalGrade, type FinalGrade } from '../utils/rating.js';
 import { initParents, initFriends, processRelationships, resetMarriedFriendSet } from '../utils/relationships.js';
 import { resetSharedNarrativeLru, filterSharedRecent } from '../utils/shared-narrative-lru.js';
-import { scheduleSave, loadSave, clearSave } from './persist.js';
+import { scheduleSave, forceSave, loadSave, clearSave, saveExists } from './persist.js';
 import { recordRun } from '../utils/collection.js';
 import { detectCrossroad } from '../data/crossroads.js';
 import { detectCardEchoes } from '../data/card-echoes.js';
@@ -18,6 +18,7 @@ import { processRomanceYear } from '../data/romance.js';
 import { checkAchievements } from '../data/achievements.js';
 import { getPath } from '../data/retirement-paths.js';
 import { selectNarrativeEvent, ensurePathDataLoaded } from '../data/narrative-events.js';
+import { interpolateEventText, interpolateText } from '../utils/text-interpolate.js';
 import { checkAchievements as checkNarrativeAchievements } from '../data/narrative-achievements.js';
 import { getMBTIProfessionModifier, getActiveMBTIMechanics, getActiveMBTITrait } from '../data/mbti-system.js';
 import { RETIREMENT_DREAMS } from '../data/retirement-dreams.js';
@@ -28,6 +29,7 @@ function createInitialState(): GameState {
   return {
     // 核心数值
     currentAge: 22,
+    startAge: 22,
     targetAge: 60,
     targetWealth: 5000000,
     currentSavings: 0,
@@ -124,6 +126,8 @@ function createInitialState(): GameState {
     pathSkills: {},
     narrativeEventFired: {},
     triggeredAchievements: [],
+    branchMemory: {},
+    branchHistory: [],
     // 游戏阶段
     gamePhase: 'intro',
     currentEndingId: null,
@@ -159,6 +163,10 @@ export const useGameStore = defineStore('game', () => {
   const savedState = loadSave();
   const freshState = createInitialState();
   const initialState: GameState = savedState ? { ...freshState, ...savedState } : freshState;
+  // 有存档时停在主菜单，由玩家选择"继续上局"或"重新开始"，避免 PRESS START 直接清档
+  if (savedState) {
+    initialState.gamePhase = 'intro';
+  }
   // 兼容旧存档：确保 lifetime 字段存在
   const lifetimeFields = [
     'lifetimeSalary', 'lifetimeInvestmentGain', 'lifetimeSideHustle',
@@ -189,6 +197,9 @@ export const useGameStore = defineStore('game', () => {
     initialState.lastColdYear = 0;
   }
   const state = ref<GameState>(initialState);
+
+  // 是否存在可继续的存档（主菜单显示"继续上局"入口）；随 save/clear 实时更新
+  const hasSave = computed(() => saveExists.value);
   
   // 年度结算结果
   const lastYearResult = ref<YearResult | null>(null);
@@ -317,7 +328,7 @@ export const useGameStore = defineStore('game', () => {
     clearSave();
   }
   
-  function setupGame(city: CityType, profession: Profession, initSalary: number, targetWealth: number, mbtiType: MBTIType | null, retirementDream: RetirementDream | null) {
+  function setupGame(city: CityType, profession: Profession, initSalary: number, targetWealth: number, mbtiType: MBTIType | null, retirementDream: RetirementDream | null, startAge: number = 22) {
     state.value.currentCity = city;
     state.value.currentProfession = profession;
     state.value.initMonthlySalary = initSalary;
@@ -325,6 +336,10 @@ export const useGameStore = defineStore('game', () => {
     state.value.targetWealth = targetWealth;
     state.value.mbtiType = mbtiType;
     state.value.retirementDream = retirementDream;
+
+    // 现实映射：起始年龄 = 玩家输入，实际游戏就从该年龄开始
+    const safeStartAge = Math.max(18, Math.min(55, Math.round(startAge) || 22));
+    state.value.startAge = safeStartAge;
 
     // 应用MBTI×职业微调：初始薪资微调（可选，未选MBTI时不修正）
     // 注意：城市薪资系数不在开局乘——玩家输入的initSalary就是所选城市的实际月薪。
@@ -335,7 +350,7 @@ export const useGameStore = defineStore('game', () => {
 
     state.value.careerStartSalary = actualStartSalary;
     state.value.currentMonthlySalary = actualStartSalary;
-    state.value.currentAge = 22;
+    state.value.currentAge = safeStartAge;
     state.value.currentSavings = Math.round(actualStartSalary * 6); // 初始6个月工资作为缓冲
 
     // 根据起薪和城市合理设定年基础生活费（annualBaseCost）
@@ -375,13 +390,15 @@ export const useGameStore = defineStore('game', () => {
     state.value.pathSkills = {};
     state.value.narrativeEventFired = {};
     state.value.triggeredAchievements = [];
+    state.value.branchMemory = {};
+    state.value.branchHistory = [];
     // 重置三分镜队列
     pendingStoryboards.value = { family: [], life: [], career: [] };
     crossroadFiredTags.value = new Map();
 
-    addLog(`第22岁，你在${city}开始了${profession}的职业生涯，初始月薪${actualStartSalary}元。像素人生，正式开局。`);
+    addLog(`第${safeStartAge}岁，你在${city}开始了${profession}的职业生涯，初始月薪${actualStartSalary}元。像素人生，正式开局。`);
 
-    // 开局立即触发分镜分类，让22岁就能显示匹配的场景
+    // 开局立即触发分镜分类，让起始年龄就能显示匹配的场景
     nextTick(() => {
       classifyStoryboards([`第${state.value.currentAge}岁，你在${city}入职上班，开始了${profession}的职业生涯`]);
     });
@@ -789,11 +806,9 @@ export const useGameStore = defineStore('game', () => {
 
   function continueGame() {
     if (savedState) {
-      // 兼容旧存档：补充缺失字段
-      const fresh = createInitialState();
-      const merged: GameState = { ...fresh, ...savedState };
-      merged.gamePhase = 'playing';
-      state.value = merged;
+      // 复用启动时已合并并做过旧存档兼容修复的 state.value，避免丢失 lifetime 等字段修复
+      // 恢复为存档时的阶段（普通存档回到 playing；结局存档回到 ending）
+      state.value.gamePhase = savedState.gamePhase === 'ending' ? 'ending' : 'playing';
       // 从持久化的 crossroadFired 恢复 Map
       crossroadFiredTags.value = new Map(Object.entries(state.value.crossroadFired || {}));
       if (!currentNarrativeEvent.value) {
@@ -909,6 +924,8 @@ export const useGameStore = defineStore('game', () => {
   // ========== 十字路口选择 ==========
   // #1修复：暂存十字路口效果，供commitYear追踪wellbeingChanges
   const pendingCrossroadEffect = ref<{ savings: number; stress: number; happiness: number; health: number; passiveIncome: number; salary: number } | null>(null);
+  // 暂存本年度十字路口选择的核心叙事日志，供年度报告主事件展示（十字路口选择必须出现在年度结算里）
+  const pendingCrossroadStory = ref<string | null>(null);
 
   function selectCrossroadOption(optionId: string) {
     const crossroad = currentCrossroad.value;
@@ -931,7 +948,15 @@ export const useGameStore = defineStore('game', () => {
     const stressBeforeCross = state.value.stress;
     const salaryBeforeCross = state.value.currentMonthlySalary;
     const result = option.effect(state.value);
-    addLog(result.log);
+    const crossroadLog = interpolateText(result.log, state.value);
+    addLog(crossroadLog);
+    // [DEBUG] 十字路口日志捕获
+    console.log('[DEBUG crossroad] option=', option.id, 'logLen=', crossroadLog?.length, 'log=', crossroadLog);
+    // 暂存十字路口核心叙事日志，供本年度报告主事件展示（不依赖 lifeLog 顺序）
+    if (crossroadLog && crossroadLog.length > 10) {
+      pendingCrossroadStory.value = crossroadLog;
+    }
+    console.log('[DEBUG crossroad] pendingCrossroadStory set=', !!pendingCrossroadStory.value);
     // 记录十字路口选项导致的薪资变化
     const salaryDiffCross = state.value.currentMonthlySalary - salaryBeforeCross;
     if (salaryDiffCross !== 0) {
@@ -971,10 +996,9 @@ export const useGameStore = defineStore('game', () => {
     currentCrossroad.value = null;
     showCrossroad.value = false;
 
-    // #2修复：十字路口年不再强制抽取叙事事件——给玩家喘息空间
-    // 玩家直接进入"度过这一年"流程，commitYear会处理结算
-    currentNarrativeEvent.value = null;
-    selectedNarrativeOptionId.value = null;
+    // 岔路口决策后，当年仍照常抽取一次叙事事件（卡片选择）作为年度主线。
+    // 岔路口只是额外的一层抉择，不应让年度主事件空白。
+    drawNarrativeEvent(true);
 
     scheduleSave(state.value);
   }
@@ -1101,25 +1125,27 @@ export const useGameStore = defineStore('game', () => {
   }
 
   /** 抽取当年的叙事事件 */
-  function drawNarrativeEvent() {
+  function drawNarrativeEvent(skipCrossroad = false) {
     // 确保当前路径的专属叙事数据已加载（动态 chunk），避免事件池缺少该路径事件
     ensurePathDataLoaded(state.value.retirementPath).then(() => {
       // 生成新年的心境独白
       generateYearOpeningMonologue();
 
-      // 先检测是否触发十字路口
-      const crossroad = detectCrossroad(state.value, crossroadFiredTags.value);
-      if (crossroad) {
-        currentCrossroad.value = crossroad;
-        showCrossroad.value = true;
-        currentNarrativeEvent.value = null;
-        selectedNarrativeOptionId.value = null;
-        return;
-      }
+      // 先检测是否触发十字路口（岔路口决策后补抽卡片时不重复检测，避免二次岔路口）
+      if (!skipCrossroad) {
+        const crossroad = detectCrossroad(state.value, crossroadFiredTags.value);
+        if (crossroad) {
+          currentCrossroad.value = crossroad;
+          showCrossroad.value = true;
+          currentNarrativeEvent.value = null;
+          selectedNarrativeOptionId.value = null;
+          return;
+        }
 
-      // 没有十字路口，正常抽取叙事事件
-      currentCrossroad.value = null;
-      showCrossroad.value = false;
+        // 没有十字路口，正常抽取叙事事件
+        currentCrossroad.value = null;
+        showCrossroad.value = false;
+      }
 
       // 延期退休阶段：50%概率为平静年份（不抽事件，直接休养生息）
       if (isDelayedRetirementPhase(state.value) && Math.random() < 0.5) {
@@ -1129,7 +1155,7 @@ export const useGameStore = defineStore('game', () => {
       }
 
       const event = selectNarrativeEvent(state.value, state.value.narrativeEventFired || {});
-      currentNarrativeEvent.value = event;
+      currentNarrativeEvent.value = event ? interpolateEventText(event, state.value) : event;
       selectedNarrativeOptionId.value = null;
     });
   }
@@ -1203,19 +1229,26 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    // 应用存款变化
-    if (option.savingsChange) {
-      state.value.currentSavings += option.savingsChange;
+    // 应用存款变化（恢复作者原始固定值；数值平衡交由数据层，不再运行时缩放）
+    let savingsDelta = 0;
+    if (option.savingsChangeFn) {
+      savingsDelta = Math.round(option.savingsChangeFn(state.value));
+    } else if (option.savingsChange) {
+      savingsDelta = option.savingsChange;
+    }
+    if (savingsDelta) {
+      state.value.currentSavings += savingsDelta;
       // 负的 savingsChange = 支出，正的 = 收入
-      if (option.savingsChange < 0) {
-        totalCost = Math.abs(option.savingsChange);
+      if (savingsDelta < 0) {
+        totalCost = Math.abs(savingsDelta);
       }
     }
 
     // 应用月薪变化
     if (option.salaryChange) {
       const salaryBefore = state.value.currentMonthlySalary;
-      state.value.currentMonthlySalary = Math.max(0, state.value.currentMonthlySalary + option.salaryChange);
+      const salaryDelta = option.salaryChange;
+      state.value.currentMonthlySalary = Math.max(0, salaryBefore + salaryDelta);
       const salaryAfter = state.value.currentMonthlySalary;
       const diff = salaryAfter - salaryBefore;
       if (diff !== 0) {
@@ -1227,8 +1260,14 @@ export const useGameStore = defineStore('game', () => {
     }
 
     // 应用被动收入变化
-    if (option.passiveIncomeChange) {
-      state.value.passiveIncome += option.passiveIncomeChange;
+    let passiveDelta = 0;
+    if (option.passiveIncomeChangeFn) {
+      passiveDelta = Math.round(option.passiveIncomeChangeFn(state.value));
+    } else if (option.passiveIncomeChange) {
+      passiveDelta = option.passiveIncomeChange;
+    }
+    if (passiveDelta) {
+      state.value.passiveIncome += passiveDelta;
     }
 
     // 应用自定义状态效果
@@ -1253,9 +1292,24 @@ export const useGameStore = defineStore('game', () => {
       }
     }
 
-    // 分支切换
+    // 分支切换（含首次分支选择）
     if (option.branchSwitch) {
-      state.value.narrativeBranch = option.branchSwitch;
+      const target = option.branchSwitch;
+      // 记录分支历史：仅当目标分支与最新记录不同时才追加（捕获"换过几条路"）
+      if (!state.value.branchHistory) state.value.branchHistory = [];
+      const lastBranch = state.value.branchHistory[state.value.branchHistory.length - 1];
+      if (lastBranch !== target) {
+        state.value.branchHistory.push(target);
+      }
+      state.value.narrativeBranch = target;
+    }
+
+    // 写入分支记忆（供后期回声事件翻旧账）
+    if (option.memorySet) {
+      if (!state.value.branchMemory) state.value.branchMemory = {};
+      for (const [key, val] of Object.entries(option.memorySet)) {
+        state.value.branchMemory[key] = val;
+      }
     }
 
     // 如果选项标记触发退休判定
@@ -1645,11 +1699,13 @@ export const useGameStore = defineStore('game', () => {
     const eventResult = rollRandomEvents(state.value);
     // 感冒免疫：如果触发了minor_illness（急性小病/感冒）且在免疫期内，撤销该事件
     const lastColdYearBS = state.value.lastColdYear || 0;
+    let blackSwanMedicalLoss = eventResult.medicalLoss || 0;
     if (eventResult.eventNames.includes('急性小病侵袭') && lastColdYearBS > 0 && nowAge - lastColdYearBS < 3) {
       // 撤销感冒事件的效果（minor_illness只扣6000元，不修改其他状态）
       eventResult.logs = eventResult.logs.filter(l => !l.includes('感冒把你按在床上'));
       eventResult.eventNames = eventResult.eventNames.filter(n => n !== '急性小病侵袭');
       eventResult.totalLoss = eventResult.totalLoss - 6000; // 感冒事件固定损失6000
+      blackSwanMedicalLoss = Math.max(0, blackSwanMedicalLoss - 6000); // 同步撤销医疗支出累计
     } else if (eventResult.eventNames.includes('急性小病侵袭')) {
       // 记录感冒年份
       state.value.lastColdYear = nowAge;
@@ -1865,17 +1921,25 @@ export const useGameStore = defineStore('game', () => {
 
     // 8. 记录日志（整合日常琐事和人际关系）
     // 注意：必须在递增 currentAge 之前调用 buildYearLog，否则日志里的年龄会偏移一年
-    const yearLog = buildYearLog(state.value, result, cardLogs, eventResult.logs);
+    const yearLog = buildYearLog(state.value, result, cardLogs, eventResult.logs, pendingCrossroadStory.value);
+    // [DEBUG] 年度日志
+    console.log('[DEBUG commitYear] pendingCrossroadStory was=', !!pendingCrossroadStory.value, 'yearLog=', yearLog);
     addLog(yearLog);
+    // 将叙事型年度总结挂到 result，供 YearEndPanel 主事件在无更优先剧情时回退显示
+    (result as any).yearLog = yearLog;
+    // 岔路口抉择单独保存：年度主事件仍是卡片选择，岔路口抉择在主事件下方用分割窗体展示
+    (result as any).crossroadStory = pendingCrossroadStory.value || null;
 
     // 9. 年龄增长
     state.value.currentAge += 1;
+    // 十字路口叙事日志只在当年生效，跨年后清空（yearLog 已捕获为局部变量供年度报告使用）
+    pendingCrossroadStory.value = null;
 
     // 9.5 人生总账单：累计当年收入与支出到 lifetime 字段（结算完成后、检查结局之前）
     state.value.lifetimeSalary += result.salaryIncome || 0;
     state.value.lifetimeInvestmentGain += result.investmentGain || 0;
-    // 副业收入 ≈ 被动收入 - 商铺租金（其余被动收入主要来自副业/二套房等）
-    state.value.lifetimeSideHustle += Math.max(0, (result.passiveIncome || 0) - (result.shopRentIncome || 0));
+    // 副业收入：已在 math-engine.calculateYearlySettlement 中按 currentYearSideHustle 累加，
+    // 此处不再重复累加被动收入（二者口径不同，避免 lifetimeSideHustle 虚高）。
     state.value.lifetimeLivingCost += result.livingCost || 0;
     state.value.lifetimeMortgage += result.mortgageCost || 0;
     // 养娃支出：从当前子女月开销推算（注意：已包含在 livingCost 中，账单展示时会从 livingCost 中拆出）
@@ -1885,19 +1949,27 @@ export const useGameStore = defineStore('game', () => {
     if (relChange && relChange.savings < 0) {
       state.value.lifetimeParentCost += Math.abs(relChange.savings);
     }
-    // 医疗支出：暂无独立字段，部分已包含在 livingCost（health<30 时额外5%）和黑天鹅事件中
-    state.value.lifetimeMedicalCost += 0;
+    // 医疗支出：黑天鹅医疗事件（住院/大病/误诊/父母重病/车祸）的损失单独累计
+    if (typeof blackSwanMedicalLoss === 'number' && blackSwanMedicalLoss > 0) {
+      state.value.lifetimeMedicalCost += Math.round(blackSwanMedicalLoss);
+    }
     state.value.lifetimeCardCost += result.cardCost || 0;
     state.value.lifetimeGiftMoney += 0;
     state.value.lifetimeInsuranceCost += result.insuranceCost || 0;
 
     // 10. 记录"财务自由达成"时刻（不拦截退休，仅作为叙事提示）
-    if (state.value.retirementPath && !state.value.pathEndgameTriggered) {
-      // 仅当达到财富/路径成功条件时，标记 canRetire 并给出"攒够了"的叙事提示。
-      // 注意：退休按钮始终可用，canRetire 只是"财务底气已足"的成就标记，不构成门槛。
-      if (checkCanRetire(state.value)) {
-        if (!state.value.canRetire) {
-          state.value.canRetire = true;
+    // 退休按钮始终可用，canRetire 只是"财务底气已足"的成就标记，不构成门槛。
+    // 财务自由不依赖是否已选路径——暴富/被动收入暴涨随时可能点亮提前退休的资格。
+    if (!state.value.canRetire && !state.value.pathEndgameTriggered) {
+      const finFree = isFinanciallyFree(state.value);
+      const wealthMet = calculateTotalWealth(state.value) >= state.value.targetWealth;
+      if (finFree || wealthMet) {
+        state.value.canRetire = true;
+        if (finFree && !wealthMet) {
+          // 财务自由：被动收入覆盖开销 / 存款够吃二三十年——常理意义的"攒够了"
+          addLog(`第${state.value.currentAge}岁，你忽然发现账户里的钱开始自己转起来了——被动收入已经覆盖了你的全部生活开销，存款也够你不上班吃很多很多年。你从没刻意数过退休金，可"可以退休了"这个念头，像一只蝴蝶，不知什么时候就轻轻落在了你肩上。不是那个天价数字到了，而是你花的那点钱，已经配不上你赚的钱了。退休的按钮一直亮着，这一次，你真的可以坦然按下。`);
+        } else {
+          // 达成预设目标资产
           addLog(`第${state.value.currentAge}岁，你已经攒够了退休的资本。数字告诉你"可以了"，但你的心还在问"够了吗"。也许"够了"从来不是一个数字，而是一个决定——一个你只能自己做的决定。退休的按钮从一开始就亮着，只是这一次，你真的有资格坦然按下它了。你可以继续，也可以停下。没有对错，只有你选择承担的那一种人生。`);
         }
       }
@@ -2085,20 +2157,25 @@ export const useGameStore = defineStore('game', () => {
 
     // === 计算年度主事件文本（与 YearEndPanel.pickMainEvent 逻辑一致）====
     // 用于动画匹配优先使用年度金句文本，避免动画与年度结算显示的剧情不匹配
+    // 黑天鹅事件（被动随机事件）一律不占据主事件，主事件必须是玩家的主动剧情衔接
+    // 健康琐事（生病/住院/感冒等）一律从主事件候选池剔除
     const bbRevealsForMain = blindBoxReveals || [];
     const importantBB = bbRevealsForMain.filter(b => b.emotion === 'crying' || b.emotion === 'bitter' || b.emotion === 'cold');
+    // 重大关系变故（剔除"住院"等健康琐事）
     const criticalRelations = relationshipLogs.filter(e =>
-      e.includes('离世') || e.includes('离婚') || e.includes('住院') || e.includes('分手')
+      e.includes('离世') || e.includes('离婚') || e.includes('分手')
     );
+    const isIllness = (log: string) => /感冒|发烧|生病|流感|咳嗽|支气管炎|肠胃炎|病倒了|住院|打针|吃药/.test(log);
     const importantCards = cardLogs.filter(e => e.length > 30);
-    const interestingDailies = dailyLogs.filter(e => e.length > 40);
+    const interestingDailies = dailyLogs.filter(e => e.length > 40 && !isIllness(e));
     let mainEventText = '';
     if ((result as any).romanceBigEvent && romanceLogs.length > 0) {
       mainEventText = romanceLogs[0];
     } else if (criticalRelations.length > 0) {
       mainEventText = criticalRelations[0];
-    } else if (eventResult.logs.length > 0) {
-      mainEventText = eventResult.logs[0];
+    } else if (yearLog && yearLog.trim() && !isIllness(yearLog)) {
+      // 叙事型年度总结（选择引发的剧情）作为主事件，保证剧情衔接
+      mainEventText = yearLog;
     } else if (importantBB.length > 0) {
       mainEventText = importantBB[0].text;
     } else if (importantCards.length > 0) {
@@ -2214,26 +2291,56 @@ export const useGameStore = defineStore('game', () => {
     _result: YearResult,
     cardLogs: string[],
     eventLogs: string[],
+    crossroadLog: string | null,
   ): string {
     const age = state.currentAge;
     const delayed = isDelayedRetirementPhase(state);
 
-    // 优先使用cardLogs（玩家选择的叙事选项日志）作为年度总结
+    // 优先使用 cardLogs（玩家选择的叙事选项日志）作为年度主事件——年度主线始终是卡片选择
     if (cardLogs && cardLogs.length > 0) {
-      // 取第一条叙事日志（卡片选择的叙事文本），过滤掉纯数值日志
-      const narrativeLog = cardLogs.find(log =>
-        !/^[压力幸福健康储蓄被动收入月薪]+[+\-]?\d/.test(log) &&
-        !/^月薪从¥/.test(log) &&
-        log.length > 10
-      );
+      // 取第一条叙事日志（卡片选择的叙事文本），排除结算/数值类日志。
+      // 注意：结算日志常带「第X岁，」前缀，因此不能用 ^ 锚定的关键词正则，
+      // 需用任意位置的匹配（test 不锚定）来识别"月薪/被动收入/专家收入"等数值反馈。
+      const isNarrativeLog = (log: string): boolean => {
+        if (log.length <= 10) return false;
+        // 薪资结算：第X岁，月薪从¥...调整为¥...
+        if (/月薪从¥/.test(log)) return false;
+        // 金额调整类（含调整为¥ / 调整为数字）
+        if (/调整为¥|调整为\-?[\d,]/.test(log)) return false;
+        // 专家顾问收入：你的专业能力得到了市场认可——...额外收入X元
+        if (/专业能力得到了市场认可/.test(log)) return false;
+        // 额外收入 / 被动收入结算
+        if (/额外收入|被动收入/.test(log)) return false;
+        // 纯状态数值变化：第X岁，压力+5 / 幸福-3 等
+        if (/^第\d+岁，[压力幸福健康储蓄被动收入月薪存款余额]+\+?\-?\d/.test(log)) return false;
+        return true;
+      };
+      const narrativeLog = cardLogs.find(isNarrativeLog);
       if (narrativeLog) {
         return narrativeLog;
       }
     }
 
-    // 其次使用eventResult.logs（黑天鹅事件日志）
+    // 其次使用岔路口抉择（仅当本年无卡片选择时兜底，作为年度主事件）
+    if (crossroadLog && crossroadLog.length > 10) {
+      // 过滤纯数值反馈（月薪调整/被动收入/压力等），保留叙事文本
+      const isNarrative = (log: string): boolean => {
+        if (/月薪从¥|调整为¥|调整为\-?[\d,]/.test(log)) return false;
+        if (/额外收入|被动收入/.test(log)) return false;
+        if (/^第\d+岁，[压力幸福健康储蓄被动收入月薪存款余额]+\+?\-?\d/.test(log)) return false;
+        return true;
+      };
+      if (isNarrative(crossroadLog)) {
+        return crossroadLog;
+      }
+    }
+
+    // 其次使用eventResult.logs（黑天鹅事件日志），但过滤掉生病/住院等健康琐事，
+    // 避免"父亲住院/感冒"这类健康琐事成为年度总结（主事件必须是剧情衔接）
     if (eventLogs && eventLogs.length > 0) {
-      return eventLogs[0];
+      const isIllness = (log: string) => /感冒|发烧|生病|流感|咳嗽|支气管炎|肠胃炎|病倒了|住院|打针|吃药/.test(log);
+      const nonIllness = eventLogs.find(l => !isIllness(l));
+      if (nonIllness) return nonIllness;
     }
 
     if (state.isUnemployed) {
@@ -2302,7 +2409,7 @@ export const useGameStore = defineStore('game', () => {
     state.value.endingTriggered = true;
     state.value.currentEndingId = endingId;
     state.value.gamePhase = 'ending';
-    scheduleSave(state.value);
+    forceSave(state.value); // 结局标记必须落盘，普通差分保存可能因资产字段未变而跳过
     recordEndingRun();
   }
   
@@ -2345,7 +2452,10 @@ export const useGameStore = defineStore('game', () => {
         return {
           id: state.value.currentEndingId,
           title: isSuccess ? path.successTitle : path.failureTitle,
-          name: isSuccess ? '提前退休·成功' : '提前退休·失败',
+          // 60岁是硬性退休年龄，到龄退休不再标记为"提前退休"
+          name: isSuccess
+            ? (state.value.currentAge >= 60 ? '退休·成功' : '提前退休·成功')
+            : (state.value.currentAge >= 60 ? '退休·未竟' : '提前退休·失败'),
           grade: computeFinalGrade(state.value) as FinalGrade,
           mood: isSuccess ? 'freedom' : 'melancholy',
           yearsOld: state.value.currentAge,
@@ -2387,6 +2497,8 @@ export const useGameStore = defineStore('game', () => {
     currentCrossroad.value = null;
     showCrossroad.value = false;
     crossroadFiredTags.value = new Map();
+    pendingCrossroadStory.value = null;
+    pendingCrossroadEffect.value = null;
     showYearEnd.value = false;
     assetAcquired.value = null;
     cardTransitionType.value = null;
@@ -2448,6 +2560,7 @@ export const useGameStore = defineStore('game', () => {
 
   return {
     state,
+    hasSave,
     lastYearResult,
     yearMood,
     eventPopup,
@@ -2457,6 +2570,8 @@ export const useGameStore = defineStore('game', () => {
     crossroadFiredTags,
     showCrossroad,
     selectCrossroadOption,
+    // 本年度已做出的岔路口决策剧情（选完岔路口后、结算前，供主界面占位区展示）
+    pendingCrossroadStory,
     // 年度结算弹窗
     showYearEnd,
     dismissYearEnd,

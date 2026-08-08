@@ -15,6 +15,7 @@
 import type { NarrativeEvent, NarrativeOption, RetirementPathId, GameState } from '../types/global.d.js';
 import { registerNarrativeEvents } from './narrative-registry.js';
 import { clamp } from '../utils/clamp.js';
+import { pctInvestment } from '../utils/math-engine.js';
 
 // ============================================================
 // 路径配置：技能名、主题色、专属文案
@@ -394,11 +395,11 @@ function makeFillerEvents(pathId: RetirementPathId, cfg: PathConfig): NarrativeE
         {
           id: 'invest_time',
           label: '花时间深入钻研',
-          description: '投入额外时间提升核心技能',
-          hint: `${s1}+8 · 压力+5 · 存款-1000`,
+          description: '投入额外时间和资源提升核心技能',
+          hint: `${s1}+8 · 压力+5 · 投入存款1%`,
           hintColor: 'positive',
           skillGains: { [s1]: 8, [s2]: 3 },
-          savingsChange: -1000,
+          savingsChangeFn: (s: GameState) => -pctInvestment(0.01, 0).investFn(s),
           stateEffect: (s: GameState) => { s.stress = clamp(s.stress + 5, 0, 100); },
           log: getFillerLog(pathId, theme, 'invest', idx),
         },
@@ -420,9 +421,9 @@ function makeFillerEvents(pathId: RetirementPathId, cfg: PathConfig): NarrativeE
           id: 'take_break',
           label: '给自己放个假',
           description: '休息是为了走更远的路',
-          hint: '压力-8 · 幸福+5 · 健康+3 · 存款-3000',
+          hint: '压力-8 · 幸福+5 · 健康+3 · 投入存款3%',
           hintColor: 'positive',
-          savingsChange: -3000,
+          savingsChangeFn: (s: GameState) => -pctInvestment(0.03, 0).investFn(s),
           stateEffect: (s: GameState) => {
             s.stress = clamp(s.stress - 8, 0, 100);
             s.happiness = clamp(s.happiness + 5, 0, 100);
@@ -450,10 +451,10 @@ function makeFillerEvents(pathId: RetirementPathId, cfg: PathConfig): NarrativeE
           id: 'seize_opportunity',
           label: '抓住机会，深入交流',
           description: '主动拓展人脉，可能带来意外收获',
-          hint: `${s2}+10 · ${s1}+3 · 存款-2000 · 信念+3`,
+          hint: `${s2}+10 · ${s1}+3 · 投入存款2% · 信念+3`,
           hintColor: 'positive',
           skillGains: { [s2]: 10, [s1]: 3 },
-          savingsChange: -2000,
+          savingsChangeFn: (s: GameState) => -pctInvestment(0.02, 0).investFn(s),
           stateEffect: (s: GameState) => { s.pathFaith = clamp(s.pathFaith + 3, 0, 100); },
           log: getFillerLog(pathId, theme, 'seize', idx),
         },
@@ -1211,7 +1212,10 @@ function makeMoneyEventOptions(
     hint: string;
     hintColor: 'positive' | 'negative' | 'neutral' | 'danger';
     skillGains?: Record<string, number>;
-    savingsChange?: number;
+    // 投入存款比例（如 0.03 = 3%）；为 0 或 undefined 表示不花钱
+    savingsPct?: number;
+    // 正向收入比例（如政策补贴/意外收入，按存款比例给钱）
+    gainPct?: number;
     stateEffect: (s: GameState) => void;
     logKey: string;
   }
@@ -1222,10 +1226,10 @@ function makeMoneyEventOptions(
         id: 'money_reinvest',
         label: '把这笔钱投进算力',
         description: '买更多GPU时长，跑那个想了很久的大模型实验',
-        hint: `${s1}+5 · 存款-3000 · 压力+4 · 信念+5`,
+        hint: `${s1}+5 · 投入存款3% · 压力+4 · 信念+5`,
         hintColor: 'positive',
         skillGains: { [s1]: 5 },
-        savingsChange: -3000,
+        savingsPct: 0.03,
         stateEffect: (s: GameState) => {
           s.stress = clamp(s.stress + 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
@@ -1236,10 +1240,10 @@ function makeMoneyEventOptions(
         id: 'money_learn',
         label: '报个进阶课程，系统补短板',
         description: '花钱买知识，别人踩过的坑不用再踩一遍',
-        hint: `${s2}+6 · 存款-2500 · 幸福+2`,
+        hint: `${s2}+6 · 投入存款2.5% · 幸福+2`,
         hintColor: 'positive',
         skillGains: { [s2]: 6 },
-        savingsChange: -2500,
+        savingsPct: 0.025,
         stateEffect: (s: GameState) => {
           s.happiness = clamp(s.happiness + 2, 0, 100);
         },
@@ -1249,9 +1253,9 @@ function makeMoneyEventOptions(
         id: 'money_family',
         label: '给爸妈换个好家电',
         description: '赚钱不就是为了让他们过得好一点吗',
-        hint: `存款-2000 · 幸福+5 · 压力-4 · 父母关系+3`,
+        hint: `投入存款2% · 幸福+5 · 压力-4 · 父母关系+3`,
         hintColor: 'neutral',
-        savingsChange: -2000,
+        savingsPct: 0.02,
         stateEffect: (s: GameState) => {
           s.happiness = clamp(s.happiness + 5, 0, 100);
           s.stress = clamp(s.stress - 4, 0, 100);
@@ -1265,10 +1269,10 @@ function makeMoneyEventOptions(
         id: 'money_reinvest',
         label: '逢低加仓',
         description: '别人恐惧你贪婪，把闲钱投进去',
-        hint: `${s1}+5 · 存款-4000 · 压力+5 · 信念+5`,
+        hint: `${s1}+5 · 投入存款4% · 压力+5 · 信念+5`,
         hintColor: 'danger',
         skillGains: { [s1]: 5 },
-        savingsChange: -4000,
+        savingsPct: 0.04,
         stateEffect: (s: GameState) => {
           s.stress = clamp(s.stress + 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
@@ -1279,10 +1283,10 @@ function makeMoneyEventOptions(
         id: 'money_security',
         label: '升级硬件钱包，堵住安全漏洞',
         description: '在链上，安全比收益重要一百倍',
-        hint: `${s2}+4 · 存款-1500 · 压力-3`,
+        hint: `${s2}+4 · 投入存款1.5% · 压力-3`,
         hintColor: 'positive',
         skillGains: { [s2]: 4 },
-        savingsChange: -1500,
+        savingsPct: 0.015,
         stateEffect: (s: GameState) => {
           s.stress = clamp(s.stress - 3, 0, 100);
         },
@@ -1292,9 +1296,9 @@ function makeMoneyEventOptions(
         id: 'money_family',
         label: '提现带父母去旅游',
         description: '赚了钱不花，跟没赚有什么区别',
-        hint: `存款-3000 · 幸福+6 · 压力-5 · 父母关系+4`,
+        hint: `投入存款3% · 幸福+6 · 压力-5 · 父母关系+4`,
         hintColor: 'neutral',
-        savingsChange: -3000,
+        savingsPct: 0.03,
         stateEffect: (s: GameState) => {
           s.happiness = clamp(s.happiness + 6, 0, 100);
           s.stress = clamp(s.stress - 5, 0, 100);
@@ -1308,10 +1312,10 @@ function makeMoneyEventOptions(
         id: 'money_reinvest',
         label: '升级工作设备',
         description: '新笔记本+降噪耳机+人体工学椅，生产力翻倍',
-        hint: `${s1}+5 · 存款-3000 · 信念+3`,
+        hint: `${s1}+5 · 投入存款3% · 信念+3`,
         hintColor: 'positive',
         skillGains: { [s1]: 5 },
-        savingsChange: -3000,
+        savingsPct: 0.03,
         stateEffect: (s: GameState) => {
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
@@ -1321,10 +1325,10 @@ function makeMoneyEventOptions(
         id: 'money_learn',
         label: '报语言班，突破沟通瓶颈',
         description: '每次开会手心冒汗的日子该结束了',
-        hint: `${s2}+6 · 存款-2000 · 信念+4 · 幸福+2`,
+        hint: `${s2}+6 · 投入存款2% · 信念+4 · 幸福+2`,
         hintColor: 'positive',
         skillGains: { [s2]: 6 },
-        savingsChange: -2000,
+        savingsPct: 0.02,
         stateEffect: (s: GameState) => {
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           s.happiness = clamp(s.happiness + 2, 0, 100);
@@ -1335,10 +1339,10 @@ function makeMoneyEventOptions(
         id: 'money_explore',
         label: '去一座一直想去的新城市',
         description: '反正哪里都能办公，不如换个风景',
-        hint: `${s3 ?? s2}+6 · 存款-2500 · 幸福+4 · 压力+2`,
+        hint: `${s3 ?? s2}+6 · 投入存款2.5% · 幸福+4 · 压力+2`,
         hintColor: 'neutral',
         skillGains: { [s3 ?? s2]: 6 },
-        savingsChange: -2500,
+        savingsPct: 0.025,
         stateEffect: (s: GameState) => {
           s.happiness = clamp(s.happiness + 4, 0, 100);
           s.stress = clamp(s.stress + 2, 0, 100);
@@ -1351,10 +1355,10 @@ function makeMoneyEventOptions(
         id: 'money_reinvest',
         label: '投资内容设备',
         description: '更好的相机+灯光+麦克风，画面质感再上一个台阶',
-        hint: `${s1}+5 · 存款-3500 · 信念+4`,
+        hint: `${s1}+5 · 投入存款3.5% · 信念+4`,
         hintColor: 'positive',
         skillGains: { [s1]: 5 },
-        savingsChange: -3500,
+        savingsPct: 0.035,
         stateEffect: (s: GameState) => {
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
         },
@@ -1364,10 +1368,10 @@ function makeMoneyEventOptions(
         id: 'money_community',
         label: '办一场粉丝线下见面会',
         description: '屏幕里的名字变成面前的人，这才是做IP的意义',
-        hint: `${s2}+6 · 存款-2000 · 幸福+3 · 信念+5`,
+        hint: `${s2}+6 · 投入存款2% · 幸福+3 · 信念+5`,
         hintColor: 'positive',
         skillGains: { [s2]: 6 },
-        savingsChange: -2000,
+        savingsPct: 0.02,
         stateEffect: (s: GameState) => {
           s.happiness = clamp(s.happiness + 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
@@ -1378,10 +1382,10 @@ function makeMoneyEventOptions(
         id: 'money_delegate',
         label: '请助理分担运营，给自己喘口气',
         description: '你不可能什么都自己做，学会花钱买时间',
-        hint: `${s3 ?? s2}+4 · 存款-3000 · 压力-6 · 幸福+3`,
+        hint: `${s3 ?? s2}+4 · 投入存款3% · 压力-6 · 幸福+3`,
         hintColor: 'neutral',
         skillGains: { [s3 ?? s2]: 4 },
-        savingsChange: -3000,
+        savingsPct: 0.03,
         stateEffect: (s: GameState) => {
           s.stress = clamp(s.stress - 6, 0, 100);
           s.happiness = clamp(s.happiness + 3, 0, 100);
@@ -1394,10 +1398,10 @@ function makeMoneyEventOptions(
         id: 'money_reinvest',
         label: '升级护理设备',
         description: '更好的设备意味着更好的服务质量和更高的定价权',
-        hint: `${s1}+5 · 存款-3000 · 信念+4`,
+        hint: `${s1}+5 · 投入存款3% · 信念+4`,
         hintColor: 'positive',
         skillGains: { [s1]: 5 },
-        savingsChange: -3000,
+        savingsPct: 0.03,
         stateEffect: (s: GameState) => {
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
         },
@@ -1407,10 +1411,10 @@ function makeMoneyEventOptions(
         id: 'money_team',
         label: '送员工去专业培训',
         description: '她们成长了，服务站才能走得更远',
-        hint: `${s2}+6 · 存款-2500 · 压力-3`,
+        hint: `${s2}+6 · 投入存款2.5% · 压力-3`,
         hintColor: 'positive',
         skillGains: { [s2]: 6 },
-        savingsChange: -2500,
+        savingsPct: 0.025,
         stateEffect: (s: GameState) => {
           s.stress = clamp(s.stress - 3, 0, 100);
         },
@@ -1420,10 +1424,10 @@ function makeMoneyEventOptions(
         id: 'money_policy',
         label: '研读新政策，申请补贴',
         description: '政策里藏着真金白银，就看你找不找得到',
-        hint: `${s3 ?? s2}+6 · 存款+3000 · 信念+5`,
+        hint: `${s3 ?? s2}+6 · 收入存款3% · 信念+5`,
         hintColor: 'positive',
         skillGains: { [s3 ?? s2]: 6 },
-        savingsChange: 3000,
+        gainPct: 0.03,
         stateEffect: (s: GameState) => {
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
@@ -1435,10 +1439,10 @@ function makeMoneyEventOptions(
         id: 'money_reinvest',
         label: '囤一批新补剂试方案',
         description: '最新的抗衰研究又出了新方向，你想试试',
-        hint: `${s1}+5 · 存款-2500 · 信念+4 · 健康+1`,
+        hint: `${s1}+5 · 投入存款2.5% · 信念+4 · 健康+1`,
         hintColor: 'positive',
         skillGains: { [s1]: 5 },
-        savingsChange: -2500,
+        savingsPct: 0.025,
         stateEffect: (s: GameState) => {
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           s.health = clamp(s.health + 1, 0, 100);
@@ -1449,10 +1453,10 @@ function makeMoneyEventOptions(
         id: 'money_research',
         label: '做一次全面基因检测',
         description: '用数据驱动健康决策，不再盲目跟风',
-        hint: `${s2}+6 · 存款-3000 · 压力+3`,
+        hint: `${s2}+6 · 投入存款3% · 压力+3`,
         hintColor: 'neutral',
         skillGains: { [s2]: 6 },
-        savingsChange: -3000,
+        savingsPct: 0.03,
         stateEffect: (s: GameState) => {
           s.stress = clamp(s.stress + 3, 0, 100);
         },
@@ -1462,10 +1466,10 @@ function makeMoneyEventOptions(
         id: 'money_network',
         label: '参加抗衰学术会议',
         description: '和最前沿的研究者对话，比读一百篇论文管用',
-        hint: `investmentSkill+5 · 存款-2000 · 信念+5 · 幸福+3`,
+        hint: `investmentSkill+5 · 投入存款2% · 信念+5 · 幸福+3`,
         hintColor: 'positive',
         skillGains: { investmentSkill: 5 },
-        savingsChange: -2000,
+        savingsPct: 0.02,
         stateEffect: (s: GameState) => {
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           s.happiness = clamp(s.happiness + 3, 0, 100);
@@ -1476,17 +1480,29 @@ function makeMoneyEventOptions(
   };
 
   const opts = configs[pathId];
-  return opts.map(opt => ({
-    id: opt.id,
-    label: opt.label,
-    description: opt.description,
-    hint: opt.hint,
-    hintColor: opt.hintColor,
-    skillGains: opt.skillGains,
-    savingsChange: opt.savingsChange,
-    stateEffect: opt.stateEffect,
-    log: getFillerLog(pathId, '', opt.logKey, idx),
-  }));
+  return opts.map(opt => {
+    const result: any = {
+      id: opt.id,
+      label: opt.label,
+      description: opt.description,
+      hint: opt.hint,
+      hintColor: opt.hintColor,
+      skillGains: opt.skillGains,
+      stateEffect: opt.stateEffect,
+      log: getFillerLog(pathId, '', opt.logKey, idx),
+    };
+    if (opt.savingsPct !== undefined && opt.savingsPct > 0) {
+      // 支出：存款的百分比（minInvest 保底 5000，maxInvest 封顶 500万）
+      const pct = opt.savingsPct;
+      result.savingsChangeFn = (s: GameState) => -pctInvestment(pct, 0).investFn(s);
+    }
+    if (opt.gainPct !== undefined && opt.gainPct > 0) {
+      // 收入：存款的百分比（如政策补贴、意外收入）
+      const pct = opt.gainPct;
+      result.savingsChangeFn = (s: GameState) => pctInvestment(pct, 0).investFn(s);
+    }
+    return result as NarrativeOption;
+  });
 }
 
 // ============================================================
@@ -1727,8 +1743,8 @@ function makeCrossPathCrises(): NarrativeEvent[] {
             s.happiness = clamp(s.happiness - 3, 0, 100);
           },
           log: ({
-            ai_symbiote: '那一夜你失眠了。凌晨三点你打开开源社区，看着自己从22岁开始提交的那些commit记录——从一个50块钱的提示词脚本，到现在服务几十家客户的产品。天亮的时候你想通了：别人的安稳是别人的，你的路上虽然风雨更大，但你创造的东西是真实的。你洗了把脸，开了一个新的分支。',
-            chain_native: '那一夜你失眠了。凌晨三点你打开区块链浏览器，看着自己第一笔交易的哈希——那是22岁的你，用一个月工资买的第一笔比特币。天亮的时候你想通了：别人的安稳是别人的，你的路上虽然牛熊交替，但你见过的风景是他们永远看不到的。你洗了把脸，又看了一眼K线。',
+            ai_symbiote: '那一夜你失眠了。凌晨三点你打开开源社区，看着自己从{startAge}岁开始提交的那些commit记录——从一个50块钱的提示词脚本，到现在服务几十家客户的产品。天亮的时候你想通了：别人的安稳是别人的，你的路上虽然风雨更大，但你创造的东西是真实的。你洗了把脸，开了一个新的分支。',
+            chain_native: '那一夜你失眠了。凌晨三点你打开区块链浏览器，看着自己第一笔交易的哈希——那是{startAge}岁的你，用一个月工资买的第一笔比特币。天亮的时候你想通了：别人的安稳是别人的，你的路上虽然牛熊交替，但你见过的风景是他们永远看不到的。你洗了把脸，又看了一眼K线。',
             digital_nomad: '那一夜你失眠了。凌晨三点你翻出护照，看着上面盖满的入境章——泰国、印尼、葡萄牙、墨西哥、格鲁吉亚。天亮的时候你想通了：别人的安稳是别人的，你的路上虽然漂泊不定，但你活过的城市比他们旅游过的还多。你洗了把脸，查了下一个目的地的机票。',
             super_ip: '那一夜你失眠了。凌晨三点你打开后台，翻到了自己的第一条视频——画质模糊、声音颤抖，但眼里有光。天亮的时候你想通了：别人的安稳是别人的，你的路上虽然数据起伏，但你说出的每一句话都曾抵达过某个人。你洗了把脸，写了一个新的选题。',
             silver_economy: '那一夜你失眠了。凌晨三点你走到养老站，看到李爷爷房间的灯还亮着——他又在等你陪他下棋。天亮的时候你想通了：别人的安稳是别人的，你的路上虽然琐碎辛苦，但那些老人握着你手说"谢谢你"的时刻，是工资买不到的。你洗了把脸，穿上了工作服。',

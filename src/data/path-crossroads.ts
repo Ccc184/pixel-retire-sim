@@ -345,7 +345,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'chain_exchange_crash',
     title: '交易所的讣告',
-    narrative: '27岁的某个深夜，你手机疯狂震动。\n你常用的那家交易所——那个你存了80%资产、每天都要刷十几次的平台——发了一条公告：暂停提币，等待进一步通知。\n电报群和推特瞬间炸了。有人截图显示交易所钱包里的资金在链上被大额转出，有人说创始人已经在机场了。你打开APP，页面还在加载，但数字已经定格了——那些你以为是"你的"币，现在只是一串数据库里的记录。\n你算了一下，里面有你这几年攒的工资、牛市赚的钱、还有上个月刚打进去准备抄底的子弹。手指发凉，你想起那句老话：Not your keys, not your coins。你以前觉得这是极端主义者的口号，现在你觉得这是你这辈子最贵的一堂课。\n天快亮了，群里还在刷消息，有人组织维权，有人已经开始写"我是怎么亏掉xxx万的"复盘帖。',
+    narrative: '{age}岁的某个深夜，你手机疯狂震动。\n你常用的那家交易所——那个你存了80%资产、每天都要刷十几次的平台——发了一条公告：暂停提币，等待进一步通知。\n电报群和推特瞬间炸了。有人截图显示交易所钱包里的资金在链上被大额转出，有人说创始人已经在机场了。你打开APP，页面还在加载，但数字已经定格了——那些你以为是"你的"币，现在只是一串数据库里的记录。\n你算了一下，里面有你这几年攒的工资、牛市赚的钱、还有上个月刚打进去准备抄底的子弹。手指发凉，你想起那句老话：Not your keys, not your coins。你以前觉得这是极端主义者的口号，现在你觉得这是你这辈子最贵的一堂课。\n天快亮了，群里还在刷消息，有人组织维权，有人已经开始写"我是怎么亏掉xxx万的"复盘帖。',
     ageRange: [24, 27],
     priority: 10,
     cooldown: 999,
@@ -446,10 +446,14 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
         description: '相信周期，越跌越买，等下一轮牛市',
         hint: '信仰最大化，风险也最大化',
         hintColor: 'danger',
-        prerequisites: (s: GameState) => s.currentSavings >= 30000,
+        // 加仓以存款百分比计（与叙事事件 investPercent 口径一致），持仓归零后也能继续投入
+        prerequisites: (s: GameState) => s.currentSavings >= 10000,
         disabledReason: '没有余粮加仓',
         effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 30000);
+          // 加仓金额 = 存款的20%，按百分比随玩家存款体量缩放
+          const invest = Math.round(s.currentSavings * 0.20);
+          s.currentSavings = Math.max(0, s.currentSavings - invest);
+          (s as any).chainHoldings = ((s as any).chainHoldings || 0) + invest; // 加仓的钱计入链上持仓
           s.stress = Math.min(100, s.stress + 15);
           s.pathFaith = Math.min(100, s.pathFaith + 20);
           s.happiness = Math.max(0, s.happiness - 10);
@@ -461,11 +465,11 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
             s.passiveIncome += 5000;
             s.happiness = Math.min(100, s.happiness + 30);
             s.pathFaith = Math.min(100, s.pathFaith + 25);
-            return { log: '你把能省的钱都省了，甚至打了一份零工赚子弹，在最黑暗的月份里持续定投。两年后市场回暖，那些你在底部攒的筹码翻了十几倍。你在牛市的顶点分批套现，钱到账的时候你手在抖——不是因为激动，是因为你想起那些深夜怀疑自己的时刻。你扛过来了。不是因为你比别人聪明，只是因为你比别人能扛。', cost: 30000 };
+            return { log: '你把能省的钱都省了，甚至打了一份零工赚子弹，在最黑暗的月份里持续定投。两年后市场回暖，那些你在底部攒的筹码翻了十几倍。你在牛市的顶点分批套现，钱到账的时候你手在抖——不是因为激动，是因为你想起那些深夜怀疑自己的时刻。你扛过来了。不是因为你比别人聪明，只是因为你比别人能扛。', cost: invest };
           } else {
             s.pathFaith = Math.max(0, s.pathFaith - 15);
             s.happiness = Math.max(0, s.happiness - 15);
-            return { log: '你加仓了，但市场继续跌。你加仓的钱也被套了，生活变得拮据，你开始计算每一顿饭的花费。又过了两年，行业没有像你期待的那样复苏，反而出了更多监管和黑天鹅。你手里的币还在，但它们的购买力又跌了一半。你开始怀疑自己是不是在一个沉没成本的陷阱里越陷越深。信仰还在，但钱包瘪了。', cost: 30000 };
+            return { log: '你加仓了，但市场继续跌。你加仓的钱也被套了，生活变得拮据，你开始计算每一顿饭的花费。又过了两年，行业没有像你期待的那样复苏，反而出了更多监管和黑天鹅。你手里的币还在，但它们的购买力又跌了一半。你开始怀疑自己是不是在一个沉没成本的陷阱里越陷越深。信仰还在，但钱包瘪了。', cost: invest };
           }
         },
       },
@@ -607,7 +611,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'nomad_visa_crackdown',
     title: '城市的门槛',
-    narrative: '28岁，你正在大理的咖啡馆里写代码，手机弹出一条推送：你目前所在的旅居城市短租政策收紧了。\n不是一座城市的问题——多个热门旅居城市开始整顿短租市场，居住证审查变严，违规短租被查到将面临高额罚款甚至被清退。你常去的 co-working space 里有人被有关部门带走了，传言是房东举报的。\n你翻了翻身份证，上面的暂住登记办了一个又一个，但没有一座城市给你真正的归属感。你是"数字游民"——这是你博客上的自我介绍，但此刻你意识到，数字游民的另一个意思是：哪里都不是你的家。\n机票搜索页面开着，你可以去另一个还没收紧的城市继续游牧，也可以选择办一张需要花钱的"长期居住证"，或者——回来。\n咖啡馆外的暴雨倾盆而下，你桌上的冰咖啡已经不冰了。',
+    narrative: '{age}岁，你正在大理的咖啡馆里写代码，手机弹出一条推送：你目前所在的旅居城市短租政策收紧了。\n不是一座城市的问题——多个热门旅居城市开始整顿短租市场，居住证审查变严，违规短租被查到将面临高额罚款甚至被清退。你常去的 co-working space 里有人被有关部门带走了，传言是房东举报的。\n你翻了翻身份证，上面的暂住登记办了一个又一个，但没有一座城市给你真正的归属感。你是"数字游民"——这是你博客上的自我介绍，但此刻你意识到，数字游民的另一个意思是：哪里都不是你的家。\n机票搜索页面开着，你可以去另一个还没收紧的城市继续游牧，也可以选择办一张需要花钱的"长期居住证"，或者——回来。\n咖啡馆外的暴雨倾盆而下，你桌上的冰咖啡已经不冰了。',
     ageRange: [25, 28],
     priority: 10,
     cooldown: 999,
@@ -827,7 +831,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'nomad_tax_pursuit',
     title: '万里追税',
-    narrative: '34岁，你收到了一封来自户籍地税务局的邮件。\n不是诈骗——你的名字、身份证号、异地收入估算都写得清清楚楚。新出台的个税申报新规意味着，即使你长期在外地旅居，即使你的收入来自远程客户，你依然需要向户籍地申报并补缴税款，加上罚金和滞纳金，数字大得让你头晕。\n你以为离开那个系统就不再受它管辖，你以为数字游民的收入"隐于链上"就查不到。但大数据税务稽查早就把你的异地账户信息关联起来了——你在上海开的银行账户、你在成都收的租金、你在交易所里的交易记录，它们比你更"忠于"你的家乡。\n游牧群里炸了锅，有人说已经收到了类似的信件，有人在讨论要不要迁户籍，有人说"跑得了和尚跑不了庙"。你父母在老家，你不可能永远不回去。\n你点开那封邮件的附件，是一张限期补报通知书。',
+    narrative: '{age}岁，你收到了一封来自户籍地税务局的邮件。\n不是诈骗——你的名字、身份证号、异地收入估算都写得清清楚楚。新出台的个税申报新规意味着，即使你长期在外地旅居，即使你的收入来自远程客户，你依然需要向户籍地申报并补缴税款，加上罚金和滞纳金，数字大得让你头晕。\n你以为离开那个系统就不再受它管辖，你以为数字游民的收入"隐于链上"就查不到。但大数据税务稽查早就把你的异地账户信息关联起来了——你在上海开的银行账户、你在成都收的租金、你在交易所里的交易记录，它们比你更"忠于"你的家乡。\n游牧群里炸了锅，有人说已经收到了类似的信件，有人在讨论要不要迁户籍，有人说"跑得了和尚跑不了庙"。你父母在老家，你不可能永远不回去。\n你点开那封邮件的附件，是一张限期补报通知书。',
     ageRange: [33, 36],
     priority: 9,
     cooldown: 999,
@@ -930,7 +934,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'ip_first_crisis',
     title: '风暴初临',
-    narrative: '28岁，你第一次尝到了"红"的代价。\n你发了一条随口吐槽的社交平台/视频——可能是对某个热点事件的评论，可能是对某个品牌的评价，可能只是一个不太恰当的比喻。一觉醒来，评论区炸了。\n截图被转发了几万次，断章取义的版本开始流传。有人扒出了你三年前的动态圈，有人翻出了你还没出名时的贴吧发言。#某某某道歉#的话题冲上了热搜，品牌方开始私信问你"怎么回事"，经纪人（如果有的话）电话被打爆了。\n你坐在电脑前手心出汗，第一次意识到：你说的每一句话不再只是"你说的话"，它们是弹药，是呈堂证供，是可以被无限放大和解读的公共文本。\n手机还在不停震动，你有三个选择：道歉、硬刚、装死。每个选择都有代价。',
+    narrative: '{age}岁，你第一次尝到了"红"的代价。\n你发了一条随口吐槽的社交平台/视频——可能是对某个热点事件的评论，可能是对某个品牌的评价，可能只是一个不太恰当的比喻。一觉醒来，评论区炸了。\n截图被转发了几万次，断章取义的版本开始流传。有人扒出了你三年前的动态圈，有人翻出了你还没出名时的贴吧发言。#某某某道歉#的话题冲上了热搜，品牌方开始私信问你"怎么回事"，经纪人（如果有的话）电话被打爆了。\n你坐在电脑前手心出汗，第一次意识到：你说的每一句话不再只是"你说的话"，它们是弹药，是呈堂证供，是可以被无限放大和解读的公共文本。\n手机还在不停震动，你有三个选择：道歉、硬刚、装死。每个选择都有代价。',
     ageRange: [27, 30],
     priority: 10,
     cooldown: 999,
@@ -1021,7 +1025,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'ip_controversial_ad',
     title: '金币的温度',
-    narrative: '31岁，一个金融APP（或P2P/医美/保健品/游戏——你最讨厌的那类产品）找到了你的商务。\n代言费是你目前所有收入来源加起来的三倍，够你在二线城市付个首付。\n但你知道这个产品有问题——利息高得离谱、用户投诉一大堆、坊间传闻它在割韭菜。你的粉丝很多是因为信任你才关注你的，他们中不少是学生和刚入社会的年轻人。如果接了这个广告，他们可能因为信任你而去使用一个会伤害他们的产品。\n商务说"成年人要有自己的判断力，你只是打个广告"；朋友说"你不接别人也会接，钱让别人赚不如让你赚"；你的良心说"你知道那是错的"；你的银行卡余额说"你确定要拒绝七位数吗"。\n合同在邮箱里躺着，三天后是最后期限。',
+    narrative: '{age}岁，一个金融APP（或P2P/医美/保健品/游戏——你最讨厌的那类产品）找到了你的商务。\n代言费是你目前所有收入来源加起来的三倍，够你在二线城市付个首付。\n但你知道这个产品有问题——利息高得离谱、用户投诉一大堆、坊间传闻它在割韭菜。你的粉丝很多是因为信任你才关注你的，他们中不少是学生和刚入社会的年轻人。如果接了这个广告，他们可能因为信任你而去使用一个会伤害他们的产品。\n商务说"成年人要有自己的判断力，你只是打个广告"；朋友说"你不接别人也会接，钱让别人赚不如让你赚"；你的良心说"你知道那是错的"；你的银行卡余额说"你确定要拒绝七位数吗"。\n合同在邮箱里躺着，三天后是最后期限。',
     ageRange: [30, 33],
     priority: 9,
     cooldown: 999,
@@ -1219,7 +1223,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'silver_giants_entry',
     title: '鲨鱼入水',
-    narrative: '30岁，你在银发产业里深耕了几年，刚摸到了一点门道，巨头来了。\n不是小打小闹——是那些你在新闻里才看到的互联网大厂、保险巨头、地产上市公司。他们带着百亿资金、政府关系、流量入口和地推铁军，高调宣布"All in银发经济"。\n你做的社区养老驿站旁边，下个月要开一家央企背景的养老服务中心，补贴后价格是你的三分之一。你服务了两年的老客户被各种免费体检、免费鸡蛋拉去参加"推介会"。你维护了很久的社区关系，在巨头的银弹攻势下不堪一击。\n更可怕的是他们的数据能力——他们有老人的健康档案、消费记录、子女信息。你有的只是一腔热情和几张熟面孔。\n你站在自己的小店里，看着对面正在装修的"银发综合体"，觉得自己像一条小鱼，看着鲨鱼游进了自己的池塘。',
+    narrative: '{age}岁，你在银发产业里深耕了几年，刚摸到了一点门道，巨头来了。\n不是小打小闹——是那些你在新闻里才看到的互联网大厂、保险巨头、地产上市公司。他们带着百亿资金、政府关系、流量入口和地推铁军，高调宣布"All in银发经济"。\n你做的社区养老驿站旁边，下个月要开一家央企背景的养老服务中心，补贴后价格是你的三分之一。你服务了两年的老客户被各种免费体检、免费鸡蛋拉去参加"推介会"。你维护了很久的社区关系，在巨头的银弹攻势下不堪一击。\n更可怕的是他们的数据能力——他们有老人的健康档案、消费记录、子女信息。你有的只是一腔热情和几张熟面孔。\n你站在自己的小店里，看着对面正在装修的"银发综合体"，觉得自己像一条小鱼，看着鲨鱼游进了自己的池塘。',
     ageRange: [27, 30],
     priority: 10,
     cooldown: 999,
@@ -1510,7 +1514,7 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   {
     id: 'bio_clinical_failure',
     title: '数据崩塌',
-    narrative: '29岁，你All in的那家生物科技公司宣布了三期临床数据。\n你盯着屏幕上的新闻通稿，逐字逐句地读——"未达到主要临床终点""无统计学差异""将评估下一步战略"。这些词翻译成人话就是：失败了。\n你不仅把积蓄押在了这家公司的股票/期权上，你还辞掉了工作全职参与，你甚至说服了两个朋友一起投钱。你曾经那么相信这个靶点、这个团队、这个诺贝尔奖得主的科学顾问。你在脑海里推演过无数次成功的场景——药物上市、患者得救、你财富自由。\n现在盘前股价跌了90%，你手机里是朋友发来的"怎么回事"，邮箱里是HR的"团队优化"通知。你坐在电脑前，屏幕的蓝光映在你脸上，你觉得自己像一个输光了筹码的赌徒——只不过你赌的不是牌，是科学，而科学没有义务让你赢。\n窗外面是早晨，你一夜没睡，新的一天开始了，但你的世界刚刚塌了。',
+    narrative: '{age}岁，你All in的那家生物科技公司宣布了三期临床数据。\n你盯着屏幕上的新闻通稿，逐字逐句地读——"未达到主要临床终点""无统计学差异""将评估下一步战略"。这些词翻译成人话就是：失败了。\n你不仅把积蓄押在了这家公司的股票/期权上，你还辞掉了工作全职参与，你甚至说服了两个朋友一起投钱。你曾经那么相信这个靶点、这个团队、这个诺贝尔奖得主的科学顾问。你在脑海里推演过无数次成功的场景——药物上市、患者得救、你财富自由。\n现在盘前股价跌了90%，你手机里是朋友发来的"怎么回事"，邮箱里是HR的"团队优化"通知。你坐在电脑前，屏幕的蓝光映在你脸上，你觉得自己像一个输光了筹码的赌徒——只不过你赌的不是牌，是科学，而科学没有义务让你赢。\n窗外面是早晨，你一夜没睡，新的一天开始了，但你的世界刚刚塌了。',
     ageRange: [26, 29],
     priority: 10,
     cooldown: 999,
@@ -1805,178 +1809,6 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
   // 通用十字路口（任何路径都可能触发）
   // ============================================================
 
-  // Universal-1: 朋友借钱不还 (25-40岁)
-  {
-    id: 'friend_borrow_money',
-    title: '老朋友的请求',
-    narrative: '一个多年没联系的老朋友突然找到了你，说家里遇到了急事，急需一大笔钱周转。\n是你大学时最好的兄弟/闺蜜——你们曾经一起通宵打游戏、一起吃泡面、一起哭过笑过。但毕业后你们各奔东西，联系越来越少，你甚至不确定他/她现在在做什么。\n他/她说得很诚恳，说三个月内一定还，还主动提出打借条。但你知道，借钱给朋友，要么失去钱，要么失去朋友，要么两者都失去。\n你看了看自己的存款——这笔钱借出去，你自己的财务规划也会受影响。但那些年的友谊像放电影一样在脑海里闪过：你生病时他/她背你去医院，你失恋时他/她陪你喝到天亮。\n手机屏幕亮着，上面是他/她发的消息："真的是没办法了才找你。"',
-    ageRange: [25, 40],
-    priority: 5,
-    cooldown: 8,
-    tag: 'friend_borrow_money',
-    conditions: (s: GameState) => s.friends.length > 0 && !s.crossroadFired['friend_borrow_money'],
-    options: [
-      {
-        id: 'ub1_lend_full',
-        label: '借，朋友有难不能不帮',
-        description: '全额借出，相信朋友会还',
-        hint: '重情义，但风险自担',
-        hintColor: 'danger',
-        prerequisites: (s: GameState) => s.currentSavings >= 30000,
-        disabledReason: '你也没什么存款可借',
-        effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 30000);
-          s.stress = Math.min(100, s.stress + 5);
-
-          const roll = Math.random();
-          if (roll < 0.35) {
-            s.currentSavings += 33000;
-            s.happiness = Math.min(100, s.happiness + 10);
-            if (s.friends.length > 0) s.friends[0].relation = Math.min(100, s.friends[0].relation + 20);
-            return { log: '你把钱转了过去，朋友千恩万谢。三个月后他/她准时把钱还了回来，还多了两千块说是利息。你们的关系因为这件事反而更近了，他/她逢人就说你是真正的朋友。你觉得这世上有些东西比钱重要——而你选择了相信，没有赌错。', cost: 30000 };
-          } else if (roll < 0.65) {
-            s.happiness = Math.max(0, s.happiness - 5);
-            if (s.friends.length > 0) s.friends[0].relation = Math.min(100, s.friends[0].relation + 5);
-            return { log: '你把钱借了出去。三个月过去了，朋友没提还钱的事。半年过去了，一年过去了，你旁敲侧击问了一次，他/她说"最近实在困难再宽限宽限"。你没再催——催了就伤感情。你知道这笔钱可能要不回来了，但你也不后悔帮了他/她。有些友谊的代价就是这几万块钱，值不值，你自己心里清楚。', cost: 30000 };
-          } else {
-            s.happiness = Math.max(0, s.happiness - 20);
-            s.stress = Math.min(100, s.stress + 15);
-            if (s.friends.length > 0) s.friends[0].relation = Math.max(0, s.friends[0].relation - 30);
-            return { log: '你把钱借了出去，之后那个朋友就像人间蒸发了一样。社交软件不回，电话不接，共同的朋友说他/她到处借钱赌输了/被骗了。你想过走法律途径但没有借条（有也没用），只能自认倒霉。钱没了，朋友也没了。你妈说得对："借钱给朋友就是花钱买敌人。"你花了三万块买了这个教训。', cost: 30000 };
-          }
-        },
-      },
-      {
-        id: 'ub1_lend_half',
-        label: '少借一点，说自己也不容易',
-        description: '借一小笔，说不用还了/当帮忙',
-        hint: '折中方案，两边都留余地',
-        hintColor: 'neutral',
-        prerequisites: (s: GameState) => s.currentSavings >= 10000,
-        disabledReason: '你连一万都拿不出来',
-        effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 10000);
-          s.stress = Math.max(0, s.stress - 5);
-
-          const roll = Math.random();
-          if (roll < 0.50) {
-            s.happiness = Math.min(100, s.happiness + 5);
-            if (s.friends.length > 0) s.friends[0].relation = Math.min(100, s.friends[0].relation + 10);
-            return { log: '你坦诚地说自己也在攒钱/还房贷，只能拿出一万块，说"不用还了，先解决问题"。朋友感激涕零，半年后还是把钱还了回来——他/她说你在他/她最难的时候没有完全拒绝，这份情记一辈子。你用一万块帮了朋友也保住了关系，这大概是成年人友谊最体面的方式。', cost: 10000 };
-          } else {
-            s.happiness = Math.max(0, s.happiness - 10);
-            if (s.friends.length > 0) s.friends[0].relation = Math.max(0, s.friends[0].relation - 15);
-            return { log: '你借了一万块说"不用还了"。但朋友似乎不太满意——他/她觉得你"混得那么好才借这么点"，之后慢慢和你疏远了。你有些委屈：你给的是你能给的，凭什么被嫌少？但你也理解，人在难处的时候是敏感的。那一万块你没要回来，那段友谊也没保住。', cost: 10000 };
-          }
-        },
-      },
-      {
-        id: 'ub1_refuse_polite',
-        label: '婉拒，说自己也有压力',
-        description: '不借钱，但帮忙想其他办法',
-        hint: '理性但可能伤感情',
-        hintColor: 'negative',
-        effect: (s: GameState) => {
-          s.happiness = Math.max(0, s.happiness - 10);
-          s.stress = Math.min(100, s.stress + 5);
-          if (s.friends.length > 0) s.friends[0].relation = Math.max(0, s.friends[0].relation - 10);
-          return { log: '你委婉地拒绝了，说自己也在还房贷/攒钱/手头紧。你帮他/她出了一些主意——找银行贷款、用花呗、找亲戚。电话那头沉默了几秒说"没事，理解"。之后你们的联系明显少了。你不知道自己做得对不对——你保住了钱，但那个曾经在你最难的时候帮过你的人，可能觉得你在他/她最难的时候转身走了。成年人的世界，没有两全。', cost: 0 };
-        },
-      },
-      {
-        id: 'ub1_cut_off',
-        label: '直接拒绝，这种"老朋友"多半是来骗钱的',
-        description: '多年不联系一联系就借钱，不靠谱',
-        hint: '最理性也最冷漠',
-        hintColor: 'negative',
-        effect: (s: GameState) => {
-          s.happiness = Math.max(0, s.happiness - 5);
-          s.stress = Math.max(0, s.stress - 5);
-          if (s.friends.length > 0) s.friends[0].relation = Math.max(0, s.friends[0].relation - 25);
-          return { log: '你直接回了"不好意思没钱"，然后拉黑了对方。你觉得一个多年不联系的朋友一开口就借钱，大概率是走投无路或者骗局。你保住了自己的钱，但心里某个地方还是隐隐作痛——你想起大学时那些纯粹的日子，和现在这个草木皆兵的自己。是你变了，还是世界变了？也许都变了。', cost: 0 };
-        },
-      },
-    ],
-  },
-
-  // Universal-2: 朋友结婚随礼压力 (25-35岁)
-  {
-    id: 'wedding_gift_pressure',
-    title: '红色炸弹',
-    narrative: '25岁之后，请柬像雪片一样飞来。\n这个月你已经收到了第三张红色请柬——大学室友、前同事、远房表姐。每个人都在结婚，每个人都在办酒，每个人都期待你出现在现场并递上一个厚厚的红包。\n你算了一下，这个月的份子钱加起来相当于你半个月的工资。更要命的是，有些朋友你已经两三年没联系了，请柬是通过社交软件群发的，你甚至不确定他/她还记不记得你的名字。但大家都随，你不随，就成了"那个人"。\n你看着抽屉里一叠红色请柬，有些婚礼你想去——那些真正重要的朋友；有些你只想转账了事；有些你想假装没看到。但社交规则像一张无形的网，你逃不掉。\n手机又震了一下，是另一个朋友发来的："兄弟/姐妹，我要结婚了，务必来啊！"',
-    ageRange: [25, 35],
-    priority: 4,
-    cooldown: 8,
-    tag: 'wedding_gift',
-    conditions: (s: GameState) => !s.crossroadFired['wedding_gift'],
-    options: [
-      {
-        id: 'ub2_all_in',
-        label: '场场都到，红包包足，维护人脉',
-        description: '把社交当投资，大手笔随礼',
-        hint: '花钱赚面子，但钱包大出血',
-        hintColor: 'negative',
-        prerequisites: (s: GameState) => s.currentSavings >= 20000,
-        disabledReason: '你没余钱撑场面',
-        effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 20000);
-          s.happiness = Math.min(100, s.happiness + 5);
-          s.stress = Math.min(100, s.stress + 10);
-          s.lifetimeGiftMoney += 20000;
-          return { log: '你场场婚礼都到场，红包包得比谁都厚。婚礼上你认识了不少人，加了一堆社交软件，朋友们都说你"够意思"。但你这个月吃了半个月泡面，信用卡账单让你倒吸一口凉气。你安慰自己这些都是"人脉投资"，但你不确定这些人脉什么时候能变现——如果能变现的话。', cost: 20000 };
-        },
-      },
-      {
-        id: 'ub2_selective',
-        label: '只去真正好朋友的，其他人转账意思一下',
-        description: '区分亲疏，好朋友重礼，普通朋友随大流',
-        hint: '理性处理，可能有人说你势利',
-        hintColor: 'neutral',
-        effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 8000);
-          s.stress = Math.min(100, s.stress + 5);
-          s.lifetimeGiftMoney += 8000;
-          return { log: '你给自己划了一条线：真正的朋友婚礼必到且红包丰厚，普通同事和熟人就转账一个吉利数字。有些不熟的人收到你的转账后没再理你，你也不在意。你发现真正的朋友不会因为红包大小而改变对你的看法，而那些在意红包厚度的人，本来也不是你的朋友。成年人的社交需要做减法。', cost: 8000 };
-        },
-      },
-      {
-        id: 'ub2_minimal',
-        label: '统一最低标准，谁来都是几百块',
-        description: '不区别对待，但也不打肿脸充胖子',
-        hint: '最省钱，但可能得罪人',
-        hintColor: 'negative',
-        effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 3000);
-          s.happiness = Math.max(0, s.happiness - 5);
-          s.lifetimeGiftMoney += 3000;
-
-          const roll = Math.random();
-          if (roll < 0.50) {
-            return { log: '你给所有人都包了相同金额的红包，不多不少，图个吉利。大部分人理解你的处境——大家都是年轻人，谁都不容易。但有一个大学同学在背后说你"抠门"，消息传到你耳朵里，你苦笑了一下。你决定不解释，因为那些因为红包大小就评判你的人，不值得你解释。', cost: 3000 };
-          } else {
-            s.happiness = Math.max(0, s.happiness - 10);
-            s.stress = Math.min(100, s.stress + 10);
-            return { log: '你包了统一的小红包，结果在一个前同事的婚礼上被人当面说"现在还有人包这么少的"。场面一度非常尴尬，你恨不得找个地缝钻进去。事后有人把你的"事迹"传到了共同朋友群里，你成了一段时间的笑柄。你觉得委屈——你月薪也没多少，凭什么要为别人的婚礼买单？但社会就是社会。', cost: 3000 };
-          }
-        },
-      },
-      {
-        id: 'ub2_skip_all',
-        label: '大部分都不去，借口加班/出差',
-        description: '能躲就躲，省下来的钱是自己的',
-        hint: '最省钱，但社交关系会淡',
-        hintColor: 'negative',
-        effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 1000);
-          s.happiness = Math.max(0, s.happiness - 10);
-          s.stress = Math.max(0, s.stress - 5);
-          s.lifetimeGiftMoney += 1000;
-          return { log: '你开始找各种理由缺席婚礼——加班、出差、家里有事。大部分人没说什么，但你能感觉到一些关系在慢慢变淡。几年后你发现自己的社交圈缩小了很多，真正还联系的朋友一只手数得过来。你省了不少钱，但有时候刷动态圈看到别人婚礼的合影，你会想：这些年你到底省下了什么，又错过了什么？', cost: 1000 };
-        },
-      },
-    ],
-  },
-
   // Universal-3: 前任突然联系 (26-40岁)
   {
     id: 'ex_contact',
@@ -2047,181 +1879,6 @@ export const PATH_CROSSROADS: CrossroadEvent[] = [
           s.stress = Math.min(100, s.stress + 5);
           s.happiness = Math.max(0, s.happiness - 10);
           return { log: '你看到消息的瞬间就删除了对方的联系方式。你不想知道他/她为什么来找你，也不想给任何可能的故事留开头。不是因为你还在意，而是因为你好不容易才把碎掉的自己拼回来，不想再冒一次碎掉的风险。那晚你失眠了一会儿，天亮后你觉得自己做对了。不是所有门都需要再打开。', cost: 0 };
-        },
-      },
-    ],
-  },
-
-  // Universal-4: 同学聚会落差 (28-40岁)
-  {
-    id: 'class_reunion_gap',
-    title: '十年之后',
-    narrative: '毕业十周年同学聚会，你本来不想去，但班长打了三个电话，你还是去了。\n酒店包厢里坐了三桌人。当年睡你上铺的兄弟开着宝马来的，手腕上是你半年工资的表；当年成绩最差的那个同学做了直播带货，手机不停地弹交易通知；当年的班花嫁了个有钱人，浑身名牌但笑容里有你看不懂的疲惫。\n也有人过得不太好——那个曾经意气风发的学生会主席在一个小公司做中层，头发稀疏了不少；那个最有才华的文艺女生在老家当老师，说话间全是柴米油盐。\n你坐在角落里，看着这群熟悉又陌生的人。大家在敬酒、在吹牛、在加社交软件、在暗暗比较。有人问你"现在混得怎么样"，你笑了笑说"还行"。\n你端着酒杯，突然意识到：十年前你们坐在同一间教室里，以为未来有无限可能；十年后你们坐在同一张酒桌上，人生的差距已经大到像不同的物种。这杯酒，有点苦。',
-    ageRange: [28, 40],
-    priority: 4,
-    cooldown: 8,
-    tag: 'class_reunion',
-    conditions: (s: GameState) => !s.crossroadFired['class_reunion'],
-    options: [
-      {
-        id: 'ub4_network',
-        label: '积极社交，加社交软件聊合作',
-        description: '把聚会当人脉场，混个脸熟',
-        hint: '功利但有效',
-        hintColor: 'neutral',
-        effect: (s: GameState) => {
-          s.stress = Math.min(100, s.stress + 10);
-          s.currentSavings = Math.max(0, s.currentSavings - 2000);
-
-          const roll = Math.random();
-          if (roll < 0.40) {
-            s.passiveIncome += 2000;
-            s.happiness = Math.min(100, s.happiness + 5);
-            return { log: '你端着酒杯挨个敬酒，加了二十多个社交软件。三个月后一个同学真的给你介绍了一个不错的副业机会/合作项目，赚了一笔小钱。你发现同学聚会虽然虚荣，但确实是一个低成本拓展人脉的场合——前提是你要有被别人利用的价值。你开始理解那些在聚会上积极社交的人了。', cost: 2000 };
-          } else {
-            s.happiness = Math.max(0, s.happiness - 5);
-            return { log: '你加了一堆社交软件，回家后发现大部分人不会通过你的消息，通过了的也只是在动态圈点赞之交。你在聚会上说了太多恭维的话，喝了太多酒，回家的时候胃里翻江倒海。你觉得自己像个小丑，但你不确定那些看起来谈笑风生的人是不是也有同样的感觉。', cost: 2000 };
-          }
-        },
-      },
-      {
-        id: 'ub4_low_key',
-        label: '低调吃饭，只和老朋友叙旧',
-        description: '不吹牛不比较，安安静静吃顿饭',
-        hint: '最舒服的姿势',
-        hintColor: 'positive',
-        effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 1000);
-          s.happiness = Math.min(100, s.happiness + 10);
-          s.stress = Math.max(0, s.stress - 5);
-          return { log: '你找了个角落的位置坐下，只和旁边几个当年真正要好的朋友聊天。你们聊的不是房子车子票子，是当年一起逃过的课、一起打过的游戏、一起暗恋过的人。那几个小时你忘了比较，忘了落差，仿佛回到了十年前那个什么都没有但什么都不怕的年纪。聚会散场后你们几个单独加了社交软件群，约定以后每年小聚。这才是同学聚会该有的样子。', cost: 1000 };
-        },
-      },
-      {
-        id: 'ub4_pretend',
-        label: '打肿脸充胖子，装出混得很好的样子',
-        description: '租好车/借名牌/吹牛，不输阵',
-        hint: '虚假的面子，真实的账单',
-        hintColor: 'danger',
-        prerequisites: (s: GameState) => s.currentSavings >= 5000,
-        disabledReason: '你连装的本钱都没有',
-        effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 5000);
-          s.stress = Math.min(100, s.stress + 20);
-          s.happiness = Math.max(0, s.happiness - 15);
-          return { log: '你租了一辆好车，买了一身新衣服，在聚会上高谈阔论，说自己"做投资""公司快上市了"。有人投来羡慕的目光，有人意味深长地笑了笑。聚会结束后你还车、还衣服、还信用卡，看着账单心疼了好久。更让你难受的是，你知道真正混得好的人不需要装——他们的气质和自信是装不出来的。你骗得了别人一时，骗不了自己。', cost: 5000 };
-        },
-      },
-      {
-        id: 'ub4_leave_early',
-        label: '坐了半小时就借故先走',
-        description: '到场露个面就撤，不给自己添堵',
-        hint: '逃避有用',
-        hintColor: 'negative',
-        effect: (s: GameState) => {
-          s.currentSavings = Math.max(0, s.currentSavings - 500);
-          s.happiness = Math.max(0, s.happiness - 5);
-          s.stress = Math.max(0, s.stress - 5);
-          return { log: '你坐了半小时，喝了半杯茶，和班长打了个招呼说"有事得先走"。走出酒店大门的时候你长舒一口气——不用比较、不用寒暄、不用看那些表演。你在路边摊买了一碗面，一个人吃着，觉得比酒店里的山珍海味香。以后的同学聚会，你大概不会再去了。你的人生不需要通过和别人比较来证明什么。', cost: 500 };
-        },
-      },
-    ],
-  },
-
-  // Universal-5: 父母催婚催生 (25-35岁)
-  {
-    id: 'parents_marriage_pressure',
-    title: '春节审判',
-    narrative: '春节回家，饭桌上的气氛一如既往地微妙。\n你妈夹了一块排骨放到你碗里，看似随意地说："你王阿姨家的孩子都生二胎了。"你爸沉默地喝了一口酒，但你知道他在等你的回答。\n这是每年春节的固定节目——从"有没有对象"到"什么时候结婚"到"什么时候要孩子"，问题随着你的年龄逐年升级。你解释过很多次：现在事业在上升期、在大城市压力大、不想将就、还没遇到合适的人……但这些理由在父母眼里都是借口。\n你理解他们——他们那个年代二十多岁就结婚生子是天经地义，他们的动态圈里都在抱孙子，他们怕你老了没人照顾。但你也有你自己的节奏和选择。\n窗外是鞭炮声，电视里是春节联欢晚会，你妈还在絮絮叨叨。这顿饭，又是一场持久战。',
-    ageRange: [25, 35],
-    priority: 5,
-    cooldown: 8,
-    tag: 'parent_marriage_pressure',
-    conditions: (s: GameState) => s.parents.isAlive && !s.isMarried && !s.crossroadFired['parent_marriage_pressure'],
-    options: [
-      {
-        id: 'ub5_blind_date',
-        label: '顺着父母，答应去相亲',
-        description: '让父母安排，也许真能遇到合适的',
-        hint: '给父母一个交代，也给自己一个机会',
-        hintColor: 'neutral',
-        effect: (s: GameState) => {
-          s.stress = Math.min(100, s.stress + 10);
-          s.currentSavings = Math.max(0, s.currentSavings - 3000);
-
-          const roll = Math.random();
-          if (roll < 0.25) {
-            s.isMarried = true;
-            s.happiness = Math.min(100, s.happiness + 20);
-            if (s.parents.isAlive) s.parents.relationShip = Math.min(100, s.parents.relationShip + 20);
-            s.partner = {
-              name: '相亲对象',
-              age: s.currentAge - 1,
-              affection: 70,
-              trust: 65,
-              marriedYear: s.currentAge,
-              hasDivorced: false,
-              personality: '温柔型',
-              datingStage: 'married',
-              meetYear: s.currentAge,
-              trait: '父母介绍的靠谱人',
-              memories: [{ age: s.currentAge, event: '春节相亲认识', emoji: '🧧' }],
-              crushFrom: 'blind_date',
-            };
-            return { log: '你答应了去相亲。前几次都很尴尬，但第三次父母给你介绍的那个人出乎意料地合得来——不是惊天动地的爱情，但踏实、温和、靠谱。你们交往了半年后结婚了，婚礼上你妈哭得稀里哗啦。你不确定这是不是你曾经幻想的爱情，但你确定这是一种安稳的幸福。有时候不期而遇的，比苦苦寻找的更合适。', cost: 3000 };
-          } else {
-            s.happiness = Math.max(0, s.happiness - 10);
-            if (s.parents.isAlive) s.parents.relationShip = Math.min(100, s.parents.relationShip + 5);
-            return { log: '你去相亲了，见了五六个人，没有一个来电的。有一个人条件很好但你聊不来，有一个人对你很热情但你没感觉。你妈说"感情可以培养"，你觉得有些东西培养不出来。折腾了一大圈你又回到了单身，但父母至少暂时不再念叨了——他们觉得你"在努力了"。', cost: 3000 };
-          }
-        },
-      },
-      {
-        id: 'ub5_confront',
-        label: '认真和父母谈一次，表达自己的想法',
-        description: '不逃避也不妥协，沟通你的人生规划',
-        hint: '理性沟通，可能有效也可能无效',
-        hintColor: 'neutral',
-        effect: (s: GameState) => {
-          s.stress = Math.min(100, s.stress + 10);
-
-          const roll = Math.random();
-          if (roll < 0.45) {
-            s.happiness = Math.min(100, s.happiness + 10);
-            if (s.parents.isAlive) s.parents.relationShip = Math.min(100, s.parents.relationShip + 15);
-            return { log: '你晚饭后拉着父母认真谈了一次。你说了自己在大城市的压力、你对未来的规划、你不想将就结婚的原因。你爸沉默了很久，你妈抹了眼泪，但他们最终说"只要你过得好就行"。之后他们再也没催过你——不是因为不关心了，而是因为他们终于理解了你有自己的节奏。你发现和父母之间很多矛盾，差的就是一次认真的对话。', cost: 0 };
-          } else {
-            s.happiness = Math.max(0, s.happiness - 10);
-            s.stress = Math.min(100, s.stress + 10);
-            if (s.parents.isAlive) s.parents.relationShip = Math.max(0, s.parents.relationShip - 10);
-            return { log: '你试着和父母沟通，但话没说三句就吵起来了。你妈哭着说"我们还能活几年等着抱孙子"，你爸拍着桌子说"你不结婚就是不孝"。沟通变成了争吵，最后摔门进了房间。你躺在床上听着门外父母的叹息声，觉得又委屈又无力。代沟这东西不是靠一次谈话就能填平的。', cost: 0 };
-          }
-        },
-      },
-      {
-        id: 'ub5_avoid',
-        label: '打哈哈糊弄过去，左耳进右耳出',
-        description: '"好好好""快了快了""明年明年"',
-        hint: '拖延战术，治标不治本',
-        hintColor: 'negative',
-        effect: (s: GameState) => {
-          s.stress = Math.min(100, s.stress + 5);
-          s.happiness = Math.max(0, s.happiness - 5);
-          return { log: '你用一贯的策略应对——"快了快了""在找了在找了""明年一定明年"。你妈翻了个白眼说"你去年也说明年"，但也没再逼你。这种太极拳你打了很多年了，每次都能蒙混过关。但你知道"明年"终有一年会到来，到时候你又该说什么呢？你不想想那么远，过了这年再说吧。', cost: 0 };
-        },
-      },
-      {
-        id: 'ub5_defy',
-        label: '明确表态：我的人生我做主',
-        description: '不结婚/不生孩子是我的选择',
-        hint: '强硬立场，可能彻底激化矛盾',
-        hintColor: 'danger',
-        effect: (s: GameState) => {
-          s.pathFaith = Math.min(100, s.pathFaith + 5);
-          s.happiness = Math.max(0, s.happiness - 15);
-          s.stress = Math.min(100, s.stress + 15);
-          if (s.parents.isAlive) s.parents.relationShip = Math.max(0, s.parents.relationShip - 20);
-          return { log: '你放下筷子认真地说："我不打算结婚/生孩子，这是我的人生，请你们尊重。"饭桌上安静了三秒，然后你妈哭了，你爸摔了筷子。整个春节剩下的日子家里气氛冷到了冰点。你走的时候你妈没出来送你。你坐在火车上看着窗外，心里很难受但不后悔。你知道时间会证明一切，也许有一天他们会理解，也许不会——但你不能为了满足别人的期待过一辈子。', cost: 0 };
         },
       },
     ],

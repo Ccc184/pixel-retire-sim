@@ -5,6 +5,8 @@ import type { GameState, YearResult } from '../../types/global.d.js'
 import { playTurn, playDing, playBuzz, playBigGain, playBigLoss, playBlindboxReveal, playMilestone, playBreakthrough } from '../../utils/audio.js'
 import { fmt, fmtExact, fmtSigned, fmtSalaryDelta } from '../../utils/format.js'
 import { generateMilestoneSummary, isMilestoneAge } from '../../data/milestone-summaries.js'
+import { interpolateText } from '../../utils/text-interpolate.js'
+import AnimatedNumber from '../ui/AnimatedNumber.vue'
 
 const store = useGameStore()
 
@@ -44,12 +46,14 @@ watch(() => store.showYearEnd, (newVal) => {
     const isBigGain = change > 50000
     const isBigLoss = change < -30000
 
-    // 存款变化和存款余额动画
+    // 存款变化和存款余额动画（错峰：等数字区滑入后再开始滚动计数）
     animatedSavingsChange.value = 0
     animatedCurrentSavings.value = state.value.currentSavings - change
 
-    animateNumber(animatedSavingsChange, change, 700)
-    animateNumber(animatedCurrentSavings, state.value.currentSavings, 900)
+    setTimeout(() => {
+      animateNumber(animatedSavingsChange, change, 700)
+      animateNumber(animatedCurrentSavings, state.value.currentSavings, 900)
+    }, 560)
 
     // 播放对应音效
     setTimeout(() => {
@@ -79,6 +83,27 @@ watch(() => store.showYearEnd, (newVal) => {
 
 const showFinanceDetail = ref<boolean>(false)
 const showWellbeingDetail = ref<boolean>(false)
+const financeDetailEl = ref<HTMLElement | null>(null)
+const wellbeingDetailEl = ref<HTMLElement | null>(null)
+
+// 展开/收起明细：展开后把内容滚动到按钮正下方，避免内容跳到可视区下方
+function toggleFinanceDetail() {
+  showFinanceDetail.value = !showFinanceDetail.value
+  if (showFinanceDetail.value) {
+    requestAnimationFrame(() => {
+      financeDetailEl.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  }
+}
+
+function toggleWellbeingDetail() {
+  showWellbeingDetail.value = !showWellbeingDetail.value
+  if (showWellbeingDetail.value) {
+    requestAnimationFrame(() => {
+      wellbeingDetailEl.value?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  }
+}
 
 // 是否是里程碑年（30/40/50岁，60岁属退休结局）
 const isMilestone = computed(() => {
@@ -90,28 +115,35 @@ const isMilestone = computed(() => {
 //  主事件选择逻辑
 // ================================================================
 function pickMainEvent(r: YearResult): string {
-  // 优先级：恋爱大事件 > 黑天鹅/离婚离世 > 盲盒揭晓 > 卡片选择 > 日常琐事
+  // 优先级：恋爱大事件 > 关系重大变故(离世/离婚/分手) > 选择剧情(yearLog) > 盲盒揭晓 > 卡片选择 > 日常琐事
+  // 黑天鹅事件（被动随机事件）一律不占据主事件，主事件必须是玩家的主动剧情衔接
+  // 健康琐事（生病/住院/感冒等）一律从主事件候选池剔除
   const romanceLogs: string[] = (r as any).romanceLogs || []
   const romanceBig = (r as any).romanceBigEvent
   if (romanceBig && romanceLogs.length > 0) {
     // 恋爱大事件作为主事件（遇见/第一次约会/见家长/求婚/分手等）
     return romanceLogs[0]
   }
-  // 优先级：黑天鹅 > 关系重大变化 > 盲盒揭晓 > 卡片选择 > 日常琐事
+  // 重大人际关系变故（剔除"住院"等健康琐事，住院类文案不应占据主事件）
   const criticalRelations = r.relationshipChanges.filter(e =>
-    e.includes('离世') || e.includes('离婚') || e.includes('住院') || e.includes('分手')
+    e.includes('离世') || e.includes('离婚') || e.includes('分手')
   )
   if (criticalRelations.length > 0) return criticalRelations[0]
-  if (r.events.length > 0) return r.events[0]
+  // 叙事型年度总结（选择引发的剧情）作为主事件，保证剧情衔接
+  const yearLog = (r as any).yearLog as string | undefined
+  // [DEBUG] 主事件选择的 yearLog
+  console.log('[DEBUG YearEndPanel] yearLog=', yearLog, 'isNumeric=', yearLog ? isNumericLog(yearLog) : '-', 'isIllness=', yearLog ? isIllnessLog(yearLog) : '-')
+  if (yearLog && yearLog.trim() && !isNumericLog(yearLog) && !isIllnessLog(yearLog)) return yearLog
   // 盲盒揭晓文本也可能成为主事件
   const bbReveals = store.lastYearResult?.blindBoxReveals || []
   const importantBB = bbReveals.filter(b => b.emotion === 'crying' || b.emotion === 'bitter' || b.emotion === 'cold')
   if (importantBB.length > 0) return importantBB[0].text
-  const importantCards = r.cardLogs.filter(e => e.length > 30)
+  const importantCards = r.cardLogs.filter(e => e.length > 30 && !isNumericLog(e))
   if (importantCards.length > 0) return importantCards[0]
   // 恋爱小事件也可以是主事件
   if (romanceLogs.length > 0) return romanceLogs[0]
-  const interestingDailies = r.dailyEvents.filter(e => e.length > 40)
+  // 日常琐事作为主事件时，过滤掉生病/感冒等健康琐事，避免占据最显眼位置
+  const interestingDailies = r.dailyEvents.filter(e => e.length > 40 && !isNumericLog(e) && !isIllnessLog(e))
   if (interestingDailies.length > 0) return interestingDailies[0]
   return '这一年平平淡淡地过去了。'
 }
@@ -120,6 +152,12 @@ function pickMainEvent(r: YearResult): string {
 const mainEvent = computed<string>(() => {
   if (!result.value) return ''
   return pickMainEvent(result.value)
+})
+
+// 岔路口抉择剧情（额外在主事件下方分割展示，不影响卡片选择作为主事件）
+const crossroadStory = computed<string>(() => {
+  const raw = (result.value as any)?.crossroadStory || ''
+  return interpolateText(raw, state.value)
 })
 
 // ================================================================
@@ -175,8 +213,11 @@ const allStoryEvents = computed<StoryEvent[]>(() => {
   }
   for (const title of cardOrder) {
     const logs = cardGroups[title]
+    // 过滤数值结算日志（如月薪调整、被动收入结算），只保留剧情叙事
+    const narrLogs = logs.filter(l => !isNumericLog(l))
+    if (narrLogs.length === 0) continue
     // 同一张卡只有一段就直接显示，多段才合并
-    const text = logs.length === 1 ? logs[0].replace(/^第\d+岁，/, '') : logs.map(l => l.replace(/^第\d+岁，/, '')).join(' ')
+    const text = narrLogs.length === 1 ? narrLogs[0].replace(/^第\d+岁，/, '') : narrLogs.map(l => l.replace(/^第\d+岁，/, '')).join(' ')
     tryAdd(text, 'card')
   }
 
@@ -261,7 +302,19 @@ function storyColor(type: string): string {
 // 判断是否为纯数值变化日志（如"压力 +3（40 -> 43）""幸福感 -4（72 -> 68）""储蓄 +5000（当前：12000）""父母健康 -5（80 -> 75）"）
 function isNumericLog(log: string): boolean {
   // 匹配 "XX +/-N（YY -> ZZ）" 或 "XX +/-N（当前：YY）" 格式
-  return /^[\u4e00-\u9fa5a-zA-Z]+\s*[+-]?\d+（.*）$/.test(log.trim())
+  if (/^[\u4e00-\u9fa5a-zA-Z]+\s*[+-]?\d+（.*）$/.test(log.trim())) return true
+  // 匹配结算/收入类数值日志（可能带"第X岁，"前缀）：
+  // 月薪调整、被动收入结算、专家顾问收入、额外收入等，应作为数值反馈而非剧情主事件
+  if (/月薪从¥/.test(log)) return true
+  if (/调整为¥/.test(log)) return true
+  if (/专业能力得到了市场认可/.test(log)) return true
+  if (/额外收入|被动收入/.test(log)) return true
+  return false
+}
+
+// 判断是否为生病/感冒类健康琐事日志（不应占据年度结算最显眼的位置）
+function isIllnessLog(log: string): boolean {
+  return /感冒|发烧|生病|流感|咳嗽|支气管炎|肠胃炎|病倒了|住院|打针|吃药/.test(log)
 }
 
 // ================================================================
@@ -432,6 +485,14 @@ const totalAssetChange = computed(() => {
   return total
 })
 
+// 收支结构占比条（收入绿 / 支出红，像素堆叠条）
+const incomeRatio = computed(() => {
+  const tot = totalIncome.value + totalExpense.value
+  if (tot <= 0) return 50
+  return Math.round((totalIncome.value / tot) * 100)
+})
+const expenseRatio = computed(() => 100 - incomeRatio.value)
+
 const actualChange = computed(() => {
   if (!result.value) return 0
   return result.value.actualSavingsChange ?? (totalIncome.value - totalExpense.value)
@@ -486,6 +547,13 @@ const wellbeingDetailRows = computed<WellbeingRow[]>(() => {
 })
 
 // ================================================================
+//  年度独白（从年初独白移入，顶部娱乐元素）
+// ================================================================
+const resolvedOpeningMonologue = computed(() =>
+  interpolateText(store.state.yearOpeningMonologue, store.state)
+)
+
+// ================================================================
 //  里程碑叙事（30/40/50岁人生小结）
 // ================================================================
 const milestoneLines = computed<string[]>(() => {
@@ -507,6 +575,7 @@ const milestoneLines = computed<string[]>(() => {
 const fmtMoney = fmt
 const fmtSalary = fmtExact
 const fmtChange = fmtSigned
+const fmtRound = (n: number) => String(Math.round(n))
 
 // 进度条颜色
 function barColor(val: number, type: 'health' | 'stress' | 'happiness'): string {
@@ -573,40 +642,83 @@ function handleContinue(): void {
       <div class="pixel-corner corner-bl" />
       <div class="pixel-corner corner-br" />
 
-      <!-- 标题区 -->
-      <div class="yearend-header">
-        <div v-if="isMilestone" class="milestone-tag">人生小结</div>
-        <p class="yearend-age">◆ 第{{ result.age }}岁 ◆</p>
-      </div>
+      <!-- ============================================================
+           带一：顶部状态条（横向排布）：年龄 | 年结余 | 关键指标
+           ============================================================ -->
+      <div class="yd-topbar">
+        <div class="yd-ageblock">
+          <div v-if="isMilestone" class="milestone-tag">人生小结</div>
+          <div class="age-hero">
+            <span class="age-star" aria-hidden="true">✦</span>
+            <span class="age-unit">AGE</span>
+            <span class="age-num">{{ result.age }}</span>
+            <span class="age-unit">岁</span>
+            <span class="age-star" aria-hidden="true">✦</span>
+          </div>
+        </div>
 
-      <!-- 分割线 -->
-      <div class="divider">
-        <span class="divider-dot" />
-        <span class="divider-line" />
-        <span class="divider-dot" />
+        <div class="yd-topdivider" aria-hidden="true" />
+
+        <!-- 年度独白（从年初独白移入，顶部娱乐元素） -->
+        <div class="yd-monologue">
+          <span class="monologue-mark" aria-hidden="true">❝</span>
+          <span class="monologue-text">{{ resolvedOpeningMonologue }}</span>
+          <span class="monologue-mark" aria-hidden="true">❞</span>
+        </div>
       </div>
 
       <!-- ============================================================
-           分区一：年度金句（大字号、居中、霓虹色）
+           带二：叙事舞台（全宽横幅）：年度金句 + 岔路口 + 成就
            ============================================================ -->
-      <div class="panel-section section-quote">
-        <div class="section-header">
-          <span class="section-tag">◆ YEARLY QUOTE ◆</span>
+      <div class="yd-cols">
+        <!-- 左列：叙事（年度金句 + 命运岔路口 + 成就） -->
+        <div class="yd-col-left">
+        <!-- 左栏归类标题：本年度 · 故事 -->
+        <div class="yd-cat-header cat-story">
+          <span class="cat-mark" aria-hidden="true">◆</span>
+          <span class="cat-title">本年度 · 故事</span>
+          <span class="cat-en">THIS YEAR'S STORY</span>
         </div>
-        <div class="main-event-section">
-          <p class="main-event-text">{{ mainEvent }}</p>
+        <div class="section-quote">
+          <div class="section-header">
+            <span class="section-tag">◆ 年度金句 · YEARLY QUOTE ◆</span>
+          </div>
+          <div class="main-event-section">
+            <p class="main-event-text">{{ mainEvent }}</p>
+          </div>
         </div>
-      </div>
 
-      <!-- ============================================================
-           分区二：事件回顾（日志风格）
-           ============================================================ -->
-      <div class="panel-section section-events">
-        <div class="section-header">
-          <span class="section-tag">▣ EVENT LOG</span>
+        <!-- 岔路口抉择：不影响卡片选择作为主事件 -->
+        <div v-if="crossroadStory" class="section-crossroad">
+          <div class="section-header">
+            <span class="section-tag">⚡ 命运岔路口 · 你的抉择</span>
+          </div>
+          <div class="crossroad-story-block">
+            <p class="crossroad-story-text">{{ crossroadStory }}</p>
+          </div>
         </div>
 
-        <!-- 里程碑叙事（5年回顾） -->
+        <!-- 成就解锁 -->
+        <div v-if="achievementData" class="section-achievement">
+          <div class="section-header">
+            <span class="section-tag achievement-tag">★ 成就解锁 · ACHIEVEMENT ★</span>
+          </div>
+          <div class="achievement-display">
+            <div class="achievement-badge-large">★</div>
+            <h3 class="achievement-title-large">{{ achievementData.title }}</h3>
+            <div class="achievement-narrative-large">
+              <p v-for="(line, i) in achievementData.narrative.split('\n')" :key="'ach-' + i">{{ line }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 事件回顾（故事流，属叙事） -->
+        <div class="yd-log">
+        <div class="section-header">
+          <span class="section-tag">▣ 事件回顾 · EVENT LOG</span>
+        </div>
+
+        <!-- 里程碑叙事（30/40/50岁人生小结） -->
         <div v-if="milestoneLines.length > 0" class="milestone-section">
           <p v-for="(line, idx) in milestoneLines" :key="'ms-' + idx" class="milestone-line">
             {{ line }}
@@ -632,243 +744,254 @@ function handleContinue(): void {
           <span class="no-events-text">—— 这一年风平浪静 ——</span>
         </div>
       </div>
+        </div>  <!-- /yd-col-left -->
 
-      <!-- ============================================================
-           分区二点五：成就解锁（当年触发的成就在此展示）
-           ============================================================ -->
-      <div v-if="achievementData" class="panel-section section-achievement">
-        <div class="section-header">
-          <span class="section-tag achievement-tag">★ ACHIEVEMENT UNLOCKED ★</span>
+        <div class="yd-col-right">
+        <!-- 右栏归类标题：本年度 · 数据 -->
+        <div class="yd-cat-header cat-data">
+          <span class="cat-mark" aria-hidden="true">◇</span>
+          <span class="cat-title">本年度 · 数据</span>
+          <span class="cat-en">THIS YEAR'S DATA</span>
         </div>
-        <div class="achievement-display">
-          <div class="achievement-badge-large">★</div>
-          <h3 class="achievement-title-large">{{ achievementData.title }}</h3>
-          <div class="achievement-narrative-large">
-            <p v-for="(line, i) in achievementData.narrative.split('\n')" :key="'ach-' + i">{{ line }}</p>
+        <!-- 财务概览（从顶部移入）：年结余 + 月薪/被动/存款 -->
+        <div class="yd-finance">
+          <div class="yd-sub-header">
+            <span class="sub-mark" aria-hidden="true">▸</span>
+            <span class="sub-title">财务概览</span>
           </div>
-        </div>
-      </div>
-
-      <!-- ============================================================
-           分区三：数字总结（收支/资产/健康/幸福/压力）
-           ============================================================ -->
-      <div class="panel-section section-numbers">
-        <div class="section-header">
-          <span class="section-tag">▣ DATA SUMMARY</span>
-        </div>
-
-        <!-- 财务数字区域（紧凑一行） -->
-        <div class="finance-section compact">
-          <div class="finance-compact-grid">
-            <!-- 月薪：精确到元，带涨跌箭头 -->
-            <div class="finance-item">
-              <span class="finance-label">月薪</span>
+          <div
+            class="finance-hero"
+            :class="actualChange >= 0 ? 'hero-gain' : 'hero-loss'"
+          >
+            <span class="hero-label">⇓ 本年度结余 ⇓</span>
+            <span
+              class="hero-value"
+              :class="{ 'hero-big': Math.abs(actualChange) > 50000 }"
+            >
+              {{ numbersReady ? fmtChange(animatedSavingsChange) : fmtChange(actualChange) }}
+            </span>
+          </div>
+          <div class="yd-kpis">
+            <div class="kpi">
+              <span class="kpi-label">月薪</span>
               <span
-                class="finance-value"
+                class="kpi-value"
                 :class="state.currentMonthlySalary > 0 ? 'val-blue' : 'val-red'"
               >
                 {{ state.currentMonthlySalary > 0 ? fmtSalary(state.currentMonthlySalary) : '失业' }}
               </span>
               <span
                 v-if="salaryChange !== 0"
-                class="finance-sub"
+                class="kpi-sub"
                 :class="salaryChange > 0 ? 'val-green' : 'val-red'"
               >
                 {{ fmtSalaryDelta(salaryChange) }}
               </span>
             </div>
-            <!-- 被动收入/月：退休核心指标，除以12更直观 -->
-            <div class="finance-item">
-              <span class="finance-label">被动收入</span>
-              <span
-                class="finance-value"
-                :class="monthlyPassiveIncome > 0 ? 'val-green' : ''"
-              >
+            <div class="kpi">
+              <span class="kpi-label">被动收入</span>
+              <span class="kpi-value" :class="monthlyPassiveIncome > 0 ? 'val-green' : ''">
                 {{ monthlyPassiveIncome > 0 ? fmtSalary(monthlyPassiveIncome) : '¥0' }}
               </span>
-              <span class="finance-sub unit-label">/月</span>
+              <span class="kpi-sub unit-label">/月</span>
             </div>
-            <!-- 年结余：今年存下/亏掉的钱 -->
-            <div class="finance-item">
-              <span class="finance-label">年结余</span>
-              <span
-                class="finance-value"
-                :class="[
-                  actualChange >= 0 ? 'val-green' : 'val-red',
-                  Math.abs(actualChange) > 50000 ? 'val-big' : ''
-                ]"
-              >
-                {{ numbersReady ? fmtChange(animatedSavingsChange) : fmtChange(actualChange) }}
-              </span>
-            </div>
-            <!-- 存款：当前总存款 -->
-            <div class="finance-item">
-              <span class="finance-label">存款</span>
-              <span
-                class="finance-value"
-                :class="state.currentSavings >= 0 ? 'val-green' : 'val-red'"
-              >
+            <div class="kpi">
+              <span class="kpi-label">存款</span>
+              <span class="kpi-value" :class="state.currentSavings >= 0 ? 'val-green' : 'val-red'">
                 {{ numbersReady ? fmtMoney(animatedCurrentSavings) : fmtMoney(state.currentSavings) }}
               </span>
             </div>
           </div>
+        </div>
 
-          <!-- 收支明细展开按钮 -->
+      <!-- ============================================================
+           带四：数据条（全宽横向排布）：收支 | 身心健康 | 资产事件
+           ============================================================ -->
+      <div class="yd-data">
+        <!-- 数据子分类标题 -->
+        <div class="yd-sub-header">
+          <span class="sub-mark" aria-hidden="true">▸</span>
+          <span class="sub-title">收支与身心</span>
+        </div>
+        <!-- 收支与身心健康统计卡 -->
+        <div class="yd-stats">
+          <div class="yd-stat">
+            <span class="yd-stat-label">收入</span>
+            <span class="yd-stat-value val-green">{{ fmtMoney(totalIncome) }}</span>
+          </div>
+          <div class="yd-stat">
+            <span class="yd-stat-label">支出</span>
+            <span class="yd-stat-value val-red">{{ fmtMoney(totalExpense) }}</span>
+          </div>
+          <div class="yd-stat">
+            <span class="yd-stat-label">健康</span>
+            <span class="yd-stat-value" :style="{ color: barColor(state.health, 'health') }">
+              <AnimatedNumber :value="state.health" :format="fmtRound" />
+            </span>
+            <span class="yd-stat-delta" :class="deltaClass(result.healthChange, 'health')">
+              ({{ formatDelta(result.healthChange) }})
+            </span>
+          </div>
+          <div class="yd-stat">
+            <span class="yd-stat-label">压力</span>
+            <span class="yd-stat-value" :style="{ color: barColor(state.stress, 'stress') }">
+              <AnimatedNumber :value="state.stress" :format="fmtRound" />
+            </span>
+            <span class="yd-stat-delta" :class="deltaClass(result.stressChange, 'stress')">
+              ({{ formatDelta(result.stressChange) }})
+            </span>
+          </div>
+          <div class="yd-stat">
+            <span class="yd-stat-label">幸福</span>
+            <span class="yd-stat-value" :style="{ color: barColor(state.happiness, 'happiness') }">
+              <AnimatedNumber :value="state.happiness" :format="fmtRound" />
+            </span>
+            <span class="yd-stat-delta" :class="deltaClass(result.happinessChange, 'happiness')">
+              ({{ formatDelta(result.happinessChange) }})
+            </span>
+          </div>
+        </div>
+
+        <!-- 收支结构占比条 -->
+        <div class="flow-bar">
+          <div class="flow-bar-track">
+            <div class="flow-seg flow-income" :style="{ width: incomeRatio + '%' }" />
+            <div class="flow-seg flow-expense" :style="{ width: expenseRatio + '%' }" />
+          </div>
+          <div class="flow-legend">
+            <span class="flow-legend-item">
+              <i class="dot dot-in" />收入 <b>{{ fmtMoney(totalIncome) }}</b>
+            </span>
+            <span class="flow-legend-item">
+              <i class="dot dot-ex" />支出 <b>{{ fmtMoney(totalExpense) }}</b>
+            </span>
+          </div>
+        </div>
+
+        <!-- 明细展开：按钮与其内容成组，展开内容直接出现在按钮下方 -->
+        <div class="yd-toggle-group">
           <button
             class="detail-toggle"
             :class="{ expanded: showFinanceDetail }"
-            @click="showFinanceDetail = !showFinanceDetail"
+            @click="toggleFinanceDetail"
           >
             <span class="fold-arrow">{{ showFinanceDetail ? '▲' : '▼' }}</span>
             <span>{{ showFinanceDetail ? '收起明细' : '查看收支明细' }}</span>
           </button>
-
-          <!-- 收支明细展开 -->
-          <div v-if="showFinanceDetail" class="finance-detail">
-            <div class="finance-detail-col">
-              <div class="detail-col-title income-title">现金收入</div>
-              <div v-for="(item, idx) in financeItems.income" :key="'in-' + idx" class="detail-row">
-                <span class="detail-label">{{ item.label }}</span>
-                <span class="detail-amount val-green">+{{ fmtMoney(item.amount) }}</span>
-              </div>
-              <div class="detail-row total-row">
-                <span class="detail-label">现金收入合计</span>
-                <span class="detail-amount val-blue">{{ fmtMoney(totalIncome) }}</span>
-              </div>
+          <!-- 收支明细展开（全宽） -->
+          <div ref="financeDetailEl" v-if="showFinanceDetail" class="finance-detail">
+          <div class="finance-detail-col">
+            <div class="detail-col-title income-title">现金收入</div>
+            <div v-for="(item, idx) in financeItems.income" :key="'in-' + idx" class="detail-row">
+              <span class="detail-label">{{ item.label }}</span>
+              <span class="detail-amount val-green">+{{ fmtMoney(item.amount) }}</span>
             </div>
-            <div class="finance-detail-col">
-              <div class="detail-col-title expense-title">现金支出</div>
-              <div v-for="(item, idx) in financeItems.expense" :key="'ex-' + idx" class="detail-row">
-                <span class="detail-label">{{ item.label }}</span>
-                <span class="detail-amount val-red">-{{ fmtMoney(item.amount) }}</span>
-              </div>
-              <div class="detail-row total-row">
-                <span class="detail-label">现金支出合计</span>
-                <span class="detail-amount val-orange">{{ fmtMoney(totalExpense) }}</span>
-              </div>
+            <div class="detail-row total-row">
+              <span class="detail-label">现金收入合计</span>
+              <span class="detail-amount val-blue">{{ fmtMoney(totalIncome) }}</span>
             </div>
-            <!-- 资产市值变动（非现金） -->
-            <div v-if="financeItems.assetChanges.length > 0" class="finance-detail-col full-width">
-              <div class="detail-col-title asset-title">资产市值变动（非现金，不影响存款）</div>
-              <div v-for="(item, idx) in financeItems.assetChanges" :key="'as-' + idx" class="detail-row">
-                <span class="detail-label">{{ item.label }}</span>
-                <span class="detail-amount" :class="item.isIncome ? 'val-green' : 'val-red'">
-                  {{ item.isIncome ? '+' : '-' }}{{ fmtMoney(item.amount) }}
-                </span>
-              </div>
-              <div class="detail-row total-row">
-                <span class="detail-label">资产市值净变动</span>
-                <span class="detail-amount" :class="totalAssetChange >= 0 ? 'val-green' : 'val-red'">
-                  {{ totalAssetChange >= 0 ? '+' : '' }}{{ fmtMoney(totalAssetChange) }}
-                </span>
-              </div>
+          </div>
+          <div class="finance-detail-col">
+            <div class="detail-col-title expense-title">现金支出</div>
+            <div v-for="(item, idx) in financeItems.expense" :key="'ex-' + idx" class="detail-row">
+              <span class="detail-label">{{ item.label }}</span>
+              <span class="detail-amount val-red">-{{ fmtMoney(item.amount) }}</span>
             </div>
-            <!-- 月薪变动明细 -->
-            <div v-if="salaryDetailRows.length > 0 && salaryChange !== 0" class="finance-detail-col full-width">
-              <div class="detail-col-title salary-title">月薪变动明细</div>
-              <div v-for="(item, idx) in salaryDetailRows" :key="'sal-' + idx" class="detail-row salary-detail-row">
-                <span class="detail-label">
-                  <span class="salary-source">{{ item.source }}</span>
-                  <span v-if="item.note" class="salary-note">{{ item.note }}</span>
-                </span>
-                <span class="detail-amount" :class="item.amount >= 0 ? 'val-green' : 'val-red'">
-                  {{ item.amount >= 0 ? '+' : '' }}{{ fmtSalary(item.amount) }}
-                </span>
-              </div>
-              <div class="detail-row total-row">
-                <span class="detail-label">月薪净变动</span>
-                <span class="detail-amount" :class="salaryChange >= 0 ? 'val-green' : 'val-red'">
-                  {{ fmtSalaryDelta(salaryChange) }}
-                </span>
-              </div>
+            <div class="detail-row total-row">
+              <span class="detail-label">现金支出合计</span>
+              <span class="detail-amount val-orange">{{ fmtMoney(totalExpense) }}</span>
+            </div>
+          </div>
+          <!-- 资产市值变动（非现金） -->
+          <div v-if="financeItems.assetChanges.length > 0" class="finance-detail-col full-width">
+            <div class="detail-col-title asset-title">资产市值变动（非现金，不影响存款）</div>
+            <div v-for="(item, idx) in financeItems.assetChanges" :key="'as-' + idx" class="detail-row">
+              <span class="detail-label">{{ item.label }}</span>
+              <span class="detail-amount" :class="item.isIncome ? 'val-green' : 'val-red'">
+                {{ item.isIncome ? '+' : '-' }}{{ fmtMoney(item.amount) }}
+              </span>
+            </div>
+            <div class="detail-row total-row">
+              <span class="detail-label">资产市值净变动</span>
+              <span class="detail-amount" :class="totalAssetChange >= 0 ? 'val-green' : 'val-red'">
+                {{ totalAssetChange >= 0 ? '+' : '' }}{{ fmtMoney(totalAssetChange) }}
+              </span>
+            </div>
+          </div>
+          <!-- 月薪变动明细 -->
+          <div v-if="salaryDetailRows.length > 0 && salaryChange !== 0" class="finance-detail-col full-width">
+            <div class="detail-col-title salary-title">月薪变动明细</div>
+            <div v-for="(item, idx) in salaryDetailRows" :key="'sal-' + idx" class="detail-row salary-detail-row">
+              <span class="detail-label">
+                <span class="salary-source">{{ item.source }}</span>
+                <span v-if="item.note" class="salary-note">{{ item.note }}</span>
+              </span>
+              <span class="detail-amount" :class="item.amount >= 0 ? 'val-green' : 'val-red'">
+                {{ item.amount >= 0 ? '+' : '' }}{{ fmtSalary(item.amount) }}
+              </span>
+            </div>
+            <div class="detail-row total-row">
+              <span class="detail-label">月薪净变动</span>
+              <span class="detail-amount" :class="salaryChange >= 0 ? 'val-green' : 'val-red'">
+                {{ fmtSalaryDelta(salaryChange) }}
+              </span>
             </div>
           </div>
         </div>
+        </div>
 
-        <!-- 身心状态区域（紧凑一行） -->
-        <div class="wellbeing-section compact">
-          <div class="wb-compact-row">
-            <div class="wb-item">
-              <span class="wb-label">健康</span>
-              <span class="wb-num" :style="{ color: barColor(state.health, 'health') }">
-                {{ state.health }}
-              </span>
-              <span class="wb-delta" :class="deltaClass(result.healthChange, 'health')">
-                ({{ formatDelta(result.healthChange) }})
-              </span>
-            </div>
-            <div class="wb-item">
-              <span class="wb-label">压力</span>
-              <span class="wb-num" :style="{ color: barColor(state.stress, 'stress') }">
-                {{ state.stress }}
-              </span>
-              <span class="wb-delta" :class="deltaClass(result.stressChange, 'stress')">
-                ({{ formatDelta(result.stressChange) }})
-              </span>
-            </div>
-            <div class="wb-item">
-              <span class="wb-label">幸福</span>
-              <span class="wb-num" :style="{ color: barColor(state.happiness, 'happiness') }">
-                {{ state.happiness }}
-              </span>
-              <span class="wb-delta" :class="deltaClass(result.happinessChange, 'happiness')">
-                ({{ formatDelta(result.happinessChange) }})
-              </span>
-            </div>
-          </div>
-
-          <!-- 身心变化明细展开按钮 -->
+        <!-- 身心变化明细：按钮与其内容成组 -->
+        <div v-if="wellbeingDetailRows.length > 0" class="yd-toggle-group">
           <button
-            v-if="wellbeingDetailRows.length > 0"
             class="detail-toggle"
             :class="{ expanded: showWellbeingDetail }"
-            @click="showWellbeingDetail = !showWellbeingDetail"
+            @click="toggleWellbeingDetail"
           >
             <span class="fold-arrow">{{ showWellbeingDetail ? '▲' : '▼' }}</span>
             <span>{{ showWellbeingDetail ? '收起变化来源' : '查看变化来源' }}</span>
           </button>
-
-          <!-- 身心变化明细 -->
-          <div v-if="showWellbeingDetail && wellbeingDetailRows.length > 0" class="wellbeing-detail">
-            <div class="wb-detail-header">
-              <span class="wb-detail-col">来源</span>
-              <span class="wb-detail-col">压力</span>
-              <span class="wb-detail-col">幸福</span>
-              <span class="wb-detail-col">健康</span>
-            </div>
-            <div v-for="(row, idx) in wellbeingDetailRows" :key="'wb-' + idx" class="wb-detail-row">
-              <span class="wb-detail-col wb-source">{{ row.label }}</span>
-              <span class="wb-detail-col" :class="deltaClass(row.stress, 'stress')">
-                {{ row.stress !== 0 ? formatDelta(row.stress) : '-' }}
-              </span>
-              <span class="wb-detail-col" :class="deltaClass(row.happiness, 'happiness')">
-                {{ row.happiness !== 0 ? formatDelta(row.happiness) : '-' }}
-              </span>
-              <span class="wb-detail-col" :class="deltaClass(row.health, 'health')">
-                {{ row.health !== 0 ? formatDelta(row.health) : '-' }}
-              </span>
-            </div>
-            <div class="wb-detail-row wb-total-row">
-              <span class="wb-detail-col wb-source">年度合计</span>
-              <span class="wb-detail-col" :class="deltaClass(result.stressChange, 'stress')">
-                {{ formatDelta(result.stressChange) }}
-              </span>
-              <span class="wb-detail-col" :class="deltaClass(result.happinessChange, 'happiness')">
-                {{ formatDelta(result.happinessChange) }}
-              </span>
-              <span class="wb-detail-col" :class="deltaClass(result.healthChange, 'health')">
-                {{ formatDelta(result.healthChange) }}
-              </span>
-            </div>
+          <div ref="wellbeingDetailEl" v-if="showWellbeingDetail && wellbeingDetailRows.length > 0" class="wellbeing-detail">
+          <div class="wb-detail-header">
+            <span class="wb-detail-col">来源</span>
+            <span class="wb-detail-col">压力</span>
+            <span class="wb-detail-col">幸福</span>
+            <span class="wb-detail-col">健康</span>
+          </div>
+          <div v-for="(row, idx) in wellbeingDetailRows" :key="'wb-' + idx" class="wb-detail-row">
+            <span class="wb-detail-col wb-source">{{ row.label }}</span>
+            <span class="wb-detail-col" :class="deltaClass(row.stress, 'stress')">
+              {{ row.stress !== 0 ? formatDelta(row.stress) : '-' }}
+            </span>
+            <span class="wb-detail-col" :class="deltaClass(row.happiness, 'happiness')">
+              {{ row.happiness !== 0 ? formatDelta(row.happiness) : '-' }}
+            </span>
+            <span class="wb-detail-col" :class="deltaClass(row.health, 'health')">
+              {{ row.health !== 0 ? formatDelta(row.health) : '-' }}
+            </span>
+          </div>
+          <div class="wb-detail-row wb-total-row">
+            <span class="wb-detail-col wb-source">年度合计</span>
+            <span class="wb-detail-col" :class="deltaClass(result.stressChange, 'stress')">
+              {{ formatDelta(result.stressChange) }}
+            </span>
+            <span class="wb-detail-col" :class="deltaClass(result.happinessChange, 'happiness')">
+              {{ formatDelta(result.happinessChange) }}
+            </span>
+            <span class="wb-detail-col" :class="deltaClass(result.healthChange, 'health')">
+              {{ formatDelta(result.healthChange) }}
+            </span>
           </div>
         </div>
+        </div>
       </div>
+      </div>  <!-- /yd-col-right -->
+      </div>  <!-- /yd-cols -->
 
       <!-- 继续按钮 -->
       <div class="yearend-footer">
         <button class="btn-continue" @click="handleContinue">
           <span class="btn-arrow">&#9654;</span>
-          <span class="btn-text">进入{{ state.currentAge }}岁 ▶</span>
+          <span class="btn-text">翻开第 {{ state.currentAge }} 岁 ▸</span>
         </button>
       </div>
     </div>
@@ -944,6 +1067,197 @@ function handleContinue(): void {
   outline-offset: 4px;
 
   animation: yearendSlideIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ============================================================
+   顶部状态条（横贯）：年龄 | 年结余 | 关键指标
+   ============================================================ */
+.yd-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 0 0 10px;
+}
+
+.yd-ageblock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.yd-topdivider {
+  align-self: stretch;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, var(--neon-purple), transparent);
+  box-shadow: 0 0 6px var(--neon-purple);
+}
+
+/* ============================================================
+   年度独白（顶部娱乐元素）
+   ============================================================ */
+.yd-monologue {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, rgba(255, 45, 149, 0.08) 0%, rgba(201, 0, 255, 0.04) 100%);
+  border: 1px solid rgba(255, 45, 149, 0.28);
+  box-shadow: inset 0 0 16px rgba(255, 45, 149, 0.07), 0 0 10px rgba(255, 45, 149, 0.1);
+  position: relative;
+  animation: fortuneIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+@keyframes fortuneIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.monologue-mark {
+  font-size: 22px;
+  line-height: 0;
+  color: #ff2d95;
+  text-shadow: 0 0 8px #ff2d95, 0 0 18px rgba(255, 45, 149, 0.5);
+  user-select: none;
+}
+.monologue-text {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #f0dce8;
+  letter-spacing: 0.5px;
+  text-align: center;
+}
+
+/* 关键指标 KPI 块（月薪 / 被动收入 / 存款） */
+.yd-kpis {
+  display: flex;
+  gap: 10px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 92px;
+  padding: 8px 14px;
+  background: linear-gradient(180deg, rgba(10, 5, 30, 0.7) 0%, rgba(10, 5, 30, 0.4) 100%);
+  border: 1px solid rgba(201, 0, 255, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+.kpi::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201, 0, 255, 0.25), transparent);
+  pointer-events: none;
+}
+.kpi-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #94b0c2;
+}
+.kpi-value {
+  font-weight: bold;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  line-height: 1.1;
+}
+.kpi-sub {
+  font-size: 10px;
+}
+
+/* ============================================================
+   左右两块容器（竖屏时透明，保持纵向顺序）
+   ============================================================ */
+.yd-cols {
+  display: contents;
+}
+
+/* 左列：叙事（年度金句 + 岔路口 + 成就） */
+.yd-col-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 右列：事件回顾 + 数据总结 */
+.yd-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ============================================================
+   事件回顾带（全宽）
+   ============================================================ */
+.yd-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* ============================================================
+   数据条（全宽）：统计卡 + 占比条 + 资产事件 + 明细
+   ============================================================ */
+.yd-data {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* 横向统计卡（收入/支出/健康/压力/幸福） */
+.yd-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.yd-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 96px;
+  padding: 8px 12px;
+  background: linear-gradient(180deg, rgba(0, 255, 136, 0.06) 0%, rgba(0, 255, 136, 0.02) 100%);
+  border: 1px solid rgba(0, 255, 136, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+.yd-stat::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.3), transparent);
+  pointer-events: none;
+}
+.yd-stat-label {
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #94b0c2;
+}
+.yd-stat-value {
+  font-weight: bold;
+  font-size: 18px;
+  line-height: 1.1;
+}
+.yd-stat-delta {
+  font-size: 10px;
+}
+
+/* 明细展开组：按钮与其展开内容紧邻 */
+.yd-toggle-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* 里程碑年：边框变金色 */
@@ -1043,16 +1357,57 @@ function handleContinue(): void {
   50% { box-shadow: 0 0 16px rgba(255, 236, 39, 0.7), 0 0 32px rgba(255, 136, 0, 0.3); }
 }
 
-.yearend-age {
-  margin: 0;
-  font-size: 16px;
-  letter-spacing: 4px;
+/* 年度报告式开篇：大年龄 + 流光星标 */
+.age-hero {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 10px;
+  padding: 6px 0 2px;
+}
+
+.age-unit {
+  font-size: 12px;
+  letter-spacing: 5px;
+  color: var(--neon-blue);
+  text-shadow: 0 0 6px var(--neon-blue), 0 0 14px rgba(0, 212, 255, 0.4);
+  font-weight: bold;
+}
+
+.age-num {
+  font-size: 46px;
+  line-height: 1;
+  font-weight: bold;
   color: var(--neon-pink);
   text-shadow:
-    0 0 6px var(--neon-pink),
-    0 0 14px var(--neon-pink),
-    0 0 28px rgba(255, 45, 149, 0.4);
-  font-weight: bold;
+    0 0 8px var(--neon-pink),
+    0 0 20px var(--neon-pink),
+    0 0 40px rgba(255, 45, 149, 0.5);
+  animation: ageNumGlow 2.4s ease-in-out infinite;
+}
+
+@keyframes ageNumGlow {
+  0%, 100% {
+    text-shadow: 0 0 8px var(--neon-pink), 0 0 20px var(--neon-pink), 0 0 40px rgba(255, 45, 149, 0.5);
+  }
+  50% {
+    text-shadow: 0 0 12px var(--neon-pink), 0 0 30px var(--neon-pink), 0 0 60px rgba(201, 0, 255, 0.5);
+  }
+}
+
+.age-star {
+  font-size: 16px;
+  color: var(--neon-blue);
+  text-shadow: 0 0 8px var(--neon-blue), 0 0 16px rgba(0, 212, 255, 0.5);
+  animation: starTwinkle 1.8s ease-in-out infinite;
+}
+.age-hero .age-star:last-child {
+  animation-delay: 0.9s;
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 0.4; transform: scale(0.85) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1.15) rotate(20deg); }
 }
 
 /* ============================================================
@@ -1142,6 +1497,47 @@ function handleContinue(): void {
   height: 1px;
   background: linear-gradient(90deg, transparent, rgba(0, 255, 136, 0.3), transparent);
   pointer-events: none;
+}
+
+/* ============================================================
+   错峰入场：标题 → 金句 → 事件 → 数字，逐段滑入
+   ============================================================ */
+@keyframes sectionReveal {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.yearend-header {
+  animation: sectionReveal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s both;
+}
+.divider {
+  animation: sectionReveal 0.4s ease-out 0.14s both;
+}
+.section-quote {
+  animation: sectionReveal 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+}
+.section-events {
+  animation: sectionReveal 0.45s ease-out 0.34s both;
+}
+.section-achievement {
+  animation: sectionReveal 0.4s ease-out 0.46s both;
+}
+.section-numbers {
+  animation: sectionReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.56s both;
+}
+.yearend-footer {
+  animation: sectionReveal 0.4s ease-out 0.72s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .yearend-header,
+  .divider,
+  .section-quote,
+  .section-events,
+  .section-achievement,
+  .section-numbers,
+  .yearend-footer {
+    animation: none;
+  }
 }
 
 /* 分区标题条 */
@@ -1308,6 +1704,40 @@ function handleContinue(): void {
 }
 
 /* ============================================================
+   岔路口抉择分割窗体（主事件下方，独立展示）
+   ============================================================ */
+.section-crossroad {
+  margin-top: 10px;
+  border: 1px solid rgba(255, 136, 0, 0.35);
+  border-radius: 6px;
+  background: rgba(30, 15, 5, 0.35);
+  box-shadow: inset 0 0 20px rgba(255, 136, 0, 0.08);
+}
+
+.section-crossroad .section-tag {
+  color: var(--neon-orange);
+  text-shadow: 0 0 6px var(--neon-orange);
+}
+
+.crossroad-story-block {
+  position: relative;
+  z-index: 2;
+  padding: 8px 12px;
+}
+
+.crossroad-story-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.8;
+  color: #f0d9bd;
+  text-align: left;
+  white-space: pre-wrap;
+  max-height: 160px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* ============================================================
    故事流区域（日志风格，事件回顾分区内）
    ============================================================ */
 .story-stream {
@@ -1362,7 +1792,7 @@ function handleContinue(): void {
   }
   to {
     opacity: 1;
-    max-height: 400px;
+    max-height: 2000px;
   }
 }
 
@@ -1380,8 +1810,88 @@ function handleContinue(): void {
 
 .finance-compact-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 6px;
+}
+
+/* ── 年结余核心主打卡 ── */
+.finance-hero {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 18px 12px 14px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  border: 1px solid;
+}
+.finance-hero::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  pointer-events: none;
+}
+.finance-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.08) 0%, transparent 70%);
+}
+
+.finance-hero.hero-gain {
+  border-color: rgba(0, 255, 136, 0.4);
+  background: linear-gradient(180deg, rgba(0, 255, 136, 0.1) 0%, rgba(0, 255, 136, 0.02) 100%);
+  box-shadow: inset 0 0 20px rgba(0, 255, 136, 0.08), 0 0 14px rgba(0, 255, 136, 0.12);
+}
+.finance-hero.hero-gain::before {
+  background: linear-gradient(90deg, transparent, #00ff88, transparent);
+}
+.finance-hero.hero-loss {
+  border-color: rgba(255, 45, 149, 0.4);
+  background: linear-gradient(180deg, rgba(255, 45, 149, 0.1) 0%, rgba(255, 45, 149, 0.02) 100%);
+  box-shadow: inset 0 0 20px rgba(255, 45, 149, 0.08), 0 0 14px rgba(255, 45, 149, 0.12);
+}
+.finance-hero.hero-loss::before {
+  background: linear-gradient(90deg, transparent, #ff2d95, transparent);
+}
+
+.hero-label {
+  font-size: 11px;
+  letter-spacing: 4px;
+  color: #8ab0c8;
+  text-shadow: 0 0 4px rgba(0, 212, 255, 0.3);
+}
+
+.hero-value {
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: bold;
+  letter-spacing: 1px;
+  position: relative;
+  z-index: 1;
+  animation: heroPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both;
+}
+.hero-value.hero-big {
+  font-size: 40px;
+}
+.hero-gain .hero-value {
+  color: #00ff88;
+  text-shadow: 0 0 8px #00ff88, 0 0 20px rgba(0, 255, 136, 0.7), 0 0 40px rgba(0, 255, 136, 0.4);
+}
+.hero-loss .hero-value {
+  color: #ff2d95;
+  text-shadow: 0 0 8px #ff2d95, 0 0 20px rgba(255, 45, 149, 0.7), 0 0 40px rgba(255, 45, 149, 0.4);
+}
+
+@keyframes heroPop {
+  0% { transform: scale(0.4); opacity: 0; }
+  55% { transform: scale(1.18); opacity: 1; }
+  75% { transform: scale(0.96); }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .finance-compact-grid .finance-item {
@@ -1446,16 +1956,6 @@ function handleContinue(): void {
 .val-orange {
   color: #ff8800;
   text-shadow: 0 0 6px #ff8800, 0 0 12px rgba(255, 136, 0, 0.5);
-}
-
-.val-big {
-  animation: bigNumberPop 0.5s ease-out;
-  font-size: 1.3em;
-}
-@keyframes bigNumberPop {
-  0% { transform: scale(1); }
-  40% { transform: scale(1.4); }
-  100% { transform: scale(1.1); }
 }
 
 /* ============================================================
@@ -1529,7 +2029,6 @@ function handleContinue(): void {
   gap: 6px;
   width: 100%;
   padding: 5px 0;
-  margin-top: 8px;
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(0, 212, 255, 0.2);
   color: #7a9bb5;
@@ -1558,7 +2057,6 @@ function handleContinue(): void {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 8px;
-  margin-top: 8px;
   animation: foldExpand 0.2s ease-out;
 }
 
@@ -1653,7 +2151,6 @@ function handleContinue(): void {
    身心变化明细展开区
    ============================================================ */
 .wellbeing-detail {
-  margin-top: 8px;
   background: rgba(10, 5, 30, 0.5);
   border: 1px solid rgba(0, 212, 255, 0.12);
   padding: 8px;
@@ -1804,6 +2301,181 @@ function handleContinue(): void {
   50% { transform: translateX(4px); opacity: 0.6; }
 }
 
+/* ============================================================
+   收支结构像素占比条
+   ============================================================ */
+.flow-bar {
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(10, 5, 30, 0.4);
+  border: 1px solid rgba(0, 212, 255, 0.12);
+}
+
+.flow-bar-track {
+  display: flex;
+  height: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.flow-seg {
+  height: 100%;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.flow-income {
+  background: repeating-linear-gradient(
+    0deg,
+    #00ff88 0px,
+    #00ff88 2px,
+    transparent 2px,
+    transparent 4px
+  );
+  box-shadow: 0 0 6px rgba(0, 255, 136, 0.5);
+}
+.flow-expense {
+  background: repeating-linear-gradient(
+    0deg,
+    #ff2d95 0px,
+    #ff2d95 2px,
+    transparent 2px,
+    transparent 4px
+  );
+  box-shadow: 0 0 6px rgba(255, 45, 149, 0.5);
+}
+
+.flow-legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 6px;
+  font-size: 10px;
+  color: #94b0c2;
+}
+
+.flow-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.flow-legend-item b {
+  color: #fff;
+  font-weight: bold;
+  letter-spacing: 0.3px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.dot-in {
+  background: #00ff88;
+  box-shadow: 0 0 4px rgba(0, 255, 136, 0.6);
+}
+.dot-ex {
+  background: #ff2d95;
+  box-shadow: 0 0 4px rgba(255, 45, 149, 0.6);
+}
+
+/* ============================================================
+   继续按钮：右对齐 + 仪式感
+   ============================================================ */
+.yearend-footer {
+  justify-content: flex-end;
+}
+
+/* ============================================================
+   里程碑年：金色主题统一（标题/金句/主打卡/按钮）
+   ============================================================ */
+.yearend-panel.milestone .age-num {
+  color: #ffec27;
+  text-shadow: 0 0 8px #ffec27, 0 0 20px #ff8800, 0 0 40px rgba(255, 136, 0, 0.5);
+}
+.yearend-panel.milestone .age-unit {
+  color: #ffec27;
+  text-shadow: 0 0 6px #ffec27;
+}
+.yearend-panel.milestone .age-star {
+  color: #ffec27;
+  text-shadow: 0 0 8px #ffec27;
+}
+.yearend-panel.milestone .main-event-text {
+  color: #fff6d8;
+  text-shadow: 0 0 6px #ffec27, 0 0 16px rgba(255, 236, 39, 0.6), 0 0 32px rgba(255, 136, 0, 0.3);
+}
+.yearend-panel.milestone .hero-gain .hero-value,
+.yearend-panel.milestone .hero-loss .hero-value {
+  color: #ffec27;
+  text-shadow: 0 0 8px #ffec27, 0 0 20px rgba(255, 136, 0, 0.7), 0 0 40px rgba(255, 236, 39, 0.4);
+}
+.yearend-panel.milestone .btn-continue {
+  color: #ffec27;
+  border-color: #ffec27;
+  background: rgba(255, 236, 39, 0.1);
+  box-shadow: 0 0 8px #ffec27, 0 0 20px rgba(255, 236, 39, 0.4), inset 0 0 12px rgba(255, 236, 39, 0.2);
+  text-shadow: 0 0 6px #ffec27;
+}
+
+/* ============================================================
+   成就解锁：强视觉闪光过场
+   ============================================================ */
+.section-achievement {
+  animation: achievementFlash 0.9s ease-out 0.46s both;
+}
+@keyframes achievementFlash {
+  0% { opacity: 0; transform: scale(0.92); box-shadow: 0 0 0 rgba(255, 236, 39, 0); }
+  30% { opacity: 1; transform: scale(1.03); box-shadow: 0 0 40px rgba(255, 236, 39, 0.7); }
+  100% { opacity: 1; transform: scale(1); box-shadow: 0 0 18px rgba(255, 236, 39, 0.3); }
+}
+
+/* 盲盒揭晓：彩色揭示动画 */
+.story-line.story-type-blindbox {
+  animation: bbReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes bbReveal {
+  0% { opacity: 0; transform: translateX(-8px); background: rgba(201, 0, 255, 0.25); }
+  60% { opacity: 1; transform: translateX(2px); background: rgba(201, 0, 255, 0.12); }
+  100% { opacity: 1; transform: translateX(0); background: transparent; }
+}
+
+/* ============================================================
+   移动端适配
+   ============================================================ */
+@media (max-width: 520px) {
+  .yearend-panel {
+    padding: 20px 12px;
+  }
+  .age-num {
+    font-size: 36px;
+  }
+  .hero-value {
+    font-size: 28px;
+  }
+  .hero-value.hero-big {
+    font-size: 32px;
+  }
+  .hero-label {
+    letter-spacing: 2px;
+  }
+  .finance-compact-grid {
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+  }
+  .finance-compact-grid .finance-item {
+    padding: 6px 2px;
+  }
+  .finance-compact-grid .finance-value {
+    font-size: 12px;
+  }
+  .flow-legend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
 .btn-text {
   position: relative;
   z-index: 1;
@@ -1924,5 +2596,244 @@ function handleContinue(): void {
     font-size: 14px;
     padding: 12px 28px;
   }
+}
+
+/* ============================================================
+   横屏设备适配（PC / 平板横屏，宽度 > 1000px）
+   改为横向带状布局：顶部条 / 叙事横幅 / 事件流 / 数据条 / 底部
+   ============================================================ */
+@media (min-width: 1000px) {
+  .yearend-overlay {
+    padding: 24px;
+  }
+
+  /* 面板：居中、内容自适应宽度（不占全屏），超高时整体滚动 */
+  .yearend-panel {
+    width: min(100%, 940px);
+    max-height: calc(100vh - 48px);
+    margin: 0 auto;
+    overflow-y: auto;
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding: 22px 26px 18px;
+  }
+
+  /* 顶部条：年龄 + 运势签，居中 */
+  .yd-topbar {
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 18px;
+    padding: 0 4px 14px;
+    border-bottom: 1px solid rgba(201, 0, 255, 0.16);
+  }
+  .yd-ageblock { flex: 0 0 auto; }
+  .yd-topdivider { width: 1px; }
+  .yd-monologue { flex: 1 1 auto; justify-content: center; }
+
+  /* 竖屏用的分割线在横向布局里不再需要 */
+  .divider { display: none; }
+
+  /* 左右两块：左叙事 / 右事件+数据 */
+  .yd-cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 22px;
+    align-items: start;
+  }
+  .yd-col-left { gap: 14px; }
+  .yd-col-right { gap: 14px; min-width: 0; }
+
+  /* ============================================================
+     归类框架：左「故事」/ 右「数据」标题 + 配色统一
+     ============================================================ */
+  .yd-cat-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 4px;
+  }
+  .cat-story {
+    background: linear-gradient(90deg, rgba(255, 45, 149, 0.16) 0%, rgba(255, 45, 149, 0.03) 100%);
+    border: 1px solid rgba(255, 45, 149, 0.35);
+    box-shadow: inset 0 0 18px rgba(255, 45, 149, 0.12);
+  }
+  .cat-data {
+    background: linear-gradient(90deg, rgba(0, 212, 255, 0.16) 0%, rgba(0, 212, 255, 0.03) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.35);
+    box-shadow: inset 0 0 18px rgba(0, 212, 255, 0.12);
+  }
+  .cat-story::before,
+  .cat-data::before {
+    content: '';
+    position: absolute;
+    top: 0; bottom: 0;
+    left: 0;
+    width: 3px;
+  }
+  .cat-story::before { background: #ff2d95; box-shadow: 0 0 10px #ff2d95; }
+  .cat-data::before { background: #00d4ff; box-shadow: 0 0 10px #00d4ff; }
+  .cat-mark { font-size: 14px; }
+  .cat-story .cat-mark { color: #ff2d95; text-shadow: 0 0 8px #ff2d95; }
+  .cat-data .cat-mark { color: #00d4ff; text-shadow: 0 0 8px #00d4ff; }
+  .cat-title {
+    font-size: 15px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    color: #fff;
+  }
+  .cat-story .cat-title { text-shadow: 0 0 8px rgba(255, 45, 149, 0.6); }
+  .cat-data .cat-title { text-shadow: 0 0 8px rgba(0, 212, 255, 0.6); }
+  .cat-en {
+    margin-left: auto;
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: rgba(255, 255, 255, 0.4);
+  }
+
+  /* 数据子分类标签 */
+  .yd-sub-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 2px 6px;
+    border-bottom: 1px dashed rgba(0, 212, 255, 0.22);
+  }
+  .sub-mark { color: #00d4ff; font-size: 11px; }
+  .sub-title { font-size: 11px; letter-spacing: 2px; color: #9fd9ea; }
+
+  /* 左栏「故事」区：岔路口、成就统一为粉色主题 */
+  .yd-col-left .section-crossroad {
+    border: 1px solid rgba(255, 45, 149, 0.35);
+    background: rgba(30, 5, 20, 0.35);
+    box-shadow: inset 0 0 20px rgba(255, 45, 149, 0.08);
+  }
+  .yd-col-left .section-crossroad .section-tag {
+    color: #ff2d95;
+    text-shadow: 0 0 6px #ff2d95, 0 0 12px rgba(255, 45, 149, 0.5);
+    border-color: rgba(255, 45, 149, 0.15);
+  }
+  .yd-col-left .section-achievement {
+    background: linear-gradient(135deg, rgba(255, 45, 149, 0.08) 0%, rgba(255, 45, 149, 0.03) 100%);
+    border: 1px solid rgba(255, 45, 149, 0.3);
+    box-shadow: inset 0 0 16px rgba(255, 45, 149, 0.08), 0 0 12px rgba(255, 45, 149, 0.15);
+  }
+  .yd-col-left .section-achievement::before {
+    background: linear-gradient(90deg, transparent, rgba(255, 45, 149, 0.4), transparent);
+  }
+  .yd-col-left .section-achievement .section-tag {
+    color: #ff2d95;
+    text-shadow: 0 0 6px #ff2d95, 0 0 14px rgba(255, 45, 149, 0.5);
+    border-color: rgba(255, 45, 149, 0.15);
+  }
+  .yd-col-left .achievement-badge-large {
+    color: #ff2d95;
+    text-shadow: 0 0 10px #ff2d95, 0 0 20px #ff2d95;
+  }
+  .yd-col-left .achievement-title-large {
+    text-shadow: 0 0 6px #ff2d95;
+  }
+  .yd-col-left .achievement-narrative-large {
+    color: #f0d9e8;
+  }
+
+  /* 右栏「数据」区：数据总览统一为青色主题 */
+  .yd-col-right .yd-data {
+    background: linear-gradient(180deg, rgba(0, 212, 255, 0.04) 0%, rgba(0, 212, 255, 0.01) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.18);
+  }
+  .yd-col-right .yd-stat {
+    background: linear-gradient(180deg, rgba(0, 212, 255, 0.06) 0%, rgba(0, 212, 255, 0.02) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.2);
+  }
+  .yd-col-right .yd-stat::after {
+    background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.3), transparent);
+  }
+
+  /* 叙事金句横幅（可读性放大，行长舒适） */
+  .yd-col-left .section-quote {
+    padding: 16px 18px 14px;
+  }
+  .main-event-text { font-size: 15px; line-height: 1.8; }
+
+  /* 事件回顾（左栏故事区）：粉色故事主题 */
+  .yd-col-left .yd-log {
+    gap: 8px;
+    padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(255, 45, 149, 0.04) 0%, rgba(255, 45, 149, 0.01) 100%);
+    border: 1px solid rgba(255, 45, 149, 0.18);
+  }
+  .yd-col-left .yd-log .section-tag {
+    color: #ff2d95;
+    text-shadow: 0 0 6px #ff2d95;
+    border-color: rgba(255, 45, 149, 0.15);
+  }
+  .yd-log .story-stream { padding: 4px 2px; }
+  .story-line { padding: 4px 0 4px 14px; }
+  .story-text { font-size: 13px; line-height: 1.75; }
+
+  /* 财务概览（右栏数据区顶部） */
+  .yd-finance {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(0, 212, 255, 0.05) 0%, rgba(0, 212, 255, 0.01) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.22);
+    box-shadow: inset 0 0 18px rgba(0, 212, 255, 0.05);
+  }
+  .yd-finance .finance-hero {
+    padding: 12px 14px;
+    margin-bottom: 0;
+  }
+  .yd-finance .yd-kpis {
+    flex-wrap: nowrap;
+    gap: 8px;
+    justify-content: stretch;
+  }
+  .yd-finance .kpi {
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 10px 8px;
+  }
+  .yd-finance .kpi-value { font-size: 15px; }
+
+  /* 数据：统计卡横向 */
+  .yd-col-right .yd-data {
+    gap: 10px;
+    padding: 14px 16px;
+    background: linear-gradient(180deg, rgba(0, 212, 255, 0.04) 0%, rgba(0, 212, 255, 0.01) 100%);
+    border: 1px solid rgba(0, 212, 255, 0.18);
+  }
+  .yd-stats { flex-wrap: nowrap; gap: 8px; }
+  .yd-stat { min-width: 0; padding: 8px 10px; }
+  .yd-stat-value { font-size: 16px; }
+  .flow-bar { margin-top: 2px; padding: 6px 8px; }
+
+  /* 底部条 */
+  .yearend-footer {
+    justify-content: flex-end;
+    padding: 14px 0 0;
+    border-top: 1px solid rgba(0, 255, 136, 0.1);
+  }
+
+  /* 顶部标题区紧凑化 */
+  .age-hero { padding: 2px 0; }
+  .age-num { font-size: 38px; }
+
+  /* 顶部 KPI 紧凑 */
+  .kpi { min-width: 84px; padding: 6px 12px; }
+  .kpi-value { font-size: 15px; }
+
+  /* 年结余主打卡紧凑 */
+  .finance-hero { padding: 10px 14px 8px; margin-bottom: 0; }
+  .hero-value { font-size: 30px; }
+  .hero-value.hero-big { font-size: 34px; }
+
+  .btn-continue { padding: 12px 36px; }
 }
 </style>

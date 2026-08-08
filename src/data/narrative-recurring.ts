@@ -16,6 +16,7 @@
 import type { NarrativeEvent, GameState } from '../types/global.d.js';
 import { registerNarrativeEvents } from './narrative-registry.js';
 import { clamp } from '../utils/clamp.js';
+import { pctInvestment } from '../utils/math-engine.js';
 
 const recurringEvents: NarrativeEvent[] = [
   // 1. 加班抉择
@@ -213,28 +214,28 @@ const recurringEvents: NarrativeEvent[] = [
       {
         id: 'index_fund',
         label: '定投指数基金',
-        description: '长期稳健，不盯盘',
-        hint: '存款-5000 · 被动收入+200/年',
+        description: '投入存款的5%，长期稳健，不盯盘',
+        hint: '投入存款5% · 被动收入+年化4%',
         hintColor: 'positive',
-        savingsChange: -5000,
-        passiveIncomeChange: 200,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.05, 0.04).investFn(s),
+        passiveIncomeChangeFn: (s: GameState) => pctInvestment(0.05, 0.04).returnFn(s),
         stateEffect: (s: GameState) => {
           s.happiness = clamp(s.happiness + 2, 0, 100);
         },
-        log: '你设了每月定投，选了一只宽基指数。钱不多，但开始有了"在为未来做点什么"的感觉。你不再每天看收益，偶尔想起来看一眼，涨了开心跌了认了。',
+        log: '你设了每月定投，选了一只宽基指数。钱按你资产的体量投进去——存款越多投入越多，收益也水涨船高。你不再每天看收益，偶尔想起来看一眼，涨了开心跌了认了。',
       },
       {
         id: 'bank_deposit',
         label: '存定期，安全第一',
-        description: '保本保息，不折腾',
-        hint: '存款-10000 · 被动收入+150/年',
+        description: '投入存款的10%，保本保息，不折腾',
+        hint: '投入存款10% · 被动收入+年化3%',
         hintColor: 'neutral',
-        savingsChange: -10000,
-        passiveIncomeChange: 150,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.10, 0.03).investFn(s),
+        passiveIncomeChangeFn: (s: GameState) => pctInvestment(0.10, 0.03).returnFn(s),
         stateEffect: (s: GameState) => {
           s.stress = clamp(s.stress - 2, 0, 100);
         },
-        log: '你把一部分钱存了三年定期。利率不高，但胜在踏实。你不用操心涨跌，银行到期给你利息。这就够了。',
+        log: '你把相当一部分钱存了三年定期。利率不高，但胜在踏实，利息跟着你的本金走——本金越厚，躺着赚的越多。你不用操心涨跌，银行到期给你利息。这就够了。',
       },
       {
         id: 'keep_liquid',

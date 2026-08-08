@@ -466,7 +466,7 @@ export function generateAnnualReport(state: GameState): AnnualReport {
     (state.lifetimeGiftMoney || 0) +
     (state.lifetimeInsuranceCost || 0)
   const age = state.currentAge || 60
-  const year = 2024 + (age - 22)
+  const year = 2024 + (age - (state.startAge || 22))
 
   const path = state.retirementPath ? getPath(state.retirementPath) : null
   const pathName = path?.name || '未知路径'

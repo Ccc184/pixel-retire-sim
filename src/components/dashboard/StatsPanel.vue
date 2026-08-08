@@ -3,6 +3,7 @@ import { computed, watch, ref } from 'vue';
 import { useGameStore } from '../../store/game.store.js';
 import { getPath } from '../../data/retirement-paths.js';
 import { fmt, fmtExact, fmtWan, fmtSigned, fmtNum } from '../../utils/format.js';
+import AnimatedNumber from '../ui/AnimatedNumber.vue';
 
 const store = useGameStore();
 const s = store.state;
@@ -10,6 +11,28 @@ const s = store.state;
 // 年度变化值（简化弹跳动画）
 const savingsDelta = ref(0);
 const showDelta = ref(false);
+
+// 数值格式化（供 AnimatedNumber 使用）
+const fmtRaw = (n: number) => fmt(n);
+const fmtWanRaw = (n: number) => fmtWan(n);
+const fmtRound = (n: number) => String(Math.round(n));
+
+// 身心状态条变化闪烁反馈
+const barFlash = ref<Record<string, string>>({ health: '', stress: '', happiness: '' });
+function flashBar(key: 'health' | 'stress' | 'happiness') {
+  // 用自增标识强制重触发 CSS 动画
+  barFlash.value[key] = Date.now() + '-' + Math.random();
+}
+watch(
+  () => [s.health, s.stress, s.happiness],
+  ([h, st, hf], [oh, ost, ohf]) => {
+    if (oh !== undefined) {
+      if (h !== oh) flashBar('health');
+      if (st !== ost) flashBar('stress');
+      if (hf !== ohf) flashBar('happiness');
+    }
+  },
+);
 
 // 当前路径信息
 const currentPath = computed(() => s.retirementPath ? getPath(s.retirementPath) : null);
@@ -400,9 +423,10 @@ const relOpen = ref(false);
                 background: barColor(healthLevel, 'health'),
               }"
             />
+            <span v-if="barFlash.health" :key="barFlash.health" class="wb-track-flash" />
           </div>
           <span class="wb-value" :style="{ color: barColor(healthLevel, 'health') }">
-            {{ Math.round(healthLevel) }}
+            <AnimatedNumber :value="healthLevel" :format="fmtRound" />
           </span>
           <span class="wb-emoji" :style="{ color: barColor(healthLevel, 'health'), textShadow: '0 0 4px ' + barColor(healthLevel, 'health') }">{{ healthEmoji(healthLevel) }}</span>
           <Transition name="wb-tip">
@@ -430,9 +454,10 @@ const relOpen = ref(false);
                 background: barColor(stressLevel, 'stress'),
               }"
             />
+            <span v-if="barFlash.stress" :key="barFlash.stress" class="wb-track-flash" />
           </div>
           <span class="wb-value" :style="{ color: barColor(stressLevel, 'stress') }">
-            {{ Math.round(stressLevel) }}
+            <AnimatedNumber :value="stressLevel" :format="fmtRound" />
           </span>
           <span class="wb-emoji" :style="{ color: barColor(stressLevel, 'stress'), textShadow: '0 0 4px ' + barColor(stressLevel, 'stress') }">{{ stressEmoji(stressLevel) }}</span>
           <Transition name="wb-tip">
@@ -460,9 +485,10 @@ const relOpen = ref(false);
                 background: barColor(happinessLevel, 'happiness'),
               }"
             />
+            <span v-if="barFlash.happiness" :key="barFlash.happiness" class="wb-track-flash" />
           </div>
           <span class="wb-value" :style="{ color: barColor(happinessLevel, 'happiness') }">
-            {{ Math.round(happinessLevel) }}
+            <AnimatedNumber :value="happinessLevel" :format="fmtRound" />
           </span>
           <span class="wb-emoji" :style="{ color: barColor(happinessLevel, 'happiness'), textShadow: '0 0 4px ' + barColor(happinessLevel, 'happiness') }">{{ happinessEmoji(happinessLevel) }}</span>
           <Transition name="wb-tip">
@@ -485,7 +511,7 @@ const relOpen = ref(false);
         <div class="finance-row savings-row" :class="{ bankrupt: isBankrupt }">
           <span class="finance-label">存款</span>
           <span class="finance-value savings-value" :class="isBankrupt ? 'text-red' : 'text-green'">
-            {{ formatMoney(s.currentSavings) }}
+            <AnimatedNumber :value="s.currentSavings" :format="fmtRaw" />
           </span>
           <span
             v-if="showDelta && savingsDelta !== 0"
@@ -500,7 +526,7 @@ const relOpen = ref(false);
         <div class="finance-row net-worth-row">
           <span class="finance-label">总资产</span>
           <span class="finance-value text-blue" style="font-weight: 700; font-size: 1.05em;">
-            {{ formatMoneyWan(totalNetWorth) }}
+            <AnimatedNumber :value="totalNetWorth" :format="fmtWanRaw" />
           </span>
         </div>
 
@@ -613,7 +639,7 @@ const relOpen = ref(false);
           />
         </div>
         <span class="faith-value" :style="{ color: faithColor(faithLevel) }">
-          {{ Math.round(faithLevel) }}
+          <AnimatedNumber :value="faithLevel" :format="fmtRound" />
         </span>
         <span class="faith-emoji" :style="{ color: faithColor(faithLevel), textShadow: '0 0 4px ' + faithColor(faithLevel) }">{{ faithEmoji(faithLevel) }}</span>
         <span class="faith-tag" :style="{ color: faithColor(faithLevel) }">{{ faithLabel(faithLevel) }}</span>
@@ -848,6 +874,32 @@ const relOpen = ref(false);
   border-radius: 3px;
   padding: 1px;
   overflow: hidden;
+  position: relative;
+}
+
+/* 数值变化时的条内闪烁反馈（keyed 重挂载触发） */
+.wb-track-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border-radius: 2px;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 70%);
+  animation: trackFlash 0.6s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes trackFlash {
+    0% { opacity: 0.9; transform: scale(0.6); }
+    100% { opacity: 0; transform: scale(1.15); }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-track-flash {
+    animation: none;
+    opacity: 0;
+  }
 }
 
 .wb-fill {

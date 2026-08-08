@@ -1,4 +1,5 @@
 // 数据持久化：差分比对 + 空闲写入
+import { ref } from 'vue';
 import type { GameState } from '../types/global.d.js';
 import { BLIND_BOX_OUTCOMES } from '../data/blind-box-outcomes.js';
 import { CARD_ECHOS } from '../data/card-echoes.js';
@@ -6,6 +7,10 @@ import { CARD_ECHOS } from '../data/card-echoes.js';
 const STORAGE_KEY = 'pixel_retire_save';
 let pendingSave: number | null = null;
 let lastSavedSnapshot: string = '';
+
+// 响应式存档存在标记：随 save/clear 实时更新，
+// 供 hasSave 使用，避免清档后仍显示"继续上局"
+export const saveExists = ref<boolean>(false);
 
 // 核心字段比对（只比对关键资产字段）
 const KEY_FIELDS: (keyof GameState)[] = [
@@ -36,11 +41,30 @@ export function scheduleSave(state: GameState): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
       lastSavedSnapshot = newSnapshot;
+      saveExists.value = true;
     } catch (e) {
       console.warn('存档失败:', e);
     }
     pendingSave = null;
   }, { timeout: 2000 });
+}
+
+/**
+ * 无条件强制保存。用于结局等"资产字段无变化但仍需落盘"的关键状态
+ * （如玩家主动退休时年龄/存款未变，差分快照相同会跳过普通保存，导致结局标记丢失）。
+ */
+export function forceSave(state: GameState): void {
+  if (pendingSave) {
+    cancelIdleCallback(pendingSave);
+    pendingSave = null;
+  }
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    lastSavedSnapshot = getSnapshot(state);
+    saveExists.value = true;
+  } catch (e) {
+    console.warn('存档失败:', e);
+  }
 }
 
 export function loadSave(): GameState | null {
@@ -86,8 +110,10 @@ export function loadSave(): GameState | null {
     }
 
     lastSavedSnapshot = getSnapshot(state);
+    saveExists.value = true;
     return state;
   } catch {
+    saveExists.value = false;
     return null;
   }
 }
@@ -95,4 +121,5 @@ export function loadSave(): GameState | null {
 export function clearSave(): void {
   localStorage.removeItem(STORAGE_KEY);
   lastSavedSnapshot = '';
+  saveExists.value = false;
 }

@@ -208,7 +208,7 @@ export function recordRun(
   const c = collectionState.value
   const net = Math.max(0, state.currentSavings || 0)
   const age = state.currentAge || 60
-  const year = 2026 + (age - 22) // 与 life-fun 的年份口径一致即可
+  const year = 2026 + (age - (state.startAge || 22)) // 与 life-fun 的年份口径一致即可
 
   const run: RunRecord = {
     endingId: meta.endingId,
@@ -236,7 +236,7 @@ export function recordRun(
 
   // 生涯统计
   c.totalRuns += 1
-  c.totalYearsSimulated += Math.max(0, age - 22)
+  c.totalYearsSimulated += Math.max(0, age - (state.startAge || 22))
   c.totalNetWealth += net
   c.bestNetWealth = Math.max(c.bestNetWealth, net)
   c.bestRetireAge = Math.min(c.bestRetireAge, age)

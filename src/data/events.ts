@@ -670,10 +670,13 @@ export const BLACK_SWAN_EVENTS: BlackSwanEvent[] = [
 ];
 
 // 随机触发事件
-export function rollRandomEvents(state: GameState): { logs: string[]; totalLoss: number; eventNames: string[]; newAftermath?: AftermathType; aftermathDuration?: number } {
+export function rollRandomEvents(state: GameState): { logs: string[]; totalLoss: number; eventNames: string[]; newAftermath?: AftermathType; aftermathDuration?: number; medicalLoss?: number } {
   const logs: string[] = [];
   const eventNames: string[] = [];
   let totalLoss = 0;
+  // 医疗类事件id集合：用于把医疗支出单独累计到 lifetimeMedicalCost（年度报告展示用）
+  const medicalEventIds = new Set(['minor_illness', 'critical_illness', 'ai_misdiagnosis', 'parent_illness', 'car_accident', 'neuro_hack']);
+  let medicalLoss = 0;
   let newAftermath: AftermathType | undefined;
   let aftermathDuration = 0;
 
@@ -688,6 +691,7 @@ export function rollRandomEvents(state: GameState): { logs: string[]; totalLoss:
         logs.push(result.log);
         eventNames.push(event.eventName);
         if (result.loss) totalLoss += result.loss;
+        if (result.loss && medicalEventIds.has(event.id)) medicalLoss += result.loss;
         if (result.aftermath) {
           newAftermath = result.aftermath;
           aftermathDuration = event.aftermathDuration || 2;
@@ -713,6 +717,7 @@ export function rollRandomEvents(state: GameState): { logs: string[]; totalLoss:
           logs.push(result.log);
           eventNames.push(event.eventName);
           if (result.loss) totalLoss += result.loss;
+          if (result.loss && medicalEventIds.has(event.id)) medicalLoss += result.loss;
           if (result.aftermath && !newAftermath) {
             newAftermath = result.aftermath;
             aftermathDuration = event.aftermathDuration || 2;
@@ -725,5 +730,5 @@ export function rollRandomEvents(state: GameState): { logs: string[]; totalLoss:
     }
   }
 
-  return { logs, totalLoss, eventNames, newAftermath, aftermathDuration };
+  return { logs, totalLoss, eventNames, newAftermath, aftermathDuration, medicalLoss };
 }

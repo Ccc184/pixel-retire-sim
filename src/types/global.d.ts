@@ -111,6 +111,7 @@ export interface Ending {
 export interface GameState {
   // 核心数值
   currentAge: number;
+  startAge: number;   // 玩家选择的起始年龄（现实映射：开局就从这个年龄开始）
   targetAge: number;
   targetWealth: number;
   currentSavings: number;
@@ -224,6 +225,9 @@ export interface GameState {
   pathSkills: Record<string, number>;       // 技能值（如 { aiSkill: 30, promptMastery: 20 }）
   narrativeEventFired: Record<string, number>; // 已触发的叙事事件ID → 触发时的年龄
   triggeredAchievements: string[];          // 已触发的成就事件ID列表
+  // === 分支记忆系统（中期再分叉与回声） ===
+  branchMemory: Record<string, boolean>;    // 关键分支选择记忆（如 joinedFriend/chooseMedicalAI），供后期回声事件"翻旧账"
+  branchHistory: NarrativeBranch[];         // 分支切换历史（从初始分支起，含每次切换），用于叙事回望与结局差异化
 
   // === 路径专属动态状态（各路径初始化，非全局必填） ===
   chainHoldings?: number;                   // 链上原住民：持仓市值（现金等价）
@@ -472,10 +476,16 @@ export interface NarrativeOption {
   salaryChange?: number;
   // 被动收入变化
   passiveIncomeChange?: number;
+  // 动态金额函数：按当前状态实时计算存款变化（优先于 savingsChange，用于"按资产比例投资"等场景）
+  savingsChangeFn?: (state: GameState) => number;
+  // 动态被动收入函数：按当前状态实时计算被动收入变化
+  passiveIncomeChangeFn?: (state: GameState) => number;
   // 状态效果
   stateEffect?: (state: GameState) => void;
   // 选择后切换分支
   branchSwitch?: NarrativeBranch;
+  // 选择后写入分支记忆（供后期回声事件翻旧账）
+  memorySet?: Record<string, boolean>;
   // 日志文本
   log: string;
   // 是否标记为"休养生息"选项
@@ -507,6 +517,10 @@ export interface NarrativeEvent {
   mbtiExclusive?: MBTIType;
   // 跨路径事件：设置后忽略pathId过滤（用于MBTI/哲学等通用事件）
   crossPath?: boolean;
+  // 分支记忆要求：设置后事件仅在指定记忆全部命中时才可触发（用于回声事件）
+  memoryRequired?: Record<string, boolean>;
+  // 分支记忆任一命中：设置后事件在任一指定记忆存在时即可触发
+  memoryAnyOf?: string[];
 }
 
 // 成就事件（技能达标后触发的重大成就剧情）

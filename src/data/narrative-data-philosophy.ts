@@ -89,9 +89,16 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
         id: 'phil_soul_chain_a',
         label: '加仓抄底',
         description: '贪婪是你的信仰，也是你的牢笼。但你不打算从里面出来。',
-        hint: '压力+10，信念+6，存款-5000，持仓+5000',
+        hint: '压力+10，信念+6，加仓存款15%',
         hintColor: 'danger',
-        stateEffect: (s: GameState) => { s.stress = clamp(s.stress + 10, 0, 100); s.pathFaith = clamp(s.pathFaith + 6, 0, 100); s.currentSavings -= 5000; s.chainHoldings = (s.chainHoldings || 0) + 5000; },
+        stateEffect: (s: GameState) => {
+          // 加仓金额 = 存款的15%（与 investPercent 的"存款百分比"口径一致）
+          const invest = Math.round(s.currentSavings * 0.15);
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+          s.currentSavings = Math.max(0, s.currentSavings - invest);
+          s.chainHoldings = (s.chainHoldings || 0) + invest;
+        },
         log: '你把存款砸了进去。那天晚上你失眠了，但不是恐惧——是兴奋。你终于承认了：你不是在投资，你是在赌博，而赌博让你感觉活着。',
       },
       {
@@ -299,7 +306,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_time_30',
     title: '三十',
-    narrative: '生日蛋糕上的蜡烛数量突然变得刺眼了。\n刚毕业那年盯着招聘网站刷到凌晨三点时，你以为三十岁应该已经"成了"——有房有车有方向。现在你站在这个数字面前，发现"成了"是一个永远在退后的终点线。手机弹出推送："30岁，你的人生进度条已过半。"谁在帮我倒计时？',
+    narrative: '生日蛋糕上的蜡烛数量突然变得刺眼了。\n刚毕业那年盯着招聘网站刷到凌晨三点时，你以为{age}岁应该已经"成了"——有房有车有方向。现在你站在这个数字面前，发现"成了"是一个永远在退后的终点线。手机弹出推送："{age}岁，你的人生进度条已过半。"谁在帮我倒计时？',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [30, 30],
@@ -315,7 +322,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
         hintColor: 'neutral',
         stateEffect: (s: GameState) => { s.stress = clamp(s.stress + 5, 0, 100); s.pathFaith = clamp(s.pathFaith + 5, 0, 100); },
         skillGains: { selfAwareness: 3 },
-        log: '你写了一份五年计划，贴在墙上。第一行是"35岁前实现财务自由"。你看着这行字，苦笑了一下——墙上那个曾经写着"27岁年薪百万"的便签痕迹还没完全撕掉。',
+        log: '你写了一份五年计划，贴在墙上。第一行是"{age}岁前实现财务自由"。你看着这行字，苦笑了一下——墙上那个曾经写着"{age}岁年薪百万"的便签痕迹还没完全撕掉。',
       },
       {
         id: 'phil_time_30_b',
@@ -328,24 +335,24 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
       },
       {
         id: 'phil_time_30_c',
-        label: '翻出22岁的日记',
-        description: '你想看看八年前那个自己，想问问他：你对现在的我满意吗？',
+        label: '翻出{startAge}岁的日记',
+        description: '你想看看{years}年前那个自己，想问问他：你对现在的我满意吗？',
         hint: '自我觉察+8，幸福-3，压力+3',
         hintColor: 'neutral',
         stateEffect: (s: GameState) => { s.happiness = clamp(s.happiness - 3, 0, 100); s.stress = clamp(s.stress + 3, 0, 100); },
         skillGains: { selfAwareness: 8 },
-        log: '你翻到了那本日记。22岁的你写道："三十岁之前一定要环游世界。"你没有环游世界。你合上日记，发现最刺耳的不是没实现的梦想，而是那个做梦的人已经不认识你了。',
+        log: '你翻到了那本日记。{startAge}岁的你写道："三十岁之前一定要环游世界。"你没有环游世界。你合上日记，发现最刺耳的不是没实现的梦想，而是那个做梦的人已经不认识你了。',
       },
     ],
   },
 
   {
     id: 'phil_time_40',
-    title: '不惑',
-    narrative: '孔子说四十不惑。你今年四十，惑得比任何时候都厉害。\n你开始注意到以前不会注意的事：楼下煎饼摊大叔头发全白了，最后一次见大学室友已是五年前，你妈打电话时开始重复同一件事说两遍。时间不是在你身上流过——它在你身上沉积，像一层层看不见的灰尘。',
+    title: '时间的灰',
+    narrative: '都说四十不惑，可惑不会因为多过了五年就自动消失。你今年四十五，惑得和四十岁那年一样厉害。\n你开始注意到以前不会注意的事：楼下煎饼摊大叔头发全白了，最后一次见大学室友已是十年前，你妈打电话时开始重复同一件事说两遍。时间不是在你身上流过——它在你身上沉积，像一层层看不见的灰尘。',
     pathId: 'ai_symbiote',
     crossPath: true,
-    ageRange: [40, 40],
+    ageRange: [45, 45],
     priority: 7,
     oncePerGame: true,
     eventType: 'milestone',
@@ -373,7 +380,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
       {
         id: 'phil_time_40_c',
         label: '去做体检',
-        description: '四十岁了，身体的保修期到了。你该认真面对这具肉身了。',
+        description: '四十五了，身体的保修期到了。你该认真面对这具肉身了。',
         hint: '健康+8，存款-2000',
         hintColor: 'positive',
         stateEffect: (s: GameState) => { s.health = clamp(s.health + 8, 0, 100); },
@@ -386,7 +393,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
   {
     id: 'phil_time_echo',
     title: '旧信',
-    narrative: '搬家时从箱底翻出一封写着"30岁打开"的信——你22岁写给未来自己的。你早就过了三十，迟了好几年。\n你拆开信，第一行是："你还在做自己想做的事吗？"真正让你难受的不是答案——而是你已经忘了22岁时"想做的事"是什么。',
+    narrative: '搬家时从箱底翻出一封写着"{age}岁打开"的信——你{startAge}岁写给未来自己的。你早就过了三十，迟了好几年。\n你拆开信，第一行是："你还在做自己想做的事吗？"真正让你难受的不是答案——而是你已经忘了{startAge}岁时"想做的事"是什么。',
     pathId: 'ai_symbiote',
     crossPath: true,
     ageRange: [33, 45],
@@ -397,17 +404,17 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
       {
         id: 'phil_time_echo_a',
         label: '写一封回信',
-        description: '给22岁的自己回一封信。告诉他你成了什么，没成什么，以及为什么。',
+        description: '给{startAge}岁的自己回一封信。告诉他你成了什么，没成什么，以及为什么。',
         hint: '自我觉察+12，幸福-4，压力+3',
         hintColor: 'positive',
         stateEffect: (s: GameState) => { s.happiness = clamp(s.happiness - 4, 0, 100); s.stress = clamp(s.stress + 3, 0, 100); },
         skillGains: { selfAwareness: 12 },
-        log: '你写了四页纸。写到第三页时你停下来哭了——你以为是悲伤，其实更像一种奇怪的感动。22岁的你那么天真，那么确定。你突然嫉妒他。',
+        log: '你写了四页纸。写到第三页时你停下来哭了——你以为是悲伤，其实更像一种奇怪的感动。{startAge}岁的你那么天真，那么确定。你突然嫉妒他。',
       },
       {
         id: 'phil_time_echo_b',
         label: '把信烧了',
-        description: '过去不需要回应。你不想被22岁的自己审判。',
+        description: '过去不需要回应。你不想被{startAge}岁的自己审判。',
         hint: '压力-3，自我觉察-3，信念+3',
         hintColor: 'negative',
         stateEffect: (s: GameState) => { s.stress = clamp(s.stress - 3, 0, 100); s.pathFaith = clamp(s.pathFaith + 3, 0, 100); },
@@ -421,7 +428,7 @@ const PHILOSOPHY_EVENTS: NarrativeEvent[] = [
         hintColor: 'positive',
         stateEffect: (s: GameState) => { s.pathFaith = clamp(s.pathFaith + 5, 0, 100); },
         skillGains: { selfAwareness: 8 },
-        log: '你写了一封新的信："50岁的我，你还敢做梦吗？"你封好信，放回箱底。你不知道五十岁的你会不会打开它——你甚至不知道五十岁的你还存不存在。',
+        log: '你写了一封新的信："{age}岁的我，你还敢做梦吗？"你封好信，放回箱底。你不知道五十岁的你会不会打开它——你甚至不知道五十岁的你还存不存在。',
       },
     ],
   },

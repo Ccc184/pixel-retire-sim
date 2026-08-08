@@ -27,7 +27,7 @@ import type { NarrativeEvent, NarrativeAchievement, GameState } from '../types/g
 import { registerNarrativeEvents } from './narrative-registry.js';
 import { registerAchievements } from './narrative-achievements.js';
 import { clamp } from '../utils/clamp.js';
-import { applyChainHoldingScale } from '../utils/math-engine.js';
+import { applyChainHoldingScale, pctInvestment } from '../utils/math-engine.js';
 
 // ============================================================
 // 辅助函数
@@ -184,7 +184,7 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           investPercent(s, 0.25);
         },
-        log: '22岁，你把工资的六成换成了币。外卖换成了食堂，新衣服一件没买。室友说你被传销洗脑了，你笑了笑没解释——有些路，信的人自然会信。',
+        log: '{startAge}岁，你把工资的六成换成了币。外卖换成了食堂，新衣服一件没买。室友说你被传销洗脑了，你笑了笑没解释——有些路，信的人自然会信。',
         blindBoxTrigger: 'chain_first_bet',
       },
       {
@@ -199,7 +199,7 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           investPercent(s, 0.12);
         },
-        log: '22岁，你在日历上设了每月发薪日的定投闹钟。不管涨跌，雷打不动地买。你告诉自己：这是用时间换复利，用纪律换自由。',
+        log: '{startAge}岁，你在日历上设了每月发薪日的定投闹钟。不管涨跌，雷打不动地买。你告诉自己：这是用时间换复利，用纪律换自由。',
       },
       {
         id: 'learn_before_buy',
@@ -212,7 +212,7 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           investPercent(s, 0.06);
         },
-        log: '22岁，你把市面上的白皮书读了三十多份，用Solidity——以太坊上写智能合约的编程语言——跑通了第一个Hello World合约。你买的币不多，但每一枚你都知道它背后跑着什么逻辑。认知是你的第一笔资产。',
+        log: '{startAge}岁，你把市面上的白皮书读了三十多份，用Solidity——以太坊上写智能合约的编程语言——跑通了第一个Hello World合约。你买的币不多，但每一枚你都知道它背后跑着什么逻辑。认知是你的第一笔资产。',
       },
     ],
   },
@@ -247,7 +247,7 @@ const commonEvents: NarrativeEvent[] = [
           // 持仓先暴跌35%(×0.65)，三天后反弹一半(从0.65涨到0.825≈0.82)
           scaleChainHoldings(s, 0.82);
         },
-        log: '23岁，你没卖。你把手机扣在桌上，强迫自己不去看行情。三天后反弹了一半，你长出一口气。HODL这两个字，你以前觉得是口号，现在才知道它是凌晨三点对抗本能的战争。',
+        log: '{age}岁，你没卖。你把手机扣在桌上，强迫自己不去看行情。三天后反弹了一半，你长出一口气。HODL这两个字，你以前觉得是口号，现在才知道它是凌晨三点对抗本能的战争。',
         blindBoxTrigger: 'chain_hodl_crisis',
       },
       {
@@ -266,7 +266,7 @@ const commonEvents: NarrativeEvent[] = [
           // 然后全部卖出换成现金（sellPercent=按持仓比例卖币变现）
           sellPercent(s, 1.0);
         },
-        log: '23岁，你按下了卖出。割在最低点附近，疼得倒吸一口凉气。但你把那天的K线截了图，在复盘笔记里写了三页。你告诉自己：亏钱不可怕，亏了还不知道为什么才可怕。',
+        log: '{age}岁，你按下了卖出。割在最低点附近，疼得倒吸一口凉气。但你把那天的K线截了图，在复盘笔记里写了三页。你告诉自己：亏钱不可怕，亏了还不知道为什么才可怕。',
       },
       {
         id: 'buy_the_dip',
@@ -283,7 +283,7 @@ const commonEvents: NarrativeEvent[] = [
           investPercent(s, 0.08); // 在谷底加仓（存款8%）
           scaleChainHoldings(s, 1.26); // 两周后反弹26%（和HODL选项一致的反弹幅度）
         },
-        log: '23岁，你在血流成河的时候按下了买入。手在抖，但你告诉自己这是别人恐惧时该有的贪婪。两周后涨回来一截，你账面浮盈了。但你知道，这份胆量下一次可能就是灾难。',
+        log: '{age}岁，你在血流成河的时候按下了买入。手在抖，但你告诉自己这是别人恐惧时该有的贪婪。两周后涨回来一截，你账面浮盈了。但你知道，这份胆量下一次可能就是灾难。',
       },
     ],
   },
@@ -315,7 +315,7 @@ const commonEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '23岁，你用了整个年夜饭的时间，用"数字黄金""没有央行能印"这种话解释区块链。你爸听懂了一半，叹了口气说"你自己心里有数就行"。你知道这已经是最大的让步了。',
+        log: '{age}岁，你用了整个年夜饭的时间，用"数字黄金""没有央行能印"这种话解释区块链。你爸听懂了一半，叹了口气说"你自己心里有数就行"。你知道这已经是最大的让步了。',
       },
       {
         id: 'stay_silent',
@@ -328,7 +328,7 @@ const commonEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '23岁，你笑了笑把话题岔开了。你把解释的力气省下来，全部投进了研究和复盘。你告诉自己：三年后拿结果回家，比说一万句"这是未来"都有用。',
+        log: '{age}岁，你笑了笑把话题岔开了。你把解释的力气省下来，全部投进了研究和复盘。你告诉自己：三年后拿结果回家，比说一万句"这是未来"都有用。',
       },
       {
         id: 'show_small_profit',
@@ -343,7 +343,7 @@ const commonEvents: NarrativeEvent[] = [
           sellPercent(s, 0.15); // 卖币换现金
           s.currentSavings -= 3000; // 扣除买电视的花费
         },
-        log: '23岁，你卖了一小笔币，给爸妈换了台新电视。你爸嘴上说"乱花钱"，但第二天就在亲戚群里显摆了。你发现：让家人理解区块链太难，但让他们看到钱，比什么解释都管用。',
+        log: '{age}岁，你卖了一小笔币，给爸妈换了台新电视。你爸嘴上说"乱花钱"，但第二天就在亲戚群里显摆了。你发现：让家人理解区块链太难，但让他们看到钱，比什么解释都管用。',
       },
     ],
   },
@@ -378,7 +378,7 @@ const commonEvents: NarrativeEvent[] = [
           investPercent(s, 0.08);
           s.currentYearSideHustle += 3000; // 帮社区项目方审合约拿到的第一笔赏金
         },
-        log: '24岁，你花了三个月把主流DeFi协议的合约源码逐行读完。你看懂了闪电贷怎么套利、看懂了预言机——把现实世界数据喂给智能合约的中间人——怎么报价、也看懂了那些黑客怎么找到漏洞。一个项目方私信请你帮忙审审新合约，你揪出一个边界漏洞，对方痛快地打来3000元赏金——那天你照镜子，看到的不再只是个赌徒，而是个"懂行的人"。',
+        log: '{age}岁，你花了三个月把主流DeFi协议的合约源码逐行读完。你看懂了闪电贷怎么套利、看懂了预言机——把现实世界数据喂给智能合约的中间人——怎么报价、也看懂了那些黑客怎么找到漏洞。一个项目方私信请你帮忙审审新合约，你揪出一个边界漏洞，对方痛快地打来3000元赏金——那天你照镜子，看到的不再只是个赌徒，而是个"懂行的人"。',
       },
       {
         id: 'farm_yields',
@@ -392,7 +392,7 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           scaleChainHoldings(s, 1.4);
         },
-        log: '24岁，你把资金撒进了五个不同的流动性池，年化收益加起来超过80%。每天醒来先查收益，像养了一群下金蛋的鹅。但你也知道，这些鹅可能随时被黑客端走——高收益从来都是高风险的伪装。',
+        log: '{age}岁，你把资金撒进了五个不同的流动性池，年化收益加起来超过80%。每天醒来先查收益，像养了一群下金蛋的鹅。但你也知道，这些鹅可能随时被黑客端走——高收益从来都是高风险的伪装。',
       },
       {
         id: 'community_voice',
@@ -406,7 +406,7 @@ const commonEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           s.happiness = clamp(s.happiness + 3, 0, 100);
         },
-        log: '24岁，你写的DeFi拆解文章在社区里火了，有人私信问你"能不能带带我"。你忽然发现：在这个圈子里，"懂"本身就是一种资产。你开始有了自己的小粉丝群。',
+        log: '{age}岁，你写的DeFi拆解文章在社区里火了，有人私信问你"能不能带带我"。你忽然发现：在这个圈子里，"懂"本身就是一种资产。你开始有了自己的小粉丝群。',
       },
     ],
   },
@@ -560,14 +560,17 @@ const chainWarningEvents: NarrativeEvent[] = [
         id: 'double_down',
         label: '继续持有，加仓摊平',
         description: '越是这种时候越不能怂',
-        hint: '信念+5 · 存款-20000 · 压力+10',
+        hint: '信念+5 · 存款-15% · 压力+10',
         hintColor: 'negative',
         skillGains: {},
-        savingsChange: -20000,
+        savingsChange: 0,
         stateEffect: (s) => {
+          // 加仓金额 = 存款的15%（与 investPercent 的"存款百分比"口径一致），持仓归零后也能继续投入
+          const invest = Math.round(s.currentSavings * 0.15);
+          s.currentSavings = Math.max(0, s.currentSavings - invest);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           s.stress = clamp(s.stress + 10, 0, 100);
-          (s as any).chainHoldings = ((s as any).chainHoldings || 0) + 20000;
+          (s as any).chainHoldings = ((s as any).chainHoldings || 0) + invest;
         },
         log: '凌晨三点，你又买了一批。你告诉自己这是"别人恐惧我贪婪"。',
       },
@@ -678,7 +681,7 @@ const branchSelectEvent: NarrativeEvent[] = [
     conditions: (s) => getChainHoldings(s) > 0 && (!s.narrativeBranch || s.narrativeBranch === 'unassigned'),
     narrative:
       '三年了。你从对着区块浏览器发呆的新手，变成了动态圈里"最懂币"的那个人——但"懂"是个很虚的字：你懂行情却没靠交易稳定盈利，会写合约却还没上线过一个真正有人用的协议，HODL了三年却还在熊市里煎熬。\n' +
-      '25岁这年你站在岔路口，不能再以"什么都懂一点"的姿态漂着了。深夜你打开钱包，看着那串持仓数字，写下三个词：交易、建造、信仰。窗外的城市熄了灯，你的屏幕还亮着，光标一闪一闪，像在等你做一个不会反悔的决定。',
+      '{age}岁这年你站在岔路口，不能再以"什么都懂一点"的姿态漂着了。深夜你打开钱包，看着那串持仓数字，写下三个词：交易、建造、信仰。窗外的城市熄了灯，你的屏幕还亮着，光标一闪一闪，像在等你做一个不会反悔的决定。',
     options: [
       {
         id: 'choose_chain_trader',
@@ -688,13 +691,14 @@ const branchSelectEvent: NarrativeEvent[] = [
         hintColor: 'danger',
         skillGains: { tradingSkill: 12 },
         branchSwitch: 'chain_trader',
+        memorySet: { choseTrader: true, choseBuilder: false, choseHodler: false },
         stateEffect: (s) => {
           ensureSkills(s);
           s.stress = clamp(s.stress + 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           scaleChainHoldings(s, 1.3);
         },
-        log: '25岁，你选了最刺激的那条路——把自己变成一台交易机器。你清掉了大部分长线仓位，把资金集中到交易策略上。别人在HODL，你在追逐每一个波动。你赌的是：行情是你的提款机。',
+        log: '{age}岁，你选了最刺激的那条路——把自己变成一台交易机器。你清掉了大部分长线仓位，把资金集中到交易策略上。别人在HODL，你在追逐每一个波动。你赌的是：行情是你的提款机。',
       },
       {
         id: 'choose_chain_builder',
@@ -705,12 +709,13 @@ const branchSelectEvent: NarrativeEvent[] = [
         skillGains: { defiSkill: 12 },
         savingsChange: -10000,
         branchSwitch: 'chain_builder',
+        memorySet: { choseTrader: false, choseBuilder: true, choseHodler: false },
         stateEffect: (s) => {
           ensureSkills(s);
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '25岁，你把精力砸进了Solidity和协议设计。你不再盯着行情，而是盯着IDE。你赌的是：在这个去中心化的世界里，写代码的人掌握着真正的权力——因为规则是他们写的。',
+        log: '{age}岁，你把精力砸进了Solidity和协议设计。你不再盯着行情，而是盯着IDE。你赌的是：在这个去中心化的世界里，写代码的人掌握着真正的权力——因为规则是他们写的。',
       },
       {
         id: 'choose_chain_hodler',
@@ -720,13 +725,14 @@ const branchSelectEvent: NarrativeEvent[] = [
         hintColor: 'positive',
         skillGains: { communityInfluence: 12 },
         branchSwitch: 'chain_hodler',
+        memorySet: { choseTrader: false, choseBuilder: false, choseHodler: true },
         stateEffect: (s) => {
           ensureSkills(s);
           s.stress = clamp(s.stress + 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           scaleChainHoldings(s, 1.2);
         },
-        log: '25岁，你做了一个看起来最"无聊"的决定——继续HODL。你把手机里的行情APP通知关了，开始把精力投向社区和DAO（去中心化自治组织，一群人用代码和投票而非CEO来管理资金）。你赌的是：钻石手这事儿，光靠忍是忍不下去的，得真懂。真正信的人，不需要看K线。',
+        log: '{age}岁，你做了一个看起来最"无聊"的决定——继续HODL。你把手机里的行情APP通知关了，开始把精力投向社区和DAO（去中心化自治组织，一群人用代码和投票而非CEO来管理资金）。你赌的是：钻石手这事儿，光靠忍是忍不下去的，得真懂。真正信的人，不需要看K线。',
       },
     ],
   },
@@ -767,7 +773,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           scaleChainHoldings(s, 1.5);
         },
-        log: '26岁，你把单笔仓位从2%提到了5%。赚得更快了，但每次开仓前的心跳也更重了。你告诉自己：有边际优势就该放大它。但你隐约知道，杠杆是放大收益的工具，也是放大恐惧的工具。',
+        log: '{age}岁，你把单笔仓位从2%提到了5%。赚得更快了，但每次开仓前的心跳也更重了。你告诉自己：有边际优势就该放大它。但你隐约知道，杠杆是放大收益的工具，也是放大恐惧的工具。',
       },
       {
         id: 'refine_system',
@@ -781,7 +787,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           scaleChainHoldings(s, 1.2);
         },
-        log: '26岁，你忍住了加仓的冲动，用三个月小仓位跑了200笔交易。你发现你的系统在震荡市表现好，在单边趋势里会挨打。你开始打磨第二套策略——慢，但你知道慢就是快。',
+        log: '{age}岁，你忍住了加仓的冲动，用三个月小仓位跑了200笔交易。你发现你的系统在震荡市表现好，在单边趋势里会挨打。你开始打磨第二套策略——慢，但你知道慢就是快。',
       },
       {
         id: 'share_signals',
@@ -795,7 +801,7 @@ const traderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
-        log: '26岁，你开始在社群里分享每日交易笔记。有人跟着你操作赚了钱，给你发红包。但也有人亏了钱骂你"带单割韭菜"。那阵子你真切体会到：公开交易是要承受双倍压力的——赔了赔钱，赚了赔名声。',
+        log: '{age}岁，你开始在社群里分享每日交易笔记。有人跟着你操作赚了钱，给你发红包。但也有人亏了钱骂你"带单割韭菜"。那阵子你真切体会到：公开交易是要承受双倍压力的——赔了赔钱，赚了赔名声。',
       },
     ],
   },
@@ -829,7 +835,7 @@ const traderEvents: NarrativeEvent[] = [
           scaleChainHoldings(s, 1.35);
           (s as any).usedLeverage = true;
         },
-        log: '27岁，你给自己的合约交易定了铁律：永不超过3倍杠杆，单笔风险不超过本金的2%。加了杠杆后收益确实快了，但你严格执行止损，没有一次扛单。你告诉自己：活得久比赚得快重要。',
+        log: '{age}岁，你给自己的合约交易定了铁律：永不超过3倍杠杆，单笔风险不超过本金的2%。加了杠杆后收益确实快了，但你严格执行止损，没有一次扛单。你告诉自己：活得久比赚得快重要。',
       },
       {
         id: 'high_leverage_gamble',
@@ -853,7 +859,7 @@ const traderEvents: NarrativeEvent[] = [
             scaleChainHoldings(s, 2.0); // 翻倍
           }
         },
-        log: '27岁，你在一次"确定性极高"的行情里开了8倍杠杆。前三天浮盈40%，你觉得自己是神。第四天一个插针，你的仓位差点被强平——在最后一秒你手动止损平仓，浑身冷汗。这一次你活下来了，但你知道下次可能就没这么幸运。',
+        log: '{age}岁，你在一次"确定性极高"的行情里开了8倍杠杆。前三天浮盈40%，你觉得自己是神。第四天一个插针，你的仓位差点被强平——在最后一秒你手动止损平仓，浑身冷汗。这一次你活下来了，但你知道下次可能就没这么幸运。',
       },
       {
         id: 'no_leverage_spot',
@@ -867,7 +873,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           scaleChainHoldings(s, 1.15);
         },
-        log: '27岁，你看着那些晒爆仓截图的人，关掉了合约页面。你坚持只做现货，收益慢但睡得着觉。你给老K回了两个字："谢谢。"他没回，但从那以后他偶尔会在你最想all in的时候发一个表情包——什么都不说，就一个表情。有人说你"胆小"，你笑笑——爆仓的人没有资格说胆小，活着的人才有。',
+        log: '{age}岁，你看着那些晒爆仓截图的人，关掉了合约页面。你坚持只做现货，收益慢但睡得着觉。你给老K回了两个字："谢谢。"他没回，但从那以后他偶尔会在你最想all in的时候发一个表情包——什么都不说，就一个表情。有人说你"胆小"，你笑笑——爆仓的人没有资格说胆小，活着的人才有。',
       },
     ],
   },
@@ -901,7 +907,7 @@ const traderEvents: NarrativeEvent[] = [
           scaleChainHoldings(s, 1.3);
           s.currentYearSideHustle += 8000; // 把交易机器人简化版卖给社群朋友
         },
-        log: '28岁，你用Python写了一个半自动交易机器人，把你的策略变成代码。机器不会在凌晨三点手贱加仓，也不会在暴跌时恐慌平仓。你把简化版挂到社群，几个朋友各付了一笔用上了，进账8000元。那天晚上你忘了设闹钟，一觉到天亮——你并非不关心行情，只是你的纪律终于有了执行力。',
+        log: '{age}岁，你用Python写了一个半自动交易机器人，把你的策略变成代码。机器不会在凌晨三点手贱加仓，也不会在暴跌时恐慌平仓。你把简化版挂到社群，几个朋友各付了一笔用上了，进账8000元。那天晚上你忘了设闹钟，一觉到天亮——你并非不关心行情，只是你的纪律终于有了执行力。',
       },
       {
         id: 'trade_by_gut_refined',
@@ -915,7 +921,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           scaleChainHoldings(s, 1.2);
         },
-        log: '28岁，你做了一张交易checklist卡贴在屏幕边：每次开仓前必须打勾——有没有止损？仓位有没有超标？是不是情绪化操作？你依然手动交易，但每一次按下按钮前，那张卡都在拦着你。',
+        log: '{age}岁，你做了一张交易checklist卡贴在屏幕边：每次开仓前必须打勾——有没有止损？仓位有没有超标？是不是情绪化操作？你依然手动交易，但每一次按下按钮前，那张卡都在拦着你。',
       },
       {
         id: 'teach_cycle',
@@ -929,7 +935,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           s.happiness = clamp(s.happiness + 4, 0, 100);
         },
-        log: '28岁，你写的"一个交易员的牛熊周期复盘"在圈子里刷屏了。有人留言说"这是我看过最诚实的交易分享"。你意外地发现：承认自己亏过、蠢过、怕过，反而比晒盈利截图更能赢得信任。',
+        log: '{age}岁，你写的"一个交易员的牛熊周期复盘"在圈子里刷屏了。有人留言说"这是我看过最诚实的交易分享"。你意外地发现：承认自己亏过、蠢过、怕过，反而比晒盈利截图更能赢得信任。',
       },
     ],
   },
@@ -964,7 +970,7 @@ const traderEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
-        log: '30岁，你关掉了所有行情软件，去山里待了两周。没有WiFi，没有K线，只有风声和鸟叫。回来后你的第一笔交易就盈利了——跟技术变好没什么关系，是你的脑子终于不抖了。',
+        log: '{age}岁，你关掉了所有行情软件，去山里待了两周。没有WiFi，没有K线，只有风声和鸟叫。回来后你的第一笔交易就盈利了——跟技术变好没什么关系，是你的脑子终于不抖了。',
       },
       {
         id: 'shrink_position',
@@ -978,7 +984,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           scaleChainHoldings(s, 1.05);
         },
-        log: '30岁，你把仓位降到了原来的十分之一，像用小号练手感。两周后你重新找到了节奏，把仓位慢慢加了回来。你学到一件事：手感丢了不可怕，可怕的是带着亏损的怒气加仓。',
+        log: '{age}岁，你把仓位降到了原来的十分之一，像用小号练手感。两周后你重新找到了节奏，把仓位慢慢加了回来。你学到一件事：手感丢了不可怕，可怕的是带着亏损的怒气加仓。',
       },
       {
         id: 'find_mentor',
@@ -992,7 +998,7 @@ const traderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '30岁，你付费请了一位做了八年交易的前辈看你的交易记录。他只说了一句："你的系统没问题，但你在亏损后会急着扳回来，这是你所有的病根。"你愣了很久——你知道他说得对。',
+        log: '{age}岁，你付费请了一位做了八年交易的前辈看你的交易记录。他只说了一句："你的系统没问题，但你在亏损后会急着扳回来，这是你所有的病根。"你愣了很久——你知道他说得对。',
       },
     ],
   },
@@ -1026,7 +1032,7 @@ const traderEvents: NarrativeEvent[] = [
           scaleChainHoldings(s, 1.4);
           s.currentYearSideHustle += 15000; // 一家投资机构付费定制的链上数据报告
         },
-        log: '31岁，你花了一个月搭建了自己的链上数据监控面板。从此你不再追着消息跑，而是让数据来找你。你的胜率从61%提到了68%，每一次提前减仓都像拥有了某种预知能力。一家投资机构看中你的面板，付费请你定制了一份巨鲸追踪报告，15000元落袋。',
+        log: '{age}岁，你花了一个月搭建了自己的链上数据监控面板。从此你不再追着消息跑，而是让数据来找你。你的胜率从61%提到了68%，每一次提前减仓都像拥有了某种预知能力。一家投资机构看中你的面板，付费请你定制了一份巨鲸追踪报告，15000元落袋。',
       },
       {
         id: 'monetize_data',
@@ -1040,7 +1046,7 @@ const traderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
         },
-        log: '31岁，你的链上数据工具有了第一批付费用户。你发现：在淘金热里，最稳赚的是卖铲子的人。交易有亏有赚，但卖铲子的钱是确定的。你头一回有了"两条腿走路"的感觉。',
+        log: '{age}岁，你的链上数据工具有了第一批付费用户。你发现：在淘金热里，最稳赚的是卖铲子的人。交易有亏有赚，但卖铲子的钱是确定的。你头一回有了"两条腿走路"的感觉。',
       },
       {
         id: 'follow_whales',
@@ -1054,7 +1060,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
           scaleChainHoldings(s, 1.25);
         },
-        log: '31岁，你成了一个"巨鲸跟随者"。聪明钱买什么你买什么，聪明钱跑你跟着跑。收益不错，但你心里清楚：跟单是偷懒，一旦巨鲸开始反向下套，你就是第一个被收割的。',
+        log: '{age}岁，你成了一个"巨鲸跟随者"。聪明钱买什么你买什么，聪明钱跑你跟着跑。收益不错，但你心里清楚：跟单是偷懒，一旦巨鲸开始反向下套，你就是第一个被收割的。',
       },
     ],
   },
@@ -1088,7 +1094,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           scaleChainHoldings(s, 1.5);
         },
-        log: '33岁，你花了一个月拆解巨鲸的"假信号"模式，做出了反收割策略。前两次试错亏了钱，第三次终于抓到了他们的诱多陷阱，反向做空赚了一笔大的。你突然觉得自己在和"对手"下棋，而不是在和运气赌博。',
+        log: '{age}岁，你花了一个月拆解巨鲸的"假信号"模式，做出了反收割策略。前两次试错亏了钱，第三次终于抓到了他们的诱多陷阱，反向做空赚了一笔大的。你突然觉得自己在和"对手"下棋，而不是在和运气赌博。',
       },
       {
         id: 'ignore_whales',
@@ -1102,7 +1108,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           scaleChainHoldings(s, 1.2);
         },
-        log: '33岁，你关掉了巨鲸监控面板。你接受了一个事实：你斗不过那些有几十亿资金和顶级团队的人。但没关系，你不需要赢他们，你只需要赢市场上90%的散户。你回归了自己的系统，反而赚得更稳了。',
+        log: '{age}岁，你关掉了巨鲸监控面板。你接受了一个事实：你斗不过那些有几十亿资金和顶级团队的人。但没关系，你不需要赢他们，你只需要赢市场上90%的散户。你回归了自己的系统，反而赚得更稳了。',
       },
       {
         id: 'expose_pattern',
@@ -1116,7 +1122,7 @@ const traderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '33岁，你写了一篇"巨鲸如何用假信号收割散户"的深度报告，转发破万。有人说你是"散户的吹哨人"，也有人私信威胁你"少管闲事"。那之后你才知道：在这个圈子里，说真话是要付出代价的。',
+        log: '{age}岁，你写了一篇"巨鲸如何用假信号收割散户"的深度报告，转发破万。有人说你是"散户的吹哨人"，也有人私信威胁你"少管闲事"。那之后你才知道：在这个圈子里，说真话是要付出代价的。',
       },
     ],
   },
@@ -1154,7 +1160,7 @@ const traderEvents: NarrativeEvent[] = [
             s.currentSavings += 30000;
           }
         },
-        log: '35岁，你在牛市高点分批止盈，把四成利润锁进了稳定币。加过杠杆的仓位让你的收益比现货玩家高出一截，老K私信你发了一个"稳"字。两周后市场暴跌30%，你看着那些没跑的人哀嚎，庆幸自己守住了纪律。你终于信了那句话：会买的是徒弟，会卖的是师傅。',
+        log: '{age}岁，你在牛市高点分批止盈，把四成利润锁进了稳定币。加过杠杆的仓位让你的收益比现货玩家高出一截，老K私信你发了一个"稳"字。两周后市场暴跌30%，你看着那些没跑的人哀嚎，庆幸自己守住了纪律。你终于信了那句话：会买的是徒弟，会卖的是师傅。',
       },
       {
         id: 'hold_for_more',
@@ -1172,7 +1178,7 @@ const traderEvents: NarrativeEvent[] = [
             s.currentSavings += 15000;
           }
         },
-        log: '35岁，你卖了一半，留了一半。结果行情又涨了一周你懊恼卖早了，然后暴跌你庆幸还卖了一半。你在贪婪和后悔之间反复横跳，最终明白：没有完美的止盈，只有适合你的止盈。',
+        log: '{age}岁，你卖了一半，留了一半。结果行情又涨了一周你懊恼卖早了，然后暴跌你庆幸还卖了一半。你在贪婪和后悔之间反复横跳，最终明白：没有完美的止盈，只有适合你的止盈。',
       },
       {
         id: 'diamond_hands_greed',
@@ -1187,7 +1193,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           scaleChainHoldings(s, 0.9);
         },
-        log: '35岁，你一句"这次不一样"死扛到了顶。结果没顶，只有悬崖。三周涨的全部回吐还倒亏一成。你看着曾经四倍的浮盈变成负数，第一次真正理解什么叫"纸上富贵"。这次教训，比任何止损都贵。',
+        log: '{age}岁，你一句"这次不一样"死扛到了顶。结果没顶，只有悬崖。三周涨的全部回吐还倒亏一成。你看着曾经四倍的浮盈变成负数，第一次真正理解什么叫"纸上富贵"。这次教训，比任何止损都贵。',
       },
     ],
   },
@@ -1219,7 +1225,7 @@ const traderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '37岁，你补缴了税款，请了律师把这几年的链上交易全部合规化。花了一大笔钱，但晚上终于能睡着了。那天夜里你关了灯，第一次没有辗转反侧。窗外有月光，你听着自己的呼吸慢慢变长——自由也许就是这样，在规则的屋檐下，找到一块能安心睡觉的地方。',
+        log: '{age}岁，你补缴了税款，请了律师把这几年的链上交易全部合规化。花了一大笔钱，但晚上终于能睡着了。那天夜里你关了灯，第一次没有辗转反侧。窗外有月光，你听着自己的呼吸慢慢变长——自由也许就是这样，在规则的屋檐下，找到一块能安心睡觉的地方。',
       },
       {
         id: 'offshore_structuring',
@@ -1233,7 +1239,7 @@ const traderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
-        log: '37岁，你研究了离岸信托和合规的税务架构，把一部分资产做了结构化安排。省下了不少税，但也搭进去了大量精力和律师费。你头一次觉得：钱赚来难，守住更难。',
+        log: '{age}岁，你研究了离岸信托和合规的税务架构，把一部分资产做了结构化安排。省下了不少税，但也搭进去了大量精力和律师费。你头一次觉得：钱赚来难，守住更难。',
       },
       {
         id: 'ignore_taxes',
@@ -1246,7 +1252,7 @@ const traderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 15, 0, 100);
           s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
         },
-        log: '37岁，你把税务问题推到了脑后。链上交易确实隐蔽，但你开始失眠——让你睡不着的，是那种"随时可能出事"的不确定性悬在头顶，比被查本身还折磨人。有些钱省了，是用安宁换的。',
+        log: '{age}岁，你把税务问题推到了脑后。链上交易确实隐蔽，但你开始失眠——让你睡不着的，是那种"随时可能出事"的不确定性悬在头顶，比被查本身还折磨人。有些钱省了，是用安宁换的。',
       },
     ],
   },
@@ -1282,22 +1288,22 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
           s.happiness = clamp(s.happiness + 10, 0, 100);
         },
-        log: '39岁，你关闭了合约交易权限，把大部分资产转入了稳定币理财。你不再盯盘，不再设闹钟。第一次醒来不用看行情的早晨，你听了很久窗外的鸟叫。你终于明白：交易是为了自由，不是为了交易本身。',
+        log: '{age}岁，你关闭了合约交易权限，把大部分资产转入了稳定币理财。你不再盯盘，不再设闹钟。第一次醒来不用看行情的早晨，你听了很久窗外的鸟叫。你终于明白：交易是为了自由，不是为了交易本身。',
       },
       {
         id: 'handover_fund',
         label: '转型做量化基金，让别人替你交易',
-        description: '把策略交给团队，自己只做风控',
-        hint: '交易能力+12 · 社区影响力+10 · 被动收入+40000/年 · 压力+8 · 信念+8 · 存款-30000',
+        description: '拿出存款的一部分组建团队，把策略交给团队，自己只做风控，投得越多团队越强，被动收入越高',
+        hint: '交易能力+12 · 社区影响力+10 · 投入存款30% · 被动收入+年化133% · 压力+8 · 信念+8',
         hintColor: 'positive',
         skillGains: { tradingSkill: 12, communityInfluence: 10 },
-        savingsChange: -30000,
-        passiveIncomeChange: 40000,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.30, 1.333).investFn(s),
+        passiveIncomeChangeFn: (s: GameState) => pctInvestment(0.30, 1.333).returnFn(s),
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '39岁，你成立了一个小型量化基金，把你的交易系统交给了三个年轻人。你不再亲自下单，只做风控和策略审核。你的心脏感谢你，你的账户也感谢你——被动收入比你自己交易还稳。',
+        log: '{age}岁，你拿出积蓄的一部分成立了一个小型量化基金，把你的交易系统交给了三个年轻人。投入越多，团队阵容就越豪华。你不再亲自下单，只做风控和策略审核。你的心脏感谢你，你的账户也感谢你——被动收入比你自己交易还稳。',
       },
       {
         id: 'keep_trading',
@@ -1312,7 +1318,7 @@ const traderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           scaleChainHoldings(s, 1.3);
         },
-        log: '39岁，你没收手。你告诉自己和伴侣"还能再干十年"。交易确实是你的热爱，但你的体检报告上多了两个箭头。你赢着市场，却隐隐觉得自己在和身体做一笔会输的交易。',
+        log: '{age}岁，你没收手。你告诉自己和伴侣"还能再干十年"。交易确实是你的热爱，但你的体检报告上多了两个箭头。你赢着市场，却隐隐觉得自己在和身体做一笔会输的交易。',
       },
     ],
   },
@@ -1352,7 +1358,7 @@ const builderEvents: NarrativeEvent[] = [
           s.health = clamp(s.health - 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '26岁，你花了三周给那个200行的合约写了500行测试代码，把每个reentrancy、overflow、front-running的边界都测了一遍。上线那天你手心冒汗，但合约稳如磐石。你建立了第一个习惯：上线前先把自己当黑客。',
+        log: '{age}岁，你花了三周给那个200行的合约写了500行测试代码，把每个reentrancy、overflow、front-running的边界都测了一遍。上线那天你手心冒汗，但合约稳如磐石。你建立了第一个习惯：上线前先把自己当黑客。',
       },
       {
         id: 'learn_from_hacks',
@@ -1365,7 +1371,7 @@ const builderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '26岁，你把过去五年所有重大DeFi黑客事件逐个复盘——The DAO、Poly Network、Wormhole。你把每个漏洞的原理画成图贴在墙上。你告诉自己：这些可不只是故事，全是教训。每一个被黑的合约，都在教你不要犯同样的错。',
+        log: '{age}岁，你把过去五年所有重大DeFi黑客事件逐个复盘——The DAO、Poly Network、Wormhole。你把每个漏洞的原理画成图贴在墙上。你告诉自己：这些可不只是故事，全是教训。每一个被黑的合约，都在教你不要犯同样的错。',
       },
       {
         id: 'ship_fast_iterate',
@@ -1379,7 +1385,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
           investPercent(s, 0.08);
         },
-        log: '26岁，你把合约快速推上了主网。第一周就有几百元的TVL，你兴奋得睡不着。但第二周你发现一个边界条件没处理好，差点被套利。你连夜打了补丁——快是快了，但心脏受不了这种刺激。',
+        log: '{age}岁，你把合约快速推上了主网。第一周就有几百元的TVL，你兴奋得睡不着。但第二周你发现一个边界条件没处理好，差点被套利。你连夜打了补丁——快是快了，但心脏受不了这种刺激。',
         blindBoxTrigger: 'chain_build_defi',
       },
     ],
@@ -1413,7 +1419,7 @@ const builderEvents: NarrativeEvent[] = [
           s.health = clamp(s.health - 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '27岁，你们拿了黑客松第一名。奖金1.5万元，更重要的是，台下的投资人递来了名片。你和队友拥抱的时候，眼里有泪。48小时前你们还是陌生人，现在你们是战友。这就是链上社区的力量——靠代码结盟，不靠关系。',
+        log: '{age}岁，你们拿了黑客松第一名。奖金1.5万元，更重要的是，台下的投资人递来了名片。你和队友拥抱的时候，眼里有泪。48小时前你们还是陌生人，现在你们是战友。这就是链上社区的力量——靠代码结盟，不靠关系。',
       },
       {
         id: 'network_focus',
@@ -1427,7 +1433,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
           s.currentYearSideHustle += 5000; // 黑客松认识的团队外包的一个小合约活
         },
-        log: '27岁，你们没拿奖，但你加了三十个人的社交软件和Discord。一个做协议的团队邀请你加入他们的开发者群，顺手外包给你一个质押合约的小活，结款5000元。一个KOL说"你那个产品idea不错，要不要聊聊"。你回酒店的路上翻着新加的三十个联系人，忽然觉得这一趟来得值——奖没拿，可这些人，以后都用得上。',
+        log: '{age}岁，你们没拿奖，但你加了三十个人的社交软件和Discord。一个做协议的团队邀请你加入他们的开发者群，顺手外包给你一个质押合约的小活，结款5000元。一个KOL说"你那个产品idea不错，要不要聊聊"。你回酒店的路上翻着新加的三十个联系人，忽然觉得这一趟来得值——奖没拿，可这些人，以后都用得上。',
       },
       {
         id: 'keep_building',
@@ -1441,7 +1447,7 @@ const builderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '27岁，黑客松结束后你没停下，和队友把demo继续做成了MVP。你们给它起了个名字，注册了域名，发到了开发者论坛。第一个用户留言"这东西有用"——你盯着那条留言，比拿奖还开心。',
+        log: '{age}岁，黑客松结束后你没停下，和队友把demo继续做成了MVP。你们给它起了个名字，注册了域名，发到了开发者论坛。第一个用户留言"这东西有用"——你盯着那条留言，比拿奖还开心。',
       },
     ],
   },
@@ -1475,7 +1481,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           investPercent(s, 0.15);
         },
-        log: '28岁，你咬牙请了顶级审计公司。审计发现了两个中危漏洞，你修了三天三夜。审计报告挂上官网那天，TVL一天涨了200万——用户用脚投票，安全感就是流量。你把那份盖了章的审计报告置顶在Discord，半天里社群多了两百条"终于敢用了"的留言。',
+        log: '{age}岁，你咬牙请了顶级审计公司。审计发现了两个中危漏洞，你修了三天三夜。审计报告挂上官网那天，TVL一天涨了200万——用户用脚投票，安全感就是流量。你把那份盖了章的审计报告置顶在Discord，半天里社群多了两百条"终于敢用了"的留言。',
       },
       {
         id: 'community_audit',
@@ -1489,7 +1495,7 @@ const builderEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '28岁，你在社区发了漏洞赏金计划，最高悬赏5万元。一周内收到了40份报告，其中3个是真漏洞。你修了漏洞，发了赏金，社区的信任度反而更高了——透明本身就是最好的安全证明。',
+        log: '{age}岁，你在社区发了漏洞赏金计划，最高悬赏5万元。一周内收到了40份报告，其中3个是真漏洞。你修了漏洞，发了赏金，社区的信任度反而更高了——透明本身就是最好的安全证明。',
       },
       {
         id: 'self_audit_delay',
@@ -1503,7 +1509,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 3, 0, 100);
           losePercent(s, 0.30);
         },
-        log: '28岁，你决定自己再审一遍代码。你确实很熟，但"熟悉"恰恰是盲区——你永远看不见自己的逻辑漏洞。三个月后一个小套利者利用了你没发现的边界条件，薅走了几万元。你看着那笔被转走的资金，悔得肠子都青了。',
+        log: '{age}岁，你决定自己再审一遍代码。你确实很熟，但"熟悉"恰恰是盲区——你永远看不见自己的逻辑漏洞。三个月后一个小套利者利用了你没发现的边界条件，薅走了几万元。你看着那笔被转走的资金，悔得肠子都青了。',
       },
     ],
   },
@@ -1528,17 +1534,18 @@ const builderEvents: NarrativeEvent[] = [
       {
         id: 'scale_team',
         label: '扩张团队，把协议做成生态',
-        description: '从个人开发者转型为团队领导者',
-        hint: 'DeFi+12 · 社区影响力+10 · 压力+12 · 信念+10 · 月薪+3000 · 存款-20000',
+        description: '拿出存款的一部分招兵买马，从个人开发者转型为团队领导者，投得越多团队越大，协议收入越高',
+        hint: 'DeFi+12 · 社区影响力+10 · 压力+12 · 信念+10 · 投入存款20% · 月薪+投入的15%',
         hintColor: 'positive',
         skillGains: { defiSkill: 12, communityInfluence: 10 },
-        savingsChange: -20000,
-        salaryChange: 3000,
+        savingsChangeFn: (s: GameState) => -pctInvestment(0.20, 0).investFn(s),
         stateEffect: (s) => {
           s.stress = clamp(s.stress + 12, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          const invest = pctInvestment(0.20, 0).investFn(s);
+          s.currentMonthlySalary += Math.round(invest * 0.15);
         },
-        log: '30岁，你的协议主网上线后TVL一周破千万。你招了五个全职开发者，从"一个人写代码"变成了"管一群人写代码"。你不习惯开会，但你发现：一个人能写一个合约，但一个生态需要一个团队。',
+        log: '{age}岁，你拿出积蓄的一部分扩张团队，协议主网上线后TVL一周破千万。你招了五个全职开发者，从"一个人写代码"变成了"管一群人写代码"。投入越多，团队规模就越大，生态铺得越开。你不习惯开会，但你发现：一个人能写一个合约，但一个生态需要一个团队。',
       },
       {
         id: 'solo_optimize',
@@ -1552,7 +1559,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           investPercent(s, 0.20);
         },
-        log: '30岁，你拒绝了VC的钱和扩张的诱惑，保持一个人+两个兼职的配置。协议TVL没爆，但稳定增长，每次更新都是你亲手写的代码。你享受这种"每行代码都是自己的"的感觉——慢，但纯粹。',
+        log: '{age}岁，你拒绝了VC的钱和扩张的诱惑，保持一个人+两个兼职的配置。协议TVL没爆，但稳定增长，每次更新都是你亲手写的代码。你享受这种"每行代码都是自己的"的感觉——慢，但纯粹。',
       },
       {
         id: 'token_launch',
@@ -1566,7 +1573,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           scaleChainHoldings(s, 1.8);
         },
-        log: '30岁，你发了治理代币。空投那天社区沸腾，TVL一周翻了五倍。但你多了新的焦虑：代币价格、流动性、社区治理、监管风险——你不再只是个写代码的人，你成了一个"项目方"。权力大了，枷锁也多了。',
+        log: '{age}岁，你发了治理代币。空投那天社区沸腾，TVL一周翻了五倍。但你多了新的焦虑：代币价格、流动性、社区治理、监管风险——你不再只是个写代码的人，你成了一个"项目方"。权力大了，枷锁也多了。',
       },
     ],
   },
@@ -1599,7 +1606,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           investPercent(s, 0.15);
         },
-        log: '31岁，你给了白帽5万元赏金，修复了漏洞，并公开写了一篇复盘。社区的反响出乎意料地好——用户说"这个团队靠谱，出事了敢认"。你花5万元买了一次危机公关，赚回了十倍的信任。',
+        log: '{age}岁，你给了白帽5万元赏金，修复了漏洞，并公开写了一篇复盘。社区的反响出乎意料地好——用户说"这个团队靠谱，出事了敢认"。你花5万元买了一次危机公关，赚回了十倍的信任。',
       },
       {
         id: 'negotiate_down',
@@ -1612,7 +1619,7 @@ const builderEvents: NarrativeEvent[] = [
         stateEffect: (s) => {
           s.pathFaith = clamp(s.pathFaith - 5, 0, 100);
         },
-        log: '31岁，你和白帽磨了一周，把赏金从5万砍到了1.5万。白帽收了钱，但再没和你说过话。后来你在别的社区看到他发帖"某些项目方不值得帮"。你省了3.5万，但失去了整个白帽圈的信任。这笔账，你算亏了。',
+        log: '{age}岁，你和白帽磨了一周，把赏金从5万砍到了1.5万。白帽收了钱，但再没和你说过话。后来你在别的社区看到他发帖"某些项目方不值得帮"。你省了3.5万，但失去了整个白帽圈的信任。这笔账，你算亏了。',
       },
       {
         id: 'join_whitehat',
@@ -1627,7 +1634,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           s.currentYearSideHustle += 25000; // 入坑后挖到的第一个critical漏洞，拿到一笔大赏金
         },
-        log: '31岁，那次白帽事件让你入了坑——你开始审计别人的协议，找漏洞、拿赏金。入行第一个月你就挖到一个critical级别的重入漏洞，项目方按最高档打来25000元赏金。你发现：审计比写代码更锻炼安全直觉。你从"造炸弹的人"变成了"拆炸弹的人"，两头的技术都精进了。',
+        log: '{age}岁，那次白帽事件让你入了坑——你开始审计别人的协议，找漏洞、拿赏金。入行第一个月你就挖到一个critical级别的重入漏洞，项目方按最高档打来25000元赏金。你发现：审计比写代码更锻炼安全直觉。你从"造炸弹的人"变成了"拆炸弹的人"，两头的技术都精进了。',
       },
     ],
   },
@@ -1661,7 +1668,7 @@ const builderEvents: NarrativeEvent[] = [
           s.health = clamp(s.health - 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '33岁，你花了四个月做蒙特卡洛仿真，模拟了一万种极端行情。你发现协议在"闪崩+预言机延迟"的组合下会资不抵债，于是设计了保险池机制。上线后真的遇到了一次闪崩，你的保险池扛住了。你庆幸自己做了那些"无聊"的仿真。',
+        log: '{age}岁，你花了四个月做蒙特卡洛仿真，模拟了一万种极端行情。你发现协议在"闪崩+预言机延迟"的组合下会资不抵债，于是设计了保险池机制。上线后真的遇到了一次闪崩，你的保险池扛住了。你庆幸自己做了那些"无聊"的仿真。',
       },
       {
         id: 'open_design',
@@ -1675,7 +1682,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           investPercent(s, 0.12);
         },
-        log: '33岁，你把协议设计文档发到了论坛，公开征集意见。两周内收到了200条反馈，其中有三条让你拍案叫绝。你把这些贡献者的名字写进了白皮书致谢页。协议还没上线，就有了一批"共创者"——这是最好的冷启动。',
+        log: '{age}岁，你把协议设计文档发到了论坛，公开征集意见。两周内收到了200条反馈，其中有三条让你拍案叫绝。你把这些贡献者的名字写进了白皮书致谢页。协议还没上线，就有了一批"共创者"——这是最好的冷启动。',
       },
       {
         id: 'fork_existing',
@@ -1689,7 +1696,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
           investPercent(s, 0.10);
         },
-        log: '33岁，你fork了一个成熟的协议代码，改了几个参数就上线了。快是真的快，但你心里清楚：fork来的东西没有灵魂，也没有护城河。三个月后出现了五个一模一样的fork，你的协议泯然众人。',
+        log: '{age}岁，你fork了一个成熟的协议代码，改了几个参数就上线了。快是真的快，但你心里清楚：fork来的东西没有灵魂，也没有护城河。三个月后出现了五个一模一样的fork，你的协议泯然众人。',
       },
     ],
   },
@@ -1722,7 +1729,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           investPercent(s, 0.18);
         },
-        log: '35岁，你没去打fork战，而是把精力投到了社区和生态上——办开发者工坊、设立生态基金、扶持基于你协议的衍生项目。半年后那个fork竞品因为缺乏社区支撑慢慢凉了，你的协议反而因为生态繁荣更强大了。你验证了一个道理：在开源世界，最大的护城河是"被需要"。',
+        log: '{age}岁，你没去打fork战，而是把精力投到了社区和生态上——办开发者工坊、设立生态基金、扶持基于你协议的衍生项目。半年后那个fork竞品因为缺乏社区支撑慢慢凉了，你的协议反而因为生态繁荣更强大了。你验证了一个道理：在开源世界，最大的护城河是"被需要"。',
       },
       {
         id: 'keep_iterating',
@@ -1737,7 +1744,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           investPercent(s, 0.15);
         },
-        log: '35岁，你开始每两周一次大版本更新，用迭代速度碾压fork。竞争对手刚抄完你的v2，你已经发了v3。你累得要死，但确实甩开了追兵。只是你隐隐觉得：靠速度维持的领先，终究是透支。',
+        log: '{age}岁，你开始每两周一次大版本更新，用迭代速度碾压fork。竞争对手刚抄完你的v2，你已经发了v3。你累得要死，但确实甩开了追兵。只是你隐隐觉得：靠速度维持的领先，终究是透支。',
       },
       {
         id: 'mentor_community',
@@ -1751,7 +1758,7 @@ const builderEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '35岁，你开始在社区里带新人，写教程、review PR、解答问题。半年后你带出了五个core contributor，你的协议不再只靠你一个人维护。那一刻你理解了"开源"的深层含义：不是把代码公开，是把权力分发。',
+        log: '{age}岁，你开始在社区里带新人，写教程、review PR、解答问题。半年后你带出了五个core contributor，你的协议不再只靠你一个人维护。那一刻你理解了"开源"的深层含义：不是把代码公开，是把权力分发。',
       },
     ],
   },
@@ -1785,7 +1792,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           scaleChainHoldings(s, 1.4);
         },
-        log: '37岁，你接受了grant，开始多链部署。TVL三个月翻了两倍，用户来自五条不同的链。但你每天都要监控跨链桥的安全状态——多链是增长，也是把鸡蛋放进了更多篮子，每个篮子都可能被偷。',
+        log: '{age}岁，你接受了grant，开始多链部署。TVL三个月翻了两倍，用户来自五条不同的链。但你每天都要监控跨链桥的安全状态——多链是增长，也是把鸡蛋放进了更多篮子，每个篮子都可能被偷。',
       },
       {
         id: 'stay_single_chain',
@@ -1799,7 +1806,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           investPercent(s, 0.10);
         },
-        log: '37岁，你拒了跨链邀请，专注把单链版本做到极致。你成了那条链上最稳的协议，用户黏性极高。你错过了增量市场，但换来了零跨链安全事故。你告诉自己：有些钱不赚，是为了能长久地赚。',
+        log: '{age}岁，你拒了跨链邀请，专注把单链版本做到极致。你成了那条链上最稳的协议，用户黏性极高。你错过了增量市场，但换来了零跨链安全事故。你告诉自己：有些钱不赚，是为了能长久地赚。',
       },
       {
         id: 'build_own_bridge',
@@ -1815,7 +1822,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           scaleChainHoldings(s, 1.3);
         },
-        log: '37岁，你没接受现成的跨链桥，而是花了半年自己研发了一套基于零知识证明的跨链方案。研发过程九死一生，但上线后再没出过安全事故。你的协议因为"最安全的跨链"成了行业标杆。有些路难走，但难走的路上没有挤满人。',
+        log: '{age}岁，你没接受现成的跨链桥，而是花了半年自己研发了一套基于零知识证明的跨链方案。研发过程九死一生，但上线后再没出过安全事故。你的协议因为"最安全的跨链"成了行业标杆。有些路难走，但难走的路上没有挤满人。',
       },
     ],
   },
@@ -1850,7 +1857,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
           s.happiness = clamp(s.happiness + 10, 0, 100);
         },
-        log: '39岁，你把协议的多签权限移交给了DAO，自己只保留了一个顾问角色。协议在社区治理下继续运转，你终于成了那个"写了代码然后放手"的人。你兑现了最初的信仰：去中心化这个词，你以前觉得是技术问题，后来发现它其实是个承诺。你现在可以关掉电脑，因为你的代码已经不需要你了。',
+        log: '{age}岁，你把协议的多签权限移交给了DAO，自己只保留了一个顾问角色。协议在社区治理下继续运转，你终于成了那个"写了代码然后放手"的人。你兑现了最初的信仰：去中心化这个词，你以前觉得是技术问题，后来发现它其实是个承诺。你现在可以关掉电脑，因为你的代码已经不需要你了。',
       },
       {
         id: 'stay_as_guardian',
@@ -1865,7 +1872,7 @@ const builderEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           scaleChainHoldings(s, 1.2);
         },
-        log: '39岁，你保留了协议的紧急多签权限，继续做那个"最后一道防线"。你知道完全去中心化是理想，但现实需要有人守夜。你成了一个既相信去中心化、又接受现实妥协的人。也许这就是成熟：你并没有放弃理想，只是懂得了理想需要时间。',
+        log: '{age}岁，你保留了协议的紧急多签权限，继续做那个"最后一道防线"。你知道完全去中心化是理想，但现实需要有人守夜。你成了一个既相信去中心化、又接受现实妥协的人。也许这就是成熟：你并没有放弃理想，只是懂得了理想需要时间。',
       },
       {
         id: 'new_protocol',
@@ -1880,7 +1887,7 @@ const builderEvents: NarrativeEvent[] = [
           s.health = clamp(s.health - 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '39岁，你把旧协议交给了团队，自己开始构思一个全新的协议——一个你构思了三年的链上身份系统。你不满足于"守住一个成功"，你要继续造。有人问你"图什么"，你说："造物主停下来的时候，就是世界停止进化的时候。"',
+        log: '{age}岁，你把旧协议交给了团队，自己开始构思一个全新的协议——一个你构思了三年的链上身份系统。你不满足于"守住一个成功"，你要继续造。有人问你"图什么"，你说："造物主停下来的时候，就是世界停止进化的时候。"',
       },
     ],
   },
@@ -1920,7 +1927,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           scaleChainHoldings(s, 0.9);
         },
-        log: '26岁，你花了一周研究每个持仓项目的基本面，清掉了七个你其实不懂的"土狗"，把仓位集中到了三个龙头。换仓有损耗，但你的持仓质量提升了一个档次。你学会了HODL的第一课：不是什么都扛，是扛值得扛的。',
+        log: '{age}岁，你花了一周研究每个持仓项目的基本面，清掉了七个你其实不懂的"土狗"，把仓位集中到了三个龙头。换仓有损耗，但你的持仓质量提升了一个档次。你学会了HODL的第一课：不是什么都扛，是扛值得扛的。',
       },
       {
         id: 'diamond_hands_pure',
@@ -1935,7 +1942,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
           scaleChainHoldings(s, 0.7);
         },
-        log: '26岁，你一个币都没卖。你在社群里发了一句"Winter is coming, but spring always follows"，获赞无数。但你晚上睡不着——你怕的其实不是归零，你怕自己"信仰"错了，却用"坚持"掩饰恐惧。',
+        log: '{age}岁，你一个币都没卖。你在社群里发了一句"Winter is coming, but spring always follows"，获赞无数。但你晚上睡不着——你怕的其实不是归零，你怕自己"信仰"错了，却用"坚持"掩饰恐惧。',
       },
       {
         id: 'accumulate_bear',
@@ -1950,7 +1957,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           scaleChainHoldings(s, 1.3);
         },
-        log: '26岁，你在熊市最黑暗的时候继续定投。每次买入都像往深渊里扔钱，但你知道：熊市的每一笔买入，都是牛市的子弹。两年后回过头看，那段时间是你整个持仓成本最低的部分——钻石手不只是握住，是在恐惧中张开。',
+        log: '{age}岁，你在熊市最黑暗的时候继续定投。每次买入都像往深渊里扔钱，但你知道：熊市的每一笔买入，都是牛市的子弹。两年后回过头看，那段时间是你整个持仓成本最低的部分——钻石手不只是握住，是在恐惧中张开。',
       },
     ],
   },
@@ -1982,7 +1989,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           investPercent(s, 0.05);
         },
-        log: '27岁，你花了两周研究提案，在论坛发了一篇长文分析利弊，最后投了赞成票。你的分析被核心团队转发了，有人留言"这才是真正的DAO参与者"。你头一回觉得：HODL的最高境界，是用手里的币去塑造你信仰的世界。',
+        log: '{age}岁，你花了两周研究提案，在论坛发了一篇长文分析利弊，最后投了赞成票。你的分析被核心团队转发了，有人留言"这才是真正的DAO参与者"。你头一回觉得：HODL的最高境界，是用手里的币去塑造你信仰的世界。',
       },
       {
         id: 'delegate_vote',
@@ -1995,7 +2002,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 2, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 4, 0, 100);
         },
-        log: '27岁，你把投票权委托给了一个你长期关注的KOL。他比你更懂技术细节，也更有时间。你保留了对他的监督权——如果他投得不对，你会撤回委托。你理解了DAO的精髓：代议制不是偷懒，是分工。',
+        log: '{age}岁，你把投票权委托给了一个你长期关注的KOL。他比你更懂技术细节，也更有时间。你保留了对他的监督权——如果他投得不对，你会撤回委托。你理解了DAO的精髓：代议制不是偷懒，是分工。',
       },
       {
         id: 'run_for_delegate',
@@ -2010,7 +2017,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           investPercent(s, 0.08);
         },
-        log: '27岁，你竞选了DAO代表，凭借你在社群的长期贡献成功当选。从此你不仅要为自己的币负责，还要为委托给你的几千票负责。压力大了，但你觉得值——你从一个HODLer变成了一个"链上公民"。',
+        log: '{age}岁，你竞选了DAO代表，凭借你在社群的长期贡献成功当选。从此你不仅要为自己的币负责，还要为委托给你的几千票负责。压力大了，但你觉得值——你从一个HODLer变成了一个"链上公民"。',
       },
     ],
   },
@@ -2042,7 +2049,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '28岁，你的小群发展成了一个500人的正式社区，有入群问答、有每周分享、有"钻石手荣誉墙"。你成了这个社区的精神领袖，但你拒绝收任何"会费"——你说"信仰不该标价"。社区的人反而更死心了。',
+        log: '{age}岁，你的小群发展成了一个500人的正式社区，有入群问答、有每周分享、有"钻石手荣誉墙"。你成了这个社区的精神领袖，但你拒绝收任何"会费"——你说"信仰不该标价"。社区的人反而更死心了。',
       },
       {
         id: 'content_creation',
@@ -2056,7 +2063,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '28岁，你开始写"一个HODLer的熊市日记"，每周一篇。没有喊单、没有预测，只有你作为一个普通持有者的恐惧、坚持和思考。这些文字在熊市里像篝火一样，温暖了一群瑟瑟发抖的人。你发现：真诚的内容，比任何K线分析都有力量。',
+        log: '{age}岁，你开始写"一个HODLer的熊市日记"，每周一篇。没有喊单、没有预测，只有你作为一个普通持有者的恐惧、坚持和思考。这些文字在熊市里像篝火一样，温暖了一群瑟瑟发抖的人。你发现：真诚的内容，比任何K线分析都有力量。',
       },
       {
         id: 'support_newbies',
@@ -2070,7 +2077,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '28岁，你成了社区的"新手辅导员"。你帮几十个新人避开了土狗、避开了骗局、避开了冲动杠杆。有人后来赚了钱给你发红包，你退回去了。你说"当年没人帮我，我亏了很多。现在轮到我了。"',
+        log: '{age}岁，你成了社区的"新手辅导员"。你帮几十个新人避开了土狗、避开了骗局、避开了冲动杠杆。有人后来赚了钱给你发红包，你退回去了。你说"当年没人帮我，我亏了很多。现在轮到我了。"',
       },
     ],
   },
@@ -2106,7 +2113,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           scaleChainHoldings(s, 0.5);
         },
-        log: '30岁，你卖掉了一半持仓，收回了本金和一倍利润。剩下的"用利润跑"，心态完全不一样了。你给爸妈转了一笔钱，附言"这不是传销"。你终于理解了HODL的真谛：不是永远不卖，是知道什么时候该卖、卖多少、为什么卖。',
+        log: '{age}岁，你卖掉了一半持仓，收回了本金和一倍利润。剩下的"用利润跑"，心态完全不一样了。你给爸妈转了一笔钱，附言"这不是传销"。你终于理解了HODL的真谛：不是永远不卖，是知道什么时候该卖、卖多少、为什么卖。',
       },
       {
         id: 'diamond_hands_peak',
@@ -2119,7 +2126,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.health = clamp(s.health - 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
         },
-        log: '30岁，你一个没卖。你在群里发了一句"Diamond hands don\'t fold"。三个月后市场回调40%，你的浮盈缩水了一半。你没后悔——但你也第一次承认：信仰和固执，有时候只有一线之隔。',
+        log: '{age}岁，你一个没卖。你在群里发了一句"Diamond hands don\'t fold"。三个月后市场回调40%，你的浮盈缩水了一半。你没后悔——但你也第一次承认：信仰和固执，有时候只有一线之隔。',
       },
       {
         id: 'systematic_exit',
@@ -2134,7 +2141,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           scaleChainHoldings(s, 0.7);
         },
-        log: '30岁，你没凭感觉操作，而是写了一份"退出计划"：每涨50%卖10%，触发某指标再卖20%。你像执行交易系统的交易员一样执行自己的HODL策略。你发现：最好的HODLer也需要一点点交易员的纪律。',
+        log: '{age}岁，你没凭感觉操作，而是写了一份"退出计划"：每涨50%卖10%，触发某指标再卖20%。你像执行交易系统的交易员一样执行自己的HODL策略。你发现：最好的HODLer也需要一点点交易员的纪律。',
       },
     ],
   },
@@ -2168,7 +2175,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           scaleChainHoldings(s, 1.4);
         },
-        log: '31岁，你在FUD最猛的时候加仓了。两周后真相大白，项目方公布了完整数据，KOL删帖跑路，币价反弹60%。你的逆势加仓赚了一笔。但你也后怕——如果这次FUD是真的呢？逆向操作是勇气，也可能是傲慢。',
+        log: '{age}岁，你在FUD最猛的时候加仓了。两周后真相大白，项目方公布了完整数据，KOL删帖跑路，币价反弹60%。你的逆势加仓赚了一笔。但你也后怕——如果这次FUD是真的呢？逆向操作是勇气，也可能是傲慢。',
       },
       {
         id: 'debunk_publicly',
@@ -2182,7 +2189,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '31岁，你花了一整天写了一篇FUD拆解文章，逐条反驳那个KOL的指控，扒出了他过往的砸盘记录。文章在社群刷屏，恐慌被平息了。那个KOL把你拉黑了，但你多了几千个感谢你的私信。',
+        log: '{age}岁，你花了一整天写了一篇FUD拆解文章，逐条反驳那个KOL的指控，扒出了他过往的砸盘记录。文章在社群刷屏，恐慌被平息了。那个KOL把你拉黑了，但你多了几千个感谢你的私信。',
       },
       {
         id: 'hold_quietly',
@@ -2194,7 +2201,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '31岁，你没发声、没加仓、没卖出。你只是安静地拿着。两周后FUD不攻自破，你什么都没做，却什么都没失去。你看着那条当初吓退一半人的推文又刷了出来，底下已经没人转了——你把手机倒扣在桌上，给自己倒了杯水。',
+        log: '{age}岁，你没发声、没加仓、没卖出。你只是安静地拿着。两周后FUD不攻自破，你什么都没做，却什么都没失去。你看着那条当初吓退一半人的推文又刷了出来，底下已经没人转了——你把手机倒扣在桌上，给自己倒了杯水。',
       },
     ],
   },
@@ -2227,7 +2234,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
         },
-        log: '33岁，你立了一条规矩：永远不为任何项目站台，只分享自己的真实判断。有项目方开价六位数请你喊单，你拒了。你的粉丝反而更多了——在这个充满喊单的圈子里，"不收钱说话"的人成了稀缺品。你的公信力，成了你最值钱的资产。',
+        log: '{age}岁，你立了一条规矩：永远不为任何项目站台，只分享自己的真实判断。有项目方开价六位数请你喊单，你拒了。你的粉丝反而更多了——在这个充满喊单的圈子里，"不收钱说话"的人成了稀缺品。你的公信力，成了你最值钱的资产。',
       },
       {
         id: 'educate_systematically',
@@ -2242,7 +2249,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           s.currentYearSideHustle += 30000; // 出版社预付的版税+首印结算
         },
-        log: '33岁，你花了半年写了一本《HODLer手册》，从技术原理到投资心理到社区治理，系统性地讲了一遍。出版社预付了30000元版税，书在圈内卖了两万册，成了新人的"必读"。你看着那些读者反馈"这本书救了我"，觉得比赚十倍还值。',
+        log: '{age}岁，你花了半年写了一本《HODLer手册》，从技术原理到投资心理到社区治理，系统性地讲了一遍。出版社预付了30000元版税，书在圈内卖了两万册，成了新人的"必读"。你看着那些读者反馈"这本书救了我"，觉得比赚十倍还值。',
       },
       {
         id: 'shrink_from_spotlight',
@@ -2256,7 +2263,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '33岁，你拒绝了所有采访和站台邀请，把社群管理交给了信任的人，回归了一个"安静的HODLer"。你说"我不想成为别人的信仰，每个人应该有自己的判断"。有人不理解，但你觉得：真正的自由，是不被自己的影响力绑架。',
+        log: '{age}岁，你拒绝了所有采访和站台邀请，把社群管理交给了信任的人，回归了一个"安静的HODLer"。你说"我不想成为别人的信仰，每个人应该有自己的判断"。有人不理解，但你觉得：真正的自由，是不被自己的影响力绑架。',
       },
     ],
   },
@@ -2288,7 +2295,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 10, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '35岁，你设计了一套"委托+ quadratic voting"的混合治理机制，在三个DAO推广。效率提升了一倍，巨鲸操纵空间被压缩了。你证明了：去中心化不等于低效，关键是机制设计。你成了DAO治理领域的"架构师"。',
+        log: '{age}岁，你设计了一套"委托+ quadratic voting"的混合治理机制，在三个DAO推广。效率提升了一倍，巨鲸操纵空间被压缩了。你证明了：去中心化不等于低效，关键是机制设计。你成了DAO治理领域的"架构师"。',
       },
       {
         id: 'moderator_role',
@@ -2303,7 +2310,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           s.currentYearSideHustle += 12000; // 三个DAO联合发放的治理调解补贴
         },
-        log: '35岁，你成了DAO里的"和事佬"。每次社区要分裂的时候，你站出来组织辩论、寻找共识。三个DAO为了留住你这个调解人，联合发了一笔12000元的治理补贴。有人嫌你"和稀泥"，但更多的人感谢你"保住了社区"。你发现：治理的终极智慧，与其说在分出胜负，不如说在让所有人觉得"虽然没全赢，但没输"。',
+        log: '{age}岁，你成了DAO里的"和事佬"。每次社区要分裂的时候，你站出来组织辩论、寻找共识。三个DAO为了留住你这个调解人，联合发了一笔12000元的治理补贴。有人嫌你"和稀泥"，但更多的人感谢你"保住了社区"。你发现：治理的终极智慧，与其说在分出胜负，不如说在让所有人觉得"虽然没全赢，但没输"。',
       },
       {
         id: 'step_back_governance',
@@ -2317,7 +2324,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.health = clamp(s.health + 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '35岁，你辞去了所有DAO治理职务，退回了一个普通持有者的位置。你说"治理是年轻人的事，我老了，只想拿好我的币"。有人惋惜，有人理解。你看着那些接班的年轻人，觉得放心——火炬总会传下去的。',
+        log: '{age}岁，你辞去了所有DAO治理职务，退回了一个普通持有者的位置。你说"治理是年轻人的事，我老了，只想拿好我的币"。有人惋惜，有人理解。你看着那些接班的年轻人，觉得放心——火炬总会传下去的。',
       },
     ],
   },
@@ -2350,7 +2357,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
         },
-        log: '37岁，你写了一篇《一个老HODLer的困惑》，坦白了自己所有的怀疑。你以为会掉粉，结果转发破万。最高赞评论是："终于有人说真话了。原来大佬也会迷茫。"你发现：诚实的困惑，比虚假的笃定更有力量。信仰不是不怀疑，是怀疑完了还选择相信。',
+        log: '{age}岁，你写了一篇《一个老HODLer的困惑》，坦白了自己所有的怀疑。你以为会掉粉，结果转发破万。最高赞评论是："终于有人说真话了。原来大佬也会迷茫。"你发现：诚实的困惑，比虚假的笃定更有力量。信仰不是不怀疑，是怀疑完了还选择相信。',
       },
       {
         id: 'study_deeply',
@@ -2364,7 +2371,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.health = clamp(s.health - 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '37岁，你花了一年把区块链的技术底层重新学了一遍——从椭圆曲线加密到零知识证明，从共识机制到状态通道。你越学越确定一件事：技术是真实的，它确实在解决真实的问题。那些骗局和混乱是人性的，不是技术的。你的信仰从"感觉"变成了"理解"。',
+        log: '{age}岁，你花了一年把区块链的技术底层重新学了一遍——从椭圆曲线加密到零知识证明，从共识机制到状态通道。你越学越确定一件事：技术是真实的，它确实在解决真实的问题。那些骗局和混乱是人性的，不是技术的。你的信仰从"感觉"变成了"理解"。',
       },
       {
         id: 'diversify_belief',
@@ -2379,7 +2386,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 3, 0, 100);
           scaleChainHoldings(s, 0.7);
         },
-        log: '37岁，你把一部分链上资产转成了法币和指数基金。你跟自己说这叫"资产配置"，但你知道心里有个声音在说"你没那么信了"。不过你接受了这种不纯粹——也许成熟就是承认：没有任何东西值得你赌上全部。',
+        log: '{age}岁，你把一部分链上资产转成了法币和指数基金。你跟自己说这叫"资产配置"，但你知道心里有个声音在说"你没那么信了"。不过你接受了这种不纯粹——也许成熟就是承认：没有任何东西值得你赌上全部。',
       },
     ],
   },
@@ -2398,7 +2405,7 @@ const hodlerEvents: NarrativeEvent[] = [
     eventType: 'milestone',
     conditions: (s) => getChainHoldings(s) > 0 && getSkill(s, 'communityInfluence') >= 55,
     narrative:
-      '快40岁了。你身边的"同路人"换了一茬又一茬——牛市来、熊市走，真正从头到尾都在的不到十个，你是其中之一。你的持仓经历了两次牛熊，账面数字起起落落，但你的内核变了：不再为涨跌心跳加速，不再争论"区块链是不是骗局"，不再需要向任何人证明你是对的。你只是安静地持有、参与、相信。\n' +
+      '快{age}岁了。你身边的"同路人"换了一茬又一茬——牛市来、熊市走，真正从头到尾都在的不到十个，你是其中之一。你的持仓经历了两次牛熊，账面数字起起落落，但你的内核变了：不再为涨跌心跳加速，不再争论"区块链是不是骗局"，不再需要向任何人证明你是对的。你只是安静地持有、参与、相信。\n' +
       '有人问你"还要HODL多久"。你笑了——这个问题你已经不问了。HODL不是一个有终点的动作，它是一种生活方式。你不是在等一个价格，你是在过一种"相信去中心化"的人生。',
     options: [
       {
@@ -2415,7 +2422,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           scaleChainHoldings(s, 0.5);
         },
-        log: '39岁，你把一半持仓换成了稳定币理财，另一半继续HODL。你突然有了一种"够了"的感觉——焦虑够了，所以收手；和贪不贪已经没关系了。你关掉了最后一个行情闹钟，发现自己已经很久没在凌晨三点醒来了。',
+        log: '{age}岁，你把一半持仓换成了稳定币理财，另一半继续HODL。你突然有了一种"够了"的感觉——焦虑够了，所以收手；和贪不贪已经没关系了。你关掉了最后一个行情闹钟，发现自己已经很久没在凌晨三点醒来了。',
       },
       {
         id: 'keep_hodling',
@@ -2428,7 +2435,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
         },
-        log: '39岁，你没卖。你看着那些早已变现离场的"聪明人"，和那些死扛到底的"傻子"——你不知道谁是赢家，但你知道自己是谁。你是一个HODLer，从头到尾。这不是固执，这是你和这个世界相处的方式。',
+        log: '{age}岁，你没卖。你看着那些早已变现离场的"聪明人"，和那些死扛到底的"傻子"——你不知道谁是赢家，但你知道自己是谁。你是一个HODLer，从头到尾。这不是固执，这是你和这个世界相处的方式。',
       },
       {
         id: 'mentor_next_gen',
@@ -2443,7 +2450,7 @@ const hodlerEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '39岁，你把社区交给了三个你带出来的年轻人，自己退成了"荣誉顾问"。你看着他们在群里活跃的样子，像看到了十几年前的自己。你没有离开，你只是换了一种存在方式——从台前到幕后，从持有者到传承者。',
+        log: '{age}岁，你把社区交给了三个你带出来的年轻人，自己退成了"荣誉顾问"。你看着他们在群里活跃的样子，像看到了十几年前的自己。你没有离开，你只是换了一种存在方式——从台前到幕后，从持有者到传承者。',
       },
     ],
   },
@@ -2546,7 +2553,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
           investPercent(s, 0.15);
         },
-        log: '25岁，你跟了朋友的喊单，转了一笔钱进去。买入那天晚上你设了三个闹钟看行情——涨了高兴，跌了揪心。你告诉自己"就当支持朋友"，但你心里清楚，你赌的不是友情，是贪婪。',
+        log: '{age}岁，你跟了朋友的喊单，转了一笔钱进去。买入那天晚上你设了三个闹钟看行情——涨了高兴，跌了揪心。你告诉自己"就当支持朋友"，但你心里清楚，你赌的不是友情，是贪婪。',
         blindBoxTrigger: 'chain_friend_call',
       },
       {
@@ -2560,7 +2567,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           s.stress = clamp(s.stress - 2, 0, 100);
         },
-        log: '25岁，你回了朋友一句"我研究研究"，然后花了一晚上扒这个项目的合约地址、持币分布、团队背景。越看越像土狗，你关了页面，没买。你给自己定了一条铁律：永远不为别人的信仰买单。',
+        log: '{age}岁，你回了朋友一句"我研究研究"，然后花了一晚上扒这个项目的合约地址、持币分布、团队背景。越看越像土狗，你关了页面，没买。你给自己定了一条铁律：永远不为别人的信仰买单。',
       },
       {
         id: 'small_bet_curious',
@@ -2573,7 +2580,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 4, 0, 100);
           investPercent(s, 0.03);
         },
-        log: '25岁，你拿了一小笔钱跟了，金额不大，亏了也不心疼。你把这笔钱归到"娱乐开销"里，和买电影票一个性质。你发现：用亏得起的钱参与，和用身家性命参与，完全是两种心态。',
+        log: '{age}岁，你拿了一小笔钱跟了，金额不大，亏了也不心疼。你把这笔钱归到"娱乐开销"里，和买电影票一个性质。你发现：用亏得起的钱参与，和用身家性命参与，完全是两种心态。',
       },
     ],
   },
@@ -2667,7 +2674,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
           scaleChainHoldings(s, 0.7);
         },
-        log: '28岁，你在全民狂欢的时候悄悄减了仓。朋友们笑你"胆小"，你笑笑不说话。两个月后暴跌来临，那些晒截图的人删了动态圈，而你的口袋里装着落袋的利润。你又一次验证了那句话：别人贪婪我恐惧。',
+        log: '{age}岁，你在全民狂欢的时候悄悄减了仓。朋友们笑你"胆小"，你笑笑不说话。两个月后暴跌来临，那些晒截图的人删了动态圈，而你的口袋里装着落袋的利润。你又一次验证了那句话：别人贪婪我恐惧。',
       },
       {
         id: 'ride_the_bull',
@@ -2682,7 +2689,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
           scaleChainHoldings(s, 1.5);
         },
-        log: '28岁，你在牛市里加了仓。前两周账面又涨了一倍，你觉得自己就是中本聪转世。第三周一个黑天鹅，利润回吐大半。你盯着那条垂直下跌的K线，第一次明白：牛市的利润不是你的，只有落袋的才是。',
+        log: '{age}岁，你在牛市里加了仓。前两周账面又涨了一倍，你觉得自己就是中本聪转世。第三周一个黑天鹅，利润回吐大半。你盯着那条垂直下跌的K线，第一次明白：牛市的利润不是你的，只有落袋的才是。',
       },
       {
         id: 'help_newcomers',
@@ -2696,7 +2703,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '28岁，你趁牛市做了一系列"新手避坑指南"，阅读量破百万。有人因此没买土狗、没碰高杠杆、没把私钥交给陌生人。你不知道救了多少人的积蓄，但你知道：在狂欢里泼冷水的人，才是真朋友。',
+        log: '{age}岁，你趁牛市做了一系列"新手避坑指南"，阅读量破百万。有人因此没买土狗、没碰高杠杆、没把私钥交给陌生人。你不知道救了多少人的积蓄，但你知道：在狂欢里泼冷水的人，才是真朋友。',
       },
     ],
   },
@@ -2727,7 +2734,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '31岁，你开始研究海外银行账户、第二身份、跨司法管辖区的资产配置。花了大半年和不少钱，但你把风险分散到了三个国家。你头一回掂出"主权个人"的分量——自由的标价，是用复杂度和成本付的。',
+        log: '{age}岁，你开始研究海外银行账户、第二身份、跨司法管辖区的资产配置。花了大半年和不少钱，但你把风险分散到了三个国家。你头一回掂出"主权个人"的分量——自由的标价，是用复杂度和成本付的。',
         blindBoxTrigger: 'chain_regulation',
       },
       {
@@ -2742,7 +2749,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 4, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '31岁，你请了律师，把自己的持仓和操作做了合规梳理。你没跑，但你做好了"最坏情况"的准备。你告诉自己：真正的去中心化，不等于逃避法律——它是在法律框架内，把你的自由撑到最大。',
+        log: '{age}岁，你请了律师，把自己的持仓和操作做了合规梳理。你没跑，但你做好了"最坏情况"的准备。你告诉自己：真正的去中心化，不等于逃避法律——它是在法律框架内，把你的自由撑到最大。',
         blindBoxTrigger: 'chain_regulation',
       },
       {
@@ -2756,7 +2763,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 6, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
         },
-        log: '31岁，你把所有资产从中心化交易所提到了自托管钱包，全部转入了DeFi协议。监管能关停交易所，但关不掉智能合约。那一刻你真正读懂了"去中心化"的价值——它未必更高效，却是抗审查的护身符。',
+        log: '{age}岁，你把所有资产从中心化交易所提到了自托管钱包，全部转入了DeFi协议。监管能关停交易所，但关不掉智能合约。那一刻你真正读懂了"去中心化"的价值——它未必更高效，却是抗审查的护身符。',
         blindBoxTrigger: 'chain_regulation',
       },
     ],
@@ -2789,7 +2796,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '33岁，你花了一个晚上，把所有持仓、地址、助记词的备份位置、紧急提取方案，一五一十告诉了伴侣。TA听完沉默了很久，然后抱住了你。从那天起，你们的争吵少了一半——原来TA在意的，从来不是控制你的钱，TA只是想参与你的人生。',
+        log: '{age}岁，你花了一个晚上，把所有持仓、地址、助记词的备份位置、紧急提取方案，一五一十告诉了伴侣。TA听完沉默了很久，然后抱住了你。从那天起，你们的争吵少了一半——原来TA在意的，从来不是控制你的钱，TA只是想参与你的人生。',
       },
       {
         id: 'separate_finances',
@@ -2802,7 +2809,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness - 5, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 3, 0, 100);
         },
-        log: '33岁，你跟伴侣说"链上的事我自己负责，亏了算我的"。TA没再追问，但你知道那道裂痕还在。后来每次你盯着行情，TA看你的眼神都带着一丝不安。你赢得了财务独立，却输了一点亲密。',
+        log: '{age}岁，你跟伴侣说"链上的事我自己负责，亏了算我的"。TA没再追问，但你知道那道裂痕还在。后来每次你盯着行情，TA看你的眼神都带着一丝不安。你赢得了财务独立，却输了一点亲密。',
       },
       {
         id: 'bring_partner_onchain',
@@ -2817,7 +2824,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
           investPercent(s, 0.05);
         },
-        log: '33岁，你手把手教伴侣注册了钱包、买了第一笔币、参与了第一次链上交互。TA从"看不懂的恐惧"变成了"有点懂的兴奋"。你们有了一个共同的话题——不再是你一个人的秘密，而是两个人的冒险。',
+        log: '{age}岁，你手把手教伴侣注册了钱包、买了第一笔币、参与了第一次链上交互。TA从"看不懂的恐惧"变成了"有点懂的兴奋"。你们有了一个共同的话题——不再是你一个人的秘密，而是两个人的冒险。',
       },
     ],
   },
@@ -2849,7 +2856,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress - 5, 0, 100);
           s.health = clamp(s.health + 3, 0, 100);
         },
-        log: '36岁，你在备忘录里写了一句话："别人在岸上看我在海里扑腾，但他们不知道我见过他们没见过的浪。"写完你笑了。你不确定未来会不会后悔，但你确定现在不后悔——这就够了。',
+        log: '{age}岁，你在备忘录里写了一句话："别人在岸上看我在海里扑腾，但他们不知道我见过他们没见过的浪。"写完你笑了。你不确定未来会不会后悔，但你确定现在不后悔——这就够了。',
       },
       {
         id: 'hedge_with_real_estate',
@@ -2864,7 +2871,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 3, 0, 100);
           scaleChainHoldings(s, 0.6);
         },
-        log: '36岁，你卖了一部分币付了首付，买了套房。搬进去那天你站在阳台上，第一次有了一种"落地"的感觉。你的链上资产少了，但你有了一个看得见摸得着的"退路"。也许对冲算不上认输，那更像一种成熟。',
+        log: '{age}岁，你卖了一部分币付了首付，买了套房。搬进去那天你站在阳台上，第一次有了一种"落地"的感觉。你的链上资产少了，但你有了一个看得见摸得着的"退路"。也许对冲算不上认输，那更像一种成熟。',
       },
       {
         id: 'double_down_conviction',
@@ -2878,7 +2885,7 @@ const crossBranchEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 8, 0, 100);
           scaleChainHoldings(s, 1.2);
         },
-        log: '36岁，同学聚会反而刺激了你——你回去加仓了。你押注的，说到底是"另一种人生可能性"，币不过是筹码。但深夜你也会问自己：这份坚定，到底是信念，还是赌徒的不甘心？你给不出答案，但你继续走着。',
+        log: '{age}岁，同学聚会反而刺激了你——你回去加仓了。你押注的，说到底是"另一种人生可能性"，币不过是筹码。但深夜你也会问自己：这份坚定，到底是信念，还是赌徒的不甘心？你给不出答案，但你继续走着。',
       },
     ],
   },
@@ -2919,7 +2926,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
           scaleChainHoldings(s, 0.6);
         },
-        log: '29岁，交易所暴雷，你损失了四成资产。你花了一周把剩余资产全部提到了硬件钱包，从此再不碰中心化交易所。你把助记词刻在钢板上，锁进保险箱。你损失了钱，但换来了一个刻进骨髓的教训：信任代码，不要信任人。',
+        log: '{age}岁，交易所暴雷，你损失了四成资产。你花了一周把剩余资产全部提到了硬件钱包，从此再不碰中心化交易所。你把助记词刻在钢板上，锁进保险箱。你损失了钱，但换来了一个刻进骨髓的教训：信任代码，不要信任人。',
       },
       {
         id: 'join_class_action',
@@ -2934,7 +2941,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 5, 0, 100);
           scaleChainHoldings(s, 0.55);
         },
-        log: '29岁，你加入了维权群，请了律师，走上了漫长的追偿之路。两年后你拿回了15%的资产，律师费花了不少。你疲惫不堪，但你不后悔站出来——有些事你做，图的不是钱，你得让作恶的人知道，这世上有代价这回事。',
+        log: '{age}岁，你加入了维权群，请了律师，走上了漫长的追偿之路。两年后你拿回了15%的资产，律师费花了不少。你疲惫不堪，但你不后悔站出来——有些事你做，图的不是钱，你得让作恶的人知道，这世上有代价这回事。',
       },
       {
         id: 'give_up_chain',
@@ -2948,7 +2955,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 15, 0, 100);
           sellPercent(s, 1.0);
         },
-        log: '29岁，你清仓了。倒不是不信区块链了，你只是扛不住这种"随时可能归零"的不确定性。你把变现的钱存进了银行，第一次觉得法币的安全感是真实的。但深夜你还是会刷一眼行情——那条退场的路，比你想象的难走。',
+        log: '{age}岁，你清仓了。倒不是不信区块链了，你只是扛不住这种"随时可能归零"的不确定性。你把变现的钱存进了银行，第一次觉得法币的安全感是真实的。但深夜你还是会刷一眼行情——那条退场的路，比你想象的难走。',
       },
     ],
   },
@@ -2989,7 +2996,7 @@ const crisisEvents: NarrativeEvent[] = [
           sellForAmount(s, sellAmount); // 卖币换现金
           s.currentSavings -= sellAmount; // 扣除手术费（卖币得到的钱全部花掉）
         },
-        log: '32岁，你在谷底卖了币，给妈交了手术费。手术很成功，你妈拉着你的手说"钱没了再赚"。你笑着说"没事"，转身在走廊里红着眼眶。缴费单攥在手里，纸张都被汗浸软了——你盯着上面那串数字，钱包里那些翻过倍的币，到了这儿要是提不出来，连这张纸都换不来。',
+        log: '{age}岁，你在谷底卖了币，给妈交了手术费。手术很成功，你妈拉着你的手说"钱没了再赚"。你笑着说"没事"，转身在走廊里红着眼眶。缴费单攥在手里，纸张都被汗浸软了——你盯着上面那串数字，钱包里那些翻过倍的币，到了这儿要是提不出来，连这张纸都换不来。',
       },
       {
         id: 'borrow_instead',
@@ -3002,7 +3009,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 15, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
         },
-        log: '32岁，你跟亲戚借了钱交手术费，币一个没卖。手术后的三个月你被债主追得睡不着觉，但你赌牛市会回来。两年后牛市真的来了，你的持仓翻了五倍。你还清了债，还有盈余。但那三个月的煎熬，你一辈子忘不了。',
+        log: '{age}岁，你跟亲戚借了钱交手术费，币一个没卖。手术后的三个月你被债主追得睡不着觉，但你赌牛市会回来。两年后牛市真的来了，你的持仓翻了五倍。你还清了债，还有盈余。但那三个月的煎熬，你一辈子忘不了。',
       },
       {
         id: 'stablecoin_loan',
@@ -3016,7 +3023,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 8, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
         },
-        log: '32岁，你用链上资产在DeFi借贷协议里抵押，借出了稳定币交手术费。你没卖币，也没欠人情。但你知道这是走钢丝——如果币价再跌30%，你的抵押品会被清算。你每天盯着清算线，像走钢丝的人盯着脚下的深渊。',
+        log: '{age}岁，你用链上资产在DeFi借贷协议里抵押，借出了稳定币交手术费。你没卖币，也没欠人情。但你知道这是走钢丝——如果币价再跌30%，你的抵押品会被清算。你每天盯着清算线，像走钢丝的人盯着脚下的深渊。',
       },
     ],
   },
@@ -3050,7 +3057,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.health = clamp(s.health - 3, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
         },
-        log: '35岁，你办了签证，飞到了一个对加密友好的国家。落地那天你看着陌生的街道，既自由又孤独。你的资产在链上安然无恙，但你的根被拔起来了。你用"主权个人"的方式换来了自由，代价是成为一个没有故乡的人。',
+        log: '{age}岁，你办了签证，飞到了一个对加密友好的国家。落地那天你看着陌生的街道，既自由又孤独。你的资产在链上安然无恙，但你的根被拔起来了。你用"主权个人"的方式换来了自由，代价是成为一个没有故乡的人。',
       },
       {
         id: 'otc_underground',
@@ -3063,7 +3070,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 18, 0, 100);
           s.pathFaith = clamp(s.pathFaith + 5, 0, 100);
         },
-        log: '35岁，你开始用OTC和P2P出金。每次交易都像谍战片——约在咖啡馆、现金交易、用假名。你没被冻卡，但你每天活在"下一个会不会是钓鱼执法"的恐惧里。你赢了规则，却输了安宁。',
+        log: '{age}岁，你开始用OTC和P2P出金。每次交易都像谍战片——约在咖啡馆、现金交易、用假名。你没被冻卡，但你每天活在"下一个会不会是钓鱼执法"的恐惧里。你赢了规则，却输了安宁。',
       },
       {
         id: 'comply_and_pivot',
@@ -3077,7 +3084,7 @@ const crisisEvents: NarrativeEvent[] = [
           s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
           scaleChainHoldings(s, 0.7);
         },
-        log: '35岁，你请了律师，把链上资产做了合规申报和架构重组。交了罚款，交了税，接受了一部分资产被"锁定"的安排。你的自由少了，但你可以光明正大地活着了。你告诉自己：这算不上认输，你只是换了一种方式战斗。',
+        log: '{age}岁，你请了律师，把链上资产做了合规申报和架构重组。交了罚款，交了税，接受了一部分资产被"锁定"的安排。你的自由少了，但你可以光明正大地活着了。你告诉自己：这算不上认输，你只是换了一种方式战斗。',
       },
     ],
   },
@@ -3160,7 +3167,7 @@ const crisisEvents: NarrativeEvent[] = [
     sceneTag: 'crisis',
     conditions: (s) => getChainHoldings(s) > 0 && !hasAbandonedCrypto(s),
     narrative:
-      '40岁了。你打开钱包，把链上持仓的数字和"退休"两个字放在一起算，差距大得让你想笑。同龄人在还房贷、送孩子上补习班，你在算仓位够不够撑过下一个熊市。你妈打电话问你还单不单着，你岔开话题，挂了电话对着K线发呆。\n' +
+      '{age}岁了。你打开钱包，把链上持仓的数字和"退休"两个字放在一起算，差距大得让你想笑。同龄人在还房贷、送孩子上补习班，你在算仓位够不够撑过下一个熊市。你妈打电话问你还单不单着，你岔开话题，挂了电话对着K线发呆。\n' +
       '是继续赌，还是认输？你点了根烟，烟雾里浮起这些年所有的决定——每一次加仓、每一次HODL、每一次"再来一轮牛市就够了"。你知道，这一次的选择，可能就是终局。',
     options: [
       {
@@ -3772,7 +3779,7 @@ const lateGameEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness + 3, 0, 100);
           scaleChainHoldings(s, 0.8); // 减仓20%锁定利润
         },
-        log: '48岁，你平掉了所有合约，把杠杆降到了1倍，从仓位里提出了够活十年的现金。有人说你"怂了"，你没反驳。你把老K最后那条消息截图存到了一个叫"记住"的文件夹里。每次你想all in的时候就看一眼——这个市场最不缺的是机会，最缺的是活着等到机会的人。',
+        log: '{age}岁，你平掉了所有合约，把杠杆降到了1倍，从仓位里提出了够活十年的现金。有人说你"怂了"，你没反驳。你把老K最后那条消息截图存到了一个叫"记住"的文件夹里。每次你想all in的时候就看一眼——这个市场最不缺的是机会，最缺的是活着等到机会的人。',
       },
       {
         id: 'continue_but_cautious',
@@ -3786,7 +3793,7 @@ const lateGameEvents: NarrativeEvent[] = [
           s.stress = clamp(s.stress + 8, 0, 100);
           s.happiness = clamp(s.happiness - 3, 0, 100);
         },
-        log: '48岁，你没减仓，但你把所有止盈线收紧了5%，把所有止损线收紧了3%。你在群里发了一条长文，讲你和老K认识的二十年，讲杠杆的代价，讲"活着就好"这四个字的重量。那篇文章被转了几万次。有人在下面留言："叔叔，我本来要开10倍，看完我关了。"你知道老K会高兴的。',
+        log: '{age}岁，你没减仓，但你把所有止盈线收紧了5%，把所有止损线收紧了3%。你在群里发了一条长文，讲你和老K认识的二十年，讲杠杆的代价，讲"活着就好"这四个字的重量。那篇文章被转了几万次。有人在下面留言："叔叔，我本来要开10倍，看完我关了。"你知道老K会高兴的。',
       },
       {
         id: 'deep_doubt_path',
@@ -3800,7 +3807,426 @@ const lateGameEvents: NarrativeEvent[] = [
           s.happiness = clamp(s.happiness - 8, 0, 100);
           s.health = clamp(s.health - 3, 0, 100);
         },
-        log: '48岁，你一个人喝了半瓶酒。你想起这些年见过的爆仓、跑路、自杀——有人因为一把杠杆输了十年积蓄，有人因为交易所跑路妻离子散。你自己还活着，仓位还在，但你第一次认真问自己：这一切值得吗？你没有答案。你只知道，那个永远在凌晨四点在线的头像，再也不会亮了。',
+        log: '{age}岁，你一个人喝了半瓶酒。你想起这些年见过的爆仓、跑路、自杀——有人因为一把杠杆输了十年积蓄，有人因为交易所跑路妻离子散。你自己还活着，仓位还在，但你第一次认真问自己：这一切值得吗？你没有答案。你只知道，那个永远在凌晨四点在线的头像，再也不会亮了。',
+      },
+    ],
+  },
+
+  // 54岁：账本之外 —— 链上原住民的黄昏
+  {
+    id: 'chain_late_ledger',
+    title: '账本之外',
+    sceneTag: 'night',
+    pathId: 'chain_native',
+    ageRange: [54, 54],
+    priority: 8,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    conditions: (s) => !hasAbandonedCrypto(s),
+    narrative:
+      '比特币减半那天，你坐在电脑前，像过去二十年每一个减半日一样，盯着那条链上数据。客厅很安静，窗外有风。你忽然意识到：你认识这条链，比认识任何一个邻居都久。\n' +
+      '这二十年，你见证了一个账本从玩具变成万亿资产，也见证了无数人和它一起疯、一起死、一起老。你赚过也亏过，all in过也逃过顶。但今晚你盯着那个区块，第一次没有想价格——你在想，这条链上记着你的半生：哪一年你奥德赛，哪一年你抄底，哪一年你差点破产，全都透明地躺在链上，谁也删不掉。\n' +
+      '你给一个二十年前认识的builder发消息："如果链会记得每个人，那链之外的生活，算不算也上了链？"他回你一个问号。你笑了笑，没解释。有些问题，只有活到五十几岁的人才会问。',
+    options: [
+      {
+        id: 'chain_legacy_teach',
+        label: '把二十年的经验写成开源手册',
+        description: '你不信永生，但信知识能活得比你久',
+        hint: '信念+12 · 社区影响力+10 · 幸福+6 · 压力-5',
+        hintColor: 'positive',
+        skillGains: { communityInfluence: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+        },
+        log: '{age}岁，你花了一整年，把二十年在链上吃过的亏、写过的合约、被黑过的教训，写成一份开源的《穿越牛熊生存手册》。你把它发布到开源社区，第一天就冲上热门。有人留言说"要是我二十年前看到这个就好了"。你想起自己二十年前没有人可以问，一个人在深夜里对着链上数据发愁的样子。你希望这本书能成为别人黑暗里的一盏灯。',
+      },
+      {
+        id: 'chain_legacy_withdraw',
+        label: '把大部分仓位提出来，落地生活',
+        description: '链上的账本很重要，但链外的日子才是真的',
+        hint: '存款+800000 · 压力-12 · 信念-5 · 幸福+8',
+        hintColor: 'positive',
+        savingsChange: 800000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith - 5, 0, 100);
+          s.stress = clamp(s.stress - 12, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+        },
+        log: '{age}岁，你把大部分仓位提到了冷钱包之外——换成了现金、房产、和一份安稳的被动收入。有人骂你"背叛了信仰"，你没反驳。你看着账户里那串数字，第一次觉得它们不是"币"，是"日子"。你妈打电话问你最近怎么样，你说"挺好的"。这是你三十年来第一次不是用"我在忙"回答她。',
+      },
+      {
+        id: 'chain_legacy_hold',
+        label: '继续持有，赌到最后一刻',
+        description: '你活成了链的一部分，离开它你会不知道自己是谁',
+        hint: '信念+15 · 压力+10 · 幸福-3',
+        hintColor: 'danger',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 15, 0, 100);
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.happiness = clamp(s.happiness - 3, 0, 100);
+        },
+        log: '{age}岁，你决定继续持有。不是为了钱——你的钱早就够了。而是因为你不知道该用什么身份活在没有它的世界里。你盯着持仓界面看了很久，那块屏幕从CRT换到LED，从4K换到8K，但上面的数字和你的执念，二十年没变过。你承认你害怕：害怕那个没有链的自己是空的。你决定再赌一次——赌到你不得不退出那天。',
+      },
+    ],
+  },
+
+  // 50岁：财富暴涨暴跌后的价值观重塑
+  {
+    id: 'chain_50_value_recalibration',
+    title: '数字与日子',
+    sceneTag: 'home',
+    pathId: 'chain_native',
+    ageRange: [50, 50],
+    priority: 8,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    conditions: (s) => !hasAbandonedCrypto(s),
+    narrative:
+      '{age}岁，你翻出十年前"暴富"那年的账单——当时那些数字能让你一夜不睡，现在你看着它们，像看别人的故事。你妈学会用手机转账了，她微信里问"我看群消息说这行情又要涨了"；你儿子在饭桌上问你怎么总不上班；你妻子夹了块肉说"钱够用就行"。\n' +
+      '你忽然发现，钱包里那串越来越长的数字，和餐桌上那些具体的日子，是两本账。二十年前你拿第一本账当命，现在你站在两本账中间，第一次不知道该往哪边翻。不是行情让你麻木了——是日子教会了你，有些东西，链上记不住。',
+    options: [
+      {
+        id: 'chain_50_land_life',
+        label: '把收益转成稳定的现金流，好好过具体的日子',
+        description: '数字是虚的，存款和被动收入是实的',
+        hint: '被动收入+15000/年 · 压力-12 · 幸福+10 · 信念-4',
+        hintColor: 'positive',
+        passiveIncomeChange: 15000,
+        stateEffect: (s) => {
+          s.stress = clamp(s.stress - 12, 0, 100);
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 4, 0, 100);
+        },
+        log: '{age}岁，你把一部分收益转成了稳定的现金流——按月到账的理财、租金、分红。你不再盯K线，改盯孩子的作业和阳台那盆总忘记浇的花。你妈回你消息说"这就对了"，你第一次觉得这三个字，比任何百倍币都值钱。',
+      },
+      {
+        id: 'chain_50_hold_faith',
+        label: '把数字当信仰，继续押注',
+        description: '你赌的不是行情，是你选的那条路',
+        hint: '交易能力+10 · 信念+12 · 压力+10 · 幸福-4',
+        hintColor: 'neutral',
+        skillGains: { tradingSkill: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.stress = clamp(s.stress + 10, 0, 100);
+          s.happiness = clamp(s.happiness - 4, 0, 100);
+        },
+        log: '{age}岁，你拒绝了"落地"的安稳，把更大的仓位押进了下一轮周期。不是贪——是你怕停下来就不知道自己是谁。你妻子不理解，你也不解释。你看着她欲言又止的样子，心里第一次和"信仰"这个词打了照面。',
+      },
+      {
+        id: 'chain_50_exit_line',
+        label: '定一条"退出线"，与投机和平共处',
+        description: '不退场，但给欲望画个边界',
+        hint: '交易能力+8 · 信念+8 · 压力-8 · 幸福+5',
+        hintColor: 'positive',
+        skillGains: { tradingSkill: 8 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress - 8, 0, 100);
+          s.happiness = clamp(s.happiness + 5, 0, 100);
+        },
+        log: '{age}岁，你给自己定了一条"退出线"：涨到某个数字就落袋，跌到某个数字就止损，剩下的交给系统。你把它写进交易程序，像给欲望装了个笼头。你不再和每一根K线较劲——在币圈待得久的人，不是赢得多，是退得明白。',
+      },
+    ],
+  },
+
+  // 57岁：监管与合规浪潮下的转型
+  {
+    id: 'chain_57_regulation_pivot',
+    title: '合规的浪潮',
+    sceneTag: 'office',
+    pathId: 'chain_native',
+    ageRange: [57, 57],
+    priority: 8,
+    weight: 10,
+    oncePerGame: true,
+    eventType: 'milestone',
+    conditions: (s) => !hasAbandonedCrypto(s),
+    narrative:
+      '{age}岁，监管像一场大潮涌进了这个行业。你年轻时挂在嘴边的那句"代码即是法、无国界"，如今被一摞合规白皮书压在办公室的抽屉里。交易所关停了灰色业务，老牌协议开始做KYC，你认识的几个老炮儿，有人进了局子，有人摇身一变成了合规顾问，西装革履地出席听证会。\n' +
+      '你站在十字路口。一边是继续做那个"谁也不用负责"的链上原住民，另一边是弯下腰，把你几十年的经验翻译成监管听得懂的语言。你想起当年蹲在网吧写合约的自己，忽然觉得，时代没有抛弃谁，只是规则变了。',
+    options: [
+      {
+        id: 'chain_57_compliance_advisor',
+        label: '转型做合规顾问，把经验翻译给监管',
+        description: '最懂这套玩法的人，最适合去告诉规则制定者真相',
+        hint: '社区影响力+12 · DeFi+8 · 信念+10 · 被动收入+20000/年',
+        hintColor: 'positive',
+        skillGains: { communityInfluence: 12, defiSkill: 8 },
+        passiveIncomeChange: 20000,
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+        },
+        log: '{age}岁，你放下了"原住民"的倔强，应了一家机构的邀约，当起了链上合规顾问。你给监管讲清楚什么是智能合约、什么是链上资产、这些年你见过的跑路和骗局。一个小科员私下跟你说"您讲得比我们翻的法律文件清楚多了"。你笑了笑——你只是把二十年的坑，翻译成别人听得懂的话。',
+      },
+      {
+        id: 'chain_57_keep_decentralized',
+        label: '坚持去中心化，移民到更自由的链上',
+        description: '你不信任何权威，只信那行永远在跑的代码',
+        hint: '交易能力+10 · 信念+15 · 压力+12 · 幸福-4',
+        hintColor: 'danger',
+        skillGains: { tradingSkill: 10 },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 15, 0, 100);
+          s.stress = clamp(s.stress + 12, 0, 100);
+          s.happiness = clamp(s.happiness - 4, 0, 100);
+        },
+        log: '{age}岁，你谢绝了所有"合规"的邀请，把资产迁移到了更自由的链上。你像二十年前一样，一个人守着钱包和私钥，坚信"没有中间人，就没有背叛"。只是这一次，你看着越来越冷清的社群和越来越厚的监管文件，第一次觉得，你守的可能不是自由，而是一个正在变旧的梦。',
+      },
+      {
+        id: 'chain_57_step_back',
+        label: '洗手退场，把舞台让给年轻人',
+        description: '你该歇了，规则由新的人去定',
+        hint: '健康+10 · 幸福+8 · 压力-15 · 信念-8',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.health = clamp(s.health + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 15, 0, 100);
+          s.pathFaith = clamp(s.pathFaith - 8, 0, 100);
+        },
+        log: '{age}岁，你把该交的交了，该退的退了，账号注销，社群让给更年轻的一批人。你给自己泡了杯茶，坐在阳台上晒太阳。你想起二十几岁那个深夜盯盘、为了一根K线睡不着觉的自己，忽然觉得，把舞台让出去，也是一种赢。日子终于不用再被行情牵着走了。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 40岁再分叉事件（chain_midlife_rebranch）
+// 参照 AI 路径：交易线/持有线在中年可再选一次，建造线不重复触发
+// ============================================================
+
+const midlifeRebranchEvents: NarrativeEvent[] = [
+  {
+    id: 'chain_midlife_rebranch',
+    title: '四十，再选一次',
+    sceneTag: 'breakthrough',
+    pathId: 'chain_native',
+    ageRange: [40, 40],
+    priority: 8,
+    weight: 100,
+    eventType: 'milestone',
+    oncePerGame: true,
+    conditions: (s) =>
+      getChainHoldings(s) > 0 && !hasAbandonedCrypto(s) &&
+      (s.narrativeBranch === 'chain_trader' || s.narrativeBranch === 'chain_hodler'),
+    narrative:
+      '{age}岁这年，链上世界从人人掘金的淘金热，进入了大浪淘沙的洗牌期。融资的讲故事，套壳的归零，真正活下来的反而安静下来了。你在这条路上走了十五年，名字被圈内记住了一些，仓位也厚了一些——但深夜你盯着钱包地址，还是会问自己同一个问题：\n' +
+      '我还在做我想做的事吗？还是只是惯性替我把路走完了？\n' +
+      '这不是二十多岁那种"前途未卜"的焦虑，而是"我明明还有选择"的清醒。你知道自己累了，但你没认输。你只是模糊地感觉到：四十岁不是终点，是另一条路的街角。你站在这里，还能再选一次——不是从零开始，是带着这十五年捡来的所有东西，重新出发。',
+    options: [
+      {
+        id: 'chain_deepen_path',
+        label: '不换了，把这条路走穿',
+        description: '你的积累已经足够深，继续把它凿到别人够不到的地方',
+        hint: '信念+12 · 幸福+8 · 压力-4 · 相关技能+8',
+        hintColor: 'positive',
+        memorySet: { reinforcedChainPath: true },
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 12, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+          const branch = s.narrativeBranch;
+          if (branch === 'chain_trader') {
+            ensureSkills(s);
+            s.pathSkills['tradingSkill'] = Math.min(100, (s.pathSkills['tradingSkill'] || 0) + 8);
+          } else if (branch === 'chain_hodler') {
+            ensureSkills(s);
+            s.pathSkills['communityInfluence'] = Math.min(100, (s.pathSkills['communityInfluence'] || 0) + 8);
+          }
+        },
+        log: '{age}岁，你没换方向。不是不敢，是你想明白了——你在这条路上攒下的仓位、经验和人脉，不是别人轻易能偷走的。你关掉那些"转行"的念头，把十五年的积累又往下凿了一层。浪退了，你才发现自己从没被冲走，你一直站在礁石上。',
+      },
+      {
+        id: 'chain_switch_to_builder',
+        label: '下场写协议，自己造一张新船票',
+        description: '交易/持有的经验你都攒够了，是时候把它变成属于自己的基础设施',
+        hint: '积蓄-50000 · 压力+15 · 信念+8 · 切换至建造线',
+        hintColor: 'danger',
+        savingsChange: -50000,
+        branchSwitch: 'chain_builder',
+        memorySet: { switchedToBuilderMid: true },
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.stress = clamp(s.stress + 15, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.happiness = clamp(s.happiness + 6, 0, 100);
+          s.pathSkills['defiSkill'] = Math.min(100, (s.pathSkills['defiSkill'] || 0) + 6);
+        },
+        log: '{age}岁，你决定自己下场。过去你在波动里套利、在长线上蛰伏，现在轮到你把那些年看透的行业痛点，写成一行行代码。你注册了协议，把攒了十几年的认知和资金全押进去。办公室不大，但你终于不用再被行情牵着走——你比25岁那次更平静，那一次是赌，这一次是造。',
+      },
+      {
+        id: 'chain_switch_to_trader',
+        label: '收回锋芒，回到波动里猎取alpha',
+        description: '台前守了太久，你想回到那个"每一笔都算数"的战场',
+        hint: '交易能力+8 · 压力+8 · 信念+6 · 切换至交易线',
+        hintColor: 'neutral',
+        skillGains: { tradingSkill: 8 },
+        branchSwitch: 'chain_trader',
+        memorySet: { switchedToTraderMid: true },
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.stress = clamp(s.stress + 8, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '{age}岁，你收回了聚光灯下的锋芒，决定回到那个只有K线和仓位陪你的战场。那些年你等了太久、HODL了太长，忽然想重新尝一尝"每一笔决策都立刻兑现"的滋味。你开始重启交易系统——不是因为你怕被淘汰，是你终于想通：持久的等待是积累，但干脆利落的判断，也是一种活法。',
+      },
+      {
+        id: 'chain_switch_to_hodler',
+        label: '把积累定住，用时间换更长远的复利',
+        description: '你不必再每个波动都回应，让时间替你慢慢发酵',
+        hint: '社区影响力+10 · 压力+4 · 信念+8 · 切换至持有线',
+        hintColor: 'positive',
+        skillGains: { communityInfluence: 10 },
+        branchSwitch: 'chain_hodler',
+        memorySet: { switchedToHodlerMid: true },
+        stateEffect: (s) => {
+          ensureSkills(s);
+          s.stress = clamp(s.stress + 4, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+        },
+        log: '{age}岁，你把交易系统关了，把钱包锁进了冷库。那些年你盯过的每一根K线都曾让你心跳，现在你终于明白：最好的仓位是让你晚上睡得着觉的仓位。你开始把时间投给社区和DAO——不是退场，是换一种更慢、更笃定的方式，和时间做朋友。',
+      },
+    ],
+  },
+];
+
+// ============================================================
+// 分支记忆回声事件（chain 42-44岁，后期"翻旧账"，形成叙事闭环）
+// ============================================================
+
+const chainEchoEvents: NarrativeEvent[] = [
+
+  // 42岁：当年陪你熬过熊市的那个人
+  {
+    id: 'chain_echo_old_partner',
+    title: '老线人',
+    sceneTag: 'home',
+    pathId: 'chain_native',
+    ageRange: [42, 42],
+    priority: 6,
+    oncePerGame: true,
+    memoryAnyOf: ['choseTrader', 'choseBuilder', 'choseHodler'],
+    narrative:
+      '你刷到一条新闻：当年那个在熊市里每天凌晨三点准时上线、和你一起扛过最黑暗行情的"老线人"——你的匿名交易拍档——被采访了。照片里他头发花白，但眼睛还是那副"我们一定会等到加密春天"的光。\n' +
+      '你们已经很久没联系了。你盯着那张照片，忽然想起：当年如果不是他，你可能在第一次暴跌就割肉离场了。你打开聊天框，光标闪了很久。',
+    options: [
+      {
+        id: 'chain_reach_out_partner',
+        label: '发条消息，约他喝一杯',
+        description: '有些过命的交情，不该只活在新闻里',
+        hint: '幸福+8 · 压力-5 · 存款-2000',
+        hintColor: 'positive',
+        savingsChange: -2000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+        },
+        log: '你给他发了条消息，他秒回："我还以为你把我忘了。"你们约在当年一起盯盘的那家深夜咖啡馆，他还是点他常喝的美式。聊到凌晨，他问你当年要是没一起扛过那年暴跌会怎样，你笑着说"那我可能早就不在这个圈里了"。他拍你的肩："那你就错过了我。"两鬓都有白发的人，在深夜的街灯下笑得跟二十年前一样。',
+      },
+      {
+        id: 'chain_watch_quietly',
+        label: '看看就好，不打扰',
+        description: '各自安好，就是最好的结局',
+        hint: '幸福+3 · 压力-2',
+        hintColor: 'neutral',
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+          s.stress = clamp(s.stress - 2, 0, 100);
+        },
+        log: '你点了个赞，关掉了新闻。你们已经很久没联系了，但你知道他过得很好，他也知道你在自己的路上走得不错。成年人的友谊有时候就是这样——不打扰，但心里一直有那个位置。你把手机放进口袋，继续盯你的屏幕。',
+      },
+    ],
+  },
+
+  // 43岁：那枚没卖 / 卖飞了的币
+  {
+    id: 'chain_echo_unopened_door',
+    title: '那枚币',
+    sceneTag: 'home',
+    pathId: 'chain_native',
+    ageRange: [43, 43],
+    priority: 6,
+    oncePerGame: true,
+    memoryAnyOf: ['choseTrader', 'choseBuilder', 'choseHodler'],
+    narrative:
+      '深夜整理旧资料，你翻出一个尘封的U盘，里面是你当年写过的一段行情分析脚本。你随手一查当年那枚你研究过、犹豫过、最后没买（或卖飞了）的代币——现在的价格，是你当年出手时的几十倍。\n' +
+      '你盯着那个数字看了很久。十五年前你面前有过这么一扇门，你犹豫过，最后没推开。你从不后悔自己的选择——你现在的路也很好。只是偶尔，在这样安静的夜里，你会好奇门后面的那条路，会把你带到哪里。你合上U盘，不是留恋，是想知道，那个平行的自己，过得好不好。',
+    options: [
+      {
+        id: 'chain_close_coin',
+        label: '合上U盘，回到自己的路',
+        description: '不回顾，不内耗，专注脚下',
+        hint: '信念+8 · 压力-4 · 幸福+3',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 8, 0, 100);
+          s.stress = clamp(s.stress - 4, 0, 100);
+          s.happiness = clamp(s.happiness + 3, 0, 100);
+        },
+        log: '你把U盘放回抽屉，关掉行情页面。夜风很凉，你把外套拉链拉到顶。这扇门你已经看了十五年，该合上了。你走回自己的交易所后台，那里有你的仓位、你的事业、你亲手选的人生。你不再回望——不是不想，是终于明白，每条路都有它独一无二的风景。',
+      },
+      {
+        id: 'chain_open_coin',
+        label: '顺着记忆，重新研究那枚币',
+        description: '中年再去补上当年的遗憾，做点真正想做的事',
+        hint: '幸福+10 · 压力+6 · 信念+6 · 存款-8000',
+        hintColor: 'neutral',
+        savingsChange: -8000,
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 10, 0, 100);
+          s.stress = clamp(s.stress + 6, 0, 100);
+          s.pathFaith = clamp(s.pathFaith + 6, 0, 100);
+        },
+        log: '你花了一个晚上把当年那枚币的团队、白皮书、链上数据重新翻了一遍。它已经不再是当年的样子了——但你的判断力也不再是十五年前的样子。你决定不再只当旁观者。你拿起电话，开始联系当年那个项目的老人。你四十多岁了，本该求稳，可你发现，当你真的想推开一扇门的时候，你依然会心跳加速。你决定去看看——不是逃回过去，是带着这半生的重量，去补一个当年没舍得做的梦。',
+      },
+    ],
+  },
+
+  // 44岁：换过航向的人
+  {
+    id: 'chain_echo_switched_path',
+    title: '换过的路',
+    sceneTag: 'home',
+    pathId: 'chain_native',
+    ageRange: [44, 44],
+    priority: 6,
+    oncePerGame: true,
+    conditions: (s) => (s.branchHistory || []).length > 1,
+    narrative:
+      '整理旧硬盘时，你翻到一份十五年前的交易日志。那是你刚入行时写的，粗糙、毛躁，满是没平掉的仓位和拍脑袋的判断。你忽然想起自己换过多少次方向——从做交易，到下场写协议，再到回归长线持有，又或者反着来。\n' +
+      '外人看你，是一个"很稳"的人。只有你知道，你其实一直在换路，只是一次比一次更笃定。那些曾让你彻夜难眠的"错误选择"，回头看都成了下一个路口的路标。你保存好那份旧日志，像保存一枚旧徽章。不是遗憾，是纪念——纪念那个愿意一次次重新出发的自己。',
+    options: [
+      {
+        id: 'chain_accept_own_path',
+        label: '坦然接受，这就是我的人生',
+        description: '换过路，绕了远，但每一步都算数',
+        hint: '信念+10 · 幸福+8 · 压力-5',
+        hintColor: 'positive',
+        stateEffect: (s) => {
+          s.pathFaith = clamp(s.pathFaith + 10, 0, 100);
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress - 5, 0, 100);
+        },
+        log: '你关掉旧日志，给自己倒了杯茶。窗外是黄昏，你就着夕阳想：你换过路，绕过远，走过别人觉得"浪费"的弯路——但正是那些弯路，让你在四十岁的时候，比那些从未下过车的人，更清楚自己想去哪。你吹了吹茶上的热气。这条路是你自己绕出来的，每一段都算数。',
+      },
+      {
+        id: 'chain_share_winding_path',
+        label: '把换路的经验讲给新入场的人听',
+        description: '你的弯路，是别人最好的路灯',
+        hint: '幸福+8 · 社区影响力+4 · 压力+3',
+        hintColor: 'positive',
+        skillGains: { communityInfluence: 4 },
+        stateEffect: (s) => {
+          s.happiness = clamp(s.happiness + 8, 0, 100);
+          s.stress = clamp(s.stress + 3, 0, 100);
+        },
+        log: '你受邀在一个新手社群分享自己换路的心路。你讲了那些绕过的弯、吃过的亏、推翻重来的决定。讲完掌声响了很久。散场后一个刚入场的小伙子红着眼眶说："谢谢你，我正纠结要不要换方向。"你拍拍他的肩："换不换都对，只要别骗自己。"你忽然觉得，你这半生的蜿蜒，原来也可以成为别人的坦途。',
       },
     ],
   },
@@ -3822,6 +4248,8 @@ export const CHAIN_NARRATIVE_EVENTS: NarrativeEvent[] = [
   ...chainWarningEvents,
   ...postAllInEvents,
   ...lateGameEvents,
+  ...midlifeRebranchEvents,
+  ...chainEchoEvents,
 ];
 
 // ============================================================
@@ -3879,7 +4307,7 @@ const traderAchievements: NarrativeAchievement[] = [
   {
     id: 'chain_native_trader_3',
     title: '交易大师',
-    narrative: `你的交易系统已经不需要你亲自执行了——它成了一台自动运转的机器。你站在屏幕前，看着跳动的数字，第一次觉得它们不再让你心跳加速。你想起了22岁第一次暴跌时颤抖的手，27岁差点爆仓的深夜，32岁熊市里割肉给妈交手术费的眼泪。这条路你走了十几年，从一个赌徒走到了一个"不再需要赌"的人。\n\n你关掉交易终端，给自己倒了一杯酒。市场还在波动，但你已经不在浪里了——你在岸上，看着浪。你赢过多少次已经不重要了，重要的是，你终于学会了什么时候不交易。`,
+    narrative: `你的交易系统已经不需要你亲自执行了——它成了一台自动运转的机器。你站在屏幕前，看着跳动的数字，第一次觉得它们不再让你心跳加速。你想起了{startAge}岁第一次暴跌时颤抖的手，27岁差点爆仓的深夜，32岁熊市里割肉给妈交手术费的眼泪。这条路你走了十几年，从一个赌徒走到了一个"不再需要赌"的人。\n\n你关掉交易终端，给自己倒了一杯酒。市场还在波动，但你已经不在浪里了——你在岸上，看着浪。你赢过多少次已经不重要了，重要的是，你终于学会了什么时候不交易。`,
     pathId: 'chain_native',
     branch: 'chain_trader',
     level: 3,
@@ -3993,7 +4421,7 @@ const hodlerAchievements: NarrativeAchievement[] = [
   {
     id: 'chain_native_hodler_3',
     title: '链上精神领袖',
-    narrative: `你在这个圈子里待了十几年，穿越两次完整牛熊，扛住无数次暴跌，见证过项目归零，也看到过改变世界的协议诞生。你成了这个领域的"灯塔"——新人入场来找你，媒体采访你，行业大会请你做keynote。你站在大会舞台上，想起22岁那个把工资换成币、被室友说"疯了"的自己。\n\n你说："我不是先知，我只是一个从来没卖的人。"掌声雷动。你看着那些年轻的脸，眼里有泪——他们就是当年的你。而这，就是你存在的意义：让每一个"当年的你"知道，他们不孤单。`,
+    narrative: `你在这个圈子里待了十几年，穿越两次完整牛熊，扛住无数次暴跌，见证过项目归零，也看到过改变世界的协议诞生。你成了这个领域的"灯塔"——新人入场来找你，媒体采访你，行业大会请你做keynote。你站在大会舞台上，想起{startAge}岁那个把工资换成币、被室友说"疯了"的自己。\n\n你说："我不是先知，我只是一个从来没卖的人。"掌声雷动。你看着那些年轻的脸，眼里有泪——他们就是当年的你。而这，就是你存在的意义：让每一个"当年的你"知道，他们不孤单。`,
     pathId: 'chain_native',
     branch: 'chain_hodler',
     level: 3,

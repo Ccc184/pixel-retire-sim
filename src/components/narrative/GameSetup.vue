@@ -70,6 +70,7 @@ const selectedMBTI = ref<MBTIType | null>(null)
 const selectedDream = ref<RetirementDream | null>(null)
 const initSalary = ref<number>(10000)
 const targetWealth = ref<number>(3000000)
+const startAge = ref<number>(22) // 现实映射：起始年龄，玩家输入的年龄就是实际开始游戏的年龄
 
 // 城市推荐目标金额
 const recommendedTargets: Record<CityType, number> = {
@@ -94,6 +95,8 @@ const canStart = computed(() => {
     initSalary.value > 0 &&
     initSalary.value <= 1000000 &&
     targetWealth.value > 0 &&
+    startAge.value >= 18 &&
+    startAge.value <= 55 &&
     selectedDream.value !== null
   )
 })
@@ -102,6 +105,7 @@ const startBlockReason = computed(() => {
   if (!selectedDream.value) return '选个退休梦想吧'
   if (initSalary.value <= 0 || initSalary.value > 1000000) return '请设置有效的初始月薪'
   if (targetWealth.value <= 0) return '请设置退休目标资产'
+  if (startAge.value < 18 || startAge.value > 55) return '请设置有效起始年龄（18~55岁）'
   return ''
 })
 
@@ -246,6 +250,7 @@ function startGame(): void {
     targetWealth.value,
     selectedMBTI.value,
     selectedDream.value,
+    startAge.value,
   )
 }
 </script>
@@ -427,6 +432,21 @@ function startGame(): void {
         </h3>
         <div class="input-grid">
           <div class="input-group">
+            <label for="start-age">起始年龄（岁）</label>
+            <input
+              id="start-age"
+              v-model.number="startAge"
+              type="number"
+              min="18"
+              max="55"
+              step="1"
+            />
+            <div class="input-hint">
+              你从<strong class="hint-green">{{ startAge }}岁</strong>开始这段人生，到60岁为止
+            </div>
+          </div>
+
+          <div class="input-group">
             <label for="salary">初始月薪（元）</label>
             <input
               id="salary"
@@ -468,6 +488,11 @@ function startGame(): void {
           <span v-if="canStart" class="btn-arrows">▶</span>
         </button>
       </div>
+
+      <!-- 免责声明 -->
+      <p class="setup-disclaimer">
+        本游戏仅供娱乐，其中职业、薪资、投资、城市等设定均为虚构简化，不代表任何真实建议或结果预测。
+      </p>
     </div>
   </div>
 </template>
@@ -1026,6 +1051,24 @@ function startGame(): void {
   display: flex;
   justify-content: center;
   padding-top: 8px;
+}
+
+/* 免责声明：小字、低调、贴合像素风 */
+.setup-disclaimer {
+  font-size: 11px;
+  color: #6f7f97;
+  letter-spacing: 0.5px;
+  line-height: 1.7;
+  text-align: center;
+  margin: 0;
+  padding: 0 8px;
+  opacity: 0.75;
+  font-family: 'DotGothic16', monospace;
+}
+.setup-disclaimer::before {
+  content: '◈ ';
+  color: #c900ff;
+  opacity: 0.6;
 }
 
 /* 霓虹开始按钮 */

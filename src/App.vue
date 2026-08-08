@@ -20,8 +20,11 @@ import YearEndPanel from './components/narrative/YearEndPanel.vue'
 import AchievementToast from './components/ui/AchievementToast.vue'
 import CyberConfirm from './components/ui/CyberConfirm.vue'
 import CollectionPanel from './components/ui/CollectionPanel.vue'
+import AnimatedNumber from './components/ui/AnimatedNumber.vue'
+import AmbientParticles from './components/ui/AmbientParticles.vue'
+import TutorialOverlay from './components/ui/TutorialOverlay.vue'
 
-import { playClick, playAchievement, playEnding, startMusic, stopMusic, ensureAudio, toggleAudioMuted, isAudioMuted, playCityTravel, playWedding, playBaby, playUnemployed, playReemployed, playSideHustle } from './utils/audio.js'
+import { playClick, playAchievement, playEnding, startMusic, ensureAudio, toggleAudioMuted, isAudioMuted, playCityTravel, playWedding, playBaby, playUnemployed, playReemployed, playSideHustle } from './utils/audio.js'
 import { registerHintToggleShortcut } from './utils/ui-prefs.js'
 import { getPath } from './data/retirement-paths.js'
 
@@ -99,6 +102,7 @@ const cityList: CityType[] = ['资本修罗场', '中坚大后方', '避风低�
 // ---- 顶部状态栏数据 ----
 const currentPath = computed(() => store.state.retirementPath ? getPath(store.state.retirementPath) : null)
 const faithLevel = computed(() => store.state.pathFaith ?? 0)
+const fmtRound = (n: number) => String(Math.round(n))
 
 // 婚姻/家庭状态摘要
 const lifeStatusText = computed(() => {
@@ -116,6 +120,14 @@ function handleStart(): void {
   store.startNewGame()
   // 解锁音频并播放开场曲（需在用户手势内）
   playIntroMusic()
+}
+
+function handleContinue(): void {
+  playClick()
+  store.continueGame()
+  // 解锁音频并播放对应路径主题曲（需在用户手势内）
+  ensureAudio()
+  startMusic(store.state.retirementPath || 'playing')
 }
 
 function handleTestSkip(): void {
@@ -276,7 +288,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
       <div class="top-center">
         <div class="stat-badge badge-age">
           <span class="icon icon-age">◈</span><span class="label">年龄</span>
-          <span class="value">{{ store.state.currentAge }}岁</span>
+          <span class="value"><AnimatedNumber :value="store.state.currentAge" :format="fmtRound" />岁</span>
         </div>
         <div class="stat-badge badge-prof">
           <span class="icon icon-prof">◆</span><span class="label">职业</span>
@@ -302,7 +314,7 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
         <div v-if="currentPath" class="faith-meter">
           <span class="faith-label">信念</span>
           <div class="faith-bar"><div class="faith-fill" :style="{ width: faithLevel + '%' }" /></div>
-          <span class="faith-value">{{ faithLevel }}</span>
+          <span class="faith-value"><AnimatedNumber :value="faithLevel" :format="fmtRound" /></span>
         </div>
       </div>
     </header>
@@ -351,9 +363,19 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
           <span class="intro-hint">// 没有正确答案，只有你的选择 //</span>
         </p>
 
+        <button
+          v-if="store.hasSave"
+          class="btn-continue-big"
+          @click="handleContinue()"
+        >
+          <span class="btn-arrow">▶</span>
+          <span class="btn-text">继续上局</span>
+          <span class="btn-continue-sub">读取存档</span>
+        </button>
+
         <button class="btn-start-big" @click="handleStart()">
           <span class="btn-arrow">▶</span>
-          <span class="btn-text">PRESS START</span>
+          <span class="btn-text">开始游戏</span>
           <span class="btn-cursor">_</span>
         </button>
 
@@ -378,6 +400,9 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 
     <!-- ===================== 游戏主界面 ===================== -->
     <main v-if="gamePhase === 'playing' || gamePhase === 'ending'" class="game-main">
+      <!-- 环境氛围粒子层（漂浮霓虹尘埃） -->
+      <AmbientParticles />
+
       <!-- 左：统计面板 -->
       <aside class="col-left">
         <StatsPanel />
@@ -446,6 +471,9 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
 
     <!-- ===================== 结局画面 ===================== -->
     <EndingScreen v-if="gamePhase === 'ending'" />
+
+    <!-- ===================== 新手引导（新玩家首次进入游戏） ===================== -->
+    <TutorialOverlay v-if="gamePhase === 'playing'" />
 
     <!-- ===================== 成就弹窗 ===================== -->
     <AchievementToast ref="toastRef" />
@@ -889,6 +917,46 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   text-shadow: 0 0 8px var(--neon-pink);
 }
 
+/* ---- 继续上局按钮（有存档时显示，金色区别于开始） ---- */
+.btn-continue-big {
+  position: relative;
+  font-size: 18px;
+  padding: 12px 40px;
+  margin-top: 4px;
+  background: rgba(40, 25, 0, 0.85);
+  color: var(--neon-yellow);
+  border: 2px solid var(--neon-yellow);
+  box-shadow:
+    0 0 10px rgba(255, 200, 0, 0.5),
+    0 0 24px rgba(255, 200, 0, 0.25),
+    inset 0 0 12px rgba(255, 200, 0, 0.15);
+  letter-spacing: 3px;
+  text-shadow:
+    0 0 8px rgba(255, 200, 0, 0.8),
+    0 0 18px rgba(255, 200, 0, 0.5);
+  animation: pressStartBlink 1.6s ease-in-out infinite;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.btn-continue-big:hover:not(:disabled) {
+  background: rgba(255, 200, 0, 0.18);
+  color: #fff;
+  border-color: var(--neon-yellow);
+  box-shadow:
+    0 0 14px var(--neon-yellow),
+    0 0 32px rgba(255, 200, 0, 0.4),
+    inset 0 0 18px rgba(255, 200, 0, 0.25);
+  transform: scale(1.04);
+}
+.btn-continue-sub {
+  font-size: 10px;
+  letter-spacing: 2px;
+  opacity: 0.7;
+  margin-left: 4px;
+}
+
 @keyframes cursorBlink {
   50% { opacity: 0; }
 }
@@ -972,6 +1040,8 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .col-center {
@@ -982,6 +1052,8 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   gap: 6px;
   overflow: hidden;
   min-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
 .col-right {
@@ -992,6 +1064,8 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  position: relative;
+  z-index: 1;
 }
 
 /* ============================================================
@@ -1191,6 +1265,12 @@ const titleCharStyles: CSSProperties[] = titleChars.map((_, idx) => ({
     padding: 12px 32px;
     letter-spacing: 2px;
   }
+  .btn-continue-big {
+    font-size: 14px;
+    padding: 10px 24px;
+    letter-spacing: 2px;
+  }
+  .btn-continue-sub { font-size: 9px; }
   .btn-cursor { font-size: 18px; }
 
   /* 游戏主界面紧凑化 */

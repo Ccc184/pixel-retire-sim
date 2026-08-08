@@ -141,7 +141,7 @@ function analyzeDecisionProfile(state: GameState) {
 
   // 工作观
   let workAttitude: string
-  const workYears = state.totalYearsWorked || Math.max(0, state.currentAge - 22)
+  const workYears = state.totalYearsWorked || Math.max(0, state.currentAge - (state.startAge || 22))
   const unemployedYears = state.totalUnemployedYears || 0
   const unemploymentRatio = workYears > 0 ? unemployedYears / workYears : 0
   if (state.retirementPath && state.isAllInPath) workAttitude = 'All In创业者'
@@ -358,7 +358,7 @@ function generateMetrics(state: GameState): AuditItem[] {
   })
 
   // 工作效率
-  const workYears = s.totalYearsWorked || Math.max(0, s.currentAge - 22)
+  const workYears = s.totalYearsWorked || Math.max(0, s.currentAge - (s.startAge || 22))
   const totalIncome = s.lifetimeSalary || (s.currentMonthlySalary * workYears * 12)
   const annualAvgIncome = workYears > 0 ? totalIncome / workYears : 0
   items.push({

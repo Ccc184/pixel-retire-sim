@@ -102,7 +102,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     icon: '💼',
     title: '十年磨一剑',
     desc: '工作满10年（未失业）',
-    check: (s, p) => !s.isUnemployed && !p.prevUnemployed && s.currentAge - 22 >= 10,
+    check: (s, p) => !s.isUnemployed && !p.prevUnemployed && s.currentAge - (s.startAge || 22) >= 10,
   },
   {
     id: 'comeback',
@@ -170,9 +170,9 @@ export const ACHIEVEMENTS: Achievement[] = [
   {
     id: 'age_30',
     icon: '🎂',
-    title: '三十而立',
-    desc: '迎来了30岁',
-    check: (s) => s.currentAge === 30,
+    title: '而立之年',
+    desc: '入行满8年，迎来人生第一个大关口',
+    check: (s) => s.currentAge - (s.startAge || 22) === 8,
   },
 ];
 
