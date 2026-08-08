@@ -226,64 +226,90 @@ const relKinshipSummary = computed(() => {
 // ================================================================
 const financeOpen = ref(false)
 
-interface FinanceChannel {
-  icon: string
+// ================================================================
+//  存款分布调节（玩家自由配置各渠道占比，总和恒为 100）
+//  与人生审计报告中的"认知偏差检测"呼应：
+//  全放余额宝 → 触发"损失厌恶"；重仓投机 → 触发"过度自信"
+// ================================================================
+interface DepositControl {
+  key: 'bank' | 'fixed' | 'fund' | 'stock' | 'gold' | 'spec'
   name: string
-  pct: number
+  icon: string
   color: string
-  rate: string  // 收益率说明
-  active: boolean
+  rate: string
+  get: () => number
 }
 
-const depositChannels = computed<FinanceChannel[]>(() => {
-  const v = s
-  const chainHoldings = (v as any).chainHoldings || 0
-  const bioPortfolio = (v as any).bioPortfolio || 0
-
-  // 总流动资产 = 现金存款 + 独立持仓（链上/生科）
-  const totalLiquid = v.currentSavings + chainHoldings + bioPortfolio
-  if (totalLiquid <= 0) {
-    return [{ icon: '◈', name: '余额宝', pct: 100, color: '#00d4ff', rate: '1.5%', active: true }]
+const depositControls = computed<DepositControl[]>(() => {
+  const path = s.retirementPath
+  const list: DepositControl[] = [
+    { key: 'bank', name: '余额宝', icon: '◈', color: '#00d4ff', rate: '+1.4%', get: () => s.bankDepositPct },
+    { key: 'fixed', name: '定期', icon: '▣', color: '#00ff88', rate: '+2.7%', get: () => (s as any).fixedDepositPct || 0 },
+    { key: 'fund', name: '基金', icon: '◆', color: '#ffec27', rate: '-9~+18%', get: () => s.indexFundPct },
+  ]
+  // 链上原住民：加密货币在 chainHoldings 中独立存在，存款分布不含比特币
+  if (path !== 'chain_native') {
+    list.push({ key: 'spec', name: '比特币', icon: '₿', color: '#ff8800', rate: '-72~+180%', get: () => s.speculationPct })
   }
-
-  // 各现金渠道的实际金额（基于 currentSavings 的百分比）
-  const bankValue = v.currentSavings * (v.bankDepositPct / 100)
-  const fixedValue = v.currentSavings * ((v as any).fixedDepositPct || 0) / 100
-  const fundValue = v.currentSavings * (v.indexFundPct / 100)
-  const goldValue = v.currentSavings * ((v as any).goldPct || 0) / 100
-
-  const channels: FinanceChannel[] = []
-
-  // 现金渠道：显示占总流动资产的比例
-  if (bankValue > 0) channels.push({ icon: '◈', name: '余额宝', pct: Math.round((bankValue / totalLiquid) * 100), color: '#00d4ff', rate: '1.5%', active: true })
-  if (fixedValue > 0) channels.push({ icon: '▣', name: '定期', pct: Math.round((fixedValue / totalLiquid) * 100), color: '#00ff88', rate: '3.0%', active: true })
-  if (fundValue > 0) channels.push({ icon: '◆', name: '基金', pct: Math.round((fundValue / totalLiquid) * 100), color: '#ffec27', rate: '波动', active: true })
-
-  if (v.retirementPath === 'chain_native') {
-    // 链上持仓是独立资产，直接按实际值占总流动资产比例显示
-    if (chainHoldings > 0) channels.push({ icon: '◇', name: '链上持仓', pct: Math.round((chainHoldings / totalLiquid) * 100), color: '#ff8800', rate: '极端波动', active: true })
-  } else if (v.retirementPath === 'bio_gambler') {
-    // 生科投资是独立资产，直接按实际值占总流动资产比例显示
-    if (bioPortfolio > 0) channels.push({ icon: '◊', name: '生科投资', pct: Math.round((bioPortfolio / totalLiquid) * 100), color: '#ff2d95', rate: '高风险', active: true })
-  } else {
-    // 其他路径：股票和比特币在 currentSavings 中
-    const stockValue = v.currentSavings * ((v as any).stockPct || 0) / 100
-    const cryptoValue = v.currentSavings * (v.speculationPct / 100)
-    if (stockValue > 0) channels.push({ icon: '▲', name: '股票', pct: Math.round((stockValue / totalLiquid) * 100), color: '#ff2d95', rate: '极高', active: true })
-    if (cryptoValue > 0) channels.push({ icon: '₿', name: '比特币', pct: Math.round((cryptoValue / totalLiquid) * 100), color: '#ff8800', rate: '疯狂', active: true })
+  // 生物赌徒：生科投资在 bioPortfolio 中独立存在，存款分布不含股票
+  if (path !== 'bio_gambler') {
+    list.push({ key: 'stock', name: '股票', icon: '▲', color: '#ff2d95', rate: '-27~+36%', get: () => (s as any).stockPct || 0 })
   }
-
-  if (goldValue > 0) channels.push({ icon: '★', name: '黄金', pct: Math.round((goldValue / totalLiquid) * 100), color: '#ffd700', rate: '避险', active: true })
-
-  // 修正 rounding 导致总和不为 100%
-  const sum = channels.reduce((acc, c) => acc + c.pct, 0)
-  if (channels.length > 0 && sum !== 100) {
-    const maxIdx = channels.reduce((maxI, c, i) => c.pct > channels[maxI].pct ? i : maxI, 0)
-    channels[maxIdx].pct += (100 - sum)
-  }
-
-  return channels
+  list.push({ key: 'gold', name: '黄金', icon: '★', color: '#ffd700', rate: '避险', get: () => (s as any).goldPct || 0 })
+  return list
 })
+
+// 当前分布快照（用于归一化与堆叠条）
+const depositSnapshot = computed(() => {
+  const map: Record<string, number> = {}
+  for (const c of depositControls.value) map[c.key] = c.get()
+  return map
+})
+
+const depositTotal = computed(() => Object.values(depositSnapshot.value).reduce((a, b) => a + b, 0))
+
+// 调整某渠道占比：差值按比例摊到其余渠道，保证总和恒为 100
+function adjustDeposit(key: string, value: number) {
+  const controls = depositControls.value
+  const cur: Record<string, number> = {}
+  for (const c of controls) cur[c.key] = c.get()
+  const oldVal = cur[key]
+  if (oldVal === value) return
+
+  const others = controls.filter((c) => c.key !== key)
+  const othersSum = others.reduce((sum, c) => sum + cur[c.key], 0)
+  const newOthersSum = 100 - value
+  const next: Record<string, number> = { ...cur, [key]: value }
+
+  if (othersSum > 0) {
+    const ratio = newOthersSum / othersSum
+    for (const c of others) next[c.key] = Math.round(cur[c.key] * ratio)
+  } else if (others.length > 0) {
+    // 原值 100，新增占比平均分配到其余渠道
+    const base = Math.floor(newOthersSum / others.length)
+    let rem = newOthersSum - base * others.length
+    for (let i = 0; i < others.length; i++) next[others[i].key] = base + (i < rem ? 1 : 0)
+  }
+
+  // 修正四舍五入导致的漂移，差值补到最大的其余渠道
+  const sum = Object.values(next).reduce((a, b) => a + b, 0)
+  const diff = 100 - sum
+  if (diff !== 0) {
+    const target = others.slice().sort((a, b) => next[b.key] - next[a.key])[0]
+    if (target) next[target.key] = Math.max(0, next[target.key] + diff)
+  }
+  store.setDepositChannels(next)
+}
+
+// 一键平均分配
+function evenSplit() {
+  const controls = depositControls.value
+  const base = Math.floor(100 / controls.length)
+  let rem = 100 - base * controls.length
+  const next: Record<string, number> = {}
+  for (let i = 0; i < controls.length; i++) next[controls[i].key] = base + (i < rem ? 1 : 0)
+  store.setDepositChannels(next)
+}
 
 const assetItems = computed<{ icon: string; name: string; value: number; active: boolean }[]>(() => {
   const v = s
@@ -577,26 +603,45 @@ const relOpen = ref(false);
       </div>
     </div>
 
-    <!-- Panel 3: 资产分布 -->
-    <div class="panel">
-      <div class="panel-title">资产明细</div>
-
-      <!-- 流动资产分布（理财渠道） -->
-      <div class="asset-dot-list">
-        <div
-          v-for="(ch, ci) in depositChannels"
-          :key="'dc-' + ci"
-          class="asset-dot-row"
-          :title="ch.name + ' ' + ch.pct + '%'"
-        >
-          <span class="asset-dot" :style="{ background: ch.color, boxShadow: '0 0 4px ' + ch.color }"></span>
-          <span class="asset-dot-name">{{ ch.icon }} {{ ch.name }}</span>
-          <span class="asset-dot-rate">{{ ch.rate }}</span>
-          <span class="asset-dot-pct" :style="{ color: ch.color }">{{ ch.pct }}%</span>
-        </div>
+    <!-- Panel 3: 资产配置（存款分布调节 + 全部资产明细，整合为一个面板） -->
+    <div class="panel deposit-panel">
+      <div class="deposit-head">
+        <span class="panel-title deposit-title">资产配置</span>
+        <button class="even-btn" type="button" @click="evenSplit" title="各渠道平均分配">均衡</button>
       </div>
 
-      <!-- 全部资产项明细 -->
+      <!-- 当前分布堆叠条 -->
+      <div class="deposit-stack">
+        <div
+          v-for="c in depositControls"
+          :key="'seg-' + c.key"
+          class="deposit-seg"
+          :style="{ width: depositTotal ? (depositSnapshot[c.key] / depositTotal * 100) + '%' : 0, background: c.color, boxShadow: '0 0 6px ' + c.color }"
+          :title="c.name + ' ' + depositSnapshot[c.key] + '%'"
+        />
+      </div>
+
+      <!-- 各渠道调节滑杆 -->
+      <div v-for="c in depositControls" :key="'row-' + c.key" class="deposit-row">
+        <span class="dep-icon" :style="{ color: c.color, textShadow: '0 0 4px ' + c.color }">{{ c.icon }}</span>
+        <span class="dep-name">{{ c.name }}</span>
+        <span class="dep-rate">{{ c.rate }}</span>
+        <input
+          type="range"
+          class="dep-slider"
+          min="0"
+          max="100"
+          step="1"
+          :value="depositSnapshot[c.key]"
+          :style="{ '--thumb': c.color }"
+          @input="adjustDeposit(c.key, Number(($event.target as HTMLInputElement).value))"
+        />
+        <span class="dep-pct" :style="{ color: c.color }">{{ depositSnapshot[c.key] }}%</span>
+      </div>
+
+      <div class="deposit-note">总和 {{ depositTotal }}% · 调整会使其余渠道按比例变动</div>
+
+      <!-- 全部资产项明细（含房产/车辆/持仓等非现金资产） -->
       <button
         v-if="assetItems.length > 0"
         class="collapse-header asset-collapse"
@@ -839,6 +884,148 @@ const relOpen = ref(false);
   content: '▸';
   color: var(--neon-blue);
   letter-spacing: 0;
+}
+
+/* ── 存款分布调节面板 ── */
+.deposit-panel {
+  border-color: rgba(0, 212, 255, 0.3);
+  background: linear-gradient(rgba(0, 212, 255, 0.04), rgba(0, 212, 255, 0.04)), rgba(15, 8, 35, 0.85);
+}
+
+.deposit-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.deposit-title {
+  margin-bottom: 0;
+}
+
+.even-btn {
+  font-family: 'DotGothic16', monospace;
+  font-size: 9px;
+  color: #00d4ff;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.4);
+  border-radius: 3px;
+  padding: 1px 7px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  text-shadow: 0 0 4px rgba(0, 212, 255, 0.6);
+  transition: all 0.15s ease;
+}
+
+.even-btn:hover {
+  background: rgba(0, 212, 255, 0.18);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.4);
+}
+
+.deposit-stack {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 8px;
+}
+
+.deposit-seg {
+  height: 100%;
+  transition: width 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.deposit-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  font-size: 10px;
+}
+
+.dep-icon {
+  width: 14px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.dep-name {
+  color: #c2c3c7;
+  width: 34px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.dep-rate {
+  font-size: 9px;
+  color: #6a6a8a;
+  width: 40px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.dep-slider {
+  flex: 1;
+  min-width: 0;
+  height: 10px;
+  margin: 0 2px;
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.dep-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+
+.dep-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--thumb, #00d4ff);
+  border: 1px solid #fff;
+  box-shadow: 0 0 5px var(--thumb, #00d4ff);
+}
+
+.dep-slider::-moz-range-track {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 2px;
+}
+
+.dep-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--thumb, #00d4ff);
+  border: 1px solid #fff;
+  box-shadow: 0 0 5px var(--thumb, #00d4ff);
+}
+
+.dep-pct {
+  width: 30px;
+  text-align: right;
+  font-weight: bold;
+  font-size: 10px;
+  flex-shrink: 0;
+  font-family: 'DotGothic16', monospace;
+}
+
+.deposit-note {
+  font-size: 9px;
+  color: #5f6a7a;
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  letter-spacing: 0.3px;
 }
 
 /* ── 身心状态 ── */
@@ -1172,53 +1359,6 @@ const relOpen = ref(false);
   background: linear-gradient(90deg, #00d4ff 0%, #c900ff 50%, #ff2d95 100%);
   box-shadow: 0 0 6px rgba(201, 0, 255, 0.6);
   transition: width 0.4s ease;
-}
-
-/* ── 资产分布 ── */
-.asset-dot-list {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-
-.asset-dot-row {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 4px;
-  border-radius: 3px;
-  font-size: 10px;
-}
-
-.asset-dot-row:hover {
-  background: rgba(255, 255, 255, 0.03);
-}
-
-.asset-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.asset-dot-name {
-  color: #c2c3c7;
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.asset-dot-rate {
-  font-size: 10px;
-  color: #6a6a8a;
-  flex-shrink: 0;
-}
-
-.asset-dot-pct {
-  font-weight: bold;
-  font-size: 10px;
-  flex-shrink: 0;
 }
 
 /* ── 折叠头（资产 / 通用） ── */

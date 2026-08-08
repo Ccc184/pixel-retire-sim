@@ -521,6 +521,13 @@ export interface NarrativeEvent {
   memoryRequired?: Record<string, boolean>;
   // 分支记忆任一命中：设置后事件在任一指定记忆存在时即可触发
   memoryAnyOf?: string[];
+  // 知识卡片：将剧情内容翻译成可迁移的理财/心理等知识；若未配置，面板会按事件id从知识库自动匹配
+  knowledge?: {
+    category: 'financial' | 'psychology' | 'career' | 'health';
+    title: string;
+    content: string;
+    tip?: string;   // 现实建议
+  };
 }
 
 // 成就事件（技能达标后触发的重大成就剧情）

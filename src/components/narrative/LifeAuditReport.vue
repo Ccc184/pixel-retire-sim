@@ -4,7 +4,7 @@ import { useGameStore } from '../../store/game.store.js'
 import { generateLifeAudit, type LifeAudit } from '../../utils/life-audit.js'
 
 const store = useGameStore()
-const expanded = ref(false)
+const expanded = ref(true)
 
 const audit = computed<LifeAudit>(() => generateLifeAudit(store.state))
 
@@ -166,33 +166,48 @@ function toggle() {
   width: 100%;
 }
 
-/* 触发按钮 */
+/* 触发按钮（面板标题栏风格） */
 .audit-trigger {
   width: 100%;
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px 20px;
-  background: rgba(255, 45, 149, 0.1);
-  border: 1px solid rgba(255, 45, 149, 0.4);
-  color: #ff2d95;
+  gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(255, 45, 149, 0.16), rgba(0, 212, 255, 0.10));
+  border: 1px solid rgba(255, 45, 149, 0.45);
+  border-radius: 6px;
+  color: #ffb0d8;
   font-family: 'DotGothic16', monospace;
-  font-size: 14px;
-  letter-spacing: 2px;
   cursor: pointer;
   transition: all 0.2s ease;
-  text-shadow: 0 0 6px rgba(255, 45, 149, 0.5);
+  box-shadow: 0 0 12px rgba(255, 45, 149, 0.12), inset 0 0 16px rgba(0, 212, 255, 0.06);
 }
 
 .audit-trigger:hover {
-  background: rgba(255, 45, 149, 0.2);
-  box-shadow: 0 0 12px rgba(255, 45, 149, 0.3);
+  background: linear-gradient(135deg, rgba(255, 45, 149, 0.24), rgba(0, 212, 255, 0.14));
+  box-shadow: 0 0 16px rgba(255, 45, 149, 0.3);
 }
 
-.audit-icon { font-size: 16px; }
-.audit-title { flex: 1; text-align: center; }
-.audit-arrow { font-size: 10px; }
+.audit-icon {
+  font-size: 18px;
+  color: #ffec27;
+  text-shadow: 0 0 8px rgba(255, 236, 39, 0.6);
+}
+
+.audit-title {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  letter-spacing: 3px;
+  color: #ffffff;
+  text-shadow: 0 0 8px rgba(255, 45, 149, 0.6);
+}
+
+.audit-arrow {
+  font-size: 11px;
+  color: #94b0c2;
+  transition: transform 0.3s ease;
+}
 
 /* 展开内容 */
 .audit-content {
@@ -218,19 +233,20 @@ function toggle() {
 
 /* 区块通用 */
 .audit-section {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(0, 212, 255, 0.2);
-  border-radius: 4px;
+  background: rgba(12, 6, 34, 0.55);
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  border-radius: 6px;
   overflow: hidden;
+  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.3);
 }
 
 .section-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  background: rgba(0, 212, 255, 0.08);
-  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+  padding: 9px 12px;
+  background: linear-gradient(90deg, rgba(0, 212, 255, 0.12), rgba(0, 212, 255, 0.02));
+  border-bottom: 1px solid rgba(0, 212, 255, 0.18);
 }
 
 .section-tag {
@@ -347,8 +363,14 @@ function toggle() {
 .anchor-card {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
+  border-radius: 6px;
   padding: 10px;
+  transition: all 0.2s ease;
+}
+
+.anchor-card:hover {
+  border-color: rgba(0, 212, 255, 0.3);
+  box-shadow: 0 0 8px rgba(0, 212, 255, 0.1);
 }
 
 .anchor-label {
@@ -419,8 +441,14 @@ function toggle() {
 .bias-card {
   background: rgba(255, 255, 255, 0.03);
   border-left: 3px solid;
-  border-radius: 0 4px 4px 0;
+  border-radius: 0 6px 6px 0;
   padding: 10px 12px;
+  transition: all 0.2s ease;
+}
+
+.bias-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
 .bias-header {

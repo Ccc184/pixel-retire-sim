@@ -2480,6 +2480,19 @@ export const useGameStore = defineStore('game', () => {
     state.value.speculationPct = spec;
   }
 
+  // ========== 存款分布调节（玩家自由配置各理财渠道占比，总和恒为 100） ==========
+  function setDepositChannels(c: Partial<{
+    bank: number; fixed: number; fund: number; stock: number; gold: number; spec: number;
+  }>) {
+    const cur = state.value;
+    if (c.bank !== undefined) cur.bankDepositPct = Math.round(Math.max(0, Math.min(100, c.bank)));
+    if (c.fixed !== undefined) cur.fixedDepositPct = Math.round(Math.max(0, Math.min(100, c.fixed)));
+    if (c.fund !== undefined) cur.indexFundPct = Math.round(Math.max(0, Math.min(100, c.fund)));
+    if (c.stock !== undefined) cur.stockPct = Math.round(Math.max(0, Math.min(100, c.stock)));
+    if (c.gold !== undefined) cur.goldPct = Math.round(Math.max(0, Math.min(100, c.gold)));
+    if (c.spec !== undefined) cur.speculationPct = Math.round(Math.max(0, Math.min(100, c.spec)));
+  }
+
   // ========== 重置游戏 ==========
   function resetGame() {
     state.value = createInitialState();
@@ -2611,6 +2624,7 @@ export const useGameStore = defineStore('game', () => {
     getEndingText,
     getEndingInfo,
     setInvestment,
+    setDepositChannels,
     resetGame,
     testSkipToRetirement,
     addLog,

@@ -36,17 +36,12 @@ function handleShare(): void {
 
 // ========== 评级揭晓动画（仪式感）==========
 const showGrade = ref(false)
-const showClosing = ref(false)
 onMounted(() => {
   // 结局文本弹出后，延迟 800ms 再揭晓评级，创造期待感
   nextTick(() => {
     setTimeout(() => {
       showGrade.value = true
     }, 800)
-    // 结语在评级揭晓后再浮现，形成情感收束
-    setTimeout(() => {
-      showClosing.value = true
-    }, 1600)
   })
 })
 
@@ -90,8 +85,6 @@ const gradeConfig: Record<Grade, { color: string; glow1: string; glow2: string; 
   },
 }
 
-const finalSavings = computed<number>(() => store.state.currentSavings)
-const finalAssets = computed<number>(() => store.totalWealth)
 // 工作年限：优先使用累计值，若为0/falsy则用年龄-22估算（覆盖直接跳结局等边界情况）
 const yearsWorked = computed<number>(() => {
   return store.state.totalYearsWorked || Math.max(0, store.state.currentAge - (store.state.startAge || 22))
@@ -159,44 +152,6 @@ const firstDayScene = computed<string>(() => {
       return '闹钟还是响了。你叹了口气起来，退休的事再说吧。'
     default:
       return '闹钟响了，你按掉它。又是普通的一天。你煮了碗面，打开手机看新闻，日子就这样过着。'
-  }
-})
-
-// ========== 一生结语（情感收束）==========
-// 按评级与路径成功差异化，作为结局的情感落点
-const closingLine = computed<string>(() => {
-  const grade = endingInfo.value?.grade || 'B'
-  if (isPathSuccess.value) {
-    switch (currentPathKey.value) {
-      case 'ai_symbiote':
-        return '你终于和那个只会写代码的自己和解了。时代换了一茬又一茬，潮水退去，你站住了——不是因为跑得比谁快，是因为你知道自己为什么站在这里。'
-      case 'chain_native':
-        return '牛熊在你眼里只是一串K线。你见证了共识的诞生与崩塌，最后发现：真正的去中心化，是终于能心平气和地关掉行情软件，去过一种不依赖任何"信仰"的人生。'
-      case 'digital_nomad':
-        return '你环游了世界，最后发现最远的路是回家的路。那些时差、机票、签证盖的章，都成了你脚下延展开的版图。你老了，但你看过的地方，替你年轻了一辈子。'
-      case 'super_ip':
-        return '流量会过期，热度会退潮，但你说过的话、写过的字、照亮过的人不会。你终于可以不追着风口跑了——因为你自己，就是那个被人记住的风向。'
-      case 'silver_economy':
-        return '你陪过那么多老人走完最后一程，轮到你自己，你一点都不怕了。你见过最好的告别，也见过最温柔的守望。你这一生温暖了别人，也把自己捂热了。'
-      case 'bio_gambler':
-        return '你拿命赌了一把，赌赢了。但你知道，真正赢的不是实验室的数据，是你在最绝望的时候，也从来没有松开过"再试一次"那根弦。'
-      default:
-        return '你走完了一条少有人走的路。没有辜负，没有将就，也没有后悔。你站在人生的终点回头看，这一路的风雨和星光，都值得。'
-    }
-  }
-  switch (grade) {
-    case 'S':
-      return '你这一生，把"想要的生活"过成了"正在过的日子"。没有遗憾的人最富有。'
-    case 'A':
-      return '你算不上人生赢家，但你赢过了那个曾经不敢想、不敢要的自己。'
-    case 'B':
-      return '你这一生很普通，但普通不等于平庸。你在自己的轨道上，认认真真地活过。'
-    case 'C':
-      return '生活没有给你想要的答案，但你也没有被生活打垮。你只是和大多数人一样，带着没圆的梦，继续往前走着。'
-    case 'D':
-      return '这一局，你没能活成想要的样子。但没关系，人生可以重来——下一局，别再那么省了。'
-    default:
-      return '你走完了这一生。回头看看，有遗憾，也有值得。'
   }
 })
 
@@ -328,48 +283,24 @@ const rawNetAssets = computed(() => store.totalWealth)
         </div>
       </transition>
 
-      <!-- 结局文本（日志摘要区域） -->
-      <div class="ending-body">
-        <div class="body-header">
-          <span class="body-tag">▣ NARRATIVE LOG</span>
-        </div>
-        <pre class="ending-text">{{ endingText }}</pre>
-      </div>
-
-      <!-- 一生结语（情感收束） -->
-      <div class="closing-block">
-        <div class="closing-tag">✦ 一生的注脚 ✦</div>
-        <transition name="closing-in">
-          <p v-if="showClosing" class="closing-line">{{ closingLine }}</p>
-        </transition>
-      </div>
-
-      <!-- 人生总账单（移到独立弹窗，不再嵌在主弹窗里） -->
-
-      <!-- 人生趣味结算（年度报告含评级与退休第一天金句 + 数字人生卡片墙 + 成就徽章墙） -->
+      <!-- 人生趣味结算（年度报告含结局日志、评级与退休第一天金句 + 数字人生卡片墙 + 成就徽章墙） -->
       <LifeFunReport
         :state="store.state"
         :grade="endingInfo.grade"
         :show-grade="showGrade"
-        :first-day-scene="firstDayScene"
+        :ending-text="endingText"
       />
 
-      <!-- 统计数据 -->
-      <div class="ending-stats" :class="{ 'has-path-stat': !!pathStat }">
-        <div class="stat-item">
-          <div class="stat-num num-green">{{ formatMoney(finalSavings) }}</div>
-          <div class="stat-label">最终存款</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-num num-pink">{{ formatMoney(finalAssets) }}</div>
-          <div class="stat-label">最终净资产</div>
-        </div>
-        <!-- 路径专属统计项 -->
-        <div v-if="pathStat" class="stat-item stat-item-path">
+      <!-- 路径专属统计 -->
+      <div v-if="pathStat" class="ending-stats has-path-stat">
+        <div class="stat-item stat-item-path">
           <div class="stat-num num-yellow">{{ pathStat.value }}</div>
           <div class="stat-label">{{ pathStat.label }}</div>
         </div>
       </div>
+
+      <!-- 人生审计报告（默认展开，置于收支明细之上） -->
+      <LifeAuditReport />
 
       <!-- 收支明细（可折叠） -->
       <div class="detail-toggle" @click="showDetail = !showDetail">
@@ -413,9 +344,6 @@ const rawNetAssets = computed(() => store.totalWealth)
           </div>
         </div>
       </div>
-
-      <!-- 人生审计报告 -->
-      <LifeAuditReport />
 
       <!-- 重新开始 -->
       <div class="ending-footer">
@@ -714,87 +642,6 @@ const rawNetAssets = computed(() => store.totalWealth)
     0 0 14px currentColor,
     2px 2px 0 #000;
   text-align: center;
-}
-
-/* 结局文本区域 */
-.ending-body {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(201, 0, 255, 0.3);
-  box-shadow: inset 0 0 12px rgba(201, 0, 255, 0.1), 0 0 6px rgba(201, 0, 255, 0.2);
-  padding: 0;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.body-header {
-  padding: 6px 12px;
-  background: rgba(201, 0, 255, 0.1);
-  border-bottom: 1px solid rgba(201, 0, 255, 0.2);
-}
-
-.body-tag {
-  font-size: 10px;
-  color: #c900ff;
-  letter-spacing: 2px;
-  text-shadow: 0 0 4px #c900ff;
-}
-
-.ending-text {
-  font-family: 'DotGothic16', monospace;
-  font-size: 13px;
-  line-height: 1.9;
-  color: #ffccaa;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  margin: 0;
-  letter-spacing: 0.5px;
-  padding: 14px 16px;
-  text-shadow: 0 0 2px rgba(255, 204, 170, 0.3);
-}
-
-/* ====== 一生结语（情感收束） ====== */
-.closing-block {
-  background: linear-gradient(135deg, rgba(201, 0, 255, 0.08), rgba(0, 212, 255, 0.06));
-  border-left: 3px solid currentColor;
-  border-right: 1px solid rgba(255, 255, 255, 0.08);
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 14px 18px;
-  box-shadow: inset 0 0 18px rgba(0, 0, 0, 0.3);
-}
-
-.closing-tag {
-  font-size: 10px;
-  letter-spacing: 3px;
-  color: #94b0c2;
-  margin-bottom: 8px;
-  text-shadow: 0 0 4px rgba(0, 212, 255, 0.4);
-}
-
-.closing-line {
-  font-family: 'DotGothic16', monospace;
-  font-size: 14px;
-  line-height: 2;
-  color: #ffffff;
-  margin: 0;
-  letter-spacing: 1px;
-  text-shadow:
-    0 0 6px rgba(255, 255, 255, 0.35),
-    1px 1px 0 #000;
-}
-
-.closing-in-enter-active {
-  transition: all 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-}
-.closing-in-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-  filter: blur(4px);
-}
-.closing-in-enter-to {
-  opacity: 1;
-  transform: translateY(0);
-  filter: blur(0);
 }
 
 /* 统计数据 */

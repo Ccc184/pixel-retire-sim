@@ -3,10 +3,8 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import type { GameState } from '../../types/global.d.js'
 import {
   generateConversionCards,
-  generateAchievements,
   generateAnnualReport,
   type ConversionCard,
-  type AchievementBadge,
   type AnnualReport,
 } from '../../utils/life-fun.js'
 
@@ -14,7 +12,7 @@ const props = defineProps<{
   state: GameState
   grade: string
   showGrade: boolean
-  firstDayScene: string
+  endingText: string
 }>()
 
 const s = computed(() => props.state)
@@ -33,8 +31,6 @@ const gradeStyle = computed(() => {
 
 // 卡片在组件挂载时一次性生成（含随机抽取），保证这一生随机、且展示期间不因状态变化而重排
 const cards = ref<ConversionCard[]>(generateConversionCards(s.value))
-const badges = computed<AchievementBadge[]>(() => generateAchievements(s.value))
-const earnedCount = computed(() => badges.value.filter((b) => b.earned).length)
 const report = computed<AnnualReport>(() => generateAnnualReport(s.value))
 
 // 翻牌状态
@@ -97,6 +93,13 @@ onUnmounted(() => {
     <!-- ====== 年度人生报告（可传播海报，放最上面） ====== -->
     <section class="annual-report">
       <div class="ar-bg" />
+
+      <!-- 结局文本（日志摘要），并入年度报告框内 -->
+      <div class="ar-log">
+        <div class="ar-log-tag">▣ NARRATIVE LOG</div>
+        <pre class="ar-log-text">{{ props.endingText }}</pre>
+      </div>
+
       <div class="ar-top">
         <span class="ar-kicker">PIXEL LIFE · ANNUAL REPORT</span>
         <span class="ar-year">{{ report.year }}</span>
@@ -143,12 +146,6 @@ onUnmounted(() => {
         <span class="ar-path-name">{{ report.pathName }}</span>
       </div>
 
-      <!-- 退休第一天这句话（金句） -->
-      <div class="ar-scene">
-        <div class="ar-scene-kicker">RETIREMENT DAY ONE</div>
-        <p class="ar-scene-text">{{ props.firstDayScene }}</p>
-      </div>
-
       <div class="ar-summary">{{ report.summary }}</div>
     </section>
 
@@ -179,30 +176,6 @@ onUnmounted(() => {
               <div class="fc-joke">{{ card.joke }}</div>
             </div>
           </div>
-        </div>
-      </div>
-      <div class="cards-hint">自动翻过去3秒 · 翻回来1.5秒 · 点击卡片可手动翻面</div>
-    </section>
-
-    <!-- ====== 成就徽章墙 ====== -->
-    <section class="fun-section">
-      <div class="fun-header">
-        <span class="fun-tag">🏅 ACHIEVEMENTS</span>
-        <span class="fun-title">人生成就</span>
-        <span class="fun-count">{{ earnedCount }}/{{ badges.length }}</span>
-      </div>
-      <div class="badge-grid">
-        <div
-          v-for="(b, i) in badges"
-          :key="b.name"
-          class="badge"
-          :class="{ earned: b.earned, locked: !b.earned }"
-          :style="{ animationDelay: (i * 60) + 'ms' }"
-          :title="b.desc"
-        >
-          <div class="badge-emoji">{{ b.earned ? b.emoji : '❓' }}</div>
-          <div class="badge-name">{{ b.earned ? b.name : '？？？' }}</div>
-          <div class="badge-desc">{{ b.earned ? b.desc : '尚未达成' }}</div>
         </div>
       </div>
     </section>
@@ -246,13 +219,6 @@ onUnmounted(() => {
   font-weight: bold;
   letter-spacing: 1px;
   flex: 1;
-}
-
-.fun-count {
-  font-size: 12px;
-  color: #ffec27;
-  font-family: 'DotGothic16', monospace;
-  text-shadow: 0 0 6px rgba(255, 236, 39, 0.5);
 }
 
 /* ====== 数字人生卡片墙 ====== */
@@ -385,73 +351,6 @@ onUnmounted(() => {
   padding: 0 6px;
 }
 
-.cards-hint {
-  text-align: center;
-  font-size: 10px;
-  color: #5f574f;
-  margin-top: 8px;
-  letter-spacing: 1px;
-}
-
-/* ====== 徽章墙 ====== */
-.badge-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-}
-
-.badge {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  padding: 8px 4px;
-  border-radius: 4px;
-  text-align: center;
-  cursor: default;
-  animation: badgeIn 0.5s ease both;
-}
-
-@keyframes badgeIn {
-  from { opacity: 0; transform: scale(0.7); }
-  to { opacity: 1; transform: scale(1); }
-}
-
-.badge.earned {
-  background: rgba(0, 212, 255, 0.08);
-  border: 1px solid rgba(0, 212, 255, 0.35);
-  box-shadow: 0 0 8px rgba(0, 212, 255, 0.15);
-}
-
-.badge.locked {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px dashed rgba(255, 255, 255, 0.12);
-  opacity: 0.55;
-}
-
-.badge-emoji {
-  font-size: 22px;
-  line-height: 1;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.25));
-}
-
-.badge.locked .badge-emoji { filter: grayscale(1); }
-
-.badge-name {
-  font-size: 10px;
-  color: #e0e0f0;
-  letter-spacing: 0.5px;
-  line-height: 1.3;
-}
-
-.badge.locked .badge-name { color: #5f574f; }
-
-.badge-desc {
-  font-size: 9px;
-  color: #94b0c2;
-  line-height: 1.3;
-}
-
 /* ====== 年度人生报告（网易云风格海报） ====== */
 .annual-report {
   position: relative;
@@ -474,6 +373,44 @@ onUnmounted(() => {
     radial-gradient(circle at 15% 20%, rgba(0, 212, 255, 0.18), transparent 40%),
     radial-gradient(circle at 85% 25%, rgba(255, 45, 149, 0.18), transparent 40%),
     radial-gradient(circle at 50% 90%, rgba(255, 236, 39, 0.10), transparent 45%);
+}
+
+/* 结局文本（并入年度报告框顶部） */
+.ar-log {
+  position: relative;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(201, 0, 255, 0.3);
+  box-shadow: inset 0 0 12px rgba(201, 0, 255, 0.12), 0 0 6px rgba(201, 0, 255, 0.15);
+  border-radius: 8px;
+  margin-bottom: 14px;
+  text-align: left;
+  overflow: hidden;
+}
+
+.ar-log-tag {
+  padding: 6px 12px;
+  font-size: 10px;
+  color: #c900ff;
+  letter-spacing: 2px;
+  text-shadow: 0 0 4px #c900ff;
+  font-family: 'DotGothic16', monospace;
+  background: rgba(201, 0, 255, 0.12);
+  border-bottom: 1px solid rgba(201, 0, 255, 0.2);
+}
+
+.ar-log-text {
+  font-family: 'DotGothic16', monospace;
+  font-size: 13px;
+  line-height: 1.9;
+  color: #ffccaa;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  letter-spacing: 0.5px;
+  padding: 12px 14px;
+  margin: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  text-shadow: 0 0 2px rgba(255, 204, 170, 0.3);
 }
 
 .ar-top {
@@ -712,33 +649,7 @@ onUnmounted(() => {
   40% { transform: translate(2px, 0); }
 }
 
-/* ====== 退休第一天金句 ====== */
-.ar-scene {
-  position: relative;
-  margin-bottom: 10px;
-  padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-}
-
-.ar-scene-kicker {
-  font-size: 10px;
-  letter-spacing: 2px;
-  color: #c9a8ff;
-  font-family: 'DotGothic16', monospace;
-  margin-bottom: 5px;
-}
-
-.ar-scene-text {
-  font-size: 12px;
-  color: #ffccaa;
-  line-height: 1.7;
-  margin: 0;
-}
-
 @media (max-width: 520px) {
   .cards-grid { grid-template-columns: repeat(2, 1fr); }
-  .badge-grid { grid-template-columns: repeat(3, 1fr); }
 }
 </style>

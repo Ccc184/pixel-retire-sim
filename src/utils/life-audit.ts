@@ -289,52 +289,130 @@ function detectCognitiveBiases(state: GameState): CognitiveBias[] {
 }
 
 // ===== 4. 人生启示 =====
+// 从数组中随机取 n 个不重复项
+function pickRandom<T>(arr: T[], n: number): T[] {
+  const copy = [...arr]
+  const out: T[] = []
+  while (out.length < n && copy.length > 0) {
+    const i = Math.floor(Math.random() * copy.length)
+    out.push(copy.splice(i, 1)[0])
+  }
+  return out
+}
+
+// 从多个措辞中随机选一个
+function pickOne<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
 function generateLifeLessons(state: GameState): string[] {
   const lessons: string[] = []
   const s = state
 
-  // 基于结局等级
+  // 动态模拟年限：真实覆盖 startAge 到当前结局年龄
+  const startAge = s.startAge || 22
+  const endAge = s.currentAge || 60
+  const simulatedYears = Math.max(2, endAge - startAge)
+
   const endingId = s.currentEndingId || ''
   const isPathSuccess = endingId.startsWith('path_success_')
   const isPathFailure = endingId.startsWith('path_failure_')
 
+  // 路径结局
   if (isPathSuccess) {
-    lessons.push(`你选择了一条非传统路径并坚持到了成功。现实中，走少有人走的路需要极大的勇气和抗风险能力——但一旦成功，回报也是指数级的。`)
+    lessons.push(pickOne([
+      `你选择了一条非传统路径并坚持到了成功。现实中，走少有人走的路需要极大的勇气和抗风险能力——但一旦成功，回报也是指数级的。`,
+      `你把一条少有人走的路走到了头。成功的路径往往无法复制，但值得坚持的信念可以。现实中，找到你的"坚守"比找到风口更重要。`,
+      `你靠押注一条细分赛道赢了。现实中，真正的机会往往藏在被低估的分叉路口——前提是你能扛过不被理解的那段路。`,
+    ]))
   }
   if (isPathFailure) {
-    lessons.push(`路径失败不代表人生失败。现实中，创业失败率约90%，币圈淘汰率更高。关键不是避免失败，而是确保失败后仍有翻盘的资本。`)
+    lessons.push(pickOne([
+      `路径失败不代表人生失败。现实中，创业失败率约90%，币圈淘汰率更高。关键不是避免失败，而是确保失败后仍有翻盘的资本。`,
+      `这一条路没走通，但你没被困死。现实中，很多时候真正决定结局的，不是第一选择，而是失败之后你的第二选择。`,
+      `你赌过，也输过。现实中，敢于下注的人比从不离席的人走得更远——只要你给自己留了退路。`,
+    ]))
   }
 
-  // 基于被动收入
+  // 财务自由
   if (s.passiveIncome > 0 && s.passiveIncome * 12 >= s.annualBaseCost) {
-    lessons.push(`你的被动收入已经覆盖生活开支——这就是真正的"财务自由"。现实中，FIRE运动的核心公式就是：年支出×25 = 退休所需资产，4%安全提取率。`)
+    lessons.push(pickOne([
+      `你的被动收入已经覆盖生活开支——这就是真正的"财务自由"。现实中，FIRE运动的核心公式就是：年支出×25 = 退休所需资产，4%安全提取率。`,
+      `被动收入>生活支出，你拥有一台不需要你守在旁边也能运转的机器。现实中，造机器比卖时间辛苦，但回报是持续的。`,
+      `你让钱开始替你上班了。现实中，通往自由最短的路，是把"收入-支出"的差额，持续变成能生息的资产。`,
+    ]))
   }
 
-  // 基于人际关系
+  // 人际关系
   if (s.partner && s.partner.affection > 70) {
-    lessons.push(`你和伴侣的感情度${s.partner.affection}，这是游戏中最难量化的财富。哈佛75年追踪研究证明：人生幸福感的最强预测因子不是金钱，而是亲密关系质量。`)
+    lessons.push(pickOne([
+      `你和伴侣的感情度${s.partner.affection}，这是游戏中最难量化的财富。哈佛75年追踪研究证明：人生幸福感的最强预测因子不是金钱，而是亲密关系质量。`,
+      `钱能算清，感情算不清。你和伴侣的羁绊${s.partner.affection}%，是任何财务报表都装不下的资产。`,
+      `在漫长的人生里，有人愿意陪你，比拥有多少存款更能抵御孤独。你这一次，把时间投资对了人。`,
+    ]))
   }
   if (s.partner && s.partner.hasDivorced) {
     lessons.push(`你经历了一段婚姻的结束。中国2025年离婚率约40%，离婚对资产的冲击平均达30-50%。选择伴侣的重要性不亚于选择职业。`)
   }
 
-  // 基于买房vs租房
+  // 买房 vs 租房
   if (s.hasProperty && s.lifetimeMortgage && s.lifetimeMortgage > s.lifetimeLivingCost * 3) {
-    lessons.push(`你的房贷总支出是生活费的${Math.round(s.lifetimeMortgage / (s.lifetimeLivingCost || 1))}倍。在租售比低于2%的城市，30年租房+定投指数基金的收益可能超过买房。`)
+    lessons.push(pickOne([
+      `你的房贷总支出是生活费的${Math.round(s.lifetimeMortgage / (s.lifetimeLivingCost || 1))}倍。在租售比低于2%的城市，30年租房+定投指数基金的收益可能超过买房。`,
+      `一套房透支了你打工生涯的大半收入。现实中，房子是资产也是枷锁——先算清现金流，再谈归属感。`,
+    ]))
   }
 
-  // 基于投资
+  // 投资
   if (s.lifetimeInvestmentGain > 0 && s.lifetimeInvestmentGain > s.lifetimeSalary * 0.3) {
-    lessons.push(`投资收益达到了工资收入的${Math.round(s.lifetimeInvestmentGain / (s.lifetimeSalary || 1) * 100)}%——你已经让钱开始为你工作。爱因斯坦说复利是世界第八大奇迹，你的数据证明了这一点。`)
+    lessons.push(pickOne([
+      `投资收益达到了工资收入的${Math.round(s.lifetimeInvestmentGain / (s.lifetimeSalary || 1) * 100)}%——你已经让钱开始为你工作。爱因斯坦说复利是世界第八大奇迹，你的数据证明了这一点。`,
+      `你的钱赚的钱，已经快赶上你赚的钱了。现实中，越早开始复利，时间越站在你这边。`,
+    ]))
   }
 
-  // 通用启示
-  if (lessons.length === 0) {
-    lessons.push(`每一年都在结算，每一步都不可逆——这不只是游戏规则，这也是人生。区别在于，游戏可以重来，人生只有一次。`)
+  // 健康
+  if (s.health < 40) {
+    lessons.push(pickOne([
+      `你的健康值跌到了${s.health}。现实中，健康是唯一无法靠"再来一局"刷新的资产——它坏了，别的都归零。`,
+      `为钱透支健康，最后往往要用钱赎回健康，还不一定赎得回来。你这一次，把最贵的资产花在了最便宜的身体上。`,
+    ]))
+  } else if (s.health > 75) {
+    lessons.push(`你一直把健康维护得很好。现实中，健康是复利最大的基数——身体好的人，才有资格谈长期主义。`)
   }
 
-  // 最后一句话
-  lessons.push(`这个游戏模拟了38年的人生。现实中你也正在经历——区别是，你没有"再来一局"的按钮。所以，现在就做那个你最想做的选择吧。`)
+  // 压力
+  if (s.stress > 70) {
+    lessons.push(`你的压力值常年偏高。现实中，长期高压会悄悄侵蚀判断力——适当"开闸"不是懒惰，是给自己续命。`)
+  }
+
+  // 幸福感
+  if (s.happiness < 30) {
+    lessons.push(`你这一生攒下了一些钱，却没能攒下多少快乐。现实中，钱是幸福的燃料，不是幸福本身——别把燃料当目的地。`)
+  } else if (s.happiness > 75) {
+    lessons.push(`你的幸福感一直很高。现实中，快乐不是财富的副产品，而是一种刻意练习——你显然很擅长。`)
+  }
+
+  // 通用启示池（随机抽取，确保每次结局都不同）
+  const genericLessons = [
+    `每一年都在结算，每一步都不可逆——这不只是游戏规则，这也是人生。区别在于，游戏可以重来，人生只有一次。`,
+    `花钱买快乐的日子会被记住，把钱存死的日子只剩数字。人生不是FIRE账本，而是体验的合集。`,
+    `你在这个模拟里做的每一个选择，现实中都有一个对应物。下一次做决定前，先问问自己：十年后我会感谢今天的这个选择吗？`,
+    `健康、关系、热爱——这三样东西无法用数字衡量，却决定了你数字之外的人生质量。`,
+    `人生最大的风险不是选错，而是从不选。守在原地等确定答案的人，往往错过最多。`,
+    `你囤下的安全感，和你花出去的幸福感，都是人生的一部分。最好的财务状态，是内心不再焦虑。`,
+    `时间才是真正的货币。你花掉的每一分努力，都在买入未来的某一种生活。`,
+    `这个模拟里藏着无数平行的人生，你只活了你选的这一条。不必羡慕别人的副本，你的选择已经定义了你。`,
+    `别把所有鸡蛋放在一个篮子里——这句话既是投资忠告，也是人生忠告。留一条后路，才能大胆向前。`,
+    `钱会贬值，房子会折旧，但你的判断力和抗风险能力，是穿越周期的硬通货。`,
+    `你这一生最重要的投资，其实不是任何一只股票，而是你花在自己成长上的那些年。`,
+    `人生不是通关游戏，没有标准答案。你唯一能做的，是让每一个选择都对得起当下的自己。`,
+  ]
+  // 随机补足 2~3 条通用启示，避免每次雷同
+  lessons.push(...pickRandom(genericLessons, 2 + Math.floor(Math.random() * 2)))
+
+  // 最后一句话：年限与起始年龄动态化
+  lessons.push(`这个游戏模拟了你从${startAge}岁到${endAge}岁、约${simulatedYears}年的人生。现实中你也正在经历——区别是，你没有"再来一局"的按钮。所以，现在就做那个你最想做的选择吧。`)
 
   return lessons
 }

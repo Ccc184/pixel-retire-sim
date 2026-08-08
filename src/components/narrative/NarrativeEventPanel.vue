@@ -1,15 +1,43 @@
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue'
+import { computed, ref, watch, watchEffect } from 'vue'
 import { useGameStore } from '../../store/game.store.js'
 import { playSelect, playConfirm, playCrisis, playRetirePulse, playHover } from '../../utils/audio.js'
 import { showNumericalHints } from '../../utils/ui-prefs.js'
 import { fmtSigned, fmt } from '../../utils/format.js'
+import { getKnowledge, getTermKnowledge, getKnowledgeCategoryName } from '../../data/knowledge.js'
 import type { NarrativeOption } from '../../types/global.d.js'
 
 const store = useGameStore()
 
 const currentEvent = computed(() => store.currentNarrativeEvent)
 const selectedOptionId = computed(() => store.selectedNarrativeOptionId)
+
+// 知识卡片：优先使用事件自带的 knowledge 字段，其次按事件id匹配，最后扫描剧情文本中的专业术语
+const knowledgeCard = computed(() => {
+  const ev = currentEvent.value
+  if (!ev) return null
+  // 1. 事件自带知识
+  if (ev.knowledge) return ev.knowledge
+  // 2. 按事件id匹配
+  const byId = getKnowledge(ev.id)
+  if (byId) return byId
+  // 3. 扫描剧情文本 + 选项描述中的专业术语
+  const text = [ev.title, ev.narrative, ...(ev.options || []).map(o => `${o.label} ${o.description}`)].join(' ')
+  return getTermKnowledge(text)
+})
+const knowledgeCategoryName = computed(() => {
+  if (!knowledgeCard.value) return ''
+  return getKnowledgeCategoryName(knowledgeCard.value.category)
+})
+// 知识卡片折叠状态：默认折叠，避免分散沉浸剧情的玩家注意力
+const knowledgeOpen = ref(false)
+function toggleKnowledge() {
+  knowledgeOpen.value = !knowledgeOpen.value
+}
+// 切换事件时自动收起，避免上一段剧情的展开卡片残留
+watch(() => currentEvent.value?.id, () => {
+  knowledgeOpen.value = false
+})
 // 岔路口是否激活：激活时下层面板不应显示"平静的一年"占位（P0-4修复）
 const isCrossroadActive = computed(() => store.showCrossroad)
 
@@ -164,6 +192,35 @@ const hintColorMap: Record<string, { color: string; shadow: string }> = {
             {{ getDisabledReason(option) }}
           </div>
         </button>
+      </div>
+
+      <!-- 知识卡片：置于事件最底部，默认折叠成细提示条，避免打断剧情阅读 -->
+      <div v-if="knowledgeCard" class="knowledge-wrap">
+        <button
+          class="knowledge-toggle"
+          :class="{ open: knowledgeOpen }"
+          @click="toggleKnowledge"
+          @mouseenter="playHover"
+        >
+          <span class="toggle-icon">{{ knowledgeOpen ? '▾' : '▸' }}</span>
+          <span class="toggle-text">{{ knowledgeOpen ? '收起知识点' : '本段剧情蕴含一个知识点' }}</span>
+          <span class="toggle-cat" :class="'cat-' + knowledgeCard.category">{{ knowledgeCategoryName }}</span>
+        </button>
+
+        <div v-if="knowledgeOpen" class="knowledge-card">
+          <div class="knowledge-head">
+            <span class="knowledge-badge">知识</span>
+            <span class="knowledge-category" :class="'cat-' + knowledgeCard.category">
+              {{ knowledgeCategoryName }}
+            </span>
+            <span class="knowledge-tagline">可迁移到现实</span>
+          </div>
+          <h4 class="knowledge-title">{{ knowledgeCard.title }}</h4>
+          <div class="knowledge-content">{{ knowledgeCard.content }}</div>
+          <div v-if="knowledgeCard.tip" class="knowledge-tip">
+            <span class="tip-arrow">▶</span>{{ knowledgeCard.tip }}
+          </div>
+        </div>
       </div>
     </div>
 
@@ -392,13 +449,13 @@ const hintColorMap: Record<string, { color: string; shadow: string }> = {
 }
 
 .event-narrative {
-  padding: 8px 12px;
+  padding: 12px 16px;
   background: rgba(10, 5, 25, 0.5);
   border: 1px solid rgba(201, 0, 255, 0.15);
   border-radius: 4px;
-  font-size: 12px;
-  line-height: 1.7;
-  color: #d4d0e0;
+  font-size: 15px;
+  line-height: 1.85;
+  color: #e6e2f0;
 }
 
 .event-narrative p {
@@ -406,7 +463,158 @@ const hintColorMap: Record<string, { color: string; shadow: string }> = {
 }
 
 .event-narrative p + p {
-  margin-top: 4px;
+  margin-top: 8px;
+}
+
+/* ============================================================
+   知识卡片：把剧情翻译成可迁移的理财/心理/职业/健康知识
+   ============================================================ */
+.knowledge-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 折叠提示条：极细、不抢注意力，渲染为不可点击的按钮式提示 */
+.knowledge-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 10px;
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px dashed rgba(0, 212, 255, 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  color: rgba(0, 212, 255, 0.75);
+  letter-spacing: 0.5px;
+  transition: all 0.15s;
+  text-align: left;
+}
+
+.knowledge-toggle:hover {
+  background: rgba(0, 212, 255, 0.1);
+  border-color: rgba(0, 212, 255, 0.45);
+  color: var(--neon-blue);
+}
+
+.knowledge-toggle.open {
+  border-color: rgba(0, 212, 255, 0.4);
+  color: var(--neon-blue);
+}
+
+.toggle-icon {
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.toggle-text {
+  opacity: 0.85;
+}
+
+.toggle-cat {
+  margin-left: auto;
+  font-family: 'DotGothic16', monospace;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 0 4px;
+}
+
+.toggle-cat.cat-financial { color: var(--neon-green); }
+.toggle-cat.cat-psychology { color: var(--neon-pink); }
+.toggle-cat.cat-career { color: var(--neon-orange); }
+.toggle-cat.cat-health { color: #ff6b6b; }
+
+.knowledge-card {
+  position: relative;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(20, 12, 50, 0.9), rgba(10, 5, 30, 0.9));
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-left: 3px solid var(--neon-blue);
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #d8d4e8;
+  overflow: hidden;
+}
+
+.knowledge-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg, transparent 0px, transparent 3px,
+    rgba(255, 255, 255, 0.012) 3px, rgba(255, 255, 255, 0.012) 4px
+  );
+}
+
+.knowledge-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.knowledge-badge {
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  padding: 1px 6px;
+  color: #000;
+  background: var(--neon-blue);
+  border-radius: 2px;
+  font-family: 'DotGothic16', monospace;
+}
+
+.knowledge-category {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  letter-spacing: 1px;
+  font-family: 'DotGothic16', monospace;
+  font-weight: bold;
+}
+
+.knowledge-category.cat-financial { color: var(--neon-green); border: 1px solid var(--neon-green); }
+.knowledge-category.cat-psychology { color: var(--neon-pink); border: 1px solid var(--neon-pink); }
+.knowledge-category.cat-career { color: var(--neon-orange); border: 1px solid var(--neon-orange); }
+.knowledge-category.cat-health { color: #ff6b6b; border: 1px solid #ff6b6b; }
+
+.knowledge-tagline {
+  margin-left: auto;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  letter-spacing: 1px;
+}
+
+.knowledge-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  margin: 0 0 4px;
+  letter-spacing: 0.5px;
+  text-shadow: 0 0 6px rgba(0, 212, 255, 0.25);
+}
+
+.knowledge-content {
+  font-size: 12px;
+  color: #cfc9e0;
+}
+
+.knowledge-tip {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+  font-size: 11px;
+  color: var(--neon-green);
+}
+
+.tip-arrow {
+  margin-right: 4px;
+  color: var(--neon-green);
 }
 
 /* ============================================================
